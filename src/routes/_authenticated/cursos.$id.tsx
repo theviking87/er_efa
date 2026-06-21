@@ -765,6 +765,18 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
         </DialogFooter>
       </DialogContent>
     </Dialog>
+    <AlertDialog open={!!erro} onOpenChange={(v) => { if (!v) setErro(null); }}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>{erro?.titulo}</AlertDialogTitle>
+          {erro?.descricao && <AlertDialogDescription>{erro.descricao}</AlertDialogDescription>}
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogAction onClick={() => setErro(null)}>Entendido</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }
 

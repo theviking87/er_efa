@@ -124,7 +124,10 @@ function SignUpForm() {
       </div>
       <div className="space-y-2">
         <Label htmlFor="signup-password">Palavra-passe</Label>
-        <Input id="signup-password" type="password" required minLength={6} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
+        <Input id="signup-password" type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
+        <p className="text-xs text-muted-foreground">
+          Mínimo 8 caracteres. Use uma combinação de letras, números e símbolos. Não pode constar em listas públicas de palavras-passe comprometidas.
+        </p>
       </div>
       <Button type="submit" className="w-full" disabled={loading}>{loading ? "A criar…" : "Criar conta"}</Button>
     </form>

@@ -416,6 +416,18 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     return (u?.formadores ?? []).map((f: any) => f.formador);
   }, [cufId, ufcds.data]);
 
+  // Disponibilidades do formador para a data escolhida
+  const disp = useQuery({
+    queryKey: ["disp-sessao", formadorId, data],
+    enabled: !!formadorId && !!data,
+    queryFn: async () => {
+      const { data: rows } = await supabase.from("formador_disponibilidades" as any)
+        .select("hora_inicio, hora_fim, tipo, notas")
+        .eq("formador_id", formadorId).eq("data", data);
+      return (rows ?? []) as any[];
+    },
+  });
+
   async function save() {
     if (!data || !cufId || !formadorId) return toast.error("Preencha todos os campos");
     const horas = diffHoras(hi, hf);
@@ -434,6 +446,18 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     if ((inat ?? []).length > 0) {
       const i = inat![0];
       return toast.error("Formador indisponível", { description: `${i.motivo || "Inatividade"} (${i.data_inicio} → ${i.data_fim})` });
+    }
+
+    // Validate disponibilidades declaradas (se existirem para o dia)
+    const dispRows = (disp.data ?? []) as any[];
+    if (dispRows.length > 0) {
+      const indisp = dispRows.some(d => d.tipo === "indisponivel" && !(hf <= d.hora_inicio || hi >= d.hora_fim));
+      if (indisp) return toast.error("Formador marcado como indisponível neste período");
+      const temDisp = dispRows.some(d => d.tipo === "disponivel");
+      if (temDisp) {
+        const dentro = dispRows.some(d => d.tipo === "disponivel" && hi >= d.hora_inicio && hf <= d.hora_fim);
+        if (!dentro) return toast.error("Fora das horas declaradas como disponíveis pelo formador");
+      }
     }
 
     const { error } = await supabase.from("sessoes").insert({
@@ -475,6 +499,17 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
           <div className="space-y-1.5"><Label>Início</Label><Input type="time" value={hi} onChange={e => setHi(e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Fim</Label><Input type="time" value={hf} onChange={e => setHf(e.target.value)} /></div>
           <div className="col-span-2 text-xs text-muted-foreground">Duração: {diffHoras(hi, hf).toFixed(2).replace(".", ",")} h</div>
+          {formadorId && data && (disp.data ?? []).length > 0 && (
+            <div className="col-span-2 text-xs rounded-md border bg-muted/40 px-3 py-2 space-y-0.5">
+              <div className="font-medium text-foreground">Disponibilidade declarada</div>
+              {(disp.data ?? []).map((d: any, idx: number) => (
+                <div key={idx} className="flex items-center gap-1.5">
+                  <span className={"inline-block size-1.5 rounded-full " + (d.tipo === "disponivel" ? "bg-emerald-500" : "bg-rose-500")} />
+                  <span>{d.hora_inicio?.slice(0,5)}–{d.hora_fim?.slice(0,5)} · {d.tipo === "disponivel" ? "Disponível" : "Indisponível"}{d.notas ? ` · ${d.notas}` : ""}</span>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

@@ -14,7 +14,353 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      curso_ufcd_formadores: {
+        Row: {
+          created_at: string
+          curso_ufcd_id: string
+          formador_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          curso_ufcd_id: string
+          formador_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          curso_ufcd_id?: string
+          formador_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curso_ufcd_formadores_curso_ufcd_id_fkey"
+            columns: ["curso_ufcd_id"]
+            isOneToOne: false
+            referencedRelation: "curso_ufcds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_ufcd_formadores_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: false
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      curso_ufcds: {
+        Row: {
+          concluida: boolean
+          created_at: string
+          curso_id: string
+          horas_totais: number
+          id: string
+          ordem: number
+          ufcd_id: string
+        }
+        Insert: {
+          concluida?: boolean
+          created_at?: string
+          curso_id: string
+          horas_totais?: number
+          id?: string
+          ordem?: number
+          ufcd_id: string
+        }
+        Update: {
+          concluida?: boolean
+          created_at?: string
+          curso_id?: string
+          horas_totais?: number
+          id?: string
+          ordem?: number
+          ufcd_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curso_ufcds_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_ufcds_ufcd_id_fkey"
+            columns: ["ufcd_id"]
+            isOneToOne: false
+            referencedRelation: "ufcds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      cursos: {
+        Row: {
+          codigo: string
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          estado: Database["public"]["Enums"]["curso_estado"]
+          id: string
+          nome: string
+          observacoes: string | null
+          tipologia: Database["public"]["Enums"]["curso_tipologia"]
+          updated_at: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          estado?: Database["public"]["Enums"]["curso_estado"]
+          id?: string
+          nome: string
+          observacoes?: string | null
+          tipologia?: Database["public"]["Enums"]["curso_tipologia"]
+          updated_at?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          estado?: Database["public"]["Enums"]["curso_estado"]
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          tipologia?: Database["public"]["Enums"]["curso_tipologia"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      formador_documentos: {
+        Row: {
+          created_at: string
+          formador_id: string
+          id: string
+          nome: string
+          storage_path: string
+          tipo: string
+          validade: string | null
+        }
+        Insert: {
+          created_at?: string
+          formador_id: string
+          id?: string
+          nome: string
+          storage_path: string
+          tipo: string
+          validade?: string | null
+        }
+        Update: {
+          created_at?: string
+          formador_id?: string
+          id?: string
+          nome?: string
+          storage_path?: string
+          tipo?: string
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formador_documentos_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: false
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formador_inatividades: {
+        Row: {
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          formador_id: string
+          id: string
+          motivo: string | null
+        }
+        Insert: {
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          formador_id: string
+          id?: string
+          motivo?: string | null
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          formador_id?: string
+          id?: string
+          motivo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formador_inatividades_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: false
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      formadores: {
+        Row: {
+          cc: string | null
+          ccp: string | null
+          codigo_postal: string | null
+          cor: string
+          created_at: string
+          email: string | null
+          estado: Database["public"]["Enums"]["formador_estado"]
+          habilitacoes: string | null
+          iban: string | null
+          id: string
+          localidade: string | null
+          morada: string | null
+          nif: string | null
+          nome: string
+          observacoes: string | null
+          telemovel: string | null
+          updated_at: string
+          validade_cc: string | null
+          validade_ccp: string | null
+        }
+        Insert: {
+          cc?: string | null
+          ccp?: string | null
+          codigo_postal?: string | null
+          cor?: string
+          created_at?: string
+          email?: string | null
+          estado?: Database["public"]["Enums"]["formador_estado"]
+          habilitacoes?: string | null
+          iban?: string | null
+          id?: string
+          localidade?: string | null
+          morada?: string | null
+          nif?: string | null
+          nome: string
+          observacoes?: string | null
+          telemovel?: string | null
+          updated_at?: string
+          validade_cc?: string | null
+          validade_ccp?: string | null
+        }
+        Update: {
+          cc?: string | null
+          ccp?: string | null
+          codigo_postal?: string | null
+          cor?: string
+          created_at?: string
+          email?: string | null
+          estado?: Database["public"]["Enums"]["formador_estado"]
+          habilitacoes?: string | null
+          iban?: string | null
+          id?: string
+          localidade?: string | null
+          morada?: string | null
+          nif?: string | null
+          nome?: string
+          observacoes?: string | null
+          telemovel?: string | null
+          updated_at?: string
+          validade_cc?: string | null
+          validade_ccp?: string | null
+        }
+        Relationships: []
+      }
+      sessoes: {
+        Row: {
+          created_at: string
+          curso_id: string
+          curso_ufcd_id: string
+          data: string
+          formador_id: string
+          hora_fim: string
+          hora_inicio: string
+          horas: number
+          id: string
+          observacoes: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          curso_id: string
+          curso_ufcd_id: string
+          data: string
+          formador_id: string
+          hora_fim: string
+          hora_inicio: string
+          horas: number
+          id?: string
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          curso_id?: string
+          curso_ufcd_id?: string
+          data?: string
+          formador_id?: string
+          hora_fim?: string
+          hora_inicio?: string
+          horas?: number
+          id?: string
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sessoes_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessoes_curso_ufcd_id_fkey"
+            columns: ["curso_ufcd_id"]
+            isOneToOne: false
+            referencedRelation: "curso_ufcds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sessoes_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: false
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ufcds: {
+        Row: {
+          codigo: string
+          created_at: string
+          designacao: string
+          horas_referencia: number
+          id: string
+        }
+        Insert: {
+          codigo: string
+          created_at?: string
+          designacao: string
+          horas_referencia?: number
+          id?: string
+        }
+        Update: {
+          codigo?: string
+          created_at?: string
+          designacao?: string
+          horas_referencia?: number
+          id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -23,7 +369,20 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      curso_estado:
+        | "planeado"
+        | "ativo"
+        | "concluido"
+        | "suspenso"
+        | "cancelado"
+      curso_tipologia: "EFA" | "ERFA" | "MFA" | "OUTRO"
+      formador_estado:
+        | "ativo"
+        | "inativo"
+        | "ferias"
+        | "baixa_medica"
+        | "suspenso"
+        | "arquivado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +509,17 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      curso_estado: ["planeado", "ativo", "concluido", "suspenso", "cancelado"],
+      curso_tipologia: ["EFA", "ERFA", "MFA", "OUTRO"],
+      formador_estado: [
+        "ativo",
+        "inativo",
+        "ferias",
+        "baixa_medica",
+        "suspenso",
+        "arquivado",
+      ],
+    },
   },
 } as const

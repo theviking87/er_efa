@@ -161,12 +161,8 @@ function CronogramaGeral() {
       <PageHeader
         title="Cronograma Geral"
         description="Sessões agendadas e disponibilidades declaradas pelos formadores. Clica numa disponibilidade para a converter em sessão."
-        actions={
-          <Button variant="outline" size="sm" onClick={() => window.print()}>
-            <Printer className="size-4" /> Imprimir
-          </Button>
-        }
       />
+
 
       <Card><CardContent className="p-6 space-y-4">
         <div className="flex items-center justify-between gap-3 flex-wrap">

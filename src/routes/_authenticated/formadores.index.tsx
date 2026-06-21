@@ -10,7 +10,7 @@ import { Plus, Search } from "lucide-react";
 import { ESTADO_FORMADOR_LABEL, fmtDate } from "@/lib/format";
 import { FormadorDialog } from "@/components/formador-dialog";
 
-export const Route = createFileRoute("/_authenticated/formadores")({
+export const Route = createFileRoute("/_authenticated/formadores/")({
   head: () => ({ meta: [{ title: "Formadores — Gestão Pedagógica" }] }),
   component: FormadoresPage,
 });

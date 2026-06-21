@@ -10,7 +10,7 @@ import { Plus, Search } from "lucide-react";
 import { ESTADO_FORMANDO_LABEL } from "@/lib/format";
 import { FormandoDialog } from "@/components/formando-dialog";
 
-export const Route = createFileRoute("/_authenticated/formandos")({
+export const Route = createFileRoute("/_authenticated/formandos/")({
   head: () => ({ meta: [{ title: "Formandos — Gestão Pedagógica" }] }),
   component: FormandosPage,
 });

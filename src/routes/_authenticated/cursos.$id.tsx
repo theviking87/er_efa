@@ -721,7 +721,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
                       >
                         <span className="size-2 rounded-full shrink-0" style={{ background: s.formador?.cor }} />
                         <span className="tabular-nums text-muted-foreground w-[88px]">{String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)}</span>
-                        <span className="font-medium truncate flex-1">{s.formador?.nome}</span>
+                        <span className="font-medium truncate flex-1">{formadorLabel(s.formador)}</span>
                         {noCurso ? <Badge variant="secondary" className="text-[10px]">deste curso</Badge> : <span className="text-[10px] text-muted-foreground">externo ao curso</span>}
                         {!isDisp && <Badge variant="destructive" className="text-[10px]">indisp.</Badge>}
                       </button>

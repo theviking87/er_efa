@@ -74,14 +74,24 @@ function SignInForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function getSignInMessage(message: string) {
+    if (message.toLowerCase().includes("email not confirmed")) {
+      return "Esta conta ainda não está ativa. Crie uma nova conta ou aguarde a confirmação do email.";
+    }
+    if (message.toLowerCase().includes("invalid login credentials")) {
+      return "Email ou palavra-passe incorretos.";
+    }
+    return message;
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     const { error } = await supabase.auth.signInWithPassword({ email, password });
     setLoading(false);
-    if (error) { toast.error("Não foi possível entrar", { description: error.message }); return; }
+    if (error) { toast.error("Não foi possível entrar", { description: getSignInMessage(error.message) }); return; }
     toast.success("Sessão iniciada");
-    navigate({ to: "/dashboard" });
+    navigate({ to: "/dashboard", replace: true });
   }
 
   return (
@@ -105,17 +115,31 @@ function SignUpForm() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
+  function getSignUpMessage(message: string) {
+    if (message.toLowerCase().includes("weak") || message.toLowerCase().includes("pwned")) {
+      return "Escolha uma palavra-passe única e mais forte, com letras, números e símbolos.";
+    }
+    if (message.toLowerCase().includes("security purposes")) {
+      return "Aguarde alguns segundos antes de tentar novamente.";
+    }
+    return message;
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email, password,
       options: { emailRedirectTo: `${window.location.origin}/dashboard` },
     });
     setLoading(false);
-    if (error) { toast.error("Não foi possível registar", { description: error.message }); return; }
-    toast.success("Conta criada", { description: "Pode iniciar sessão." });
-    navigate({ to: "/dashboard" });
+    if (error) { toast.error("Não foi possível registar", { description: getSignUpMessage(error.message) }); return; }
+    if (data.session) {
+      toast.success("Conta criada", { description: "Sessão iniciada." });
+      navigate({ to: "/dashboard", replace: true });
+      return;
+    }
+    toast.success("Conta criada", { description: "Pode iniciar sessão com os dados que acabou de definir." });
   }
 
   return (

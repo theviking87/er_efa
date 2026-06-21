@@ -53,7 +53,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             <GraduationCap className="size-4" />
           </div>
           <div className="text-sm font-semibold tracking-tight leading-none">
-            Elisbate Ribeiro
+            Elisabete Ribeiro
             <div className="text-[10px] font-normal text-muted-foreground mt-0.5">Centro de Formação</div>
           </div>
         </div>

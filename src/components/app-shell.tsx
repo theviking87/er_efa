@@ -48,17 +48,24 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   return (
     <div className="min-h-screen flex bg-background text-foreground">
-      <aside className="w-60 shrink-0 border-r border-border bg-sidebar text-sidebar-foreground flex flex-col">
-        <div className="h-14 flex items-center gap-2 px-4 border-b border-sidebar-border">
-          <div className="size-7 rounded-md bg-foreground text-background grid place-items-center">
-            <GraduationCap className="size-4" />
+      <aside
+        className="w-64 shrink-0 flex flex-col text-sidebar-foreground"
+        style={{ background: "var(--gradient-sidebar)" }}
+      >
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-sidebar-border">
+          <div
+            className="size-9 rounded-lg grid place-items-center shadow-md ring-1 ring-white/10"
+            style={{ background: "var(--gradient-header)" }}
+          >
+            <GraduationCap className="size-5 text-white" />
           </div>
-          <div className="text-sm font-semibold tracking-tight leading-none">
-            Elisabete Ribeiro
-            <div className="text-[10px] font-normal text-muted-foreground mt-0.5">Centro de Formação</div>
+          <div className="leading-tight">
+            <div className="text-sm font-semibold tracking-tight text-white">Elisabete Ribeiro</div>
+            <div className="text-[10px] uppercase tracking-wider text-white/50">Centro de Formação</div>
           </div>
         </div>
-        <nav className="flex-1 p-2 space-y-0.5">
+
+        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
           {NAV.map(item => {
             const active = pathname === item.to || pathname.startsWith(item.to + "/");
             const Icon = item.icon;
@@ -67,24 +74,37 @@ export function AppShell({ children }: { children: ReactNode }) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-2 rounded-md text-sm transition-colors",
+                  "group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-150",
                   active
-                    ? "bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                    : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-foreground",
+                    ? "bg-white/10 text-white font-medium shadow-sm"
+                    : "text-white/70 hover:bg-white/5 hover:text-white",
                 )}
               >
-                <Icon className="size-4" />
-                {item.label}
+                {active && (
+                  <span
+                    className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full"
+                    style={{ background: "var(--color-sidebar-primary)" }}
+                  />
+                )}
+                <Icon className={cn("size-4 shrink-0 transition-colors", active ? "text-[var(--color-sidebar-primary)]" : "text-white/60 group-hover:text-white/90")} />
+                <span className="truncate">{item.label}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="p-2 border-t border-sidebar-border">
-          <Button variant="ghost" size="sm" className="w-full justify-start gap-2 text-muted-foreground" onClick={handleSignOut}>
+
+        <div className="p-3 border-t border-sidebar-border">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full justify-start gap-2 text-white/70 hover:text-white hover:bg-white/10"
+            onClick={handleSignOut}
+          >
             <LogOut className="size-4" /> Sair
           </Button>
         </div>
       </aside>
+
       <main className="flex-1 min-w-0 overflow-auto">
         {children}
       </main>

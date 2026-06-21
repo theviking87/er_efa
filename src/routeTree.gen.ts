@@ -16,6 +16,7 @@ import { Route as AuthenticatedUfcdsRouteImport } from './routes/_authenticated/
 import { Route as AuthenticatedFormadoresRouteImport } from './routes/_authenticated/formadores'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCursosRouteImport } from './routes/_authenticated/cursos'
+import { Route as AuthenticatedCronogramaRouteImport } from './routes/_authenticated/cronograma'
 import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
 import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
 
@@ -53,6 +54,11 @@ const AuthenticatedCursosRoute = AuthenticatedCursosRouteImport.update({
   path: '/cursos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCronogramaRoute = AuthenticatedCronogramaRouteImport.update({
+  id: '/cronograma',
+  path: '/cronograma',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFormadoresIdRoute =
   AuthenticatedFormadoresIdRouteImport.update({
     id: '/$id',
@@ -68,6 +74,7 @@ const AuthenticatedCursosIdRoute = AuthenticatedCursosIdRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cronograma': typeof AuthenticatedCronogramaRoute
   '/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
@@ -78,6 +85,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
+  '/cronograma': typeof AuthenticatedCronogramaRoute
   '/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
@@ -90,6 +98,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
+  '/_authenticated/cronograma': typeof AuthenticatedCronogramaRoute
   '/_authenticated/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/formadores': typeof AuthenticatedFormadoresRouteWithChildren
@@ -102,6 +111,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/auth'
+    | '/cronograma'
     | '/cursos'
     | '/dashboard'
     | '/formadores'
@@ -112,6 +122,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/auth'
+    | '/cronograma'
     | '/cursos'
     | '/dashboard'
     | '/formadores'
@@ -123,6 +134,7 @@ export interface FileRouteTypes {
     | '/'
     | '/_authenticated'
     | '/auth'
+    | '/_authenticated/cronograma'
     | '/_authenticated/cursos'
     | '/_authenticated/dashboard'
     | '/_authenticated/formadores'
@@ -188,6 +200,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCursosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/cronograma': {
+      id: '/_authenticated/cronograma'
+      path: '/cronograma'
+      fullPath: '/cronograma'
+      preLoaderRoute: typeof AuthenticatedCronogramaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/formadores/$id': {
       id: '/_authenticated/formadores/$id'
       path: '/$id'
@@ -231,6 +250,7 @@ const AuthenticatedFormadoresRouteWithChildren =
   )
 
 interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCronogramaRoute: typeof AuthenticatedCronogramaRoute
   AuthenticatedCursosRoute: typeof AuthenticatedCursosRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFormadoresRoute: typeof AuthenticatedFormadoresRouteWithChildren
@@ -238,6 +258,7 @@ interface AuthenticatedRouteRouteChildren {
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCronogramaRoute: AuthenticatedCronogramaRoute,
   AuthenticatedCursosRoute: AuthenticatedCursosRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFormadoresRoute: AuthenticatedFormadoresRouteWithChildren,

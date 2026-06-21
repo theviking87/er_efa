@@ -46,64 +46,46 @@ function PerfilPage() {
   }
 
   return (
-    <AppShell>
-      <PageContainer>
-        <PageHeader title="O meu perfil" description="Gestão da conta e credenciais de acesso" />
+    <PageContainer>
+      <PageHeader title="O meu perfil" description="Gestão da conta e credenciais de acesso" />
 
-        <div className="grid gap-6 max-w-2xl">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <Mail className="size-4" /> Conta
-              </CardTitle>
-              <CardDescription>Email associado à sessão atual</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-sm font-medium">{email || "—"}</div>
-            </CardContent>
-          </Card>
+      <div className="grid gap-6 max-w-2xl">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Mail className="size-4" /> Conta
+            </CardTitle>
+            <CardDescription>Email associado à sessão atual</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-sm font-medium">{email || "—"}</div>
+          </CardContent>
+        </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <KeyRound className="size-4" /> Alterar password
-              </CardTitle>
-              <CardDescription>Define uma nova password com pelo menos 8 caracteres</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={handleChangePassword} className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor="pw">Nova password</Label>
-                  <Input
-                    id="pw"
-                    type="password"
-                    value={pw}
-                    onChange={e => setPw(e.target.value)}
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="pw2">Confirmar nova password</Label>
-                  <Input
-                    id="pw2"
-                    type="password"
-                    value={pw2}
-                    onChange={e => setPw2(e.target.value)}
-                    autoComplete="new-password"
-                    required
-                    minLength={8}
-                  />
-                </div>
-                <Button type="submit" disabled={loading}>
-                  {loading ? "A guardar…" : "Atualizar password"}
-                </Button>
-              </form>
-            </CardContent>
-          </Card>
-        </div>
-      </PageContainer>
-    </AppShell>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <KeyRound className="size-4" /> Alterar password
+            </CardTitle>
+            <CardDescription>Define uma nova password com pelo menos 8 caracteres</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleChangePassword} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="pw">Nova password</Label>
+                <Input id="pw" type="password" value={pw} onChange={e => setPw(e.target.value)} autoComplete="new-password" required minLength={8} />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="pw2">Confirmar nova password</Label>
+                <Input id="pw2" type="password" value={pw2} onChange={e => setPw2(e.target.value)} autoComplete="new-password" required minLength={8} />
+              </div>
+              <Button type="submit" disabled={loading}>
+                {loading ? "A guardar…" : "Atualizar password"}
+              </Button>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
+    </PageContainer>
   );
 }

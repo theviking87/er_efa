@@ -100,6 +100,7 @@ function FormadorDetail() {
       <Tabs defaultValue="dados">
         <TabsList>
           <TabsTrigger value="dados">Dados</TabsTrigger>
+          <TabsTrigger value="disponibilidades">Disponibilidades</TabsTrigger>
           <TabsTrigger value="inatividades">Inatividades</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
         </TabsList>
@@ -119,6 +120,10 @@ function FormadorDetail() {
             <Field label="Validade CCP" value={fmtDate(f.validade_ccp)} />
             <div className="sm:col-span-2"><Field label="Observações" value={f.observacoes} /></div>
           </CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="disponibilidades">
+          <DisponibilidadesTab formadorId={id} />
         </TabsContent>
 
         <TabsContent value="inatividades">

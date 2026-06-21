@@ -75,13 +75,14 @@ function RelatoriosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button
-              className="w-full"
-              disabled={!cursoId || busy === "sigo"}
-              onClick={() => run("sigo", () => exportSigoCurso(cursoId))}
-            >
-              <Download className="size-4" /> {busy === "sigo" ? "A exportar…" : "Exportar SIGO (.xlsx)"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button disabled={!cursoId || busy === "sigo"} onClick={() => run("sigo", () => exportSigoCurso(cursoId))}>
+                <FileSpreadsheet className="size-4" /> {busy === "sigo" ? "A exportar…" : "Excel"}
+              </Button>
+              <Button variant="outline" disabled={!cursoId || busy === "sigo-pdf"} onClick={() => run("sigo-pdf", () => exportSigoCursoPdf(cursoId))}>
+                <FileText className="size-4" /> {busy === "sigo-pdf" ? "A exportar…" : "PDF"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

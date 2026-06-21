@@ -375,31 +375,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     return days;
   }, [mes]);
 
-  // Horas-linha para a impressão (linha por hora cheia)
-  const hourRows = useMemo(() => {
-    let minH = 24, maxH = 0;
-    (sessoes.data ?? []).forEach((s: any) => {
-      const hi = parseInt(String(s.hora_inicio).slice(0, 2), 10);
-      const hf = parseInt(String(s.hora_fim).slice(0, 2), 10) + (String(s.hora_fim).slice(3, 5) === "00" ? 0 : 1);
-      if (hi < minH) minH = hi;
-      if (hf > maxH) maxH = hf;
-    });
-    if (minH >= maxH) { minH = 9; maxH = 18; }
-    const arr: number[] = [];
-    for (let h = minH; h < maxH; h++) arr.push(h);
-    return arr;
-  }, [sessoes.data]);
 
-  // Dias úteis do mês para a tabela de impressão
-  const diasMes = useMemo(() => {
-    const last = new Date(mes.ano, mes.mes + 1, 0).getDate();
-    const out: { d: number; iso: string; dow: number }[] = [];
-    for (let d = 1; d <= last; d++) {
-      const dt = new Date(mes.ano, mes.mes, d);
-      out.push({ d, iso: dt.toISOString().slice(0, 10), dow: dt.getDay() });
-    }
-    return out;
-  }, [mes]);
+
 
   function prev() { setMes(m => m.mes === 0 ? { ano: m.ano - 1, mes: 11 } : { ano: m.ano, mes: m.mes - 1 }); }
   function next() { setMes(m => m.mes === 11 ? { ano: m.ano + 1, mes: 0 } : { ano: m.ano, mes: m.mes + 1 }); }
@@ -482,41 +459,29 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           <div className="text-sm">Cronograma · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
         </div>
 
-        <table className="w-full border-collapse text-[9px]" style={{ tableLayout: "fixed" }}>
-          <thead>
-            <tr>
-              <th className="border border-gray-400 bg-gray-100 p-0.5 w-[34px]">h</th>
-              {diasMes.map(d => (
-                <th key={d.iso} className={"border border-gray-400 p-0.5 " + (d.dow === 0 || d.dow === 6 ? "bg-gray-200" : "bg-gray-100")}>
-                  {d.d}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {hourRows.map(h => (
-              <tr key={h} style={{ height: "14px" }}>
-                <td className="border border-gray-400 bg-gray-50 text-center font-mono">{String(h).padStart(2, "0")}</td>
-                {diasMes.map(d => {
-                  const dayS = sessoesByDay.get(d.iso) ?? [];
-                  const s = dayS.find((x: any) => {
-                    const hi = parseInt(String(x.hora_inicio).slice(0, 2), 10);
-                    const hf = parseInt(String(x.hora_fim).slice(0, 2), 10);
-                    const hfm = parseInt(String(x.hora_fim).slice(3, 5), 10);
-                    const hfEff = hfm > 0 ? hf + 1 : hf;
-                    return h >= hi && h < hfEff;
-                  });
-                  if (!s) return <td key={d.iso} className={"border border-gray-300 " + (d.dow === 0 || d.dow === 6 ? "bg-gray-100" : "")} />;
-                  return (
-                    <td key={d.iso} className="border border-gray-400 text-center p-0" style={{ background: `${s.formador?.cor}30`, color: "#000" }}>
-                      <div className="leading-none truncate px-0.5">{s.curso_ufcd?.ufcd?.codigo}</div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="grid grid-cols-7 border border-gray-400 text-[9px]" style={{ gridAutoRows: "minmax(70px, auto)" }}>
+          {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => (
+            <div key={d} className="border border-gray-400 bg-gray-100 px-1 py-0.5 font-semibold text-center uppercase">{d}</div>
+          ))}
+          {grid.map((cell, i) => (
+            <div key={i} className="border border-gray-300 p-1 align-top" style={{ minHeight: "70px" }}>
+              {cell && (
+                <>
+                  <div className="text-[10px] font-semibold mb-0.5">{cell.d}</div>
+                  <div className="space-y-0.5">
+                    {(sessoesByDay.get(cell.iso) ?? []).map((s: any) => (
+                      <div key={s.id} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
+                        <span className="tabular-nums font-semibold">{String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)}</span>
+                        {" – "}{s.formador?.nome} ({s.curso_ufcd?.ufcd?.codigo})
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
 
         <div className="mt-3 text-[10px]">
           <div className="font-semibold mb-1">Formadores deste mês — UFCD em curso e horas em falta (inclui {MONTH_NAMES[mes.mes]})</div>
@@ -584,12 +549,24 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   // Aplicar defaultDate ao abrir
   if (open && data === "" && defaultDate) setTimeout(() => setData(defaultDate), 0);
 
-  // UFCD do curso + respetivos formadores
+  // UFCD do curso + respetivos formadores + horas totais/realizadas
   const ufcds = useQuery({
     queryKey: ["curso-ufcds-flat", cursoId],
-    queryFn: async () => (await supabase.from("curso_ufcds")
-      .select("id, concluida, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,cor))")
-      .eq("curso_id", cursoId).eq("concluida", false)).data ?? [],
+    queryFn: async () => {
+      const [cu, sess] = await Promise.all([
+        supabase.from("curso_ufcds")
+          .select("id, concluida, horas_totais, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,cor))")
+          .eq("curso_id", cursoId).eq("concluida", false),
+        supabase.from("sessoes").select("curso_ufcd_id, horas").eq("curso_id", cursoId),
+      ]);
+      const realizadas = new Map<string, number>();
+      (sess.data ?? []).forEach((s: any) => realizadas.set(s.curso_ufcd_id, (realizadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas)));
+      return (cu.data ?? []).map((u: any) => ({
+        ...u,
+        horas_realizadas: realizadas.get(u.id) ?? 0,
+        horas_em_falta: Math.max(0, Number(u.horas_totais) - (realizadas.get(u.id) ?? 0)),
+      }));
+    },
     enabled: open,
   });
 
@@ -605,13 +582,17 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     },
   });
 
-  // UFCD em que o formador escolhido está atribuído neste curso
+  // UFCD em que o formador escolhido está atribuído neste curso E ainda tem horas em falta
   const ufcdsDoFormador = useMemo(() => {
     if (!formadorId) return [];
     return (ufcds.data ?? []).filter((u: any) =>
+      u.horas_em_falta > 0 &&
       (u.formadores ?? []).some((ff: any) => ff.formador?.id === formadorId)
     );
   }, [formadorId, ufcds.data]);
+
+  const cufSelecionada = useMemo(() => (ufcds.data ?? []).find((u: any) => u.id === cufId), [ufcds.data, cufId]);
+
 
   // Formadores ligados às UFCD deste curso (para realçar na lista de dispon.)
   const formadoresDoCurso = useMemo(() => {
@@ -711,15 +692,26 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
 
           {formadorId && (
             <div className="space-y-1.5">
-              <Label>UFCD *</Label>
+              <Label>UFCD * <span className="text-xs text-muted-foreground font-normal">(apenas as deste formador com horas em falta)</span></Label>
               <Select value={cufId} onValueChange={setCufId}>
-                <SelectTrigger><SelectValue placeholder={ufcdsDoFormador.length === 0 ? "Este formador não tem UFCD atribuída neste curso" : "Escolher UFCD…"} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={ufcdsDoFormador.length === 0 ? "Sem UFCD em falta para este formador" : "Escolher UFCD…"} /></SelectTrigger>
                 <SelectContent>
-                  {ufcdsDoFormador.map((u: any) => <SelectItem key={u.id} value={u.id}>{u.ufcd.codigo} — {u.ufcd.designacao}</SelectItem>)}
+                  {ufcdsDoFormador.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.ufcd.codigo} — {u.ufcd.designacao} · faltam {fmtHoras(u.horas_em_falta)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {cufSelecionada && (
+                <div className="text-xs text-muted-foreground">
+                  {fmtHoras(cufSelecionada.horas_realizadas)} dadas de {cufSelecionada.horas_totais}h · <span className="font-medium text-foreground">faltam {fmtHoras(cufSelecionada.horas_em_falta)}</span>
+                  {diffHoras(hi, hf) > cufSelecionada.horas_em_falta && <span className="text-amber-600"> · esta sessão excede o que falta</span>}
+                </div>
+              )}
             </div>
           )}
+
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>Início</Label><Input type="time" value={hi} onChange={e => setHi(e.target.value)} /></div>

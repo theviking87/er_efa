@@ -50,7 +50,7 @@ export function FormadorDialog({
         const { error } = await supabase.from("formadores").update(payload).eq("id", v.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("formadores").insert(payload as any);
+        const { error } = await supabase.from("formadores").insert(payload as any);  // eslint-disable-line @typescript-eslint/no-explicit-any
         if (error) throw error;
       }
     },

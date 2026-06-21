@@ -375,31 +375,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     return days;
   }, [mes]);
 
-  // Horas-linha para a impressão (linha por hora cheia)
-  const hourRows = useMemo(() => {
-    let minH = 24, maxH = 0;
-    (sessoes.data ?? []).forEach((s: any) => {
-      const hi = parseInt(String(s.hora_inicio).slice(0, 2), 10);
-      const hf = parseInt(String(s.hora_fim).slice(0, 2), 10) + (String(s.hora_fim).slice(3, 5) === "00" ? 0 : 1);
-      if (hi < minH) minH = hi;
-      if (hf > maxH) maxH = hf;
-    });
-    if (minH >= maxH) { minH = 9; maxH = 18; }
-    const arr: number[] = [];
-    for (let h = minH; h < maxH; h++) arr.push(h);
-    return arr;
-  }, [sessoes.data]);
 
-  // Dias úteis do mês para a tabela de impressão
-  const diasMes = useMemo(() => {
-    const last = new Date(mes.ano, mes.mes + 1, 0).getDate();
-    const out: { d: number; iso: string; dow: number }[] = [];
-    for (let d = 1; d <= last; d++) {
-      const dt = new Date(mes.ano, mes.mes, d);
-      out.push({ d, iso: dt.toISOString().slice(0, 10), dow: dt.getDay() });
-    }
-    return out;
-  }, [mes]);
+
 
   function prev() { setMes(m => m.mes === 0 ? { ano: m.ano - 1, mes: 11 } : { ano: m.ano, mes: m.mes - 1 }); }
   function next() { setMes(m => m.mes === 11 ? { ano: m.ano + 1, mes: 0 } : { ano: m.ano, mes: m.mes + 1 }); }

@@ -562,6 +562,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   const [hf, setHf] = useState("13:00");
   const [cufId, setCufId] = useState("");
   const [formadorId, setFormadorId] = useState("");
+  const [erro, setErro] = useState<{ titulo: string; descricao?: string } | null>(null);
 
   // Aplicar defaultDate ao abrir
   if (open && data === "" && defaultDate) setTimeout(() => setData(defaultDate), 0);

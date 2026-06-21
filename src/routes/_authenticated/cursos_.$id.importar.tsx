@@ -28,7 +28,6 @@ export const Route = createFileRoute("/_authenticated/cursos_/$id/importar")({
 type Row = SessaoExtraida & { curso_ufcd_id: string | null; formador_id: string | null };
 type Ufcd = { id: string; codigo: string; designacao: string; horas_totais: number; horas_existentes: number };
 type Formador = { id: string; nome: string; abreviatura: string | null };
-type Disp = { formador_id: string; data: string; hora_inicio: string; hora_fim: string; tipo: string };
 
 const NEW_UFCD = "__new_ufcd__";
 const NEW_FORM = "__new_formador__";
@@ -46,7 +45,6 @@ function ImportarCronograma() {
   const [rows, setRows] = useState<Row[]>([]);
   const [cufcds, setCufcds] = useState<Ufcd[]>([]);
   const [formadores, setFormadores] = useState<Formador[]>([]);
-  const [disponibilidades, setDisponibilidades] = useState<Disp[]>([]);
 
   // dialogs
   const [ufcdDlg, setUfcdDlg] = useState<{ rowIdx: number; codigo: string; designacao: string; horas: string } | null>(null);
@@ -60,7 +58,6 @@ function ImportarCronograma() {
       const r = await extrair({ data: { cursoId: id, pdfBase64: b64, filename: file.name } });
       setCufcds(r.curso_ufcds);
       setFormadores(r.formadores);
-      setDisponibilidades(r.disponibilidades);
       setRows(r.sessoes.map((s) => ({
         ...s,
         curso_ufcd_id: matchUfcd(s.ufcd_codigo, s.ufcd_nome, r.curso_ufcds),

@@ -13,10 +13,12 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUfcdsRouteImport } from './routes/_authenticated/ufcds'
+import { Route as AuthenticatedFormandosRouteImport } from './routes/_authenticated/formandos'
 import { Route as AuthenticatedFormadoresRouteImport } from './routes/_authenticated/formadores'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCursosRouteImport } from './routes/_authenticated/cursos'
 import { Route as AuthenticatedCronogramaRouteImport } from './routes/_authenticated/cronograma'
+import { Route as AuthenticatedFormandosIdRouteImport } from './routes/_authenticated/formandos.$id'
 import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
 import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
 
@@ -39,6 +41,11 @@ const AuthenticatedUfcdsRoute = AuthenticatedUfcdsRouteImport.update({
   path: '/ufcds',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFormandosRoute = AuthenticatedFormandosRouteImport.update({
+  id: '/formandos',
+  path: '/formandos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFormadoresRoute = AuthenticatedFormadoresRouteImport.update({
   id: '/formadores',
   path: '/formadores',
@@ -59,6 +66,12 @@ const AuthenticatedCronogramaRoute = AuthenticatedCronogramaRouteImport.update({
   path: '/cronograma',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFormandosIdRoute =
+  AuthenticatedFormandosIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedFormandosRoute,
+  } as any)
 const AuthenticatedFormadoresIdRoute =
   AuthenticatedFormadoresIdRouteImport.update({
     id: '/$id',
@@ -78,9 +91,11 @@ export interface FileRoutesByFullPath {
   '/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
+  '/formandos': typeof AuthenticatedFormandosRouteWithChildren
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
+  '/formandos/$id': typeof AuthenticatedFormandosIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -89,9 +104,11 @@ export interface FileRoutesByTo {
   '/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
+  '/formandos': typeof AuthenticatedFormandosRouteWithChildren
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
+  '/formandos/$id': typeof AuthenticatedFormandosIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -102,9 +119,11 @@ export interface FileRoutesById {
   '/_authenticated/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/formadores': typeof AuthenticatedFormadoresRouteWithChildren
+  '/_authenticated/formandos': typeof AuthenticatedFormandosRouteWithChildren
   '/_authenticated/ufcds': typeof AuthenticatedUfcdsRoute
   '/_authenticated/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/_authenticated/formadores/$id': typeof AuthenticatedFormadoresIdRoute
+  '/_authenticated/formandos/$id': typeof AuthenticatedFormandosIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -115,9 +134,11 @@ export interface FileRouteTypes {
     | '/cursos'
     | '/dashboard'
     | '/formadores'
+    | '/formandos'
     | '/ufcds'
     | '/cursos/$id'
     | '/formadores/$id'
+    | '/formandos/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -126,9 +147,11 @@ export interface FileRouteTypes {
     | '/cursos'
     | '/dashboard'
     | '/formadores'
+    | '/formandos'
     | '/ufcds'
     | '/cursos/$id'
     | '/formadores/$id'
+    | '/formandos/$id'
   id:
     | '__root__'
     | '/'
@@ -138,9 +161,11 @@ export interface FileRouteTypes {
     | '/_authenticated/cursos'
     | '/_authenticated/dashboard'
     | '/_authenticated/formadores'
+    | '/_authenticated/formandos'
     | '/_authenticated/ufcds'
     | '/_authenticated/cursos/$id'
     | '/_authenticated/formadores/$id'
+    | '/_authenticated/formandos/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -179,6 +204,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedUfcdsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/formandos': {
+      id: '/_authenticated/formandos'
+      path: '/formandos'
+      fullPath: '/formandos'
+      preLoaderRoute: typeof AuthenticatedFormandosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/formadores': {
       id: '/_authenticated/formadores'
       path: '/formadores'
@@ -206,6 +238,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/cronograma'
       preLoaderRoute: typeof AuthenticatedCronogramaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/formandos/$id': {
+      id: '/_authenticated/formandos/$id'
+      path: '/$id'
+      fullPath: '/formandos/$id'
+      preLoaderRoute: typeof AuthenticatedFormandosIdRouteImport
+      parentRoute: typeof AuthenticatedFormandosRoute
     }
     '/_authenticated/formadores/$id': {
       id: '/_authenticated/formadores/$id'
@@ -249,11 +288,26 @@ const AuthenticatedFormadoresRouteWithChildren =
     AuthenticatedFormadoresRouteChildren,
   )
 
+interface AuthenticatedFormandosRouteChildren {
+  AuthenticatedFormandosIdRoute: typeof AuthenticatedFormandosIdRoute
+}
+
+const AuthenticatedFormandosRouteChildren: AuthenticatedFormandosRouteChildren =
+  {
+    AuthenticatedFormandosIdRoute: AuthenticatedFormandosIdRoute,
+  }
+
+const AuthenticatedFormandosRouteWithChildren =
+  AuthenticatedFormandosRoute._addFileChildren(
+    AuthenticatedFormandosRouteChildren,
+  )
+
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCronogramaRoute: typeof AuthenticatedCronogramaRoute
   AuthenticatedCursosRoute: typeof AuthenticatedCursosRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFormadoresRoute: typeof AuthenticatedFormadoresRouteWithChildren
+  AuthenticatedFormandosRoute: typeof AuthenticatedFormandosRouteWithChildren
   AuthenticatedUfcdsRoute: typeof AuthenticatedUfcdsRoute
 }
 
@@ -262,6 +316,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCursosRoute: AuthenticatedCursosRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFormadoresRoute: AuthenticatedFormadoresRouteWithChildren,
+  AuthenticatedFormandosRoute: AuthenticatedFormandosRouteWithChildren,
   AuthenticatedUfcdsRoute: AuthenticatedUfcdsRoute,
 }
 

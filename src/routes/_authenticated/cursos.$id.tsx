@@ -76,6 +76,7 @@ function CursoDetail() {
         <TabsList>
           <TabsTrigger value="dados">Dados</TabsTrigger>
           <TabsTrigger value="ufcds">UFCD</TabsTrigger>
+          <TabsTrigger value="formandos">Formandos</TabsTrigger>
           <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
         </TabsList>
 
@@ -92,6 +93,10 @@ function CursoDetail() {
 
         <TabsContent value="ufcds">
           <UfcdsTab cursoId={id} />
+        </TabsContent>
+
+        <TabsContent value="formandos">
+          <FormandosTab cursoId={id} />
         </TabsContent>
 
         <TabsContent value="cronograma">

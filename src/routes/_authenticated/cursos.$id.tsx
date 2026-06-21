@@ -486,7 +486,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                       return linhas.map((l, idx) => (
                         <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
                           <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
-                          {" "}{s.formador?.nome} ({s.curso_ufcd?.ufcd?.codigo})
+                          {" "}{formadorLabel(s.formador)} ({s.curso_ufcd?.ufcd?.codigo})
                         </div>
                       ));
                     })}

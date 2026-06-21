@@ -266,3 +266,95 @@ function DocumentosTab({ formadorId, items, onChange }: { formadorId: string; it
     </CardContent></Card>
   );
 }
+
+function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState(false);
+  const [form, setForm] = useState({ data: "", hora_inicio: "09:00", hora_fim: "18:00", tipo: "disponivel" as "disponivel" | "indisponivel", notas: "" });
+
+  const q = useQuery({
+    queryKey: ["disponibilidades", formadorId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("formador_disponibilidades" as any)
+        .select("*")
+        .eq("formador_id", formadorId)
+        .order("data", { ascending: false })
+        .order("hora_inicio");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  async function add() {
+    if (!form.data) { toast.error("Data obrigatória"); return; }
+    if (form.hora_fim <= form.hora_inicio) { toast.error("Hora fim tem de ser depois da hora início"); return; }
+    const { error } = await supabase.from("formador_disponibilidades" as any).insert({ formador_id: formadorId, ...form } as any);
+    if (error) return toast.error(error.message);
+    toast.success("Disponibilidade adicionada");
+    setForm({ data: "", hora_inicio: "09:00", hora_fim: "18:00", tipo: "disponivel", notas: "" });
+    setOpen(false);
+    qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
+  }
+
+  async function del(id: string) {
+    const { error } = await supabase.from("formador_disponibilidades" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
+  }
+
+  const items = q.data ?? [];
+
+  return (
+    <Card><CardContent className="p-6 space-y-4">
+      <div className="flex justify-between items-center">
+        <div className="text-sm text-muted-foreground">{items.length} {items.length === 1 ? "registo" : "registos"}</div>
+        <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Adicionar</Button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="text-sm text-muted-foreground text-center py-8">Sem disponibilidades registadas.</div>
+      ) : (
+        <div className="border rounded-md divide-y">
+          {items.map((i: any) => (
+            <div key={i.id} className="px-4 py-2.5 flex items-center justify-between text-sm">
+              <div className="flex items-center gap-3">
+                <span className={"inline-block size-2 rounded-full " + (i.tipo === "disponivel" ? "bg-emerald-500" : "bg-rose-500")} />
+                <div>
+                  <div className="font-medium">{fmtDate(i.data)} · {i.hora_inicio?.slice(0,5)}–{i.hora_fim?.slice(0,5)}</div>
+                  <div className="text-xs text-muted-foreground">
+                    {i.tipo === "disponivel" ? "Disponível" : "Indisponível"}{i.notas && ` · ${i.notas}`}
+                  </div>
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => del(i.id)}><Trash2 className="size-3.5" /></Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <AlertDialog open={open} onOpenChange={setOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader><AlertDialogTitle>Nova disponibilidade</AlertDialogTitle></AlertDialogHeader>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="col-span-2 space-y-1.5"><Label>Data *</Label><Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={form.hora_inicio} onChange={e => setForm({ ...form, hora_inicio: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={form.hora_fim} onChange={e => setForm({ ...form, hora_fim: e.target.value })} /></div>
+            <div className="col-span-2 space-y-1.5">
+              <Label>Tipo</Label>
+              <select className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value as any })}>
+                <option value="disponivel">Disponível</option>
+                <option value="indisponivel">Indisponível</option>
+              </select>
+            </div>
+            <div className="col-span-2 space-y-1.5"><Label>Notas</Label><Input value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} /></div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={add}>Adicionar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </CardContent></Card>
+  );
+}

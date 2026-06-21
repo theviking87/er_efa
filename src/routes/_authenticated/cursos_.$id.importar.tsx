@@ -28,7 +28,6 @@ export const Route = createFileRoute("/_authenticated/cursos_/$id/importar")({
 type Row = SessaoExtraida & { curso_ufcd_id: string | null; formador_id: string | null };
 type Ufcd = { id: string; codigo: string; designacao: string; horas_totais: number; horas_existentes: number };
 type Formador = { id: string; nome: string; abreviatura: string | null };
-type Disp = { formador_id: string; data: string; hora_inicio: string; hora_fim: string; tipo: string };
 
 const NEW_UFCD = "__new_ufcd__";
 const NEW_FORM = "__new_formador__";
@@ -46,7 +45,6 @@ function ImportarCronograma() {
   const [rows, setRows] = useState<Row[]>([]);
   const [cufcds, setCufcds] = useState<Ufcd[]>([]);
   const [formadores, setFormadores] = useState<Formador[]>([]);
-  const [disponibilidades, setDisponibilidades] = useState<Disp[]>([]);
 
   // dialogs
   const [ufcdDlg, setUfcdDlg] = useState<{ rowIdx: number; codigo: string; designacao: string; horas: string } | null>(null);
@@ -60,7 +58,6 @@ function ImportarCronograma() {
       const r = await extrair({ data: { cursoId: id, pdfBase64: b64, filename: file.name } });
       setCufcds(r.curso_ufcds);
       setFormadores(r.formadores);
-      setDisponibilidades(r.disponibilidades);
       setRows(r.sessoes.map((s) => ({
         ...s,
         curso_ufcd_id: matchUfcd(s.ufcd_codigo, s.ufcd_nome, r.curso_ufcds),
@@ -87,20 +84,8 @@ function ImportarCronograma() {
       if (total > u.horas_totais) ufcdExc.push({ ufcd: u, total });
     });
 
-    const dispWarn: { idx: number; motivo: string }[] = [];
-    rows.forEach((r, idx) => {
-      if (!r.formador_id || !r.data || !r.hora_inicio || !r.hora_fim) return;
-      const dias = disponibilidades.filter((d) => d.formador_id === r.formador_id && d.data === r.data);
-      if (dias.length === 0) {
-        dispWarn.push({ idx, motivo: "Sem disponibilidade registada nesse dia" });
-        return;
-      }
-      const cobre = dias.some((d) => d.tipo === "disponivel" && d.hora_inicio <= r.hora_inicio && d.hora_fim >= r.hora_fim);
-      if (!cobre) dispWarn.push({ idx, motivo: "Fora do intervalo de disponibilidade" });
-    });
-
-    return { ufcdExc, dispWarn };
-  }, [rows, cufcds, disponibilidades]);
+    return { ufcdExc };
+  }, [rows, cufcds]);
 
   async function handleUfcdChange(i: number, v: string) {
     if (v === NEW_UFCD) {
@@ -175,11 +160,8 @@ function ImportarCronograma() {
     const invalid = rows.filter((r) => !r.data || !r.hora_inicio || !r.hora_fim || !r.curso_ufcd_id || !r.formador_id);
     if (invalid.length) return toast.error(`${invalid.length} linha(s) incompletas. Preenche UFCD e formador.`);
 
-    if (warnings.ufcdExc.length || warnings.dispWarn.length) {
-      const msg = [
-        warnings.ufcdExc.length ? `${warnings.ufcdExc.length} UFCD com horas excedidas` : null,
-        warnings.dispWarn.length ? `${warnings.dispWarn.length} sessões fora da disponibilidade do formador` : null,
-      ].filter(Boolean).join(" · ");
+    if (warnings.ufcdExc.length) {
+      const msg = `${warnings.ufcdExc.length} UFCD com horas excedidas`;
       if (!confirm(`Existem avisos:\n${msg}\n\nGravar mesmo assim?`)) return;
     }
 
@@ -240,8 +222,6 @@ function ImportarCronograma() {
   const removeRow = (i: number) => setRows((rs) => rs.filter((_, idx) => idx !== i));
 
 
-  const dispWarnSet = new Set(warnings.dispWarn.map((w) => w.idx));
-
   return (
     <PageContainer>
       <div className="mb-2">
@@ -272,7 +252,7 @@ function ImportarCronograma() {
         </CardContent>
       </Card>
 
-      {rows.length > 0 && (warnings.ufcdExc.length > 0 || warnings.dispWarn.length > 0) && (
+      {rows.length > 0 && warnings.ufcdExc.length > 0 && (
         <Alert variant="destructive" className="mt-4">
           <AlertTriangle className="size-4" />
           <AlertTitle>Avisos antes de gravar</AlertTitle>
@@ -283,9 +263,6 @@ function ImportarCronograma() {
                 {w.ufcd.horas_existentes > 0 && `(${w.ufcd.horas_existentes}h já registadas)`}
               </div>
             ))}
-            {warnings.dispWarn.length > 0 && (
-              <div>{warnings.dispWarn.length} sessões fora da disponibilidade do formador (linhas destacadas).</div>
-            )}
           </AlertDescription>
         </Alert>
       )}
@@ -309,9 +286,8 @@ function ImportarCronograma() {
                 <tbody>
                   {rows.map((r, i) => {
                     const horas = r.hora_inicio && r.hora_fim ? diffHoras(r.hora_inicio, r.hora_fim) : 0;
-                    const warn = dispWarnSet.has(i);
                     return (
-                      <tr key={i} className={`border-t ${warn ? "bg-destructive/5" : ""}`}>
+                      <tr key={i} className="border-t">
                         <td className="px-3 py-1.5"><Input type="date" value={r.data} onChange={(e) => updateRow(i, { data: e.target.value })} className="h-8 w-[140px]" /></td>
                         <td className="px-3 py-1.5"><Input type="time" value={r.hora_inicio} onChange={(e) => updateRow(i, { hora_inicio: e.target.value })} className="h-8 w-[100px]" /></td>
                         <td className="px-3 py-1.5"><Input type="time" value={r.hora_fim} onChange={(e) => updateRow(i, { hora_fim: e.target.value })} className="h-8 w-[100px]" /></td>
@@ -327,7 +303,7 @@ function ImportarCronograma() {
                         </td>
                         <td className="px-3 py-1.5">
                           <Select value={r.formador_id ?? ""} onValueChange={(v) => handleFormChange(i, v)}>
-                            <SelectTrigger className={`h-8 min-w-[200px] ${warn ? "border-destructive" : ""}`}>
+                            <SelectTrigger className="h-8 min-w-[200px]">
                               <SelectValue placeholder={r.formador_nome ?? "—"} />
                             </SelectTrigger>
                             <SelectContent>

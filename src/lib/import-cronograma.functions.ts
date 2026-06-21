@@ -127,12 +127,6 @@ ${formadorList}`;
       });
     }
 
-    const { data: disp } = await supabase
-      .from("formador_disponibilidades")
-      .select("formador_id, data, hora_inicio, hora_fim, tipo")
-      .gte("data", curso.data_inicio)
-      .lte("data", curso.data_fim);
-
     return {
       sessoes,
       curso_ufcds: (cufcds ?? []).map((u: any) => ({
@@ -143,13 +137,6 @@ ${formadorList}`;
         horas_existentes: horasExistentesPorUfcd[u.id] ?? 0,
       })),
       formadores: (formadores ?? []).map((f: any) => ({ id: f.id, nome: f.nome, abreviatura: f.abreviatura })),
-      disponibilidades: (disp ?? []).map((d: any) => ({
-        formador_id: d.formador_id,
-        data: d.data,
-        hora_inicio: String(d.hora_inicio).slice(0, 5),
-        hora_fim: String(d.hora_fim).slice(0, 5),
-        tipo: d.tipo as string,
-      })),
       curso: { data_inicio: curso.data_inicio, data_fim: curso.data_fim },
     };
   });

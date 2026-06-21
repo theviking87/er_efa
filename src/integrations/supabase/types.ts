@@ -179,6 +179,50 @@ export type Database = {
         }
         Relationships: []
       }
+      formador_disponibilidades: {
+        Row: {
+          created_at: string
+          data: string
+          formador_id: string
+          hora_fim: string
+          hora_inicio: string
+          id: string
+          notas: string | null
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          formador_id: string
+          hora_fim?: string
+          hora_inicio?: string
+          id?: string
+          notas?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          formador_id?: string
+          hora_fim?: string
+          hora_inicio?: string
+          id?: string
+          notas?: string | null
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formador_disponibilidades_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: false
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formador_documentos: {
         Row: {
           created_at: string

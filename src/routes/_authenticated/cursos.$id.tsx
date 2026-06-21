@@ -499,8 +499,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         </div>
 
 
-        <div className="mt-3 text-[10px]">
+        <div className="mt-3 text-[10px]" style={{ pageBreakBefore: "always", breakBefore: "page" }}>
           <div className="font-semibold mb-1">Formadores deste mês — UFCD em curso e horas em falta (inclui {MONTH_NAMES[mes.mes]})</div>
+
           <table className="w-full border-collapse text-[9px]">
             <thead>
               <tr>

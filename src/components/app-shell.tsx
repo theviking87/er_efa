@@ -114,16 +114,19 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
-    <div className="flex items-start justify-between gap-4 mb-6">
-      <div className="min-w-0">
-        <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
-        {description && <p className="text-sm text-muted-foreground mt-1">{description}</p>}
+    <div className="relative mb-8">
+      <div className="flex items-start justify-between gap-4">
+        <div className="min-w-0">
+          <h1 className="text-3xl font-bold tracking-tight bg-clip-text text-transparent" style={{ backgroundImage: "var(--gradient-header)" }}>{title}</h1>
+          {description && <p className="text-sm text-muted-foreground mt-1.5">{description}</p>}
+        </div>
+        {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
       </div>
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      <div className="mt-4 h-px w-full bg-gradient-to-r from-border via-border to-transparent" />
     </div>
   );
 }
 
 export function PageContainer({ children }: { children: ReactNode }) {
-  return <div className="p-6 lg:p-8 max-w-7xl">{children}</div>;
+  return <div className="p-6 lg:p-8 max-w-7xl mx-auto">{children}</div>;
 }

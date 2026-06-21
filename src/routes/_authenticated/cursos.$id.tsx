@@ -20,6 +20,7 @@ import {
 } from "@/lib/format";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { PresencasDialog } from "@/components/presencas-dialog";
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
   head: () => ({ meta: [{ title: "Curso — Gestão Pedagógica" }] }),
@@ -278,6 +279,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const [mes, setMes] = useState(() => { const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() }; });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<string | null>(null);
+  const [presencasSessao, setPresencasSessao] = useState<any | null>(null);
 
   const inicioMes = new Date(mes.ano, mes.mes, 1).toISOString().slice(0, 10);
   const fimMes = new Date(mes.ano, mes.mes + 1, 0).toISOString().slice(0, 10);
@@ -412,12 +414,14 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                   </button>
                   <div className="space-y-1">
                     {(sessoesByDay.get(cell.iso) ?? []).map((s: any) => (
-                      <SessaoChip key={s.id} sessao={s} onDelete={async () => {
-                        await supabase.from("sessoes").delete().eq("id", s.id);
-                        qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
-                        qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
-                        qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
-                      }} />
+                      <SessaoChip key={s.id} sessao={s}
+                        onPresencas={() => setPresencasSessao({ ...s, curso_id: cursoId })}
+                        onDelete={async () => {
+                          await supabase.from("sessoes").delete().eq("id", s.id);
+                          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
+                          qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
+                          qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
+                        }} />
                     ))}
                   </div>
                 </>
@@ -541,17 +545,28 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
         }}
       />
+
+      <PresencasDialog
+        open={!!presencasSessao}
+        onOpenChange={(v) => { if (!v) setPresencasSessao(null); }}
+        sessao={presencasSessao}
+      />
     </CardContent></Card>
   );
 }
 
-function SessaoChip({ sessao, onDelete }: { sessao: any; onDelete: () => void }) {
+function SessaoChip({ sessao, onDelete, onPresencas }: { sessao: any; onDelete: () => void; onPresencas?: () => void }) {
   return (
     <div className="text-[11px] leading-tight rounded px-1.5 py-1 group relative" style={{ background: `${sessao.formador?.cor}15`, color: sessao.formador?.cor, borderLeft: `2px solid ${sessao.formador?.cor}` }}>
       <div className="font-medium">{sessao.hora_inicio?.slice(0,5)}–{sessao.hora_fim?.slice(0,5)}</div>
       <div className="truncate">{formadorLabel(sessao.formador)}</div>
       <div className="truncate opacity-80">{sessao.curso_ufcd?.ufcd?.codigo}</div>
-      <button onClick={onDelete} className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] hover:underline print:hidden" title="Apagar">×</button>
+      <div className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition flex gap-1 print:hidden">
+        {onPresencas && (
+          <button onClick={onPresencas} className="text-[10px] hover:underline" title="Marcar presenças">✓</button>
+        )}
+        <button onClick={onDelete} className="text-[10px] hover:underline" title="Apagar">×</button>
+      </div>
     </div>
   );
 }

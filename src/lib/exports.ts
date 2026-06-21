@@ -245,6 +245,59 @@ export async function exportFaltasCurso(cursoId: string) {
   downloadWorkbook(wb, `Faltas_${sanitize(c.codigo)}_${sanitize(c.nome).slice(0, 40)}.xlsx`);
 }
 
+/** Relatório global de faltas num intervalo (todos os cursos). */
+export async function exportRelatorioFaltas(inicio: string, fim: string) {
+  const { data: faltas, error } = await supabase
+    .from("formando_faltas")
+    .select("data, horas, tipo, observacoes, curso_formando:curso_formandos!inner(id, curso_id, formando:formandos(nome, nif), curso:cursos(codigo, nome)), sessao:sessoes(hora_inicio, hora_fim, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao)))")
+    .gte("data", inicio).lte("data", fim)
+    .order("data");
+  if (error) throw error;
+
+  const detalhe = (faltas ?? []).map((f: any) => ({
+    Data: f.data,
+    Curso: `${f.curso_formando?.curso?.codigo ?? ""} — ${f.curso_formando?.curso?.nome ?? ""}`,
+    Formando: f.curso_formando?.formando?.nome ?? "",
+    NIF: f.curso_formando?.formando?.nif ?? "",
+    UFCD: f.sessao?.curso_ufcd?.ufcd?.codigo ?? "",
+    "Hora Início": f.sessao?.hora_inicio?.slice(0, 5) ?? "",
+    "Hora Fim": f.sessao?.hora_fim?.slice(0, 5) ?? "",
+    Horas: Number(f.horas),
+    Tipo: f.tipo,
+    Observações: f.observacoes ?? "",
+  }));
+
+  // Resumo por formando+curso
+  const m = new Map<string, { curso: string; formando: string; nif: string; just: number; injust: number }>();
+  (faltas ?? []).forEach((f: any) => {
+    const key = (f.curso_formando?.id ?? "") + "|" + (f.curso_formando?.curso_id ?? "");
+    const cur = m.get(key) ?? {
+      curso: `${f.curso_formando?.curso?.codigo ?? ""} — ${f.curso_formando?.curso?.nome ?? ""}`,
+      formando: f.curso_formando?.formando?.nome ?? "",
+      nif: f.curso_formando?.formando?.nif ?? "",
+      just: 0, injust: 0,
+    };
+    if (f.tipo === "justificada") cur.just += Number(f.horas);
+    else cur.injust += Number(f.horas);
+    m.set(key, cur);
+  });
+  const resumo = Array.from(m.values())
+    .sort((a, b) => a.curso.localeCompare(b.curso) || a.formando.localeCompare(b.formando))
+    .map(r => ({
+      Curso: r.curso,
+      Formando: r.formando,
+      NIF: r.nif,
+      "Faltas just.": r.just,
+      "Faltas injust.": r.injust,
+      "Total horas": r.just + r.injust,
+    }));
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumo), "Resumo");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalhe), "Detalhe");
+  downloadWorkbook(wb, `Relatorio_Faltas_${inicio}_${fim}.xlsx`);
+}
+
 export function monthLabel(ano: number, mes: number) {
   return `${MONTH_NAMES[mes]} ${ano}`;
 }

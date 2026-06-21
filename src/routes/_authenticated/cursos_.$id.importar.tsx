@@ -206,9 +206,39 @@ function ImportarCronograma() {
     }
   }
 
+  function ufcdExcesso(rs: Row[], ufcdId: string): { ufcd: Ufcd; excesso: number } | null {
+    const u = cufcds.find((x) => x.id === ufcdId);
+    if (!u) return null;
+    const uso = rs.reduce((a, r) =>
+      r.curso_ufcd_id === ufcdId && r.hora_inicio && r.hora_fim
+        ? a + diffHoras(r.hora_inicio, r.hora_fim) : a, 0);
+    const total = uso + u.horas_existentes;
+    const excesso = total - u.horas_totais;
+    return excesso > 0 ? { ufcd: u, excesso } : null;
+  }
+
+  function avisarExcesso(prev: Row[], next: Row[], ufcdIds: (string | null | undefined)[]) {
+    const unique = Array.from(new Set(ufcdIds.filter(Boolean) as string[]));
+    unique.forEach((uid) => {
+      const before = ufcdExcesso(prev, uid)?.excesso ?? 0;
+      const after = ufcdExcesso(next, uid);
+      if (after && after.excesso > before) {
+        toast.warning(`Excede ${after.excesso.toFixed(1)}h em ${after.ufcd.codigo}`, {
+          description: `Carga prevista ${after.ufcd.horas_totais}h${after.ufcd.horas_existentes > 0 ? ` · ${after.ufcd.horas_existentes}h já registadas` : ""}. Pode haver erro no cronograma.`,
+          duration: 6000,
+        });
+      }
+    });
+  }
+
   const updateRow = (i: number, patch: Partial<Row>) =>
-    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+    setRows((rs) => {
+      const next = rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r));
+      avisarExcesso(rs, next, [rs[i].curso_ufcd_id, next[i].curso_ufcd_id]);
+      return next;
+    });
   const removeRow = (i: number) => setRows((rs) => rs.filter((_, idx) => idx !== i));
+
 
   const dispWarnSet = new Set(warnings.dispWarn.map((w) => w.idx));
 

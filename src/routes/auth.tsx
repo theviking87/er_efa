@@ -28,7 +28,7 @@ function AuthPage() {
           <div className="size-10 rounded-md bg-background text-foreground grid place-items-center">
             <GraduationCap className="size-5" />
           </div>
-          <span className="font-semibold tracking-tight">Elisbate Ribeiro</span>
+          <span className="font-semibold tracking-tight">Elisabete Ribeiro</span>
         </div>
         <div className="space-y-4 max-w-md">
           <h1 className="text-4xl font-semibold leading-tight">Gestão pedagógica, cronogramas e SIGO.</h1>
@@ -37,7 +37,7 @@ function AuthPage() {
             UFCD, cronogramas e exportações num só lugar.
           </p>
         </div>
-        <div className="text-xs text-background/50">© {new Date().getFullYear()} Elisbate Ribeiro — Centro de Formação</div>
+        <div className="text-xs text-background/50">© {new Date().getFullYear()} Elisabete Ribeiro — Centro de Formação</div>
       </div>
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-sm space-y-6">
@@ -45,7 +45,7 @@ function AuthPage() {
             <div className="size-9 rounded-md bg-foreground text-background grid place-items-center">
               <GraduationCap className="size-4" />
             </div>
-            <span className="font-semibold tracking-tight">Elisbate Ribeiro</span>
+            <span className="font-semibold tracking-tight">Elisabete Ribeiro</span>
           </div>
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Aceder ao sistema</h2>

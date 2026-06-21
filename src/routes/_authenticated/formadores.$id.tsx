@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
-import { EstadoBadge } from "./formadores";
+import { EstadoBadge } from "./formadores.index";
 import { FormadorDialog } from "@/components/formador-dialog";
 import { fmtDate } from "@/lib/format";
 import { toast } from "sonner";

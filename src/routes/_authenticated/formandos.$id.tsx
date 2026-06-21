@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
-import { EstadoFormandoBadge } from "./formandos";
+import { EstadoFormandoBadge } from "./formandos.index";
 import { FormandoDialog } from "@/components/formando-dialog";
 import { fmtDate, INSCRICAO_ESTADO_LABEL } from "@/lib/format";
 import { toast } from "sonner";

@@ -13,7 +13,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { ESTADO_CURSO_LABEL, TIPOLOGIA_LABEL, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
 
-export const Route = createFileRoute("/_authenticated/cursos")({
+export const Route = createFileRoute("/_authenticated/cursos/")({
   head: () => ({ meta: [{ title: "Cursos — Gestão Pedagógica" }] }),
   component: CursosPage,
 });

@@ -128,3 +128,14 @@
   body { background-color: var(--color-background); color: var(--color-foreground); font-feature-settings: "cv11", "ss01"; }
   h1, h2, h3, h4 { letter-spacing: -0.015em; }
 }
+
+@media print {
+  @page { size: A4 landscape; margin: 10mm; }
+  body { background: white !important; }
+  /* Hide everything except the print area */
+  body * { visibility: hidden !important; }
+  #cronograma-print, #cronograma-print * { visibility: visible !important; }
+  #cronograma-print { position: absolute; inset: 0; padding: 0; margin: 0; color: black !important; }
+  #cronograma-print table { page-break-inside: auto; }
+  #cronograma-print tr { page-break-inside: avoid; }
+}

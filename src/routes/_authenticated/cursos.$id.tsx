@@ -482,41 +482,29 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           <div className="text-sm">Cronograma · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
         </div>
 
-        <table className="w-full border-collapse text-[9px]" style={{ tableLayout: "fixed" }}>
-          <thead>
-            <tr>
-              <th className="border border-gray-400 bg-gray-100 p-0.5 w-[34px]">h</th>
-              {diasMes.map(d => (
-                <th key={d.iso} className={"border border-gray-400 p-0.5 " + (d.dow === 0 || d.dow === 6 ? "bg-gray-200" : "bg-gray-100")}>
-                  {d.d}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {hourRows.map(h => (
-              <tr key={h} style={{ height: "14px" }}>
-                <td className="border border-gray-400 bg-gray-50 text-center font-mono">{String(h).padStart(2, "0")}</td>
-                {diasMes.map(d => {
-                  const dayS = sessoesByDay.get(d.iso) ?? [];
-                  const s = dayS.find((x: any) => {
-                    const hi = parseInt(String(x.hora_inicio).slice(0, 2), 10);
-                    const hf = parseInt(String(x.hora_fim).slice(0, 2), 10);
-                    const hfm = parseInt(String(x.hora_fim).slice(3, 5), 10);
-                    const hfEff = hfm > 0 ? hf + 1 : hf;
-                    return h >= hi && h < hfEff;
-                  });
-                  if (!s) return <td key={d.iso} className={"border border-gray-300 " + (d.dow === 0 || d.dow === 6 ? "bg-gray-100" : "")} />;
-                  return (
-                    <td key={d.iso} className="border border-gray-400 text-center p-0" style={{ background: `${s.formador?.cor}30`, color: "#000" }}>
-                      <div className="leading-none truncate px-0.5">{s.curso_ufcd?.ufcd?.codigo}</div>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="grid grid-cols-7 border border-gray-400 text-[9px]" style={{ gridAutoRows: "minmax(70px, auto)" }}>
+          {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => (
+            <div key={d} className="border border-gray-400 bg-gray-100 px-1 py-0.5 font-semibold text-center uppercase">{d}</div>
+          ))}
+          {grid.map((cell, i) => (
+            <div key={i} className="border border-gray-300 p-1 align-top" style={{ minHeight: "70px" }}>
+              {cell && (
+                <>
+                  <div className="text-[10px] font-semibold mb-0.5">{cell.d}</div>
+                  <div className="space-y-0.5">
+                    {(sessoesByDay.get(cell.iso) ?? []).map((s: any) => (
+                      <div key={s.id} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
+                        <span className="tabular-nums font-semibold">{String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)}</span>
+                        {" – "}{s.formador?.nome} ({s.curso_ufcd?.ufcd?.codigo})
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
+
 
         <div className="mt-3 text-[10px]">
           <div className="font-semibold mb-1">Formadores deste mês — UFCD em curso e horas em falta (inclui {MONTH_NAMES[mes.mes]})</div>

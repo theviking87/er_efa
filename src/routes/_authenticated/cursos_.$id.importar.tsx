@@ -84,20 +84,8 @@ function ImportarCronograma() {
       if (total > u.horas_totais) ufcdExc.push({ ufcd: u, total });
     });
 
-    const dispWarn: { idx: number; motivo: string }[] = [];
-    rows.forEach((r, idx) => {
-      if (!r.formador_id || !r.data || !r.hora_inicio || !r.hora_fim) return;
-      const dias = disponibilidades.filter((d) => d.formador_id === r.formador_id && d.data === r.data);
-      if (dias.length === 0) {
-        dispWarn.push({ idx, motivo: "Sem disponibilidade registada nesse dia" });
-        return;
-      }
-      const cobre = dias.some((d) => d.tipo === "disponivel" && d.hora_inicio <= r.hora_inicio && d.hora_fim >= r.hora_fim);
-      if (!cobre) dispWarn.push({ idx, motivo: "Fora do intervalo de disponibilidade" });
-    });
-
-    return { ufcdExc, dispWarn };
-  }, [rows, cufcds, disponibilidades]);
+    return { ufcdExc };
+  }, [rows, cufcds]);
 
   async function handleUfcdChange(i: number, v: string) {
     if (v === NEW_UFCD) {
@@ -172,11 +160,8 @@ function ImportarCronograma() {
     const invalid = rows.filter((r) => !r.data || !r.hora_inicio || !r.hora_fim || !r.curso_ufcd_id || !r.formador_id);
     if (invalid.length) return toast.error(`${invalid.length} linha(s) incompletas. Preenche UFCD e formador.`);
 
-    if (warnings.ufcdExc.length || warnings.dispWarn.length) {
-      const msg = [
-        warnings.ufcdExc.length ? `${warnings.ufcdExc.length} UFCD com horas excedidas` : null,
-        warnings.dispWarn.length ? `${warnings.dispWarn.length} sessões fora da disponibilidade do formador` : null,
-      ].filter(Boolean).join(" · ");
+    if (warnings.ufcdExc.length) {
+      const msg = `${warnings.ufcdExc.length} UFCD com horas excedidas`;
       if (!confirm(`Existem avisos:\n${msg}\n\nGravar mesmo assim?`)) return;
     }
 

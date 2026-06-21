@@ -121,12 +121,14 @@ function RelatoriosPage() {
             <p className="text-sm text-muted-foreground">
               Tabela com todos os cursos: UFCD atribuídas/concluídas, horas previstas, realizadas, em falta e % de execução.
             </p>
-            <Button
-              disabled={busy === "cursos"}
-              onClick={() => run("cursos", () => exportRelatorioCursos())}
-            >
-              <Download className="size-4" /> {busy === "cursos" ? "A exportar…" : "Exportar execução (.xlsx)"}
-            </Button>
+            <div className="flex gap-2">
+              <Button disabled={busy === "cursos"} onClick={() => run("cursos", () => exportRelatorioCursos())}>
+                <FileSpreadsheet className="size-4" /> {busy === "cursos" ? "A exportar…" : "Excel"}
+              </Button>
+              <Button variant="outline" disabled={busy === "cursos-pdf"} onClick={() => run("cursos-pdf", () => exportRelatorioCursosPdf())}>
+                <FileText className="size-4" /> {busy === "cursos-pdf" ? "A exportar…" : "PDF"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

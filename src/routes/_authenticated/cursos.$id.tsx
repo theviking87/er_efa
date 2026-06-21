@@ -286,11 +286,33 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryKey: ["sessoes", cursoId, inicioMes, fimMes],
     queryFn: async () => {
       const { data, error } = await supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(id,nome,cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .eq("curso_id", cursoId).gte("data", inicioMes).lte("data", fimMes)
         .order("data").order("hora_inicio");
       if (error) throw error;
       return data ?? [];
+    },
+  });
+
+  // Carga global do curso (todas as UFCD e total de horas já dadas em todos os meses)
+  const cargaCurso = useQuery({
+    queryKey: ["curso-carga", cursoId],
+    queryFn: async () => {
+      const [cu, allSess] = await Promise.all([
+        supabase.from("curso_ufcds")
+          .select("id, horas_totais, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,cor))")
+          .eq("curso_id", cursoId),
+        supabase.from("sessoes").select("curso_ufcd_id, formador_id, horas").eq("curso_id", cursoId),
+      ]);
+      const horasPorCuf = new Map<string, number>();
+      (allSess.data ?? []).forEach((s: any) => {
+        horasPorCuf.set(s.curso_ufcd_id, (horasPorCuf.get(s.curso_ufcd_id) ?? 0) + Number(s.horas));
+      });
+      return (cu.data ?? []).map((u: any) => ({
+        ...u,
+        horas_realizadas: horasPorCuf.get(u.id) ?? 0,
+        horas_em_falta: Math.max(0, Number(u.horas_totais) - (horasPorCuf.get(u.id) ?? 0)),
+      }));
     },
   });
 
@@ -302,6 +324,41 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     });
     return m;
   }, [sessoes.data]);
+
+  // Resumo do mês por formador
+  const resumoMes = useMemo(() => {
+    const m = new Map<string, { id: string; nome: string; cor: string; horas: number; ufcds: Set<string> }>();
+    (sessoes.data ?? []).forEach((s: any) => {
+      if (!s.formador) return;
+      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: s.formador.nome, cor: s.formador.cor, horas: 0, ufcds: new Set<string>() };
+      cur.horas += Number(s.horas);
+      if (s.curso_ufcd?.ufcd?.codigo) cur.ufcds.add(s.curso_ufcd.ufcd.codigo);
+      m.set(s.formador.id, cur);
+    });
+    return Array.from(m.values()).sort((a, b) => b.horas - a.horas);
+  }, [sessoes.data]);
+
+  // Para a impressão: formadores do mês × UFCD em curso × horas em falta (já com o corrente mês contabilizado)
+  const printFooter = useMemo(() => {
+    const rows: { formador: string; cor: string; ufcd: string; horas_totais: number; realizadas: number; em_falta: number }[] = [];
+    resumoMes.forEach(r => {
+      // UFCD onde este formador está atribuído neste curso
+      (cargaCurso.data ?? []).forEach((u: any) => {
+        const tem = (u.formadores ?? []).some((ff: any) => ff.formador?.id === r.id);
+        if (!tem) return;
+        // Mostrar só UFCD ainda não fechadas (em falta > 0) — "a decorrer"
+        if (u.horas_em_falta <= 0) return;
+        rows.push({
+          formador: r.nome, cor: r.cor,
+          ufcd: `${u.ufcd.codigo} — ${u.ufcd.designacao}`,
+          horas_totais: u.horas_totais,
+          realizadas: u.horas_realizadas,
+          em_falta: u.horas_em_falta,
+        });
+      });
+    });
+    return rows;
+  }, [resumoMes, cargaCurso.data]);
 
   // Build calendar grid (Mon first)
   const grid = useMemo(() => {
@@ -318,12 +375,40 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     return days;
   }, [mes]);
 
+  // Horas-linha para a impressão (linha por hora cheia)
+  const hourRows = useMemo(() => {
+    let minH = 24, maxH = 0;
+    (sessoes.data ?? []).forEach((s: any) => {
+      const hi = parseInt(String(s.hora_inicio).slice(0, 2), 10);
+      const hf = parseInt(String(s.hora_fim).slice(0, 2), 10) + (String(s.hora_fim).slice(3, 5) === "00" ? 0 : 1);
+      if (hi < minH) minH = hi;
+      if (hf > maxH) maxH = hf;
+    });
+    if (minH >= maxH) { minH = 9; maxH = 18; }
+    const arr: number[] = [];
+    for (let h = minH; h < maxH; h++) arr.push(h);
+    return arr;
+  }, [sessoes.data]);
+
+  // Dias úteis do mês para a tabela de impressão
+  const diasMes = useMemo(() => {
+    const last = new Date(mes.ano, mes.mes + 1, 0).getDate();
+    const out: { d: number; iso: string; dow: number }[] = [];
+    for (let d = 1; d <= last; d++) {
+      const dt = new Date(mes.ano, mes.mes, d);
+      out.push({ d, iso: dt.toISOString().slice(0, 10), dow: dt.getDay() });
+    }
+    return out;
+  }, [mes]);
+
   function prev() { setMes(m => m.mes === 0 ? { ano: m.ano - 1, mes: 11 } : { ano: m.ano, mes: m.mes - 1 }); }
   function next() { setMes(m => m.mes === 11 ? { ano: m.ano + 1, mes: 0 } : { ano: m.ano, mes: m.mes + 1 }); }
 
+  const totalMes = resumoMes.reduce((a, r) => a + r.horas, 0);
+
   return (
     <Card><CardContent className="p-6 space-y-4">
-      <div className="flex items-center justify-between gap-3 flex-wrap">
+      <div className="flex items-center justify-between gap-3 flex-wrap print:hidden">
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={prev}><ChevronLeft className="size-4" /></Button>
           <div className="font-semibold text-lg min-w-[170px] text-center">{MONTH_NAMES[mes.mes]} {mes.ano}</div>
@@ -335,11 +420,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         </div>
       </div>
 
-      <div id="cronograma-print" className="border rounded-md overflow-hidden bg-card">
-        <div className="hidden print:block px-4 py-3 border-b">
-          <div className="text-xs text-muted-foreground">{cursoCodigo}</div>
-          <div className="font-semibold">{cursoNome} · Cronograma {MONTH_NAMES[mes.mes]} {mes.ano}</div>
-        </div>
+      {/* CRONOGRAMA ECRÃ — calendário mensal */}
+      <div className="border rounded-md overflow-hidden bg-card print:hidden">
         <div className="grid grid-cols-7 bg-muted/40 text-xs uppercase text-muted-foreground">
           {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}
         </div>
@@ -357,6 +439,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                         await supabase.from("sessoes").delete().eq("id", s.id);
                         qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
                         qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
+                        qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
                       }} />
                     ))}
                   </div>
@@ -364,6 +447,104 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
               )}
             </div>
           ))}
+        </div>
+      </div>
+
+      {/* RESUMO DO MÊS — ecrã */}
+      <div className="border rounded-md p-4 print:hidden">
+        <div className="flex items-center justify-between mb-3">
+          <div className="font-medium text-sm">Resumo de horas — {MONTH_NAMES[mes.mes]} {mes.ano}</div>
+          <div className="text-xs text-muted-foreground">Total: {fmtHoras(totalMes)}</div>
+        </div>
+        {resumoMes.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-6">Sem sessões neste mês.</div>
+        ) : (
+          <div className="grid sm:grid-cols-2 gap-2">
+            {resumoMes.map(r => (
+              <div key={r.id} className="flex items-center gap-2.5 text-sm border rounded-md px-3 py-2">
+                <span className="size-2.5 rounded-full shrink-0" style={{ background: r.cor }} />
+                <div className="flex-1 min-w-0">
+                  <div className="truncate font-medium">{r.nome}</div>
+                  <div className="text-xs text-muted-foreground truncate">{Array.from(r.ufcds).join(" · ") || "—"}</div>
+                </div>
+                <div className="text-sm tabular-nums font-medium">{fmtHoras(r.horas)}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* ÁREA DE IMPRESSÃO — só visível quando se imprime */}
+      <div id="cronograma-print" className="hidden print:block">
+        <div className="mb-3">
+          <div className="text-xs text-muted-foreground">{cursoCodigo}</div>
+          <div className="font-semibold text-lg">{cursoNome}</div>
+          <div className="text-sm">Cronograma · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
+        </div>
+
+        <table className="w-full border-collapse text-[9px]" style={{ tableLayout: "fixed" }}>
+          <thead>
+            <tr>
+              <th className="border border-gray-400 bg-gray-100 p-0.5 w-[34px]">h</th>
+              {diasMes.map(d => (
+                <th key={d.iso} className={"border border-gray-400 p-0.5 " + (d.dow === 0 || d.dow === 6 ? "bg-gray-200" : "bg-gray-100")}>
+                  {d.d}
+                </th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {hourRows.map(h => (
+              <tr key={h} style={{ height: "14px" }}>
+                <td className="border border-gray-400 bg-gray-50 text-center font-mono">{String(h).padStart(2, "0")}</td>
+                {diasMes.map(d => {
+                  const dayS = sessoesByDay.get(d.iso) ?? [];
+                  const s = dayS.find((x: any) => {
+                    const hi = parseInt(String(x.hora_inicio).slice(0, 2), 10);
+                    const hf = parseInt(String(x.hora_fim).slice(0, 2), 10);
+                    const hfm = parseInt(String(x.hora_fim).slice(3, 5), 10);
+                    const hfEff = hfm > 0 ? hf + 1 : hf;
+                    return h >= hi && h < hfEff;
+                  });
+                  if (!s) return <td key={d.iso} className={"border border-gray-300 " + (d.dow === 0 || d.dow === 6 ? "bg-gray-100" : "")} />;
+                  return (
+                    <td key={d.iso} className="border border-gray-400 text-center p-0" style={{ background: `${s.formador?.cor}30`, color: "#000" }}>
+                      <div className="leading-none truncate px-0.5">{s.curso_ufcd?.ufcd?.codigo}</div>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-3 text-[10px]">
+          <div className="font-semibold mb-1">Formadores deste mês — UFCD em curso e horas em falta (inclui {MONTH_NAMES[mes.mes]})</div>
+          <table className="w-full border-collapse text-[9px]">
+            <thead>
+              <tr>
+                <th className="border border-gray-400 bg-gray-100 p-1 text-left">Formador</th>
+                <th className="border border-gray-400 bg-gray-100 p-1 text-left">UFCD em curso</th>
+                <th className="border border-gray-400 bg-gray-100 p-1 text-right w-[60px]">Carga</th>
+                <th className="border border-gray-400 bg-gray-100 p-1 text-right w-[60px]">Dadas</th>
+                <th className="border border-gray-400 bg-gray-100 p-1 text-right w-[60px]">Faltam</th>
+              </tr>
+            </thead>
+            <tbody>
+              {printFooter.length === 0 && (
+                <tr><td colSpan={5} className="border border-gray-400 p-1 text-center text-gray-500">Sem UFCD em curso para os formadores deste mês.</td></tr>
+              )}
+              {printFooter.map((r, i) => (
+                <tr key={i}>
+                  <td className="border border-gray-400 p-1">{r.formador}</td>
+                  <td className="border border-gray-400 p-1">{r.ufcd}</td>
+                  <td className="border border-gray-400 p-1 text-right tabular-nums">{r.horas_totais}h</td>
+                  <td className="border border-gray-400 p-1 text-right tabular-nums">{r.realizadas}h</td>
+                  <td className="border border-gray-400 p-1 text-right tabular-nums font-semibold">{r.em_falta}h</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
 
@@ -375,6 +556,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         onSaved={() => {
           qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
           qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
+          qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
         }}
       />
     </CardContent></Card>
@@ -399,10 +581,10 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   const [cufId, setCufId] = useState("");
   const [formadorId, setFormadorId] = useState("");
 
-  // refresh defaults when opening
-  useState(() => { /* noop */ });
+  // Aplicar defaultDate ao abrir
   if (open && data === "" && defaultDate) setTimeout(() => setData(defaultDate), 0);
 
+  // UFCD do curso + respetivos formadores
   const ufcds = useQuery({
     queryKey: ["curso-ufcds-flat", cursoId],
     queryFn: async () => (await supabase.from("curso_ufcds")
@@ -411,43 +593,40 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     enabled: open,
   });
 
-  const formadoresDaUfcd = useMemo(() => {
-    const u = (ufcds.data ?? []).find((x: any) => x.id === cufId);
-    return (u?.formadores ?? []).map((f: any) => f.formador);
-  }, [cufId, ufcds.data]);
-
-  // Disponibilidades futuras de TODOS os formadores da UFCD (para sugerir slots)
-  const hoje = new Date().toISOString().slice(0, 10);
-  const dispUfcd = useQuery({
-    queryKey: ["disp-ufcd", cufId, formadoresDaUfcd.map((f: any) => f.id).join(",")],
-    enabled: open && !!cufId && formadoresDaUfcd.length > 0,
+  // Disponibilidades de TODOS os formadores para a data escolhida
+  const dispDia = useQuery({
+    queryKey: ["disp-dia", data],
+    enabled: open && !!data,
     queryFn: async () => {
-      const ids = formadoresDaUfcd.map((f: any) => f.id);
       const { data: rows } = await supabase.from("formador_disponibilidades" as any)
-        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas")
-        .in("formador_id", ids).gte("data", hoje).eq("tipo", "disponivel")
-        .order("data").order("hora_inicio");
+        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, formador:formadores(id,nome,cor)")
+        .eq("data", data).order("hora_inicio");
       return (rows ?? []) as any[];
     },
   });
 
-  // Disponibilidades do formador para a data escolhida (validação)
-  const disp = useQuery({
-    queryKey: ["disp-sessao", formadorId, data],
-    enabled: !!formadorId && !!data,
-    queryFn: async () => {
-      const { data: rows } = await supabase.from("formador_disponibilidades" as any)
-        .select("hora_inicio, hora_fim, tipo, notas")
-        .eq("formador_id", formadorId).eq("data", data);
-      return (rows ?? []) as any[];
-    },
-  });
+  // UFCD em que o formador escolhido está atribuído neste curso
+  const ufcdsDoFormador = useMemo(() => {
+    if (!formadorId) return [];
+    return (ufcds.data ?? []).filter((u: any) =>
+      (u.formadores ?? []).some((ff: any) => ff.formador?.id === formadorId)
+    );
+  }, [formadorId, ufcds.data]);
+
+  // Formadores ligados às UFCD deste curso (para realçar na lista de dispon.)
+  const formadoresDoCurso = useMemo(() => {
+    const s = new Set<string>();
+    (ufcds.data ?? []).forEach((u: any) =>
+      (u.formadores ?? []).forEach((ff: any) => ff.formador?.id && s.add(ff.formador.id))
+    );
+    return s;
+  }, [ufcds.data]);
 
   function aplicarSlot(s: any) {
     setFormadorId(s.formador_id);
-    setData(s.data);
     setHi(String(s.hora_inicio).slice(0, 5));
     setHf(String(s.hora_fim).slice(0, 5));
+    setCufId("");
   }
 
   async function save() {
@@ -455,31 +634,17 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     const horas = diffHoras(hi, hf);
     if (horas <= 0) return toast.error("Horas inválidas");
 
-    // Validate conflict for this formador on this day
     const { data: conflitos } = await supabase.from("sessoes")
       .select("hora_inicio, hora_fim").eq("formador_id", formadorId).eq("data", data);
     const hasConflict = (conflitos ?? []).some(s => !(hf <= s.hora_inicio || hi >= s.hora_fim));
     if (hasConflict) return toast.error("Conflito de horário", { description: "Formador tem outra sessão neste período." });
 
-    // Validate inatividade
     const { data: inat } = await supabase.from("formador_inatividades")
       .select("data_inicio, data_fim, motivo").eq("formador_id", formadorId)
       .lte("data_inicio", data).gte("data_fim", data);
     if ((inat ?? []).length > 0) {
       const i = inat![0];
       return toast.error("Formador indisponível", { description: `${i.motivo || "Inatividade"} (${i.data_inicio} → ${i.data_fim})` });
-    }
-
-    // Validate disponibilidades declaradas (se existirem para o dia)
-    const dispRows = (disp.data ?? []) as any[];
-    if (dispRows.length > 0) {
-      const indisp = dispRows.some(d => d.tipo === "indisponivel" && !(hf <= d.hora_inicio || hi >= d.hora_fim));
-      if (indisp) return toast.error("Formador marcado como indisponível neste período");
-      const temDisp = dispRows.some(d => d.tipo === "disponivel");
-      if (temDisp) {
-        const dentro = dispRows.some(d => d.tipo === "disponivel" && hi >= d.hora_inicio && hf <= d.hora_fim);
-        if (!dentro) return toast.error("Fora das horas declaradas como disponíveis pelo formador");
-      }
     }
 
     const { error } = await supabase.from("sessoes").insert({
@@ -492,57 +657,50 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     onSaved();
   }
 
+  const dispOrdenadas = useMemo(() => {
+    const rows = (dispDia.data ?? []).slice();
+    return rows.sort((a: any, b: any) => {
+      const ap = formadoresDoCurso.has(a.formador_id) ? 0 : 1;
+      const bp = formadoresDoCurso.has(b.formador_id) ? 0 : 1;
+      if (ap !== bp) return ap - bp;
+      return String(a.hora_inicio).localeCompare(String(b.hora_inicio));
+    });
+  }, [dispDia.data, formadoresDoCurso]);
+
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setData(""); setCufId(""); setFormadorId(""); } }}>
-      <DialogContent>
+      <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>Nova sessão</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 space-y-1.5">
-            <Label>UFCD *</Label>
-            <Select value={cufId} onValueChange={v => { setCufId(v); setFormadorId(""); }}>
-              <SelectTrigger><SelectValue placeholder="Escolher UFCD…" /></SelectTrigger>
-              <SelectContent>
-                {(ufcds.data ?? []).length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">Atribua UFCD ao curso primeiro</div>}
-                {(ufcds.data ?? []).map((u: any) => <SelectItem key={u.id} value={u.id}>{u.ufcd.codigo} — {u.ufcd.designacao}</SelectItem>)}
-              </SelectContent>
-            </Select>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Dia *</Label>
+            <Input type="date" value={data} onChange={e => { setData(e.target.value); setFormadorId(""); setCufId(""); }} />
           </div>
-          <div className="col-span-2 space-y-1.5">
-            <Label>Formador *</Label>
-            <Select value={formadorId} onValueChange={setFormadorId}>
-              <SelectTrigger><SelectValue placeholder={cufId ? "Escolher formador…" : "Escolha UFCD primeiro"} /></SelectTrigger>
-              <SelectContent>
-                {formadoresDaUfcd.length === 0 && <div className="px-2 py-1.5 text-xs text-muted-foreground">UFCD sem formadores atribuídos</div>}
-                {formadoresDaUfcd.map((f: any) => <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="col-span-2 space-y-1.5"><Label>Data *</Label><Input type="date" value={data} onChange={e => setData(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>Início</Label><Input type="time" value={hi} onChange={e => setHi(e.target.value)} /></div>
-          <div className="space-y-1.5"><Label>Fim</Label><Input type="time" value={hf} onChange={e => setHf(e.target.value)} /></div>
-          <div className="col-span-2 text-xs text-muted-foreground">Duração: {diffHoras(hi, hf).toFixed(2).replace(".", ",")} h</div>
-          {cufId && formadoresDaUfcd.length > 0 && (
-            <div className="col-span-2 space-y-1.5">
-              <Label className="text-xs">Disponibilidades dos formadores desta UFCD</Label>
-              <div className="border rounded-md max-h-40 overflow-y-auto divide-y bg-muted/30">
-                {(dispUfcd.data ?? []).length === 0 ? (
-                  <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum formador desta UFCD declarou disponibilidades futuras.</div>
+
+          {data && (
+            <div className="space-y-1.5">
+              <Label className="text-xs">Formadores com disponibilidade neste dia</Label>
+              <div className="border rounded-md max-h-56 overflow-y-auto divide-y bg-muted/30">
+                {dispOrdenadas.length === 0 ? (
+                  <div className="px-3 py-3 text-xs text-muted-foreground">Nenhum formador declarou disponibilidade para este dia.</div>
                 ) : (
-                  (dispUfcd.data ?? []).map((s: any) => {
-                    const f = formadoresDaUfcd.find((x: any) => x.id === s.formador_id);
-                    const active = formadorId === s.formador_id && data === s.data && hi === String(s.hora_inicio).slice(0,5) && hf === String(s.hora_fim).slice(0,5);
+                  dispOrdenadas.map((s: any) => {
+                    const noCurso = formadoresDoCurso.has(s.formador_id);
+                    const isDisp = s.tipo === "disponivel";
+                    const active = formadorId === s.formador_id && hi === String(s.hora_inicio).slice(0, 5) && hf === String(s.hora_fim).slice(0, 5);
                     return (
                       <button
                         key={s.id}
                         type="button"
-                        onClick={() => aplicarSlot(s)}
-                        className={"w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2 " + (active ? "bg-muted" : "")}
+                        disabled={!isDisp}
+                        onClick={() => isDisp && aplicarSlot(s)}
+                        className={"w-full text-left px-3 py-2 text-xs flex items-center gap-2 " + (active ? "bg-muted " : "hover:bg-muted ") + (!isDisp ? "opacity-60 cursor-not-allowed " : "")}
                       >
-                        <span className="size-2 rounded-full shrink-0" style={{ background: f?.cor }} />
-                        <span className="font-medium tabular-nums">{fmtDate(s.data)}</span>
-                        <span className="tabular-nums text-muted-foreground">{String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)}</span>
-                        <span className="truncate">{f?.nome}</span>
-                        {s.notas && <span className="text-muted-foreground truncate">· {s.notas}</span>}
+                        <span className="size-2 rounded-full shrink-0" style={{ background: s.formador?.cor }} />
+                        <span className="tabular-nums text-muted-foreground w-[88px]">{String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)}</span>
+                        <span className="font-medium truncate flex-1">{s.formador?.nome}</span>
+                        {noCurso ? <Badge variant="secondary" className="text-[10px]">deste curso</Badge> : <span className="text-[10px] text-muted-foreground">externo ao curso</span>}
+                        {!isDisp && <Badge variant="destructive" className="text-[10px]">indisp.</Badge>}
                       </button>
                     );
                   })
@@ -550,22 +708,28 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
               </div>
             </div>
           )}
-          {formadorId && data && (disp.data ?? []).length > 0 && (
 
-            <div className="col-span-2 text-xs rounded-md border bg-muted/40 px-3 py-2 space-y-0.5">
-              <div className="font-medium text-foreground">Disponibilidade declarada</div>
-              {(disp.data ?? []).map((d: any, idx: number) => (
-                <div key={idx} className="flex items-center gap-1.5">
-                  <span className={"inline-block size-1.5 rounded-full " + (d.tipo === "disponivel" ? "bg-emerald-500" : "bg-rose-500")} />
-                  <span>{d.hora_inicio?.slice(0,5)}–{d.hora_fim?.slice(0,5)} · {d.tipo === "disponivel" ? "Disponível" : "Indisponível"}{d.notas ? ` · ${d.notas}` : ""}</span>
-                </div>
-              ))}
+          {formadorId && (
+            <div className="space-y-1.5">
+              <Label>UFCD *</Label>
+              <Select value={cufId} onValueChange={setCufId}>
+                <SelectTrigger><SelectValue placeholder={ufcdsDoFormador.length === 0 ? "Este formador não tem UFCD atribuída neste curso" : "Escolher UFCD…"} /></SelectTrigger>
+                <SelectContent>
+                  {ufcdsDoFormador.map((u: any) => <SelectItem key={u.id} value={u.id}>{u.ufcd.codigo} — {u.ufcd.designacao}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
           )}
+
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>Início</Label><Input type="time" value={hi} onChange={e => setHi(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Fim</Label><Input type="time" value={hf} onChange={e => setHf(e.target.value)} /></div>
+          </div>
+          <div className="text-xs text-muted-foreground">Duração: {diffHoras(hi, hf).toFixed(2).replace(".", ",")} h</div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save}>Criar sessão</Button>
+          <Button onClick={save} disabled={!data || !formadorId || !cufId}>Criar sessão</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

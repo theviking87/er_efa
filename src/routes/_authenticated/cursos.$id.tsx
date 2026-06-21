@@ -689,7 +689,9 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   }, [dispDia.data, formadoresDoCurso]);
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setData(""); setCufId(""); setFormadorId(""); } }}>
+
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>Nova sessão</DialogTitle></DialogHeader>
         <div className="space-y-3">

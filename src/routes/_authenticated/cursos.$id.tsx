@@ -521,7 +521,37 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
           <div className="space-y-1.5"><Label>Início</Label><Input type="time" value={hi} onChange={e => setHi(e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Fim</Label><Input type="time" value={hf} onChange={e => setHf(e.target.value)} /></div>
           <div className="col-span-2 text-xs text-muted-foreground">Duração: {diffHoras(hi, hf).toFixed(2).replace(".", ",")} h</div>
+          {cufId && formadoresDaUfcd.length > 0 && (
+            <div className="col-span-2 space-y-1.5">
+              <Label className="text-xs">Disponibilidades dos formadores desta UFCD</Label>
+              <div className="border rounded-md max-h-40 overflow-y-auto divide-y bg-muted/30">
+                {(dispUfcd.data ?? []).length === 0 ? (
+                  <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum formador desta UFCD declarou disponibilidades futuras.</div>
+                ) : (
+                  (dispUfcd.data ?? []).map((s: any) => {
+                    const f = formadoresDaUfcd.find((x: any) => x.id === s.formador_id);
+                    const active = formadorId === s.formador_id && data === s.data && hi === String(s.hora_inicio).slice(0,5) && hf === String(s.hora_fim).slice(0,5);
+                    return (
+                      <button
+                        key={s.id}
+                        type="button"
+                        onClick={() => aplicarSlot(s)}
+                        className={"w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center gap-2 " + (active ? "bg-muted" : "")}
+                      >
+                        <span className="size-2 rounded-full shrink-0" style={{ background: f?.cor }} />
+                        <span className="font-medium tabular-nums">{fmtDate(s.data)}</span>
+                        <span className="tabular-nums text-muted-foreground">{String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)}</span>
+                        <span className="truncate">{f?.nome}</span>
+                        {s.notas && <span className="text-muted-foreground truncate">· {s.notas}</span>}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+          )}
           {formadorId && data && (disp.data ?? []).length > 0 && (
+
             <div className="col-span-2 text-xs rounded-md border bg-muted/40 px-3 py-2 space-y-0.5">
               <div className="font-medium text-foreground">Disponibilidade declarada</div>
               {(disp.data ?? []).map((d: any, idx: number) => (

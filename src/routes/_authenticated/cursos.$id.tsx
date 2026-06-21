@@ -545,6 +545,12 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
         }}
       />
+
+      <PresencasDialog
+        open={!!presencasSessao}
+        onOpenChange={(v) => { if (!v) setPresencasSessao(null); }}
+        sessao={presencasSessao}
+      />
     </CardContent></Card>
   );
 }

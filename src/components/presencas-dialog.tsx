@@ -26,7 +26,7 @@ export function PresencasDialog({
         .from("curso_formandos")
         .select("id, estado, formando:formandos(id, nome)")
         .eq("curso_id", sessao!.curso_id)
-        .eq("estado", "ativo");
+        .in("estado", ["inscrito", "em_formacao"]);
       if (error) throw error;
       return (data ?? []).filter((i: any) => i.formando);
     },

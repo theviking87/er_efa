@@ -318,6 +318,54 @@ export type Database = {
         }
         Relationships: []
       }
+      formando_faltas: {
+        Row: {
+          created_at: string
+          curso_formando_id: string
+          data: string
+          horas: number
+          id: string
+          observacoes: string | null
+          sessao_id: string | null
+          tipo: Database["public"]["Enums"]["falta_tipo"]
+        }
+        Insert: {
+          created_at?: string
+          curso_formando_id: string
+          data: string
+          horas?: number
+          id?: string
+          observacoes?: string | null
+          sessao_id?: string | null
+          tipo?: Database["public"]["Enums"]["falta_tipo"]
+        }
+        Update: {
+          created_at?: string
+          curso_formando_id?: string
+          data?: string
+          horas?: number
+          id?: string
+          observacoes?: string | null
+          sessao_id?: string | null
+          tipo?: Database["public"]["Enums"]["falta_tipo"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formando_faltas_curso_formando_id_fkey"
+            columns: ["curso_formando_id"]
+            isOneToOne: false
+            referencedRelation: "curso_formandos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formando_faltas_sessao_id_fkey"
+            columns: ["sessao_id"]
+            isOneToOne: false
+            referencedRelation: "sessoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formandos: {
         Row: {
           cc: string | null
@@ -484,6 +532,7 @@ export type Database = {
         | "suspenso"
         | "cancelado"
       curso_tipologia: "EFA" | "ERFA" | "MFA" | "OUTRO"
+      falta_tipo: "justificada" | "injustificada"
       formador_estado:
         | "ativo"
         | "inativo"
@@ -622,6 +671,7 @@ export const Constants = {
     Enums: {
       curso_estado: ["planeado", "ativo", "concluido", "suspenso", "cancelado"],
       curso_tipologia: ["EFA", "ERFA", "MFA", "OUTRO"],
+      falta_tipo: ["justificada", "injustificada"],
       formador_estado: [
         "ativo",
         "inativo",

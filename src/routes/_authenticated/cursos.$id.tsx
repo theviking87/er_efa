@@ -66,7 +66,7 @@ function CursoDetail() {
         description={`${c.codigo} · ${TIPOLOGIA_LABEL[c.tipologia]} · ${ESTADO_CURSO_LABEL[c.estado]}`}
         actions={
           <>
-            <Button variant="outline" onClick={() => navigate({ to: "/cursos/$id/importar", params: { id } })}>
+            <Button variant="outline" onClick={() => navigate({ to: "/cursos_/$id/importar", params: { id } })}>
               <Upload className="size-4" /> Importar cronograma
             </Button>
             <Button variant="outline" onClick={() => exportSigoCurso(id).then(() => toast.success("Exportado")).catch(e => toast.error(e.message))}>

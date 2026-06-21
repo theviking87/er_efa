@@ -410,6 +410,15 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     const hasConflict = (conflitos ?? []).some(s => !(hf <= s.hora_inicio || hi >= s.hora_fim));
     if (hasConflict) return toast.error("Conflito de horário", { description: "Formador tem outra sessão neste período." });
 
+    // Validate inatividade
+    const { data: inat } = await supabase.from("formador_inatividades")
+      .select("data_inicio, data_fim, motivo").eq("formador_id", formadorId)
+      .lte("data_inicio", data).gte("data_fim", data);
+    if ((inat ?? []).length > 0) {
+      const i = inat![0];
+      return toast.error("Formador indisponível", { description: `${i.motivo || "Inatividade"} (${i.data_inicio} → ${i.data_fim})` });
+    }
+
     const { error } = await supabase.from("sessoes").insert({
       curso_id: cursoId, curso_ufcd_id: cufId, formador_id: formadorId, data, hora_inicio: hi, hora_fim: hf, horas,
     } as never);

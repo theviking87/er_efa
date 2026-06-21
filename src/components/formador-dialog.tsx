@@ -47,10 +47,10 @@ export function FormadorDialog({
       // empty strings -> null for date fields
       (["validade_cc","validade_ccp"] as const).forEach(k => { if (!payload[k]) payload[k] = null; });
       if (v.id) {
-        const { error } = await supabase.from("formadores").update(payload).eq("id", v.id);
+        const { error } = await supabase.from("formadores").update(payload as never).eq("id", v.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("formadores").insert(payload as any);  // eslint-disable-line @typescript-eslint/no-explicit-any
+        const { error } = await supabase.from("formadores").insert(payload as never);
         if (error) throw error;
       }
     },

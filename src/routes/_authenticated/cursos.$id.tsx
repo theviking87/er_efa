@@ -413,12 +413,14 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                   </button>
                   <div className="space-y-1">
                     {(sessoesByDay.get(cell.iso) ?? []).map((s: any) => (
-                      <SessaoChip key={s.id} sessao={s} onDelete={async () => {
-                        await supabase.from("sessoes").delete().eq("id", s.id);
-                        qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
-                        qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
-                        qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
-                      }} />
+                      <SessaoChip key={s.id} sessao={s}
+                        onPresencas={() => setPresencasSessao({ ...s, curso_id: cursoId })}
+                        onDelete={async () => {
+                          await supabase.from("sessoes").delete().eq("id", s.id);
+                          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
+                          qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
+                          qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
+                        }} />
                     ))}
                   </div>
                 </>

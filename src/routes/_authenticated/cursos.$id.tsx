@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ESTADO_CURSO_LABEL, TIPOLOGIA_LABEL, fmtDate, fmtHoras, diffHoras, MONTH_NAMES,
-  INSCRICAO_ESTADO_LABEL, FALTA_TIPO_LABEL,
+  INSCRICAO_ESTADO_LABEL, FALTA_TIPO_LABEL, formadorLabel,
 } from "@/lib/format";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -138,7 +138,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
     queryFn: async () => {
       const [cu, sess] = await Promise.all([
         supabase.from("curso_ufcds")
-          .select("id, horas_totais, ordem, concluida, ufcd:ufcds(id, codigo, designacao, horas_referencia), formadores:curso_ufcd_formadores(formador:formadores(id, nome, cor))")
+          .select("id, horas_totais, ordem, concluida, ufcd:ufcds(id, codigo, designacao, horas_referencia), formadores:curso_ufcd_formadores(formador:formadores(id, nome, abreviatura, cor))")
           .eq("curso_id", cursoId).order("ordem"),
         supabase.from("sessoes").select("curso_ufcd_id, horas").eq("curso_id", cursoId),
       ]);
@@ -286,7 +286,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryKey: ["sessoes", cursoId, inicioMes, fimMes],
     queryFn: async () => {
       const { data, error } = await supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura,cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .eq("curso_id", cursoId).gte("data", inicioMes).lte("data", fimMes)
         .order("data").order("hora_inicio");
       if (error) throw error;
@@ -300,7 +300,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryFn: async () => {
       const [cu, allSess] = await Promise.all([
         supabase.from("curso_ufcds")
-          .select("id, horas_totais, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,cor))")
+          .select("id, horas_totais, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,abreviatura,cor))")
           .eq("curso_id", cursoId),
         supabase.from("sessoes").select("curso_ufcd_id, formador_id, horas").eq("curso_id", cursoId),
       ]);
@@ -330,7 +330,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const m = new Map<string, { id: string; nome: string; cor: string; horas: number; ufcds: Set<string> }>();
     (sessoes.data ?? []).forEach((s: any) => {
       if (!s.formador) return;
-      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: s.formador.nome, cor: s.formador.cor, horas: 0, ufcds: new Set<string>() };
+      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: formadorLabel(s.formador), cor: s.formador.cor, horas: 0, ufcds: new Set<string>() };
       cur.horas += Number(s.horas);
       if (s.curso_ufcd?.ufcd?.codigo) cur.ufcds.add(s.curso_ufcd.ufcd.codigo);
       m.set(s.formador.id, cur);
@@ -486,7 +486,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                       return linhas.map((l, idx) => (
                         <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
                           <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
-                          {" "}{s.formador?.nome} ({s.curso_ufcd?.ufcd?.codigo})
+                          {" "}{formadorLabel(s.formador)} ({s.curso_ufcd?.ufcd?.codigo})
                         </div>
                       ));
                     })}
@@ -549,7 +549,7 @@ function SessaoChip({ sessao, onDelete }: { sessao: any; onDelete: () => void })
   return (
     <div className="text-[11px] leading-tight rounded px-1.5 py-1 group relative" style={{ background: `${sessao.formador?.cor}15`, color: sessao.formador?.cor, borderLeft: `2px solid ${sessao.formador?.cor}` }}>
       <div className="font-medium">{sessao.hora_inicio?.slice(0,5)}–{sessao.hora_fim?.slice(0,5)}</div>
-      <div className="truncate">{sessao.formador?.nome}</div>
+      <div className="truncate">{formadorLabel(sessao.formador)}</div>
       <div className="truncate opacity-80">{sessao.curso_ufcd?.ufcd?.codigo}</div>
       <button onClick={onDelete} className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] hover:underline print:hidden" title="Apagar">×</button>
     </div>
@@ -573,7 +573,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     queryFn: async () => {
       const [cu, sess] = await Promise.all([
         supabase.from("curso_ufcds")
-          .select("id, concluida, horas_totais, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,cor))")
+          .select("id, concluida, horas_totais, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,abreviatura,cor))")
           .eq("curso_id", cursoId).eq("concluida", false),
         supabase.from("sessoes").select("curso_ufcd_id, horas").eq("curso_id", cursoId),
       ]);
@@ -594,7 +594,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     enabled: open && !!data,
     queryFn: async () => {
       const { data: rows } = await supabase.from("formador_disponibilidades" as any)
-        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, formador:formadores(id,nome,cor)")
+        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, formador:formadores(id,nome,abreviatura,cor)")
         .eq("data", data).order("hora_inicio");
       return (rows ?? []) as any[];
     },
@@ -721,7 +721,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
                       >
                         <span className="size-2 rounded-full shrink-0" style={{ background: s.formador?.cor }} />
                         <span className="tabular-nums text-muted-foreground w-[88px]">{String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)}</span>
-                        <span className="font-medium truncate flex-1">{s.formador?.nome}</span>
+                        <span className="font-medium truncate flex-1">{formadorLabel(s.formador)}</span>
                         {noCurso ? <Badge variant="secondary" className="text-[10px]">deste curso</Badge> : <span className="text-[10px] text-muted-foreground">externo ao curso</span>}
                         {!isDisp && <Badge variant="destructive" className="text-[10px]">indisp.</Badge>}
                       </button>

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 type Formador = {
   id?: string;
   nome: string;
+  abreviatura?: string | null;
   nif?: string | null;
   cc?: string | null;
   validade_cc?: string | null;
@@ -80,9 +81,20 @@ export function FormadorDialog({
         >
           <div className="col-span-2 space-y-1.5">
             <Label>Nome completo *</Label>
-            <Input required {...field("nome")} />
+            <Input required {...field("nome")} onBlur={() => {
+              if (!f.abreviatura && f.nome) {
+                const parts = f.nome.trim().split(/\s+/);
+                const abr = parts.length >= 2 ? `${parts[0]} ${parts[parts.length - 1]}` : parts[0];
+                setF(s => ({ ...s, abreviatura: abr }));
+              }
+            }} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Abreviatura <span className="text-xs text-muted-foreground font-normal">(ex.: João Silva — usada nos cronogramas)</span></Label>
+            <Input {...field("abreviatura")} placeholder="Primeiro + último nome" />
           </div>
           <div className="space-y-1.5"><Label>NIF</Label><Input {...field("nif")} /></div>
+
           <div className="space-y-1.5"><Label>Cartão de Cidadão</Label><Input {...field("cc")} /></div>
           <div className="space-y-1.5"><Label>Validade CC</Label><Input type="date" {...field("validade_cc")} /></div>
           <div className="space-y-1.5"><Label>Telemóvel</Label><Input {...field("telemovel")} /></div>

@@ -298,6 +298,7 @@ export type Database = {
       }
       formadores: {
         Row: {
+          abreviatura: string | null
           cc: string | null
           ccp: string | null
           codigo_postal: string | null
@@ -319,6 +320,7 @@ export type Database = {
           validade_ccp: string | null
         }
         Insert: {
+          abreviatura?: string | null
           cc?: string | null
           ccp?: string | null
           codigo_postal?: string | null
@@ -340,6 +342,7 @@ export type Database = {
           validade_ccp?: string | null
         }
         Update: {
+          abreviatura?: string | null
           cc?: string | null
           ccp?: string | null
           codigo_postal?: string | null

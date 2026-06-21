@@ -69,3 +69,6 @@ export const MONTH_NAMES = [
 ];
 
 export const WEEKDAY_SHORT = ["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"];
+
+export const formadorLabel = (f?: { nome?: string | null; abreviatura?: string | null } | null) =>
+  (f?.abreviatura?.trim() || f?.nome || "—");

@@ -781,7 +781,12 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
       </CardContent></Card>
 
       <Card><CardContent className="p-6 space-y-3">
-        <div className="text-sm font-medium">Resumo de assiduidade</div>
+        <div className="flex items-center justify-between">
+          <div className="text-sm font-medium">Resumo de assiduidade</div>
+          <Button variant="outline" size="sm" onClick={() => exportFaltasCurso(cursoId).then(() => toast.success("Exportado")).catch(e => toast.error(e.message))}>
+            <FileSpreadsheet className="size-4" /> Exportar faltas
+          </Button>
+        </div>
         <div className="text-xs text-muted-foreground">Carga total do curso: {fmtHoras(totalHorasCurso)}</div>
         <div className="border rounded-md divide-y">
           <div className="grid grid-cols-[1fr_100px_100px_100px_100px] gap-3 px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground bg-muted/40">

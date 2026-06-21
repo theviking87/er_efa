@@ -96,7 +96,7 @@ function CronogramaGeral() {
           kind: "sessao",
           id: s.id,
           formador_id: s.formador_id ?? s.formador?.id ?? null,
-          formador_nome: s.formador?.nome ?? "—",
+          formador_nome: (s.formador?.abreviatura?.trim() || s.formador?.nome) ?? "—",
           formador_cor: s.formador?.cor ?? "#888",
           data: s.data,
           hora_inicio: s.hora_inicio,

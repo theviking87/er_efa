@@ -651,16 +651,22 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     const hiN = hi + ":00";
     const hfN = hf + ":00";
     const indisp = dispDoFormador.find((d: any) => d.tipo === "indisponivel" && !(hfN <= d.hora_inicio || hiN >= d.hora_fim));
-    if (indisp) return toast.error("Formador marcado como indisponível neste período");
+    if (indisp) { setErro({ titulo: "Formador indisponível", descricao: "O formador marcou este período como indisponível." }); return; }
     const disponiveis = dispDoFormador.filter((d: any) => d.tipo === "disponivel");
     if (disponiveis.length === 0) {
-      return toast.error("Formador sem disponibilidade declarada para este dia");
+      setErro({ titulo: "Sem disponibilidade", descricao: "O formador não declarou disponibilidade para este dia." });
+      return;
     }
     const dentro = disponiveis.some((d: any) => hiN >= d.hora_inicio && hfN <= d.hora_fim);
     if (!dentro) {
       const janelas = disponiveis.map((d: any) => `${String(d.hora_inicio).slice(0,5)}–${String(d.hora_fim).slice(0,5)}`).join(", ");
-      return toast.error("Fora da disponibilidade do formador", { description: `Janelas disponíveis: ${janelas}` });
+      setErro({
+        titulo: "Estás a marcar mais horas que as declaradas",
+        descricao: `A sessão (${hi}–${hf}) está fora da disponibilidade do formador. Janelas declaradas neste dia: ${janelas}.`,
+      });
+      return;
     }
+
 
     const { error } = await supabase.from("sessoes").insert({
       curso_id: cursoId, curso_ufcd_id: cufId, formador_id: formadorId, data, hora_inicio: hi, hora_fim: hf, horas,

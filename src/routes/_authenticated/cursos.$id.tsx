@@ -469,13 +469,29 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                 <>
                   <div className="text-[10px] font-semibold mb-0.5">{cell.d}</div>
                   <div className="space-y-0.5">
-                    {(sessoesByDay.get(cell.iso) ?? []).map((s: any) => (
-                      <div key={s.id} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
-                        <span className="tabular-nums font-semibold">{String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)}</span>
-                        {" – "}{s.formador?.nome} ({s.curso_ufcd?.ufcd?.codigo})
-                      </div>
-                    ))}
+                    {(sessoesByDay.get(cell.iso) ?? []).flatMap((s: any) => {
+                      // Partir a sessão em linhas de 1h: 9h-10h, 10h-11h, ...
+                      const [hiH, hiM] = String(s.hora_inicio).split(":").map(Number);
+                      const [hfH, hfM] = String(s.hora_fim).split(":").map(Number);
+                      const startMin = hiH * 60 + hiM;
+                      const endMin = hfH * 60 + hfM;
+                      const linhas: { from: string; to: string }[] = [];
+                      let cur = startMin;
+                      while (cur < endMin) {
+                        const nxt = Math.min(cur + 60, endMin);
+                        const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}h${m % 60 === 0 ? "" : String(m % 60).padStart(2, "0")}`;
+                        linhas.push({ from: fmt(cur), to: fmt(nxt) });
+                        cur = nxt;
+                      }
+                      return linhas.map((l, idx) => (
+                        <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
+                          <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
+                          {" "}{s.formador?.nome} ({s.curso_ufcd?.ufcd?.codigo})
+                        </div>
+                      ));
+                    })}
                   </div>
+
                 </>
               )}
             </div>

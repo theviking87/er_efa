@@ -692,15 +692,26 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
 
           {formadorId && (
             <div className="space-y-1.5">
-              <Label>UFCD *</Label>
+              <Label>UFCD * <span className="text-xs text-muted-foreground font-normal">(apenas as deste formador com horas em falta)</span></Label>
               <Select value={cufId} onValueChange={setCufId}>
-                <SelectTrigger><SelectValue placeholder={ufcdsDoFormador.length === 0 ? "Este formador não tem UFCD atribuída neste curso" : "Escolher UFCD…"} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={ufcdsDoFormador.length === 0 ? "Sem UFCD em falta para este formador" : "Escolher UFCD…"} /></SelectTrigger>
                 <SelectContent>
-                  {ufcdsDoFormador.map((u: any) => <SelectItem key={u.id} value={u.id}>{u.ufcd.codigo} — {u.ufcd.designacao}</SelectItem>)}
+                  {ufcdsDoFormador.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.ufcd.codigo} — {u.ufcd.designacao} · faltam {fmtHoras(u.horas_em_falta)}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
+              {cufSelecionada && (
+                <div className="text-xs text-muted-foreground">
+                  {fmtHoras(cufSelecionada.horas_realizadas)} dadas de {cufSelecionada.horas_totais}h · <span className="font-medium text-foreground">faltam {fmtHoras(cufSelecionada.horas_em_falta)}</span>
+                  {diffHoras(hi, hf) > cufSelecionada.horas_em_falta && <span className="text-amber-600"> · esta sessão excede o que falta</span>}
+                </div>
+              )}
             </div>
           )}
+
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5"><Label>Início</Label><Input type="time" value={hi} onChange={e => setHi(e.target.value)} /></div>

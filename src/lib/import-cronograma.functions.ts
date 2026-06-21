@@ -114,9 +114,100 @@ ${formadorList}`;
       observacoes: s.observacoes ?? null,
     }));
 
+    const cufcdIds = (cufcds ?? []).map((u: any) => u.id);
+    const horasExistentesPorUfcd: Record<string, number> = {};
+    if (cufcdIds.length) {
+      const { data: sess } = await supabase
+        .from("sessoes")
+        .select("curso_ufcd_id, horas")
+        .in("curso_ufcd_id", cufcdIds);
+      (sess ?? []).forEach((s: any) => {
+        horasExistentesPorUfcd[s.curso_ufcd_id] =
+          (horasExistentesPorUfcd[s.curso_ufcd_id] ?? 0) + Number(s.horas ?? 0);
+      });
+    }
+
+    const { data: disp } = await supabase
+      .from("formador_disponibilidades")
+      .select("formador_id, data, hora_inicio, hora_fim, tipo")
+      .gte("data", curso.data_inicio)
+      .lte("data", curso.data_fim);
+
     return {
       sessoes,
-      curso_ufcds: (cufcds ?? []).map((u: any) => ({ id: u.id, codigo: u.ufcd?.codigo, designacao: u.ufcd?.designacao })),
+      curso_ufcds: (cufcds ?? []).map((u: any) => ({
+        id: u.id,
+        codigo: u.ufcd?.codigo,
+        designacao: u.ufcd?.designacao,
+        horas_totais: u.horas_totais ?? 0,
+        horas_existentes: horasExistentesPorUfcd[u.id] ?? 0,
+      })),
       formadores: (formadores ?? []).map((f: any) => ({ id: f.id, nome: f.nome, abreviatura: f.abreviatura })),
+      disponibilidades: (disp ?? []).map((d: any) => ({
+        formador_id: d.formador_id,
+        data: d.data,
+        hora_inicio: String(d.hora_inicio).slice(0, 5),
+        hora_fim: String(d.hora_fim).slice(0, 5),
+        tipo: d.tipo as string,
+      })),
+      curso: { data_inicio: curso.data_inicio, data_fim: curso.data_fim },
     };
   });
+
+const FormadorInput = z.object({
+  nome: z.string().min(1),
+  abreviatura: z.string().optional().nullable(),
+});
+
+export const criarFormadorRapido = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => FormadorInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: row, error } = await context.supabase
+      .from("formadores")
+      .insert({ nome: data.nome, abreviatura: data.abreviatura ?? null, estado: "ativo" })
+      .select("id, nome, abreviatura")
+      .single();
+    if (error) throw new Error(error.message);
+    return row;
+  });
+
+const UfcdInput = z.object({
+  cursoId: z.string().uuid(),
+  codigo: z.string().min(1),
+  designacao: z.string().min(1),
+  horas_referencia: z.number().int().positive(),
+});
+
+export const criarUfcdNoCurso = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => UfcdInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    let ufcdId: string | null = null;
+    const { data: existing } = await supabase
+      .from("ufcds").select("id").eq("codigo", data.codigo).maybeSingle();
+    if (existing) ufcdId = existing.id;
+    else {
+      const { data: novo, error: e1 } = await supabase
+        .from("ufcds")
+        .insert({ codigo: data.codigo, designacao: data.designacao, horas_referencia: data.horas_referencia })
+        .select("id").single();
+      if (e1) throw new Error(e1.message);
+      ufcdId = novo.id;
+    }
+
+    const { data: existeCU } = await supabase
+      .from("curso_ufcds").select("id, horas_totais")
+      .eq("curso_id", data.cursoId).eq("ufcd_id", ufcdId).maybeSingle();
+    if (existeCU) {
+      return { id: existeCU.id, codigo: data.codigo, designacao: data.designacao, horas_totais: existeCU.horas_totais ?? 0, horas_existentes: 0 };
+    }
+    const { data: cu, error: e2 } = await supabase
+      .from("curso_ufcds")
+      .insert({ curso_id: data.cursoId, ufcd_id: ufcdId, horas_totais: data.horas_referencia })
+      .select("id, horas_totais").single();
+    if (e2) throw new Error(e2.message);
+    return { id: cu.id, codigo: data.codigo, designacao: data.designacao, horas_totais: cu.horas_totais ?? 0, horas_existentes: 0 };
+  });
+

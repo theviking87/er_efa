@@ -9,7 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet } from "lucide-react";
+import { exportSigoCurso } from "@/lib/exports";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -63,13 +64,18 @@ function CursoDetail() {
         title={c.nome}
         description={`${c.codigo} · ${TIPOLOGIA_LABEL[c.tipologia]} · ${ESTADO_CURSO_LABEL[c.estado]}`}
         actions={
-          <AlertDialog>
-            <AlertDialogTrigger asChild><Button variant="outline" className="text-destructive hover:text-destructive"><Trash2 className="size-4" /> Eliminar</Button></AlertDialogTrigger>
-            <AlertDialogContent>
-              <AlertDialogHeader><AlertDialogTitle>Eliminar curso?</AlertDialogTitle><AlertDialogDescription>Esta ação remove também todas as UFCD atribuídas e sessões.</AlertDialogDescription></AlertDialogHeader>
-              <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove}>Eliminar</AlertDialogAction></AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+          <>
+            <Button variant="outline" onClick={() => exportSigoCurso(id).then(() => toast.success("Exportado")).catch(e => toast.error(e.message))}>
+              <FileSpreadsheet className="size-4" /> SIGO
+            </Button>
+            <AlertDialog>
+              <AlertDialogTrigger asChild><Button variant="outline" className="text-destructive hover:text-destructive"><Trash2 className="size-4" /> Eliminar</Button></AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader><AlertDialogTitle>Eliminar curso?</AlertDialogTitle><AlertDialogDescription>Esta ação remove também todas as UFCD atribuídas e sessões.</AlertDialogDescription></AlertDialogHeader>
+                <AlertDialogFooter><AlertDialogCancel>Cancelar</AlertDialogCancel><AlertDialogAction onClick={remove}>Eliminar</AlertDialogAction></AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          </>
         }
       />
 

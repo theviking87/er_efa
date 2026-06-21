@@ -13,6 +13,7 @@ import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUfcdsRouteImport } from './routes/_authenticated/ufcds'
+import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedFormandosRouteImport } from './routes/_authenticated/formandos'
 import { Route as AuthenticatedFormadoresRouteImport } from './routes/_authenticated/formadores'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
@@ -39,6 +40,11 @@ const IndexRoute = IndexRouteImport.update({
 const AuthenticatedUfcdsRoute = AuthenticatedUfcdsRouteImport.update({
   id: '/ufcds',
   path: '/ufcds',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedFormandosRoute = AuthenticatedFormandosRouteImport.update({
@@ -92,6 +98,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
   '/formandos': typeof AuthenticatedFormandosRouteWithChildren
+  '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
@@ -105,6 +112,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof AuthenticatedDashboardRoute
   '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
   '/formandos': typeof AuthenticatedFormandosRouteWithChildren
+  '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
@@ -120,6 +128,7 @@ export interface FileRoutesById {
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
   '/_authenticated/formadores': typeof AuthenticatedFormadoresRouteWithChildren
   '/_authenticated/formandos': typeof AuthenticatedFormandosRouteWithChildren
+  '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/ufcds': typeof AuthenticatedUfcdsRoute
   '/_authenticated/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/_authenticated/formadores/$id': typeof AuthenticatedFormadoresIdRoute
@@ -135,6 +144,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/formadores'
     | '/formandos'
+    | '/relatorios'
     | '/ufcds'
     | '/cursos/$id'
     | '/formadores/$id'
@@ -148,6 +158,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/formadores'
     | '/formandos'
+    | '/relatorios'
     | '/ufcds'
     | '/cursos/$id'
     | '/formadores/$id'
@@ -162,6 +173,7 @@ export interface FileRouteTypes {
     | '/_authenticated/dashboard'
     | '/_authenticated/formadores'
     | '/_authenticated/formandos'
+    | '/_authenticated/relatorios'
     | '/_authenticated/ufcds'
     | '/_authenticated/cursos/$id'
     | '/_authenticated/formadores/$id'
@@ -202,6 +214,13 @@ declare module '@tanstack/react-router' {
       path: '/ufcds'
       fullPath: '/ufcds'
       preLoaderRoute: typeof AuthenticatedUfcdsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/relatorios': {
+      id: '/_authenticated/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof AuthenticatedRelatoriosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/formandos': {
@@ -308,6 +327,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
   AuthenticatedFormadoresRoute: typeof AuthenticatedFormadoresRouteWithChildren
   AuthenticatedFormandosRoute: typeof AuthenticatedFormandosRouteWithChildren
+  AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedUfcdsRoute: typeof AuthenticatedUfcdsRoute
 }
 
@@ -317,6 +337,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
   AuthenticatedFormadoresRoute: AuthenticatedFormadoresRouteWithChildren,
   AuthenticatedFormandosRoute: AuthenticatedFormandosRouteWithChildren,
+  AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedUfcdsRoute: AuthenticatedUfcdsRoute,
 }
 

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, FileSpreadsheet, FileText } from "lucide-react";
+import { FileSpreadsheet, FileText } from "lucide-react";
 import { exportSigoCurso, exportRelatorioFormadores, exportRelatorioCursos, exportRelatorioFaltas } from "@/lib/exports";
 import { exportSigoCursoPdf, exportRelatorioFormadoresPdf, exportRelatorioCursosPdf, exportRelatorioFaltasPdf } from "@/lib/pdf-exports";
 import { toast } from "sonner";

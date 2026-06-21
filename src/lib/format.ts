@@ -52,6 +52,11 @@ export const INSCRICAO_ESTADO_LABEL: Record<string, string> = {
   desistente: "Desistente",
 };
 
+export const FALTA_TIPO_LABEL: Record<string, string> = {
+  justificada: "Justificada",
+  injustificada: "Injustificada",
+};
+
 export function diffHoras(inicio: string, fim: string): number {
   const [hi, mi] = inicio.split(":").map(Number);
   const [hf, mf] = fim.split(":").map(Number);

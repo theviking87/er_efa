@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   ESTADO_CURSO_LABEL, TIPOLOGIA_LABEL, fmtDate, fmtHoras, diffHoras, MONTH_NAMES,
-  INSCRICAO_ESTADO_LABEL,
+  INSCRICAO_ESTADO_LABEL, FALTA_TIPO_LABEL,
 } from "@/lib/format";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
@@ -85,6 +85,7 @@ function CursoDetail() {
           <TabsTrigger value="ufcds">UFCD</TabsTrigger>
           <TabsTrigger value="formandos">Formandos</TabsTrigger>
           <TabsTrigger value="cronograma">Cronograma</TabsTrigger>
+          <TabsTrigger value="faltas">Faltas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados">
@@ -108,6 +109,10 @@ function CursoDetail() {
 
         <TabsContent value="cronograma">
           <CronogramaTab cursoId={id} cursoNome={c.nome} cursoCodigo={c.codigo} />
+        </TabsContent>
+
+        <TabsContent value="faltas">
+          <FaltasTab cursoId={id} />
         </TabsContent>
       </Tabs>
     </PageContainer>
@@ -596,5 +601,173 @@ function InscreverFormandoDialog({ open, onOpenChange, cursoId, jaInscritos, onS
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+// ---------------- FALTAS TAB ----------------
+function FaltasTab({ cursoId }: { cursoId: string }) {
+  const qc = useQueryClient();
+  const [sessaoId, setSessaoId] = useState<string>("");
+
+  const inscritos = useQuery({
+    queryKey: ["curso-formandos-faltas", cursoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("curso_formandos")
+        .select("id, formando:formandos(id, nome)")
+        .eq("curso_id", cursoId)
+        .in("estado", ["inscrito", "em_formacao"]);
+      if (error) throw error;
+      return (data ?? []).sort((a: any, b: any) => a.formando.nome.localeCompare(b.formando.nome));
+    },
+  });
+
+  const sessoes = useQuery({
+    queryKey: ["sessoes-faltas", cursoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao))")
+        .eq("curso_id", cursoId)
+        .order("data", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const faltas = useQuery({
+    queryKey: ["faltas", cursoId, sessaoId],
+    enabled: !!sessaoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("formando_faltas")
+        .select("id, curso_formando_id, horas, tipo, observacoes")
+        .eq("sessao_id", sessaoId);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const totaisPorFormando = useQuery({
+    queryKey: ["faltas-totais", cursoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("formando_faltas")
+        .select("curso_formando_id, horas, tipo, curso_formando:curso_formandos!inner(curso_id)")
+        .eq("curso_formando.curso_id", cursoId);
+      if (error) throw error;
+      const map = new Map<string, { just: number; injust: number }>();
+      (data ?? []).forEach((f: any) => {
+        const cur = map.get(f.curso_formando_id) ?? { just: 0, injust: 0 };
+        if (f.tipo === "justificada") cur.just += Number(f.horas);
+        else cur.injust += Number(f.horas);
+        map.set(f.curso_formando_id, cur);
+      });
+      return map;
+    },
+  });
+
+  const totalHorasCurso = (sessoes.data ?? []).reduce((s, x: any) => s + Number(x.horas ?? 0), 0);
+  const sessao = (sessoes.data ?? []).find((s: any) => s.id === sessaoId) as any;
+  const faltasMap = new Map((faltas.data ?? []).map((f: any) => [f.curso_formando_id, f]));
+
+  async function registar(cursoFormandoId: string, horas: number, tipo: "justificada" | "injustificada") {
+    if (!sessao) return;
+    const existing = faltasMap.get(cursoFormandoId) as any;
+    if (horas <= 0) {
+      if (existing) {
+        const { error } = await supabase.from("formando_faltas").delete().eq("id", existing.id);
+        if (error) return toast.error(error.message);
+      }
+    } else if (existing) {
+      const { error } = await supabase.from("formando_faltas")
+        .update({ horas, tipo } as never).eq("id", existing.id);
+      if (error) return toast.error(error.message);
+    } else {
+      const { error } = await supabase.from("formando_faltas").insert({
+        curso_formando_id: cursoFormandoId,
+        sessao_id: sessao.id,
+        data: sessao.data,
+        horas,
+        tipo,
+      } as never);
+      if (error) return toast.error(error.message);
+    }
+    qc.invalidateQueries({ queryKey: ["faltas", cursoId, sessaoId] });
+    qc.invalidateQueries({ queryKey: ["faltas-totais", cursoId] });
+  }
+
+  return (
+    <div className="space-y-4">
+      <Card><CardContent className="p-6 space-y-4">
+        <div className="flex items-end gap-3">
+          <div className="flex-1 max-w-md">
+            <Label className="text-xs">Sessão</Label>
+            <Select value={sessaoId} onValueChange={setSessaoId}>
+              <SelectTrigger><SelectValue placeholder="Escolher sessão para registar faltas" /></SelectTrigger>
+              <SelectContent>
+                {(sessoes.data ?? []).map((s: any) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {fmtDate(s.data)} · {s.hora_inicio.slice(0,5)}–{s.hora_fim.slice(0,5)} · {s.curso_ufcd?.ufcd?.codigo ?? "—"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          {sessao && <div className="text-xs text-muted-foreground">Duração: {fmtHoras(sessao.horas)}</div>}
+        </div>
+
+        {sessao && (
+          <div className="border rounded-md divide-y">
+            <div className="grid grid-cols-[1fr_120px_160px] gap-3 px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground bg-muted/40">
+              <div>Formando</div><div>Horas falta</div><div>Tipo</div>
+            </div>
+            {(inscritos.data ?? []).map((i: any) => {
+              const f = faltasMap.get(i.id) as any;
+              return (
+                <div key={i.id} className="grid grid-cols-[1fr_120px_160px] gap-3 px-4 py-2 items-center text-sm">
+                  <div className="truncate">{i.formando.nome}</div>
+                  <Input
+                    type="number" min={0} step={0.5} max={sessao.horas}
+                    defaultValue={f?.horas ?? 0}
+                    onBlur={e => registar(i.id, Number(e.target.value), (f?.tipo ?? "injustificada") as any)}
+                    className="h-8"
+                  />
+                  <Select value={f?.tipo ?? "injustificada"} onValueChange={(v) => registar(i.id, Number(f?.horas ?? sessao.horas), v as any)}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      {Object.entries(FALTA_TIPO_LABEL).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+              );
+            })}
+            {(inscritos.data ?? []).length === 0 && (
+              <div className="px-4 py-6 text-xs text-muted-foreground text-center">Sem formandos inscritos.</div>
+            )}
+          </div>
+        )}
+      </CardContent></Card>
+
+      <Card><CardContent className="p-6 space-y-3">
+        <div className="text-sm font-medium">Resumo de assiduidade</div>
+        <div className="text-xs text-muted-foreground">Carga total do curso: {fmtHoras(totalHorasCurso)}</div>
+        <div className="border rounded-md divide-y">
+          <div className="grid grid-cols-[1fr_100px_100px_100px_100px] gap-3 px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground bg-muted/40">
+            <div>Formando</div><div>Just.</div><div>Injust.</div><div>Total</div><div>Assiduidade</div>
+          </div>
+          {(inscritos.data ?? []).map((i: any) => {
+            const t = totaisPorFormando.data?.get(i.id) ?? { just: 0, injust: 0 };
+            const totalFaltas = t.just + t.injust;
+            const ass = totalHorasCurso > 0 ? ((totalHorasCurso - totalFaltas) / totalHorasCurso) * 100 : 100;
+            return (
+              <div key={i.id} className="grid grid-cols-[1fr_100px_100px_100px_100px] gap-3 px-4 py-2 items-center text-sm">
+                <Link to="/formandos/$id" params={{ id: i.formando.id }} className="truncate hover:underline">{i.formando.nome}</Link>
+                <div>{fmtHoras(t.just)}</div>
+                <div>{fmtHoras(t.injust)}</div>
+                <div>{fmtHoras(totalFaltas)}</div>
+                <div className={ass < 90 ? "text-destructive font-medium" : ""}>{ass.toFixed(1)}%</div>
+              </div>
+            );
+          })}
+        </div>
+      </CardContent></Card>
+    </div>
   );
 }

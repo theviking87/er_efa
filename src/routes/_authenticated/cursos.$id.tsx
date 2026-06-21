@@ -416,6 +416,18 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     return (u?.formadores ?? []).map((f: any) => f.formador);
   }, [cufId, ufcds.data]);
 
+  // Disponibilidades do formador para a data escolhida
+  const disp = useQuery({
+    queryKey: ["disp-sessao", formadorId, data],
+    enabled: !!formadorId && !!data,
+    queryFn: async () => {
+      const { data: rows } = await supabase.from("formador_disponibilidades" as any)
+        .select("hora_inicio, hora_fim, tipo, notas")
+        .eq("formador_id", formadorId).eq("data", data);
+      return (rows ?? []) as any[];
+    },
+  });
+
   async function save() {
     if (!data || !cufId || !formadorId) return toast.error("Preencha todos os campos");
     const horas = diffHoras(hi, hf);
@@ -434,6 +446,18 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     if ((inat ?? []).length > 0) {
       const i = inat![0];
       return toast.error("Formador indisponível", { description: `${i.motivo || "Inatividade"} (${i.data_inicio} → ${i.data_fim})` });
+    }
+
+    // Validate disponibilidades declaradas (se existirem para o dia)
+    const dispRows = (disp.data ?? []) as any[];
+    if (dispRows.length > 0) {
+      const indisp = dispRows.some(d => d.tipo === "indisponivel" && !(hf <= d.hora_inicio || hi >= d.hora_fim));
+      if (indisp) return toast.error("Formador marcado como indisponível neste período");
+      const temDisp = dispRows.some(d => d.tipo === "disponivel");
+      if (temDisp) {
+        const dentro = dispRows.some(d => d.tipo === "disponivel" && hi >= d.hora_inicio && hf <= d.hora_fim);
+        if (!dentro) return toast.error("Fora das horas declaradas como disponíveis pelo formador");
+      }
     }
 
     const { error } = await supabase.from("sessoes").insert({

@@ -9,38 +9,150 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as AuthRouteImport } from './routes/auth'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as AuthenticatedUfcdsRouteImport } from './routes/_authenticated/ufcds'
+import { Route as AuthenticatedFormadoresRouteImport } from './routes/_authenticated/formadores'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedCursosRouteImport } from './routes/_authenticated/cursos'
+import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
+import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
 
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
+  id: '/_authenticated',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AuthenticatedUfcdsRoute = AuthenticatedUfcdsRouteImport.update({
+  id: '/ufcds',
+  path: '/ufcds',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFormadoresRoute = AuthenticatedFormadoresRouteImport.update({
+  id: '/formadores',
+  path: '/formadores',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedCursosRoute = AuthenticatedCursosRouteImport.update({
+  id: '/cursos',
+  path: '/cursos',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
+const AuthenticatedFormadoresIdRoute =
+  AuthenticatedFormadoresIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedFormadoresRoute,
+  } as any)
+const AuthenticatedCursosIdRoute = AuthenticatedCursosIdRouteImport.update({
+  id: '/$id',
+  path: '/$id',
+  getParentRoute: () => AuthenticatedCursosRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/cursos': typeof AuthenticatedCursosRouteWithChildren
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
+  '/ufcds': typeof AuthenticatedUfcdsRoute
+  '/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/auth': typeof AuthRoute
+  '/cursos': typeof AuthenticatedCursosRouteWithChildren
+  '/dashboard': typeof AuthenticatedDashboardRoute
+  '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
+  '/ufcds': typeof AuthenticatedUfcdsRoute
+  '/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
+  '/auth': typeof AuthRoute
+  '/_authenticated/cursos': typeof AuthenticatedCursosRouteWithChildren
+  '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/formadores': typeof AuthenticatedFormadoresRouteWithChildren
+  '/_authenticated/ufcds': typeof AuthenticatedUfcdsRoute
+  '/_authenticated/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/_authenticated/formadores/$id': typeof AuthenticatedFormadoresIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/auth'
+    | '/cursos'
+    | '/dashboard'
+    | '/formadores'
+    | '/ufcds'
+    | '/cursos/$id'
+    | '/formadores/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/auth'
+    | '/cursos'
+    | '/dashboard'
+    | '/formadores'
+    | '/ufcds'
+    | '/cursos/$id'
+    | '/formadores/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/_authenticated'
+    | '/auth'
+    | '/_authenticated/cursos'
+    | '/_authenticated/dashboard'
+    | '/_authenticated/formadores'
+    | '/_authenticated/ufcds'
+    | '/_authenticated/cursos/$id'
+    | '/_authenticated/formadores/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AuthenticatedRouteRoute: typeof AuthenticatedRouteRouteWithChildren
+  AuthRoute: typeof AuthRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/_authenticated': {
+      id: '/_authenticated'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof AuthenticatedRouteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,22 +160,98 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_authenticated/ufcds': {
+      id: '/_authenticated/ufcds'
+      path: '/ufcds'
+      fullPath: '/ufcds'
+      preLoaderRoute: typeof AuthenticatedUfcdsRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/formadores': {
+      id: '/_authenticated/formadores'
+      path: '/formadores'
+      fullPath: '/formadores'
+      preLoaderRoute: typeof AuthenticatedFormadoresRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/dashboard': {
+      id: '/_authenticated/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cursos': {
+      id: '/_authenticated/cursos'
+      path: '/cursos'
+      fullPath: '/cursos'
+      preLoaderRoute: typeof AuthenticatedCursosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/formadores/$id': {
+      id: '/_authenticated/formadores/$id'
+      path: '/$id'
+      fullPath: '/formadores/$id'
+      preLoaderRoute: typeof AuthenticatedFormadoresIdRouteImport
+      parentRoute: typeof AuthenticatedFormadoresRoute
+    }
+    '/_authenticated/cursos/$id': {
+      id: '/_authenticated/cursos/$id'
+      path: '/$id'
+      fullPath: '/cursos/$id'
+      preLoaderRoute: typeof AuthenticatedCursosIdRouteImport
+      parentRoute: typeof AuthenticatedCursosRoute
+    }
   }
 }
 
+interface AuthenticatedCursosRouteChildren {
+  AuthenticatedCursosIdRoute: typeof AuthenticatedCursosIdRoute
+}
+
+const AuthenticatedCursosRouteChildren: AuthenticatedCursosRouteChildren = {
+  AuthenticatedCursosIdRoute: AuthenticatedCursosIdRoute,
+}
+
+const AuthenticatedCursosRouteWithChildren =
+  AuthenticatedCursosRoute._addFileChildren(AuthenticatedCursosRouteChildren)
+
+interface AuthenticatedFormadoresRouteChildren {
+  AuthenticatedFormadoresIdRoute: typeof AuthenticatedFormadoresIdRoute
+}
+
+const AuthenticatedFormadoresRouteChildren: AuthenticatedFormadoresRouteChildren =
+  {
+    AuthenticatedFormadoresIdRoute: AuthenticatedFormadoresIdRoute,
+  }
+
+const AuthenticatedFormadoresRouteWithChildren =
+  AuthenticatedFormadoresRoute._addFileChildren(
+    AuthenticatedFormadoresRouteChildren,
+  )
+
+interface AuthenticatedRouteRouteChildren {
+  AuthenticatedCursosRoute: typeof AuthenticatedCursosRouteWithChildren
+  AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedFormadoresRoute: typeof AuthenticatedFormadoresRouteWithChildren
+  AuthenticatedUfcdsRoute: typeof AuthenticatedUfcdsRoute
+}
+
+const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
+  AuthenticatedCursosRoute: AuthenticatedCursosRouteWithChildren,
+  AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedFormadoresRoute: AuthenticatedFormadoresRouteWithChildren,
+  AuthenticatedUfcdsRoute: AuthenticatedUfcdsRoute,
+}
+
+const AuthenticatedRouteRouteWithChildren =
+  AuthenticatedRouteRoute._addFileChildren(AuthenticatedRouteRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AuthenticatedRouteRoute: AuthenticatedRouteRouteWithChildren,
+  AuthRoute: AuthRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

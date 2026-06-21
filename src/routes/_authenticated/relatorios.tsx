@@ -9,7 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Download, FileSpreadsheet } from "lucide-react";
-import { exportSigoCurso, exportRelatorioFormadores, exportRelatorioCursos } from "@/lib/exports";
+import { exportSigoCurso, exportRelatorioFormadores, exportRelatorioCursos, exportRelatorioFaltas } from "@/lib/exports";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({

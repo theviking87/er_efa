@@ -20,6 +20,7 @@ import {
 } from "@/lib/format";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { PresencasDialog } from "@/components/presencas-dialog";
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
   head: () => ({ meta: [{ title: "Curso — Gestão Pedagógica" }] }),

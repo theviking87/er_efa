@@ -15,11 +15,11 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AuthenticatedUfcdsRouteImport } from './routes/_authenticated/ufcds'
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
-import { Route as AuthenticatedFormandosRouteImport } from './routes/_authenticated/formandos'
-import { Route as AuthenticatedFormadoresRouteImport } from './routes/_authenticated/formadores'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
-import { Route as AuthenticatedCursosRouteImport } from './routes/_authenticated/cursos'
 import { Route as AuthenticatedCronogramaRouteImport } from './routes/_authenticated/cronograma'
+import { Route as AuthenticatedFormandosIndexRouteImport } from './routes/_authenticated/formandos.index'
+import { Route as AuthenticatedFormadoresIndexRouteImport } from './routes/_authenticated/formadores.index'
+import { Route as AuthenticatedCursosIndexRouteImport } from './routes/_authenticated/cursos.index'
 import { Route as AuthenticatedFormandosIdRouteImport } from './routes/_authenticated/formandos.$id'
 import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
 import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
@@ -53,24 +53,9 @@ const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
   path: '/perfil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedFormandosRoute = AuthenticatedFormandosRouteImport.update({
-  id: '/formandos',
-  path: '/formandos',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedFormadoresRoute = AuthenticatedFormadoresRouteImport.update({
-  id: '/formadores',
-  path: '/formadores',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
 const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
-  getParentRoute: () => AuthenticatedRouteRoute,
-} as any)
-const AuthenticatedCursosRoute = AuthenticatedCursosRouteImport.update({
-  id: '/cursos',
-  path: '/cursos',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedCronogramaRoute = AuthenticatedCronogramaRouteImport.update({
@@ -78,53 +63,71 @@ const AuthenticatedCronogramaRoute = AuthenticatedCronogramaRouteImport.update({
   path: '/cronograma',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFormandosIndexRoute =
+  AuthenticatedFormandosIndexRouteImport.update({
+    id: '/formandos/',
+    path: '/formandos/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFormadoresIndexRoute =
+  AuthenticatedFormadoresIndexRouteImport.update({
+    id: '/formadores/',
+    path: '/formadores/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedCursosIndexRoute =
+  AuthenticatedCursosIndexRouteImport.update({
+    id: '/cursos/',
+    path: '/cursos/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFormandosIdRoute =
   AuthenticatedFormandosIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedFormandosRoute,
+    id: '/formandos/$id',
+    path: '/formandos/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedFormadoresIdRoute =
   AuthenticatedFormadoresIdRouteImport.update({
-    id: '/$id',
-    path: '/$id',
-    getParentRoute: () => AuthenticatedFormadoresRoute,
+    id: '/formadores/$id',
+    path: '/formadores/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCursosIdRoute = AuthenticatedCursosIdRouteImport.update({
-  id: '/$id',
-  path: '/$id',
-  getParentRoute: () => AuthenticatedCursosRoute,
+  id: '/cursos/$id',
+  path: '/cursos/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/cronograma': typeof AuthenticatedCronogramaRoute
-  '/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
-  '/formandos': typeof AuthenticatedFormandosRouteWithChildren
   '/perfil': typeof AuthenticatedPerfilRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/formandos/$id': typeof AuthenticatedFormandosIdRoute
+  '/cursos/': typeof AuthenticatedCursosIndexRoute
+  '/formadores/': typeof AuthenticatedFormadoresIndexRoute
+  '/formandos/': typeof AuthenticatedFormandosIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/auth': typeof AuthRoute
   '/cronograma': typeof AuthenticatedCronogramaRoute
-  '/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/dashboard': typeof AuthenticatedDashboardRoute
-  '/formadores': typeof AuthenticatedFormadoresRouteWithChildren
-  '/formandos': typeof AuthenticatedFormandosRouteWithChildren
   '/perfil': typeof AuthenticatedPerfilRoute
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/formandos/$id': typeof AuthenticatedFormandosIdRoute
+  '/cursos': typeof AuthenticatedCursosIndexRoute
+  '/formadores': typeof AuthenticatedFormadoresIndexRoute
+  '/formandos': typeof AuthenticatedFormandosIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -132,16 +135,16 @@ export interface FileRoutesById {
   '/_authenticated': typeof AuthenticatedRouteRouteWithChildren
   '/auth': typeof AuthRoute
   '/_authenticated/cronograma': typeof AuthenticatedCronogramaRoute
-  '/_authenticated/cursos': typeof AuthenticatedCursosRouteWithChildren
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
-  '/_authenticated/formadores': typeof AuthenticatedFormadoresRouteWithChildren
-  '/_authenticated/formandos': typeof AuthenticatedFormandosRouteWithChildren
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/ufcds': typeof AuthenticatedUfcdsRoute
   '/_authenticated/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/_authenticated/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/_authenticated/formandos/$id': typeof AuthenticatedFormandosIdRoute
+  '/_authenticated/cursos/': typeof AuthenticatedCursosIndexRoute
+  '/_authenticated/formadores/': typeof AuthenticatedFormadoresIndexRoute
+  '/_authenticated/formandos/': typeof AuthenticatedFormandosIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -149,47 +152,47 @@ export interface FileRouteTypes {
     | '/'
     | '/auth'
     | '/cronograma'
-    | '/cursos'
     | '/dashboard'
-    | '/formadores'
-    | '/formandos'
     | '/perfil'
     | '/relatorios'
     | '/ufcds'
     | '/cursos/$id'
     | '/formadores/$id'
     | '/formandos/$id'
+    | '/cursos/'
+    | '/formadores/'
+    | '/formandos/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/auth'
     | '/cronograma'
-    | '/cursos'
     | '/dashboard'
-    | '/formadores'
-    | '/formandos'
     | '/perfil'
     | '/relatorios'
     | '/ufcds'
     | '/cursos/$id'
     | '/formadores/$id'
     | '/formandos/$id'
+    | '/cursos'
+    | '/formadores'
+    | '/formandos'
   id:
     | '__root__'
     | '/'
     | '/_authenticated'
     | '/auth'
     | '/_authenticated/cronograma'
-    | '/_authenticated/cursos'
     | '/_authenticated/dashboard'
-    | '/_authenticated/formadores'
-    | '/_authenticated/formandos'
     | '/_authenticated/perfil'
     | '/_authenticated/relatorios'
     | '/_authenticated/ufcds'
     | '/_authenticated/cursos/$id'
     | '/_authenticated/formadores/$id'
     | '/_authenticated/formandos/$id'
+    | '/_authenticated/cursos/'
+    | '/_authenticated/formadores/'
+    | '/_authenticated/formandos/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -242,32 +245,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedPerfilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/formandos': {
-      id: '/_authenticated/formandos'
-      path: '/formandos'
-      fullPath: '/formandos'
-      preLoaderRoute: typeof AuthenticatedFormandosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/formadores': {
-      id: '/_authenticated/formadores'
-      path: '/formadores'
-      fullPath: '/formadores'
-      preLoaderRoute: typeof AuthenticatedFormadoresRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/dashboard': {
       id: '/_authenticated/dashboard'
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/cursos': {
-      id: '/_authenticated/cursos'
-      path: '/cursos'
-      fullPath: '/cursos'
-      preLoaderRoute: typeof AuthenticatedCursosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cronograma': {
@@ -277,89 +259,77 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCronogramaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/formandos/': {
+      id: '/_authenticated/formandos/'
+      path: '/formandos'
+      fullPath: '/formandos/'
+      preLoaderRoute: typeof AuthenticatedFormandosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/formadores/': {
+      id: '/_authenticated/formadores/'
+      path: '/formadores'
+      fullPath: '/formadores/'
+      preLoaderRoute: typeof AuthenticatedFormadoresIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cursos/': {
+      id: '/_authenticated/cursos/'
+      path: '/cursos'
+      fullPath: '/cursos/'
+      preLoaderRoute: typeof AuthenticatedCursosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/formandos/$id': {
       id: '/_authenticated/formandos/$id'
-      path: '/$id'
+      path: '/formandos/$id'
       fullPath: '/formandos/$id'
       preLoaderRoute: typeof AuthenticatedFormandosIdRouteImport
-      parentRoute: typeof AuthenticatedFormandosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/formadores/$id': {
       id: '/_authenticated/formadores/$id'
-      path: '/$id'
+      path: '/formadores/$id'
       fullPath: '/formadores/$id'
       preLoaderRoute: typeof AuthenticatedFormadoresIdRouteImport
-      parentRoute: typeof AuthenticatedFormadoresRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cursos/$id': {
       id: '/_authenticated/cursos/$id'
-      path: '/$id'
+      path: '/cursos/$id'
       fullPath: '/cursos/$id'
       preLoaderRoute: typeof AuthenticatedCursosIdRouteImport
-      parentRoute: typeof AuthenticatedCursosRoute
+      parentRoute: typeof AuthenticatedRouteRoute
     }
   }
 }
 
-interface AuthenticatedCursosRouteChildren {
-  AuthenticatedCursosIdRoute: typeof AuthenticatedCursosIdRoute
-}
-
-const AuthenticatedCursosRouteChildren: AuthenticatedCursosRouteChildren = {
-  AuthenticatedCursosIdRoute: AuthenticatedCursosIdRoute,
-}
-
-const AuthenticatedCursosRouteWithChildren =
-  AuthenticatedCursosRoute._addFileChildren(AuthenticatedCursosRouteChildren)
-
-interface AuthenticatedFormadoresRouteChildren {
-  AuthenticatedFormadoresIdRoute: typeof AuthenticatedFormadoresIdRoute
-}
-
-const AuthenticatedFormadoresRouteChildren: AuthenticatedFormadoresRouteChildren =
-  {
-    AuthenticatedFormadoresIdRoute: AuthenticatedFormadoresIdRoute,
-  }
-
-const AuthenticatedFormadoresRouteWithChildren =
-  AuthenticatedFormadoresRoute._addFileChildren(
-    AuthenticatedFormadoresRouteChildren,
-  )
-
-interface AuthenticatedFormandosRouteChildren {
-  AuthenticatedFormandosIdRoute: typeof AuthenticatedFormandosIdRoute
-}
-
-const AuthenticatedFormandosRouteChildren: AuthenticatedFormandosRouteChildren =
-  {
-    AuthenticatedFormandosIdRoute: AuthenticatedFormandosIdRoute,
-  }
-
-const AuthenticatedFormandosRouteWithChildren =
-  AuthenticatedFormandosRoute._addFileChildren(
-    AuthenticatedFormandosRouteChildren,
-  )
-
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCronogramaRoute: typeof AuthenticatedCronogramaRoute
-  AuthenticatedCursosRoute: typeof AuthenticatedCursosRouteWithChildren
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
-  AuthenticatedFormadoresRoute: typeof AuthenticatedFormadoresRouteWithChildren
-  AuthenticatedFormandosRoute: typeof AuthenticatedFormandosRouteWithChildren
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedUfcdsRoute: typeof AuthenticatedUfcdsRoute
+  AuthenticatedCursosIdRoute: typeof AuthenticatedCursosIdRoute
+  AuthenticatedFormadoresIdRoute: typeof AuthenticatedFormadoresIdRoute
+  AuthenticatedFormandosIdRoute: typeof AuthenticatedFormandosIdRoute
+  AuthenticatedCursosIndexRoute: typeof AuthenticatedCursosIndexRoute
+  AuthenticatedFormadoresIndexRoute: typeof AuthenticatedFormadoresIndexRoute
+  AuthenticatedFormandosIndexRoute: typeof AuthenticatedFormandosIndexRoute
 }
 
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCronogramaRoute: AuthenticatedCronogramaRoute,
-  AuthenticatedCursosRoute: AuthenticatedCursosRouteWithChildren,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
-  AuthenticatedFormadoresRoute: AuthenticatedFormadoresRouteWithChildren,
-  AuthenticatedFormandosRoute: AuthenticatedFormandosRouteWithChildren,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedUfcdsRoute: AuthenticatedUfcdsRoute,
+  AuthenticatedCursosIdRoute: AuthenticatedCursosIdRoute,
+  AuthenticatedFormadoresIdRoute: AuthenticatedFormadoresIdRoute,
+  AuthenticatedFormandosIdRoute: AuthenticatedFormandosIdRoute,
+  AuthenticatedCursosIndexRoute: AuthenticatedCursosIndexRoute,
+  AuthenticatedFormadoresIndexRoute: AuthenticatedFormadoresIndexRoute,
+  AuthenticatedFormandosIndexRoute: AuthenticatedFormandosIndexRoute,
 }
 
 const AuthenticatedRouteRouteWithChildren =

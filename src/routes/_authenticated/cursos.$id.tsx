@@ -138,7 +138,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
     queryFn: async () => {
       const [cu, sess] = await Promise.all([
         supabase.from("curso_ufcds")
-          .select("id, horas_totais, ordem, concluida, ufcd:ufcds(id, codigo, designacao, horas_referencia), formadores:curso_ufcd_formadores(formador:formadores(id, nome, cor))")
+          .select("id, horas_totais, ordem, concluida, ufcd:ufcds(id, codigo, designacao, horas_referencia), formadores:curso_ufcd_formadores(formador:formadores(id, nome, abreviatura, cor))")
           .eq("curso_id", cursoId).order("ordem"),
         supabase.from("sessoes").select("curso_ufcd_id, horas").eq("curso_id", cursoId),
       ]);
@@ -286,7 +286,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryKey: ["sessoes", cursoId, inicioMes, fimMes],
     queryFn: async () => {
       const { data, error } = await supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura,cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .eq("curso_id", cursoId).gte("data", inicioMes).lte("data", fimMes)
         .order("data").order("hora_inicio");
       if (error) throw error;
@@ -300,7 +300,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryFn: async () => {
       const [cu, allSess] = await Promise.all([
         supabase.from("curso_ufcds")
-          .select("id, horas_totais, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,cor))")
+          .select("id, horas_totais, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,abreviatura,cor))")
           .eq("curso_id", cursoId),
         supabase.from("sessoes").select("curso_ufcd_id, formador_id, horas").eq("curso_id", cursoId),
       ]);
@@ -573,7 +573,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     queryFn: async () => {
       const [cu, sess] = await Promise.all([
         supabase.from("curso_ufcds")
-          .select("id, concluida, horas_totais, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,cor))")
+          .select("id, concluida, horas_totais, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,abreviatura,cor))")
           .eq("curso_id", cursoId).eq("concluida", false),
         supabase.from("sessoes").select("curso_ufcd_id, horas").eq("curso_id", cursoId),
       ]);
@@ -594,7 +594,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     enabled: open && !!data,
     queryFn: async () => {
       const { data: rows } = await supabase.from("formador_disponibilidades" as any)
-        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, formador:formadores(id,nome,cor)")
+        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, formador:formadores(id,nome,abreviatura,cor)")
         .eq("data", data).order("hora_inicio");
       return (rows ?? []) as any[];
     },

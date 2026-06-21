@@ -64,7 +64,7 @@ function CronogramaGeral() {
     queryKey: ["sessoes-geral", inicioMes, fimMes, formadorFiltro],
     queryFn: async () => {
       let q = supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,cor), curso:cursos(id,nome,codigo), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura,cor), curso:cursos(id,nome,codigo), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .gte("data", inicioMes).lte("data", fimMes)
         .order("data").order("hora_inicio");
       if (formadorFiltro) q = q.eq("formador_id", formadorFiltro);
@@ -78,7 +78,7 @@ function CronogramaGeral() {
     queryKey: ["disp-geral", inicioMes, fimMes, formadorFiltro],
     queryFn: async () => {
       let q = supabase.from("formador_disponibilidades" as any)
-        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, formador:formadores(id,nome,cor)")
+        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, formador:formadores(id,nome,abreviatura,cor)")
         .gte("data", inicioMes).lte("data", fimMes)
         .order("data").order("hora_inicio");
       if (formadorFiltro) q = q.eq("formador_id", formadorFiltro);

@@ -48,7 +48,7 @@ function Dashboard() {
       const lim = em7.toISOString().slice(0, 10);
       const { data } = await supabase
         .from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(id,nome,cor), curso:cursos(id,nome,codigo), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(id,nome,abreviatura,cor), curso:cursos(id,nome,codigo), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .gte("data", hoje).lte("data", lim)
         .order("data", { ascending: true }).order("hora_inicio", { ascending: true })
         .limit(10);

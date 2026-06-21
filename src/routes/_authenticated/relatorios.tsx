@@ -126,6 +126,25 @@ function RelatoriosPage() {
             </Button>
           </CardContent>
         </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <FileSpreadsheet className="size-4" /> Faltas dos formandos
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Faltas de todos os formandos no intervalo selecionado acima. Inclui folha de <strong>Resumo</strong> (por formando/curso) e <strong>Detalhe</strong> (cada falta com sessão, UFCD e observações).
+            </p>
+            <Button
+              disabled={!inicio || !fim || busy === "faltas"}
+              onClick={() => run("faltas", () => exportRelatorioFaltas(inicio, fim))}
+            >
+              <Download className="size-4" /> {busy === "faltas" ? "A exportar…" : "Exportar faltas (.xlsx)"}
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     </PageContainer>
   );

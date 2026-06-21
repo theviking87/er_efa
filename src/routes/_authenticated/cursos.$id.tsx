@@ -549,7 +549,7 @@ function SessaoChip({ sessao, onDelete }: { sessao: any; onDelete: () => void })
   return (
     <div className="text-[11px] leading-tight rounded px-1.5 py-1 group relative" style={{ background: `${sessao.formador?.cor}15`, color: sessao.formador?.cor, borderLeft: `2px solid ${sessao.formador?.cor}` }}>
       <div className="font-medium">{sessao.hora_inicio?.slice(0,5)}–{sessao.hora_fim?.slice(0,5)}</div>
-      <div className="truncate">{sessao.formador?.nome}</div>
+      <div className="truncate">{formadorLabel(sessao.formador)}</div>
       <div className="truncate opacity-80">{sessao.curso_ufcd?.ufcd?.codigo}</div>
       <button onClick={onDelete} className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition text-[10px] hover:underline print:hidden" title="Apagar">×</button>
     </div>

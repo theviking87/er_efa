@@ -14,6 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      curso_formandos: {
+        Row: {
+          created_at: string
+          curso_id: string
+          data_inscricao: string
+          estado: Database["public"]["Enums"]["inscricao_estado"]
+          formando_id: string
+          id: string
+          observacoes: string | null
+        }
+        Insert: {
+          created_at?: string
+          curso_id: string
+          data_inscricao?: string
+          estado?: Database["public"]["Enums"]["inscricao_estado"]
+          formando_id: string
+          id?: string
+          observacoes?: string | null
+        }
+        Update: {
+          created_at?: string
+          curso_id?: string
+          data_inscricao?: string
+          estado?: Database["public"]["Enums"]["inscricao_estado"]
+          formando_id?: string
+          id?: string
+          observacoes?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curso_formandos_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_formandos_formando_id_fkey"
+            columns: ["formando_id"]
+            isOneToOne: false
+            referencedRelation: "formandos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curso_ufcd_formadores: {
         Row: {
           created_at: string
@@ -273,6 +318,69 @@ export type Database = {
         }
         Relationships: []
       }
+      formandos: {
+        Row: {
+          cc: string | null
+          codigo_postal: string | null
+          created_at: string
+          data_nascimento: string | null
+          email: string | null
+          estado: Database["public"]["Enums"]["formando_estado"]
+          habilitacoes: string | null
+          id: string
+          localidade: string | null
+          morada: string | null
+          nif: string | null
+          niss: string | null
+          nome: string
+          observacoes: string | null
+          situacao_emprego: string | null
+          telemovel: string | null
+          updated_at: string
+          validade_cc: string | null
+        }
+        Insert: {
+          cc?: string | null
+          codigo_postal?: string | null
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          estado?: Database["public"]["Enums"]["formando_estado"]
+          habilitacoes?: string | null
+          id?: string
+          localidade?: string | null
+          morada?: string | null
+          nif?: string | null
+          niss?: string | null
+          nome: string
+          observacoes?: string | null
+          situacao_emprego?: string | null
+          telemovel?: string | null
+          updated_at?: string
+          validade_cc?: string | null
+        }
+        Update: {
+          cc?: string | null
+          codigo_postal?: string | null
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          estado?: Database["public"]["Enums"]["formando_estado"]
+          habilitacoes?: string | null
+          id?: string
+          localidade?: string | null
+          morada?: string | null
+          nif?: string | null
+          niss?: string | null
+          nome?: string
+          observacoes?: string | null
+          situacao_emprego?: string | null
+          telemovel?: string | null
+          updated_at?: string
+          validade_cc?: string | null
+        }
+        Relationships: []
+      }
       sessoes: {
         Row: {
           created_at: string
@@ -383,6 +491,8 @@ export type Database = {
         | "baixa_medica"
         | "suspenso"
         | "arquivado"
+      formando_estado: "ativo" | "inativo" | "desistente" | "concluido"
+      inscricao_estado: "inscrito" | "em_formacao" | "concluido" | "desistente"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -520,6 +630,8 @@ export const Constants = {
         "suspenso",
         "arquivado",
       ],
+      formando_estado: ["ativo", "inativo", "desistente", "concluido"],
+      inscricao_estado: ["inscrito", "em_formacao", "concluido", "desistente"],
     },
   },
 } as const

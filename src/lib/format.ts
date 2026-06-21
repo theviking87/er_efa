@@ -38,6 +38,20 @@ export const TIPOLOGIA_LABEL: Record<string, string> = {
   OUTRO: "Outro",
 };
 
+export const ESTADO_FORMANDO_LABEL: Record<string, string> = {
+  ativo: "Ativo",
+  inativo: "Inativo",
+  desistente: "Desistente",
+  concluido: "Concluído",
+};
+
+export const INSCRICAO_ESTADO_LABEL: Record<string, string> = {
+  inscrito: "Inscrito",
+  em_formacao: "Em formação",
+  concluido: "Concluído",
+  desistente: "Desistente",
+};
+
 export function diffHoras(inicio: string, fim: string): number {
   const [hi, mi] = inicio.split(":").map(Number);
   const [hf, mf] = fim.split(":").map(Number);

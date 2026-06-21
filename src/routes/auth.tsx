@@ -45,7 +45,7 @@ function AuthPage() {
             <div className="size-9 rounded-md bg-foreground text-background grid place-items-center">
               <GraduationCap className="size-4" />
             </div>
-            <span className="font-semibold tracking-tight">Elisbate Ribeiro</span>
+            <span className="font-semibold tracking-tight">Elisabete Ribeiro</span>
           </div>
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Aceder ao sistema</h2>

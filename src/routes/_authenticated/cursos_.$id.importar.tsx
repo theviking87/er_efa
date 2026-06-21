@@ -12,7 +12,7 @@ import { extrairCronogramaPdf, type SessaoExtraida } from "@/lib/import-cronogra
 import { supabase } from "@/integrations/supabase/client";
 import { diffHoras } from "@/lib/format";
 
-export const Route = createFileRoute("/_authenticated/cursos/$id/importar")({
+export const Route = createFileRoute("/_authenticated/cursos_/$id/importar")({
   head: () => ({ meta: [{ title: "Importar cronograma" }] }),
   component: ImportarCronograma,
 });

@@ -12,6 +12,7 @@ import { toast } from "sonner";
 type Formador = {
   id?: string;
   nome: string;
+  abreviatura?: string | null;
   nif?: string | null;
   cc?: string | null;
   validade_cc?: string | null;

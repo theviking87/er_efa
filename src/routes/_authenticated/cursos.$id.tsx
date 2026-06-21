@@ -330,7 +330,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const m = new Map<string, { id: string; nome: string; cor: string; horas: number; ufcds: Set<string> }>();
     (sessoes.data ?? []).forEach((s: any) => {
       if (!s.formador) return;
-      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: s.formador.nome, cor: s.formador.cor, horas: 0, ufcds: new Set<string>() };
+      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: formadorLabel(s.formador), cor: s.formador.cor, horas: 0, ufcds: new Set<string>() };
       cur.horas += Number(s.horas);
       if (s.curso_ufcd?.ufcd?.codigo) cur.ufcds.add(s.curso_ufcd.ufcd.codigo);
       m.set(s.formador.id, cur);

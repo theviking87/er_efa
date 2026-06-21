@@ -100,13 +100,14 @@ function RelatoriosPage() {
               <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={inicio} onChange={e => setInicio(e.target.value)} /></div>
               <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={fim} onChange={e => setFim(e.target.value)} /></div>
             </div>
-            <Button
-              className="w-full"
-              disabled={!inicio || !fim || busy === "form"}
-              onClick={() => run("form", () => exportRelatorioFormadores(inicio, fim))}
-            >
-              <Download className="size-4" /> {busy === "form" ? "A exportar…" : "Exportar relatório (.xlsx)"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button disabled={!inicio || !fim || busy === "form"} onClick={() => run("form", () => exportRelatorioFormadores(inicio, fim))}>
+                <FileSpreadsheet className="size-4" /> {busy === "form" ? "A exportar…" : "Excel"}
+              </Button>
+              <Button variant="outline" disabled={!inicio || !fim || busy === "form-pdf"} onClick={() => run("form-pdf", () => exportRelatorioFormadoresPdf(inicio, fim))}>
+                <FileText className="size-4" /> {busy === "form-pdf" ? "A exportar…" : "PDF"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 

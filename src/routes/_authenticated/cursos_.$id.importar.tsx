@@ -222,8 +222,6 @@ function ImportarCronograma() {
   const removeRow = (i: number) => setRows((rs) => rs.filter((_, idx) => idx !== i));
 
 
-  const dispWarnSet = new Set(warnings.dispWarn.map((w) => w.idx));
-
   return (
     <PageContainer>
       <div className="mb-2">
@@ -254,7 +252,7 @@ function ImportarCronograma() {
         </CardContent>
       </Card>
 
-      {rows.length > 0 && (warnings.ufcdExc.length > 0 || warnings.dispWarn.length > 0) && (
+      {rows.length > 0 && warnings.ufcdExc.length > 0 && (
         <Alert variant="destructive" className="mt-4">
           <AlertTriangle className="size-4" />
           <AlertTitle>Avisos antes de gravar</AlertTitle>
@@ -265,9 +263,6 @@ function ImportarCronograma() {
                 {w.ufcd.horas_existentes > 0 && `(${w.ufcd.horas_existentes}h já registadas)`}
               </div>
             ))}
-            {warnings.dispWarn.length > 0 && (
-              <div>{warnings.dispWarn.length} sessões fora da disponibilidade do formador (linhas destacadas).</div>
-            )}
           </AlertDescription>
         </Alert>
       )}
@@ -291,9 +286,8 @@ function ImportarCronograma() {
                 <tbody>
                   {rows.map((r, i) => {
                     const horas = r.hora_inicio && r.hora_fim ? diffHoras(r.hora_inicio, r.hora_fim) : 0;
-                    const warn = dispWarnSet.has(i);
                     return (
-                      <tr key={i} className={`border-t ${warn ? "bg-destructive/5" : ""}`}>
+                      <tr key={i} className="border-t">
                         <td className="px-3 py-1.5"><Input type="date" value={r.data} onChange={(e) => updateRow(i, { data: e.target.value })} className="h-8 w-[140px]" /></td>
                         <td className="px-3 py-1.5"><Input type="time" value={r.hora_inicio} onChange={(e) => updateRow(i, { hora_inicio: e.target.value })} className="h-8 w-[100px]" /></td>
                         <td className="px-3 py-1.5"><Input type="time" value={r.hora_fim} onChange={(e) => updateRow(i, { hora_fim: e.target.value })} className="h-8 w-[100px]" /></td>
@@ -309,7 +303,7 @@ function ImportarCronograma() {
                         </td>
                         <td className="px-3 py-1.5">
                           <Select value={r.formador_id ?? ""} onValueChange={(v) => handleFormChange(i, v)}>
-                            <SelectTrigger className={`h-8 min-w-[200px] ${warn ? "border-destructive" : ""}`}>
+                            <SelectTrigger className="h-8 min-w-[200px]">
                               <SelectValue placeholder={r.formador_nome ?? "—"} />
                             </SelectTrigger>
                             <SelectContent>

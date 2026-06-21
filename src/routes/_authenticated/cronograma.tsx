@@ -117,7 +117,7 @@ function CronogramaGeral() {
           kind: "disp",
           id: d.id,
           formador_id: d.formador_id,
-          formador_nome: d.formador?.nome ?? "—",
+          formador_nome: (d.formador?.abreviatura?.trim() || d.formador?.nome) ?? "—",
           formador_cor: d.formador?.cor ?? "#888",
           data: d.data,
           hora_inicio: d.hora_inicio,

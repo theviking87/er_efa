@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays,
+  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -13,6 +13,7 @@ const NAV = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/cronograma", label: "Cronograma", icon: CalendarDays },
   { to: "/formadores", label: "Formadores", icon: Users },
+  { to: "/formandos", label: "Formandos", icon: UserSquare2 },
   { to: "/cursos", label: "Cursos", icon: BookOpen },
   { to: "/ufcds", label: "UFCD", icon: ListChecks },
 ] as const;

@@ -142,12 +142,14 @@ function RelatoriosPage() {
             <p className="text-sm text-muted-foreground">
               Faltas de todos os formandos no intervalo selecionado acima. Inclui folha de <strong>Resumo</strong> (por formando/curso) e <strong>Detalhe</strong> (cada falta com sessão, UFCD e observações).
             </p>
-            <Button
-              disabled={!inicio || !fim || busy === "faltas"}
-              onClick={() => run("faltas", () => exportRelatorioFaltas(inicio, fim))}
-            >
-              <Download className="size-4" /> {busy === "faltas" ? "A exportar…" : "Exportar faltas (.xlsx)"}
-            </Button>
+            <div className="flex gap-2">
+              <Button disabled={!inicio || !fim || busy === "faltas"} onClick={() => run("faltas", () => exportRelatorioFaltas(inicio, fim))}>
+                <FileSpreadsheet className="size-4" /> {busy === "faltas" ? "A exportar…" : "Excel"}
+              </Button>
+              <Button variant="outline" disabled={!inicio || !fim || busy === "faltas-pdf"} onClick={() => run("faltas-pdf", () => exportRelatorioFaltasPdf(inicio, fim))}>
+                <FileText className="size-4" /> {busy === "faltas-pdf" ? "A exportar…" : "PDF"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

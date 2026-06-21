@@ -180,6 +180,71 @@ export async function exportRelatorioCursos() {
   downloadWorkbook(wb, `Relatorio_Cursos_${new Date().toISOString().slice(0,10)}.xlsx`);
 }
 
+/** Relatório de faltas / assiduidade de um curso. */
+export async function exportFaltasCurso(cursoId: string) {
+  const [curso, inscritos, sessoes, faltas] = await Promise.all([
+    supabase.from("cursos").select("codigo, nome").eq("id", cursoId).maybeSingle(),
+    supabase.from("curso_formandos")
+      .select("id, estado, formando:formandos(id, nome, nif, email)")
+      .eq("curso_id", cursoId),
+    supabase.from("sessoes")
+      .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao))")
+      .eq("curso_id", cursoId).order("data").order("hora_inicio"),
+    supabase.from("formando_faltas")
+      .select("curso_formando_id, sessao_id, data, horas, tipo, observacoes, curso_formando:curso_formandos!inner(curso_id)")
+      .eq("curso_formando.curso_id", cursoId),
+  ]);
+  if (!curso.data) throw new Error("Curso não encontrado");
+  const c = curso.data as any;
+
+  const totalHoras = (sessoes.data ?? []).reduce((s, x: any) => s + Number(x.horas ?? 0), 0);
+
+  const totByCf = new Map<string, { just: number; injust: number }>();
+  (faltas.data ?? []).forEach((f: any) => {
+    const cur = totByCf.get(f.curso_formando_id) ?? { just: 0, injust: 0 };
+    if (f.tipo === "justificada") cur.just += Number(f.horas);
+    else cur.injust += Number(f.horas);
+    totByCf.set(f.curso_formando_id, cur);
+  });
+  const resumoRows = (inscritos.data ?? []).map((i: any) => {
+    const t = totByCf.get(i.id) ?? { just: 0, injust: 0 };
+    const total = t.just + t.injust;
+    const ass = totalHoras > 0 ? Math.round(((totalHoras - total) / totalHoras) * 1000) / 10 : 100;
+    return {
+      Formando: i.formando?.nome ?? "",
+      NIF: i.formando?.nif ?? "",
+      Email: i.formando?.email ?? "",
+      Estado: i.estado,
+      "Horas curso": totalHoras,
+      "Faltas just.": t.just,
+      "Faltas injust.": t.injust,
+      "Total faltas": total,
+      "Assiduidade %": ass,
+    };
+  });
+
+  const cfById = new Map((inscritos.data ?? []).map((i: any) => [i.id, i.formando?.nome ?? ""]));
+  const sById = new Map((sessoes.data ?? []).map((s: any) => [s.id, s]));
+  const detalheRows = (faltas.data ?? []).map((f: any) => {
+    const s = sById.get(f.sessao_id) as any;
+    return {
+      Data: f.data,
+      Formando: cfById.get(f.curso_formando_id) ?? "",
+      "UFCD": s?.curso_ufcd?.ufcd?.codigo ?? "",
+      "Hora Início": s?.hora_inicio?.slice(0, 5) ?? "",
+      "Hora Fim": s?.hora_fim?.slice(0, 5) ?? "",
+      Horas: Number(f.horas),
+      Tipo: f.tipo,
+      Observações: f.observacoes ?? "",
+    };
+  });
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(resumoRows), "Assiduidade");
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(detalheRows), "Faltas (detalhe)");
+  downloadWorkbook(wb, `Faltas_${sanitize(c.codigo)}_${sanitize(c.nome).slice(0, 40)}.xlsx`);
+}
+
 export function monthLabel(ano: number, mes: number) {
   return `${MONTH_NAMES[mes]} ${ano}`;
 }

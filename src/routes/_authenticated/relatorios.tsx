@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Download, FileSpreadsheet } from "lucide-react";
+import { FileSpreadsheet, FileText } from "lucide-react";
 import { exportSigoCurso, exportRelatorioFormadores, exportRelatorioCursos, exportRelatorioFaltas } from "@/lib/exports";
+import { exportSigoCursoPdf, exportRelatorioFormadoresPdf, exportRelatorioCursosPdf, exportRelatorioFaltasPdf } from "@/lib/pdf-exports";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
@@ -74,13 +75,14 @@ function RelatoriosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button
-              className="w-full"
-              disabled={!cursoId || busy === "sigo"}
-              onClick={() => run("sigo", () => exportSigoCurso(cursoId))}
-            >
-              <Download className="size-4" /> {busy === "sigo" ? "A exportar…" : "Exportar SIGO (.xlsx)"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button disabled={!cursoId || busy === "sigo"} onClick={() => run("sigo", () => exportSigoCurso(cursoId))}>
+                <FileSpreadsheet className="size-4" /> {busy === "sigo" ? "A exportar…" : "Excel"}
+              </Button>
+              <Button variant="outline" disabled={!cursoId || busy === "sigo-pdf"} onClick={() => run("sigo-pdf", () => exportSigoCursoPdf(cursoId))}>
+                <FileText className="size-4" /> {busy === "sigo-pdf" ? "A exportar…" : "PDF"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -98,13 +100,14 @@ function RelatoriosPage() {
               <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={inicio} onChange={e => setInicio(e.target.value)} /></div>
               <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={fim} onChange={e => setFim(e.target.value)} /></div>
             </div>
-            <Button
-              className="w-full"
-              disabled={!inicio || !fim || busy === "form"}
-              onClick={() => run("form", () => exportRelatorioFormadores(inicio, fim))}
-            >
-              <Download className="size-4" /> {busy === "form" ? "A exportar…" : "Exportar relatório (.xlsx)"}
-            </Button>
+            <div className="grid grid-cols-2 gap-2">
+              <Button disabled={!inicio || !fim || busy === "form"} onClick={() => run("form", () => exportRelatorioFormadores(inicio, fim))}>
+                <FileSpreadsheet className="size-4" /> {busy === "form" ? "A exportar…" : "Excel"}
+              </Button>
+              <Button variant="outline" disabled={!inicio || !fim || busy === "form-pdf"} onClick={() => run("form-pdf", () => exportRelatorioFormadoresPdf(inicio, fim))}>
+                <FileText className="size-4" /> {busy === "form-pdf" ? "A exportar…" : "PDF"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -118,12 +121,14 @@ function RelatoriosPage() {
             <p className="text-sm text-muted-foreground">
               Tabela com todos os cursos: UFCD atribuídas/concluídas, horas previstas, realizadas, em falta e % de execução.
             </p>
-            <Button
-              disabled={busy === "cursos"}
-              onClick={() => run("cursos", () => exportRelatorioCursos())}
-            >
-              <Download className="size-4" /> {busy === "cursos" ? "A exportar…" : "Exportar execução (.xlsx)"}
-            </Button>
+            <div className="flex gap-2">
+              <Button disabled={busy === "cursos"} onClick={() => run("cursos", () => exportRelatorioCursos())}>
+                <FileSpreadsheet className="size-4" /> {busy === "cursos" ? "A exportar…" : "Excel"}
+              </Button>
+              <Button variant="outline" disabled={busy === "cursos-pdf"} onClick={() => run("cursos-pdf", () => exportRelatorioCursosPdf())}>
+                <FileText className="size-4" /> {busy === "cursos-pdf" ? "A exportar…" : "PDF"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
@@ -137,12 +142,14 @@ function RelatoriosPage() {
             <p className="text-sm text-muted-foreground">
               Faltas de todos os formandos no intervalo selecionado acima. Inclui folha de <strong>Resumo</strong> (por formando/curso) e <strong>Detalhe</strong> (cada falta com sessão, UFCD e observações).
             </p>
-            <Button
-              disabled={!inicio || !fim || busy === "faltas"}
-              onClick={() => run("faltas", () => exportRelatorioFaltas(inicio, fim))}
-            >
-              <Download className="size-4" /> {busy === "faltas" ? "A exportar…" : "Exportar faltas (.xlsx)"}
-            </Button>
+            <div className="flex gap-2">
+              <Button disabled={!inicio || !fim || busy === "faltas"} onClick={() => run("faltas", () => exportRelatorioFaltas(inicio, fim))}>
+                <FileSpreadsheet className="size-4" /> {busy === "faltas" ? "A exportar…" : "Excel"}
+              </Button>
+              <Button variant="outline" disabled={!inicio || !fim || busy === "faltas-pdf"} onClick={() => run("faltas-pdf", () => exportRelatorioFaltasPdf(inicio, fim))}>
+                <FileText className="size-4" /> {busy === "faltas-pdf" ? "A exportar…" : "PDF"}
+              </Button>
+            </div>
           </CardContent>
         </Card>
       </div>

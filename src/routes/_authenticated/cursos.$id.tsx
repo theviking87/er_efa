@@ -278,6 +278,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const [mes, setMes] = useState(() => { const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() }; });
   const [dialogOpen, setDialogOpen] = useState(false);
   const [dialogData, setDialogData] = useState<string | null>(null);
+  const [presencasSessao, setPresencasSessao] = useState<any | null>(null);
 
   const inicioMes = new Date(mes.ano, mes.mes, 1).toISOString().slice(0, 10);
   const fimMes = new Date(mes.ano, mes.mes + 1, 0).toISOString().slice(0, 10);

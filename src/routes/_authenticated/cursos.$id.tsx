@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, Upload } from "lucide-react";
 import { exportSigoCurso, exportFaltasCurso } from "@/lib/exports";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -66,6 +66,9 @@ function CursoDetail() {
         description={`${c.codigo} · ${TIPOLOGIA_LABEL[c.tipologia]} · ${ESTADO_CURSO_LABEL[c.estado]}`}
         actions={
           <>
+            <Button variant="outline" asChild>
+              <Link to="/cursos/$id/importar" params={{ id }}><Upload className="size-4" /> Importar cronograma</Link>
+            </Button>
             <Button variant="outline" onClick={() => exportSigoCurso(id).then(() => toast.success("Exportado")).catch(e => toast.error(e.message))}>
               <FileSpreadsheet className="size-4" /> SIGO
             </Button>

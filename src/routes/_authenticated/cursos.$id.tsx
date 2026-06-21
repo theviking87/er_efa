@@ -416,7 +416,22 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     return (u?.formadores ?? []).map((f: any) => f.formador);
   }, [cufId, ufcds.data]);
 
-  // Disponibilidades do formador para a data escolhida
+  // Disponibilidades futuras de TODOS os formadores da UFCD (para sugerir slots)
+  const hoje = new Date().toISOString().slice(0, 10);
+  const dispUfcd = useQuery({
+    queryKey: ["disp-ufcd", cufId, formadoresDaUfcd.map((f: any) => f.id).join(",")],
+    enabled: open && !!cufId && formadoresDaUfcd.length > 0,
+    queryFn: async () => {
+      const ids = formadoresDaUfcd.map((f: any) => f.id);
+      const { data: rows } = await supabase.from("formador_disponibilidades" as any)
+        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas")
+        .in("formador_id", ids).gte("data", hoje).eq("tipo", "disponivel")
+        .order("data").order("hora_inicio");
+      return (rows ?? []) as any[];
+    },
+  });
+
+  // Disponibilidades do formador para a data escolhida (validação)
   const disp = useQuery({
     queryKey: ["disp-sessao", formadorId, data],
     enabled: !!formadorId && !!data,
@@ -427,6 +442,13 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
       return (rows ?? []) as any[];
     },
   });
+
+  function aplicarSlot(s: any) {
+    setFormadorId(s.formador_id);
+    setData(s.data);
+    setHi(String(s.hora_inicio).slice(0, 5));
+    setHf(String(s.hora_fim).slice(0, 5));
+  }
 
   async function save() {
     if (!data || !cufId || !formadorId) return toast.error("Preencha todos os campos");

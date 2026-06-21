@@ -37,7 +37,7 @@ function AuthPage() {
             UFCD, cronogramas e exportações num só lugar.
           </p>
         </div>
-        <div className="text-xs text-background/50">© {new Date().getFullYear()} Elisbate Ribeiro — Centro de Formação</div>
+        <div className="text-xs text-background/50">© {new Date().getFullYear()} Elisabete Ribeiro — Centro de Formação</div>
       </div>
       <div className="flex items-center justify-center p-6 lg:p-12">
         <div className="w-full max-w-sm space-y-6">

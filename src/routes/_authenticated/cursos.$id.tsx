@@ -549,12 +549,24 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   // Aplicar defaultDate ao abrir
   if (open && data === "" && defaultDate) setTimeout(() => setData(defaultDate), 0);
 
-  // UFCD do curso + respetivos formadores
+  // UFCD do curso + respetivos formadores + horas totais/realizadas
   const ufcds = useQuery({
     queryKey: ["curso-ufcds-flat", cursoId],
-    queryFn: async () => (await supabase.from("curso_ufcds")
-      .select("id, concluida, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,cor))")
-      .eq("curso_id", cursoId).eq("concluida", false)).data ?? [],
+    queryFn: async () => {
+      const [cu, sess] = await Promise.all([
+        supabase.from("curso_ufcds")
+          .select("id, concluida, horas_totais, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,cor))")
+          .eq("curso_id", cursoId).eq("concluida", false),
+        supabase.from("sessoes").select("curso_ufcd_id, horas").eq("curso_id", cursoId),
+      ]);
+      const realizadas = new Map<string, number>();
+      (sess.data ?? []).forEach((s: any) => realizadas.set(s.curso_ufcd_id, (realizadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas)));
+      return (cu.data ?? []).map((u: any) => ({
+        ...u,
+        horas_realizadas: realizadas.get(u.id) ?? 0,
+        horas_em_falta: Math.max(0, Number(u.horas_totais) - (realizadas.get(u.id) ?? 0)),
+      }));
+    },
     enabled: open,
   });
 
@@ -570,13 +582,17 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     },
   });
 
-  // UFCD em que o formador escolhido está atribuído neste curso
+  // UFCD em que o formador escolhido está atribuído neste curso E ainda tem horas em falta
   const ufcdsDoFormador = useMemo(() => {
     if (!formadorId) return [];
     return (ufcds.data ?? []).filter((u: any) =>
+      u.horas_em_falta > 0 &&
       (u.formadores ?? []).some((ff: any) => ff.formador?.id === formadorId)
     );
   }, [formadorId, ufcds.data]);
+
+  const cufSelecionada = useMemo(() => (ufcds.data ?? []).find((u: any) => u.id === cufId), [ufcds.data, cufId]);
+
 
   // Formadores ligados às UFCD deste curso (para realçar na lista de dispon.)
   const formadoresDoCurso = useMemo(() => {

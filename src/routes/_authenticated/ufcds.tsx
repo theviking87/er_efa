@@ -69,6 +69,24 @@ function UfcdsPage() {
     },
   });
 
+  const usageMap = useQuery({
+    queryKey: ["ufcds-usage-map"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("curso_ufcds")
+        .select("ufcd_id, cursos(id, codigo, nome)");
+      if (error) throw error;
+      const map = new Map<string, { id: string; codigo: string; nome: string }[]>();
+      for (const row of (data ?? []) as any[]) {
+        if (!row.cursos) continue;
+        const arr = map.get(row.ufcd_id) ?? [];
+        if (!arr.find((c) => c.id === row.cursos.id)) arr.push(row.cursos);
+        map.set(row.ufcd_id, arr);
+      }
+      return map;
+    },
+  });
+
   const deleteUsage = useQuery({
     queryKey: ["ufcd-usage", deleteTarget?.id],
     enabled: !!deleteTarget,
@@ -186,6 +204,7 @@ function UfcdsPage() {
       setReplacementId("");
       setDeleteError("");
       qc.invalidateQueries({ queryKey: ["ufcds"] });
+      qc.invalidateQueries({ queryKey: ["ufcds-usage-map"] });
       qc.invalidateQueries({ queryKey: ["curso-ufcds"] });
       qc.invalidateQueries({ queryKey: ["curso-ufcds-flat"] });
       qc.invalidateQueries({ queryKey: ["curso-carga"] });
@@ -254,24 +273,42 @@ function UfcdsPage() {
       <div className="border rounded-md bg-card overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
-            <tr><th className="text-left font-medium px-4 py-2.5">Código</th><th className="text-left font-medium px-4 py-2.5">Designação</th><th className="text-right font-medium px-4 py-2.5">Horas ref.</th><th className="px-4 py-2.5"></th></tr>
+            <tr><th className="text-left font-medium px-4 py-2.5">Código</th><th className="text-left font-medium px-4 py-2.5">Designação</th><th className="text-left font-medium px-4 py-2.5">Cursos atribuídos</th><th className="text-right font-medium px-4 py-2.5">Horas ref.</th><th className="px-4 py-2.5"></th></tr>
           </thead>
           <tbody className="divide-y divide-border">
-            {filtered.map(u => (
+            {filtered.map(u => {
+              const cursos = usageMap.data?.get(u.id) ?? [];
+              return (
               <tr key={u.id} className="hover:bg-muted/30">
                 <td className="px-4 py-2.5 font-mono text-xs">{u.codigo}</td>
                 <td className="px-4 py-2.5">{u.designacao}</td>
+                <td className="px-4 py-2.5">
+                  {cursos.length === 0 ? (
+                    <span className="text-xs text-muted-foreground">—</span>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {cursos.map((c) => (
+                        <span key={c.id} className="inline-flex items-center rounded-md border bg-muted/40 px-1.5 py-0.5 text-xs">
+                          <span className="font-mono mr-1">{c.codigo}</span>
+                          <span className="text-muted-foreground">{c.nome}</span>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </td>
                 <td className="px-4 py-2.5 text-right text-muted-foreground">{u.horas_referencia} h</td>
                 <td className="px-4 py-2.5 text-right">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="size-3.5" /></Button>
                   <Button variant="ghost" size="sm" onClick={() => openDelete(u)}><Trash2 className="size-3.5" /></Button>
                 </td>
               </tr>
-            ))}
-            {filtered.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">Sem UFCD no catálogo.</td></tr>}
+              );
+            })}
+            {filtered.length === 0 && <tr><td colSpan={5} className="px-4 py-10 text-center text-muted-foreground">Sem UFCD no catálogo.</td></tr>}
           </tbody>
         </table>
       </div>
+
 
       <Dialog open={open} onOpenChange={(o) => o ? setOpen(true) : closeDialog()}>
         <DialogContent>

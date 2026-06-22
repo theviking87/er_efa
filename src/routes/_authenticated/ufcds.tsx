@@ -12,6 +12,20 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { toast } from "sonner";
 import { extrairReferencialPdf, importarReferencial } from "@/lib/import-referencial.functions";
 
+type UfcdRow = {
+  id: string;
+  codigo: string;
+  designacao: string;
+  horas_referencia: number;
+};
+
+function compareUfcds(a: UfcdRow, b: UfcdRow) {
+  const aStartsWithLetter = /^[A-Za-zÀ-ÿ]/.test(a.codigo.trim());
+  const bStartsWithLetter = /^[A-Za-zÀ-ÿ]/.test(b.codigo.trim());
+  if (aStartsWithLetter !== bStartsWithLetter) return aStartsWithLetter ? -1 : 1;
+  return a.codigo.localeCompare(b.codigo, "pt-PT", { numeric: true, sensitivity: "base" });
+}
+
 export const Route = createFileRoute("/_authenticated/ufcds")({
   head: () => ({ meta: [{ title: "UFCD — Gestão Pedagógica" }] }),
   component: UfcdsPage,
@@ -30,6 +44,7 @@ function UfcdsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<UfcdRow | null>(null);
   const [form, setForm] = useState({ codigo: "", designacao: "", horas_referencia: 25 });
   const [q, setQ] = useState("");
 
@@ -45,9 +60,9 @@ function UfcdsPage() {
   const list = useQuery({
     queryKey: ["ufcds"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("ufcds").select("*").order("codigo");
+      const { data, error } = await supabase.from("ufcds").select("*");
       if (error) throw error;
-      return data;
+      return (data ?? []).sort(compareUfcds);
     },
   });
 
@@ -78,20 +93,26 @@ function UfcdsPage() {
     setOpen(true);
   }
 
-  async function del(id: string, codigo: string) {
-    const { count } = await supabase
+  const remove = useMutation({
+    mutationFn: async (ufcd: UfcdRow) => {
+      const usage = await supabase
       .from("curso_ufcds")
       .select("id", { count: "exact", head: true })
-      .eq("ufcd_id", id);
-    if ((count ?? 0) > 0) {
-      return toast.error(`UFCD ${codigo} está associada a ${count} curso(s) e não pode ser eliminada.`);
-    }
-    if (!confirm(`Eliminar UFCD ${codigo}? Esta ação é irreversível.`)) return;
-    const { error } = await supabase.from("ufcds").delete().eq("id", id);
-    if (error) return toast.error(error.message);
-    toast.success("UFCD eliminada");
-    qc.invalidateQueries({ queryKey: ["ufcds"] });
-  }
+      .eq("ufcd_id", ufcd.id);
+      if (usage.error) throw usage.error;
+      if ((usage.count ?? 0) > 0) {
+        throw new Error(`UFCD ${ufcd.codigo} está associada a ${usage.count} curso(s) e não pode ser eliminada.`);
+      }
+      const { error } = await supabase.from("ufcds").delete().eq("id", ufcd.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("UFCD eliminada");
+      setDeleteTarget(null);
+      qc.invalidateQueries({ queryKey: ["ufcds"] });
+    },
+    onError: (e: any) => toast.error("Erro ao eliminar", { description: e.message }),
+  });
 
   async function onExtract() {
     if (!impFile) return toast.error("Seleciona um PDF");
@@ -124,7 +145,7 @@ function UfcdsPage() {
     }
   }
 
-  const filtered = (list.data ?? []).filter(u => !q || u.codigo.includes(q) || u.designacao.toLowerCase().includes(q.toLowerCase()));
+  const filtered = (list.data ?? []).filter(u => !q || u.codigo.includes(q) || u.designacao.toLowerCase().includes(q.toLowerCase())).sort(compareUfcds);
   const novosCount = impRows.filter((r) => !r.existe).length;
   const existentesCount = impRows.filter((r) => r.existe).length;
 

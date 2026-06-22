@@ -100,6 +100,7 @@ function FormadorDetail() {
       <Tabs defaultValue="dados">
         <TabsList>
           <TabsTrigger value="dados">Dados</TabsTrigger>
+          <TabsTrigger value="competencias">Competências</TabsTrigger>
           <TabsTrigger value="disponibilidades">Disponibilidades</TabsTrigger>
           <TabsTrigger value="inatividades">Inatividades</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
@@ -110,6 +111,7 @@ function FormadorDetail() {
             <Field label="NIF" value={f.nif} />
             <Field label="Cartão de Cidadão" value={f.cc} />
             <Field label="Validade CC" value={fmtDate(f.validade_cc)} />
+            <Field label="Data de Nascimento" value={fmtDate((f as any).data_nascimento)} />
             <Field label="Telemóvel" value={f.telemovel} />
             <Field label="Email" value={f.email} />
             <Field label="IBAN" value={f.iban} />
@@ -120,6 +122,10 @@ function FormadorDetail() {
             <Field label="Validade CCP" value={fmtDate(f.validade_ccp)} />
             <div className="sm:col-span-2"><Field label="Observações" value={f.observacoes} /></div>
           </CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="competencias">
+          <CompetenciasTab formadorId={id} />
         </TabsContent>
 
         <TabsContent value="disponibilidades">
@@ -355,6 +361,98 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+    </CardContent></Card>
+  );
+}
+
+function CompetenciasTab({ formadorId }: { formadorId: string }) {
+  const qc = useQueryClient();
+  const [ufcdId, setUfcdId] = useState("");
+
+  const q = useQuery({
+    queryKey: ["formador-competencias", formadorId],
+    queryFn: async () => {
+      const [comp, sess] = await Promise.all([
+        supabase.from("formador_ufcds" as any).select("id, ufcd_id, ufcd:ufcds(id, codigo, designacao)").eq("formador_id", formadorId),
+        supabase.from("sessoes").select("horas, curso_ufcd:curso_ufcds(ufcd_id)").eq("formador_id", formadorId),
+      ]);
+      const horasPorUfcd = new Map<string, number>();
+      for (const s of (sess.data ?? []) as any[]) {
+        const uid = s.curso_ufcd?.ufcd_id;
+        if (!uid) continue;
+        horasPorUfcd.set(uid, (horasPorUfcd.get(uid) ?? 0) + Number(s.horas ?? 0));
+      }
+      const items = ((comp.data ?? []) as any[]).map(c => ({
+        id: c.id,
+        ufcd_id: c.ufcd_id,
+        codigo: c.ufcd?.codigo ?? "",
+        designacao: c.ufcd?.designacao ?? "",
+        horas_lecionadas: horasPorUfcd.get(c.ufcd_id) ?? 0,
+      }));
+      items.sort((a, b) => {
+        const ac = a.codigo, bc = b.codigo;
+        const aIsLetter = /^[A-Za-z]/.test(ac), bIsLetter = /^[A-Za-z]/.test(bc);
+        if (aIsLetter !== bIsLetter) return aIsLetter ? -1 : 1;
+        return ac.localeCompare(bc, "pt", { numeric: true });
+      });
+      return items;
+    },
+  });
+
+  const ufcdsQ = useQuery({
+    queryKey: ["ufcds-all"],
+    queryFn: async () => (await supabase.from("ufcds").select("id, codigo, designacao").order("codigo")).data ?? [],
+  });
+
+  const taken = new Set((q.data ?? []).map(i => i.ufcd_id));
+  const disponiveis = (ufcdsQ.data ?? []).filter((u: any) => !taken.has(u.id));
+
+  async function add() {
+    if (!ufcdId) return toast.error("Escolha uma UFCD");
+    const { error } = await supabase.from("formador_ufcds" as any).insert({ formador_id: formadorId, ufcd_id: ufcdId } as any);
+    if (error) return toast.error(error.message);
+    toast.success("Competência adicionada");
+    setUfcdId("");
+    qc.invalidateQueries({ queryKey: ["formador-competencias", formadorId] });
+  }
+
+  async function del(id: string) {
+    const { error } = await supabase.from("formador_ufcds" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["formador-competencias", formadorId] });
+  }
+
+  return (
+    <Card><CardContent className="p-6 space-y-4">
+      <div className="flex gap-2 items-end">
+        <div className="flex-1 space-y-1.5">
+          <Label>Adicionar UFCD</Label>
+          <select className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={ufcdId} onChange={e => setUfcdId(e.target.value)}>
+            <option value="">Escolher…</option>
+            {disponiveis.map((u: any) => <option key={u.id} value={u.id}>{u.codigo} — {u.designacao}</option>)}
+          </select>
+        </div>
+        <Button onClick={add} disabled={!ufcdId}><Plus className="size-4" /> Adicionar</Button>
+      </div>
+
+      {(q.data ?? []).length === 0 ? (
+        <div className="text-sm text-muted-foreground text-center py-8">Sem UFCDs registadas.</div>
+      ) : (
+        <div className="border rounded-md divide-y">
+          <div className="px-4 py-2 grid grid-cols-[1fr_auto_auto] gap-4 items-center text-xs uppercase tracking-wide text-muted-foreground">
+            <div>UFCD</div>
+            <div>Horas lecionadas</div>
+            <div></div>
+          </div>
+          {(q.data ?? []).map((i) => (
+            <div key={i.id} className="px-4 py-2.5 grid grid-cols-[1fr_auto_auto] gap-4 items-center text-sm">
+              <div><span className="font-medium">{i.codigo}</span> — {i.designacao}</div>
+              <div className="tabular-nums text-right">{i.horas_lecionadas.toFixed(1)} h</div>
+              <Button variant="ghost" size="sm" onClick={() => del(i.id)}><Trash2 className="size-3.5" /></Button>
+            </div>
+          ))}
+        </div>
+      )}
     </CardContent></Card>
   );
 }

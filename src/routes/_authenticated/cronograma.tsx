@@ -55,6 +55,34 @@ function CronogramaGeral() {
   const inicioMes = new Date(mes.ano, mes.mes, 1).toISOString().slice(0, 10);
   const fimMes = new Date(mes.ano, mes.mes + 1, 0).toISOString().slice(0, 10);
 
+  const isProximoMes = useMemo(() => {
+    const hoje = new Date();
+    const prox = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+    return mes.ano === prox.getFullYear() && mes.mes === prox.getMonth();
+  }, [mes]);
+
+  const cursosAtivos = useQuery({
+    queryKey: ["cursos-ativos-mes", inicioMes, fimMes],
+    enabled: isProximoMes,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cursos")
+        .select("id, codigo, nome, data_inicio, data_fim, estado, curso_ufcds(curso_ufcd_formadores(formador_id))")
+        .eq("estado", "ativo")
+        .lte("data_inicio", fimMes)
+        .gte("data_fim", inicioMes);
+      if (error) throw error;
+      return (data ?? []).map((c: any) => ({
+        id: c.id,
+        codigo: c.codigo,
+        nome: c.nome,
+        formadores: Array.from(new Set(
+          (c.curso_ufcds ?? []).flatMap((cu: any) => (cu.curso_ufcd_formadores ?? []).map((f: any) => f.formador_id))
+        )) as string[],
+      }));
+    },
+  });
+
   const formadores = useQuery({
     queryKey: ["formadores-todos"],
     queryFn: async () => (await supabase.from("formadores").select("id, nome, cor").order("nome")).data ?? [],

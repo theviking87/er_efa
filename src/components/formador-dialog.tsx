@@ -60,7 +60,7 @@ export function FormadorDialog({
     mutationFn: async (v: Formador) => {
       const payload = { ...v };
       // empty strings -> null for date fields
-      (["validade_cc","validade_ccp"] as const).forEach(k => { if (!payload[k]) payload[k] = null; });
+      (["validade_cc","validade_ccp","data_nascimento"] as const).forEach(k => { if (!payload[k]) payload[k] = null; });
       if (v.id) {
         const { error } = await supabase.from("formadores").update(payload as never).eq("id", v.id);
         if (error) throw error;

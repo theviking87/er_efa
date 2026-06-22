@@ -78,9 +78,18 @@ function UfcdsPage() {
     setOpen(true);
   }
 
-  async function del(id: string) {
+  async function del(id: string, codigo: string) {
+    const { count } = await supabase
+      .from("curso_ufcds")
+      .select("id", { count: "exact", head: true })
+      .eq("ufcd_id", id);
+    if ((count ?? 0) > 0) {
+      return toast.error(`UFCD ${codigo} está associada a ${count} curso(s) e não pode ser eliminada.`);
+    }
+    if (!confirm(`Eliminar UFCD ${codigo}? Esta ação é irreversível.`)) return;
     const { error } = await supabase.from("ufcds").delete().eq("id", id);
     if (error) return toast.error(error.message);
+    toast.success("UFCD eliminada");
     qc.invalidateQueries({ queryKey: ["ufcds"] });
   }
 

@@ -135,12 +135,20 @@ export function FormadorDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Cor (cronograma)</Label>
-            <div className="flex gap-1.5 flex-wrap pt-1.5">
+            <div className="grid grid-cols-12 gap-1.5 pt-1.5">
               {COLORS.map(c => (
                 <button key={c} type="button" onClick={() => setF({ ...f, cor: c })}
-                  className={`size-6 rounded-full border-2 transition ${f.cor === c ? "border-foreground" : "border-transparent"}`}
+                  title={c}
+                  className={`size-6 rounded-full border-2 transition ${f.cor === c ? "border-foreground scale-110" : "border-transparent"}`}
                   style={{ background: c }} />
               ))}
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <Label className="text-xs font-normal text-muted-foreground">Personalizada:</Label>
+              <input type="color" value={f.cor ?? "#000000"} onChange={e => setF({ ...f, cor: e.target.value })}
+                className="h-7 w-12 rounded border border-input bg-background cursor-pointer" />
+              <Input value={f.cor ?? ""} onChange={e => setF({ ...f, cor: e.target.value })}
+                placeholder="#RRGGBB" className="h-7 w-24 text-xs font-mono" />
             </div>
           </div>
           <div className="col-span-2 space-y-1.5"><Label>Observações</Label><Textarea {...field("observacoes")} rows={3} /></div>

@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -47,10 +47,24 @@ type SessaoSlot = {
 };
 
 function CronogramaGeral() {
+  const qc = useQueryClient();
   const [mes, setMes] = useState(() => { const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() }; });
   const [formadorFiltro, setFormadorFiltro] = useState<string>("");
   const [mostrar, setMostrar] = useState<"ambos" | "sessoes" | "disp">("ambos");
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
+
+  useEffect(() => {
+    const ch = supabase
+      .channel("cronograma-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cursos" }, () => qc.invalidateQueries({ queryKey: ["cursos-ativos-mes"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "curso_ufcds" }, () => qc.invalidateQueries({ queryKey: ["cursos-ativos-mes"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "curso_ufcd_formadores" }, () => qc.invalidateQueries({ queryKey: ["cursos-ativos-mes"] }))
+      .on("postgres_changes", { event: "*", schema: "public", table: "formador_disponibilidades" }, () => { qc.invalidateQueries({ queryKey: ["disp-geral"] }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "sessoes" }, () => { qc.invalidateQueries({ queryKey: ["sessoes-geral"] }); })
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
+
 
   const inicioMes = new Date(mes.ano, mes.mes, 1).toISOString().slice(0, 10);
   const fimMes = new Date(mes.ano, mes.mes + 1, 0).toISOString().slice(0, 10);

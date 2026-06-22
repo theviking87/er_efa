@@ -304,6 +304,7 @@ export type Database = {
           codigo_postal: string | null
           cor: string
           created_at: string
+          data_nascimento: string | null
           email: string | null
           estado: Database["public"]["Enums"]["formador_estado"]
           habilitacoes: string | null
@@ -326,6 +327,7 @@ export type Database = {
           codigo_postal?: string | null
           cor?: string
           created_at?: string
+          data_nascimento?: string | null
           email?: string | null
           estado?: Database["public"]["Enums"]["formador_estado"]
           habilitacoes?: string | null
@@ -348,6 +350,7 @@ export type Database = {
           codigo_postal?: string | null
           cor?: string
           created_at?: string
+          data_nascimento?: string | null
           email?: string | null
           estado?: Database["public"]["Enums"]["formador_estado"]
           habilitacoes?: string | null

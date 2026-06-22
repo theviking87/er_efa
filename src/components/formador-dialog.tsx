@@ -16,6 +16,7 @@ type Formador = {
   nif?: string | null;
   cc?: string | null;
   validade_cc?: string | null;
+  data_nascimento?: string | null;
   morada?: string | null;
   codigo_postal?: string | null;
   localidade?: string | null;
@@ -59,7 +60,7 @@ export function FormadorDialog({
     mutationFn: async (v: Formador) => {
       const payload = { ...v };
       // empty strings -> null for date fields
-      (["validade_cc","validade_ccp"] as const).forEach(k => { if (!payload[k]) payload[k] = null; });
+      (["validade_cc","validade_ccp","data_nascimento"] as const).forEach(k => { if (!payload[k]) payload[k] = null; });
       if (v.id) {
         const { error } = await supabase.from("formadores").update(payload as never).eq("id", v.id);
         if (error) throw error;
@@ -110,6 +111,7 @@ export function FormadorDialog({
 
           <div className="space-y-1.5"><Label>Cartão de Cidadão</Label><Input {...field("cc")} /></div>
           <div className="space-y-1.5"><Label>Validade CC</Label><Input type="date" {...field("validade_cc")} /></div>
+          <div className="space-y-1.5"><Label>Data de nascimento</Label><Input type="date" {...field("data_nascimento")} /></div>
           <div className="space-y-1.5"><Label>Telemóvel</Label><Input {...field("telemovel")} /></div>
           <div className="space-y-1.5"><Label>Email</Label><Input type="email" {...field("email")} /></div>
           <div className="space-y-1.5"><Label>IBAN</Label><Input {...field("iban")} /></div>

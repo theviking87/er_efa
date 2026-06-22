@@ -155,16 +155,16 @@ function UfcdsPage() {
         </table>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => o ? setOpen(true) : closeDialog()}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova UFCD</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Editar UFCD" : "Nova UFCD"}</DialogTitle></DialogHeader>
           <form id="ufcd-form" onSubmit={e => { e.preventDefault(); save.mutate(); }} className="grid gap-3">
             <div className="space-y-1.5"><Label>Código *</Label><Input required value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Designação *</Label><Input required value={form.designacao} onChange={e => setForm({ ...form, designacao: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Horas de referência</Label><Input type="number" min={1} value={form.horas_referencia} onChange={e => setForm({ ...form, horas_referencia: Number(e.target.value) })} /></div>
           </form>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={closeDialog}>Cancelar</Button>
             <Button type="submit" form="ufcd-form" disabled={save.isPending}>Guardar</Button>
           </DialogFooter>
         </DialogContent>

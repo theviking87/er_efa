@@ -246,13 +246,14 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
     if (!ufcdId) return toast.error("Escolha uma UFCD");
     const { data: existing, error: exErr } = await supabase
       .from("curso_ufcds")
-      .select("curso:cursos(id, codigo, nome)")
+      .select("curso_id")
       .eq("ufcd_id", ufcdId)
       .neq("curso_id", cursoId);
     if (exErr) return toast.error(exErr.message);
-    const cursos = (existing ?? []).map((r: any) => r.curso).filter(Boolean);
-    if (cursos.length > 0) {
-      setConflict({ cursos });
+    const ids = Array.from(new Set((existing ?? []).map((r: any) => r.curso_id).filter(Boolean)));
+    if (ids.length > 0) {
+      const { data: cs } = await supabase.from("cursos").select("id, codigo, nome").in("id", ids);
+      setConflict({ cursos: (cs ?? []) as any });
       return;
     }
     await doInsert();

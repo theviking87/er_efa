@@ -70,7 +70,7 @@ function CronogramaGeral() {
         .select("id, codigo, nome, data_inicio, data_fim, estado, curso_ufcds(curso_ufcd_formadores(formador_id))")
         .eq("estado", "ativo")
         .lte("data_inicio", fimMes)
-        .gte("data_fim", inicioMes);
+        .or(`data_fim.gte.${inicioMes},data_fim.is.null`);
       if (error) throw error;
       return (data ?? []).map((c: any) => ({
         id: c.id,

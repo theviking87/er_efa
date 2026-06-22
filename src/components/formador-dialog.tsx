@@ -30,7 +30,20 @@ type Formador = {
   cor?: string;
 };
 
-const COLORS = ["#E11D48","#2563EB","#059669","#D97706","#7C3AED","#0891B2","#DB2777","#65A30D","#DC2626","#4F46E5"];
+const COLORS = [
+  // Vermelhos / rosas
+  "#E11D48","#DC2626","#B91C1C","#F43F5E","#DB2777","#EC4899","#BE185D","#9D174D",
+  // Laranjas / amarelos
+  "#EA580C","#F97316","#FB923C","#D97706","#F59E0B","#FBBF24","#CA8A04","#A16207",
+  // Verdes
+  "#65A30D","#16A34A","#059669","#10B981","#22C55E","#15803D","#166534","#047857",
+  // Cianos / azuis
+  "#0891B2","#06B6D4","#0EA5E9","#2563EB","#3B82F6","#1D4ED8","#1E40AF","#0369A1",
+  // Roxos / violetas
+  "#7C3AED","#8B5CF6","#A855F7","#6D28D9","#5B21B6","#4F46E5","#4338CA","#3730A3",
+  // Magentas / terra / neutros
+  "#C026D3","#A21CAF","#86198F","#92400E","#78350F","#713F12","#525252","#404040",
+];
 
 export function FormadorDialog({
   open, onOpenChange, initial,
@@ -122,12 +135,20 @@ export function FormadorDialog({
           </div>
           <div className="space-y-1.5">
             <Label>Cor (cronograma)</Label>
-            <div className="flex gap-1.5 flex-wrap pt-1.5">
+            <div className="grid grid-cols-12 gap-1.5 pt-1.5">
               {COLORS.map(c => (
                 <button key={c} type="button" onClick={() => setF({ ...f, cor: c })}
-                  className={`size-6 rounded-full border-2 transition ${f.cor === c ? "border-foreground" : "border-transparent"}`}
+                  title={c}
+                  className={`size-6 rounded-full border-2 transition ${f.cor === c ? "border-foreground scale-110" : "border-transparent"}`}
                   style={{ background: c }} />
               ))}
+            </div>
+            <div className="flex items-center gap-2 pt-2">
+              <Label className="text-xs font-normal text-muted-foreground">Personalizada:</Label>
+              <input type="color" value={f.cor ?? "#000000"} onChange={e => setF({ ...f, cor: e.target.value })}
+                className="h-7 w-12 rounded border border-input bg-background cursor-pointer" />
+              <Input value={f.cor ?? ""} onChange={e => setF({ ...f, cor: e.target.value })}
+                placeholder="#RRGGBB" className="h-7 w-24 text-xs font-mono" />
             </div>
           </div>
           <div className="col-span-2 space-y-1.5"><Label>Observações</Label><Textarea {...field("observacoes")} rows={3} /></div>

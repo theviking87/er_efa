@@ -69,6 +69,24 @@ function UfcdsPage() {
     },
   });
 
+  const usageMap = useQuery({
+    queryKey: ["ufcds-usage-map"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("curso_ufcds")
+        .select("ufcd_id, cursos(id, codigo, nome)");
+      if (error) throw error;
+      const map = new Map<string, { id: string; codigo: string; nome: string }[]>();
+      for (const row of (data ?? []) as any[]) {
+        if (!row.cursos) continue;
+        const arr = map.get(row.ufcd_id) ?? [];
+        if (!arr.find((c) => c.id === row.cursos.id)) arr.push(row.cursos);
+        map.set(row.ufcd_id, arr);
+      }
+      return map;
+    },
+  });
+
   const deleteUsage = useQuery({
     queryKey: ["ufcd-usage", deleteTarget?.id],
     enabled: !!deleteTarget,

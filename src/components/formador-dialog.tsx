@@ -111,6 +111,7 @@ export function FormadorDialog({
 
           <div className="space-y-1.5"><Label>Cartão de Cidadão</Label><Input {...field("cc")} /></div>
           <div className="space-y-1.5"><Label>Validade CC</Label><Input type="date" {...field("validade_cc")} /></div>
+          <div className="space-y-1.5"><Label>Data de nascimento</Label><Input type="date" {...field("data_nascimento")} /></div>
           <div className="space-y-1.5"><Label>Telemóvel</Label><Input {...field("telemovel")} /></div>
           <div className="space-y-1.5"><Label>Email</Label><Input type="email" {...field("email")} /></div>
           <div className="space-y-1.5"><Label>IBAN</Label><Input {...field("iban")} /></div>

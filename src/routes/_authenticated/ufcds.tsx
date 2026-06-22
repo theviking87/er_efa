@@ -7,7 +7,7 @@ import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Upload, Sparkles, Check, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Upload, Sparkles, Check, AlertCircle, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { extrairReferencialPdf, importarReferencial } from "@/lib/import-referencial.functions";
@@ -29,6 +29,7 @@ type ExtractedUfcd = {
 function UfcdsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ codigo: "", designacao: "", horas_referencia: 25 });
   const [q, setQ] = useState("");
 
@@ -52,12 +53,30 @@ function UfcdsPage() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("ufcds").insert({ ...form, horas_referencia: Number(form.horas_referencia) });
-      if (error) throw error;
+      const payload = { ...form, horas_referencia: Number(form.horas_referencia) };
+      if (editingId) {
+        const { error } = await supabase.from("ufcds").update(payload).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("ufcds").insert(payload);
+        if (error) throw error;
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["ufcds"] }); setOpen(false); setForm({ codigo: "", designacao: "", horas_referencia: 25 }); toast.success("UFCD criada"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["ufcds"] }); closeDialog(); toast.success(editingId ? "UFCD atualizada" : "UFCD criada"); },
     onError: (e: any) => toast.error("Erro", { description: e.message }),
   });
+
+  function closeDialog() {
+    setOpen(false);
+    setEditingId(null);
+    setForm({ codigo: "", designacao: "", horas_referencia: 25 });
+  }
+
+  function openEdit(u: any) {
+    setEditingId(u.id);
+    setForm({ codigo: u.codigo, designacao: u.designacao, horas_referencia: u.horas_referencia });
+    setOpen(true);
+  }
 
   async function del(id: string) {
     const { error } = await supabase.from("ufcds").delete().eq("id", id);
@@ -125,7 +144,10 @@ function UfcdsPage() {
                 <td className="px-4 py-2.5 font-mono text-xs">{u.codigo}</td>
                 <td className="px-4 py-2.5">{u.designacao}</td>
                 <td className="px-4 py-2.5 text-right text-muted-foreground">{u.horas_referencia} h</td>
-                <td className="px-4 py-2.5 text-right"><Button variant="ghost" size="sm" onClick={() => del(u.id)}><Trash2 className="size-3.5" /></Button></td>
+                <td className="px-4 py-2.5 text-right">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="size-3.5" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => del(u.id)}><Trash2 className="size-3.5" /></Button>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">Sem UFCD no catálogo.</td></tr>}
@@ -133,16 +155,16 @@ function UfcdsPage() {
         </table>
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => o ? setOpen(true) : closeDialog()}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Nova UFCD</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Editar UFCD" : "Nova UFCD"}</DialogTitle></DialogHeader>
           <form id="ufcd-form" onSubmit={e => { e.preventDefault(); save.mutate(); }} className="grid gap-3">
             <div className="space-y-1.5"><Label>Código *</Label><Input required value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Designação *</Label><Input required value={form.designacao} onChange={e => setForm({ ...form, designacao: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Horas de referência</Label><Input type="number" min={1} value={form.horas_referencia} onChange={e => setForm({ ...form, horas_referencia: Number(e.target.value) })} /></div>
           </form>
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>
+            <Button variant="ghost" onClick={closeDialog}>Cancelar</Button>
             <Button type="submit" form="ufcd-form" disabled={save.isPending}>Guardar</Button>
           </DialogFooter>
         </DialogContent>

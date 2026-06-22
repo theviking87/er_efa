@@ -188,27 +188,31 @@ function CronogramaGeral() {
     return m;
   }, [disp.data]);
 
-  // Para cada dia: 'none' = nenhum formador (de cursos ativos) disponível; 'partial' = pelo menos um curso ativo sem qualquer formador disponível; null caso contrário
-  const dayStatus = useMemo(() => {
-    const r = new Map<string, "none" | "partial">();
+  const PALETA = ["#fde68a", "#bbf7d0", "#fbcfe8", "#bfdbfe", "#ddd6fe", "#fed7aa", "#a7f3d0", "#fecaca"];
+  const cursosComCor = useMemo(() => {
+    return (cursosAtivos.data ?? []).map((c, i) => ({ ...c, cor: PALETA[i % PALETA.length] }));
+  }, [cursosAtivos.data]);
+
+  // Para cada dia: lista de cursos ativos sem qualquer formador disponível
+  const dayMissing = useMemo(() => {
+    const r = new Map<string, { todos: boolean; cursos: { id: string; codigo: string; cor: string }[] }>();
     if (!isProximoMes) return r;
-    const cursos = cursosAtivos.data ?? [];
+    const cursos = cursosComCor;
     if (cursos.length === 0) return r;
-    const todosFormadores = new Set<string>(cursos.flatMap(c => c.formadores));
-    if (todosFormadores.size === 0) return r;
     for (const cell of grid) {
       if (!cell) continue;
-      // só dias úteis (seg-sex)
       const dow = new Date(cell.iso + "T00:00:00").getDay();
       if (dow === 0 || dow === 6) continue;
       const dispSet = dispByDay.get(cell.iso) ?? new Set<string>();
-      const algumDisponivel = [...todosFormadores].some(f => dispSet.has(f));
-      if (!algumDisponivel) { r.set(cell.iso, "none"); continue; }
-      const algumCursoSemDisp = cursos.some(c => c.formadores.length > 0 && !c.formadores.some(f => dispSet.has(f)));
-      if (algumCursoSemDisp) r.set(cell.iso, "partial");
+      const semDisp = cursos.filter(c => c.formadores.length === 0 || !c.formadores.some(f => dispSet.has(f)));
+      if (semDisp.length === 0) continue;
+      r.set(cell.iso, {
+        todos: semDisp.length === cursos.length,
+        cursos: semDisp.map(c => ({ id: c.id, codigo: c.codigo, cor: c.cor })),
+      });
     }
     return r;
-  }, [isProximoMes, cursosAtivos.data, dispByDay, grid]);
+  }, [isProximoMes, cursosComCor, dispByDay, grid]);
 
   const totalSessoes = (sessoes.data ?? []).length;
   const totalHoras = (sessoes.data ?? []).reduce((acc, s: any) => acc + Number(s.horas), 0);

@@ -224,12 +224,12 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
   const [ufcdId, setUfcdId] = useState("");
   const [horas, setHoras] = useState(25);
   const [formadores, setFormadores] = useState<string[]>([]);
+  const [conflict, setConflict] = useState<{ cursos: { id: string; codigo: string; nome: string }[] } | null>(null);
 
   const ufcds = useQuery({ queryKey: ["ufcds"], queryFn: async () => (await supabase.from("ufcds").select("*").order("codigo")).data ?? [] });
   const formadoresList = useQuery({ queryKey: ["formadores-ativos"], queryFn: async () => (await supabase.from("formadores").select("id, nome, cor, estado").eq("estado","ativo").order("nome")).data ?? [] });
 
-  async function save() {
-    if (!ufcdId) return toast.error("Escolha uma UFCD");
+  async function doInsert() {
     const { data, error } = await supabase.from("curso_ufcds").insert({ curso_id: cursoId, ufcd_id: ufcdId, horas_totais: horas } as never).select().single();
     if (error) return toast.error(error.message);
     if (formadores.length) {
@@ -238,43 +238,83 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
     }
     toast.success("UFCD atribuída");
     onOpenChange(false);
-    setUfcdId(""); setHoras(25); setFormadores([]);
+    setUfcdId(""); setHoras(25); setFormadores([]); setConflict(null);
     onSaved();
   }
 
+  async function save() {
+    if (!ufcdId) return toast.error("Escolha uma UFCD");
+    const { data: existing, error: exErr } = await supabase
+      .from("curso_ufcds")
+      .select("curso:cursos(id, codigo, nome)")
+      .eq("ufcd_id", ufcdId)
+      .neq("curso_id", cursoId);
+    if (exErr) return toast.error(exErr.message);
+    const cursos = (existing ?? []).map((r: any) => r.curso).filter(Boolean);
+    if (cursos.length > 0) {
+      setConflict({ cursos });
+      return;
+    }
+    await doInsert();
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent>
-        <DialogHeader><DialogTitle>Atribuir UFCD ao curso</DialogTitle></DialogHeader>
-        <div className="space-y-3">
-          <div className="space-y-1.5">
-            <Label>UFCD *</Label>
-            <Select value={ufcdId} onValueChange={(v) => { setUfcdId(v); const u = (ufcds.data ?? []).find((x: any) => x.id === v); if (u) setHoras((u as any).horas_referencia); }}>
-              <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
-              <SelectContent>{(ufcds.data ?? []).map((u: any) => <SelectItem key={u.id} value={u.id}>{u.codigo} — {u.designacao}</SelectItem>)}</SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5"><Label>Horas totais</Label><Input type="number" min={1} value={horas} onChange={e => setHoras(Number(e.target.value))} /></div>
-          <div className="space-y-1.5">
-            <Label>Formadores</Label>
-            <div className="border rounded-md max-h-40 overflow-y-auto p-2 space-y-1">
-              {(formadoresList.data ?? []).length === 0 && <div className="text-xs text-muted-foreground px-1">Sem formadores ativos.</div>}
-              {(formadoresList.data ?? []).map((f: any) => (
-                <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
-                  <Checkbox checked={formadores.includes(f.id)} onCheckedChange={(c) => setFormadores(c ? [...formadores, f.id] : formadores.filter(x => x !== f.id))} />
-                  <span className="size-2 rounded-full" style={{ background: f.cor }} />
-                  {f.nome}
-                </label>
-              ))}
+    <>
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Atribuir UFCD ao curso</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1.5">
+              <Label>UFCD *</Label>
+              <Select value={ufcdId} onValueChange={(v) => { setUfcdId(v); const u = (ufcds.data ?? []).find((x: any) => x.id === v); if (u) setHoras((u as any).horas_referencia); }}>
+                <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
+                <SelectContent>{(ufcds.data ?? []).map((u: any) => <SelectItem key={u.id} value={u.id}>{u.codigo} — {u.designacao}</SelectItem>)}</SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5"><Label>Horas totais</Label><Input type="number" min={1} value={horas} onChange={e => setHoras(Number(e.target.value))} /></div>
+            <div className="space-y-1.5">
+              <Label>Formadores</Label>
+              <div className="border rounded-md max-h-40 overflow-y-auto p-2 space-y-1">
+                {(formadoresList.data ?? []).length === 0 && <div className="text-xs text-muted-foreground px-1">Sem formadores ativos.</div>}
+                {(formadoresList.data ?? []).map((f: any) => (
+                  <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
+                    <Checkbox checked={formadores.includes(f.id)} onCheckedChange={(c) => setFormadores(c ? [...formadores, f.id] : formadores.filter(x => x !== f.id))} />
+                    <span className="size-2 rounded-full" style={{ background: f.cor }} />
+                    {f.nome}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={save}>Atribuir</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+            <Button onClick={save}>Atribuir</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <AlertDialog open={!!conflict} onOpenChange={(v) => { if (!v) setConflict(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>UFCD já atribuída</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div>
+                <div>Esta UFCD já está atribuída {conflict && conflict.cursos.length === 1 ? "ao curso" : "aos cursos"}:</div>
+                <ul className="mt-2 list-disc pl-5">
+                  {conflict?.cursos.map((c) => (
+                    <li key={c.id}>{c.codigo} — {c.nome}</li>
+                  ))}
+                </ul>
+                <div className="mt-3">Deseja atribuir também a este curso?</div>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => { setConflict(null); doInsert(); }}>Atribuir mesmo assim</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
 

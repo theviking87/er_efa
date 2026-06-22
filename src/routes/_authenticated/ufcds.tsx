@@ -176,7 +176,7 @@ function UfcdsPage() {
                 <td className="px-4 py-2.5 text-right text-muted-foreground">{u.horas_referencia} h</td>
                 <td className="px-4 py-2.5 text-right">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="size-3.5" /></Button>
-                  <Button variant="ghost" size="sm" onClick={() => del(u.id, u.codigo)}><Trash2 className="size-3.5" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => setDeleteTarget(u)}><Trash2 className="size-3.5" /></Button>
                 </td>
               </tr>
             ))}
@@ -196,6 +196,21 @@ function UfcdsPage() {
           <DialogFooter>
             <Button variant="ghost" onClick={closeDialog}>Cancelar</Button>
             <Button type="submit" form="ufcd-form" disabled={save.isPending}>Guardar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!deleteTarget} onOpenChange={(o) => !o && setDeleteTarget(null)}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Eliminar UFCD</DialogTitle></DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            Eliminar UFCD {deleteTarget?.codigo}? Esta ação é irreversível.
+          </p>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => setDeleteTarget(null)}>Cancelar</Button>
+            <Button variant="destructive" disabled={remove.isPending || !deleteTarget} onClick={() => deleteTarget && remove.mutate(deleteTarget)}>
+              Eliminar
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

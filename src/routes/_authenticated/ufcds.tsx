@@ -155,7 +155,7 @@ function UfcdsPage() {
                 <td className="px-4 py-2.5 text-right text-muted-foreground">{u.horas_referencia} h</td>
                 <td className="px-4 py-2.5 text-right">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="size-3.5" /></Button>
-                  <Button variant="ghost" size="sm" onClick={() => del(u.id)}><Trash2 className="size-3.5" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => del(u.id, u.codigo)}><Trash2 className="size-3.5" /></Button>
                 </td>
               </tr>
             ))}

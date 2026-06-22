@@ -100,6 +100,7 @@ function FormadorDetail() {
       <Tabs defaultValue="dados">
         <TabsList>
           <TabsTrigger value="dados">Dados</TabsTrigger>
+          <TabsTrigger value="competencias">Competências</TabsTrigger>
           <TabsTrigger value="disponibilidades">Disponibilidades</TabsTrigger>
           <TabsTrigger value="inatividades">Inatividades</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
@@ -110,6 +111,7 @@ function FormadorDetail() {
             <Field label="NIF" value={f.nif} />
             <Field label="Cartão de Cidadão" value={f.cc} />
             <Field label="Validade CC" value={fmtDate(f.validade_cc)} />
+            <Field label="Data de Nascimento" value={fmtDate((f as any).data_nascimento)} />
             <Field label="Telemóvel" value={f.telemovel} />
             <Field label="Email" value={f.email} />
             <Field label="IBAN" value={f.iban} />
@@ -120,6 +122,10 @@ function FormadorDetail() {
             <Field label="Validade CCP" value={fmtDate(f.validade_ccp)} />
             <div className="sm:col-span-2"><Field label="Observações" value={f.observacoes} /></div>
           </CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="competencias">
+          <CompetenciasTab formadorId={id} />
         </TabsContent>
 
         <TabsContent value="disponibilidades">

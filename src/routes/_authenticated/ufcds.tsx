@@ -7,7 +7,7 @@ import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Plus, Trash2, Upload, Sparkles, Check, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Upload, Sparkles, Check, AlertCircle, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { extrairReferencialPdf, importarReferencial } from "@/lib/import-referencial.functions";

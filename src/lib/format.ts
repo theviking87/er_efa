@@ -1,5 +1,6 @@
 export function dateOnlyIso(year: number, monthIndex: number, day: number) {
-  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+  const dt = new Date(Date.UTC(year, monthIndex, day));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
 }
 
 export function localDateIso(date = new Date()) {

@@ -15,7 +15,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  ESTADO_CURSO_LABEL, TIPOLOGIA_LABEL, fmtDate, fmtHoras, diffHoras, MONTH_NAMES,
+  ESTADO_CURSO_LABEL, TIPOLOGIA_LABEL, fmtDate, fmtHoras, diffHoras, MONTH_NAMES, dateOnlyIso,
   INSCRICAO_ESTADO_LABEL, FALTA_TIPO_LABEL, formadorLabel,
 } from "@/lib/format";
 import { toast } from "sonner";
@@ -338,8 +338,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const [dialogData, setDialogData] = useState<string | null>(null);
   const [presencasSessao, setPresencasSessao] = useState<any | null>(null);
 
-  const inicioMes = new Date(mes.ano, mes.mes, 1).toISOString().slice(0, 10);
-  const fimMes = new Date(mes.ano, mes.mes + 1, 0).toISOString().slice(0, 10);
+  const inicioMes = dateOnlyIso(mes.ano, mes.mes, 1);
+  const fimMes = dateOnlyIso(mes.ano, mes.mes + 1, 0);
 
   const sessoes = useQuery({
     queryKey: ["sessoes", cursoId, inicioMes, fimMes],
@@ -427,7 +427,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const days: ({ d: number; iso: string } | null)[] = [];
     for (let i = 0; i < startDow; i++) days.push(null);
     for (let d = 1; d <= last.getDate(); d++) {
-      const iso = new Date(mes.ano, mes.mes, d).toISOString().slice(0, 10);
+      const iso = dateOnlyIso(mes.ano, mes.mes, d);
       days.push({ d, iso });
     }
     while (days.length % 7 !== 0) days.push(null);

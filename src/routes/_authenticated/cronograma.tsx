@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ChevronLeft, ChevronRight, CalendarPlus } from "lucide-react";
-import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras } from "@/lib/format";
+import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso } from "@/lib/format";
 import { toast } from "sonner";
 
 export const Route = createFileRoute("/_authenticated/cronograma")({
@@ -66,8 +66,8 @@ function CronogramaGeral() {
   }, [qc]);
 
 
-  const inicioMes = new Date(mes.ano, mes.mes, 1).toISOString().slice(0, 10);
-  const fimMes = new Date(mes.ano, mes.mes + 1, 0).toISOString().slice(0, 10);
+  const inicioMes = dateOnlyIso(mes.ano, mes.mes, 1);
+  const fimMes = dateOnlyIso(mes.ano, mes.mes + 1, 0);
 
   const isProximoMes = useMemo(() => {
     const hoje = new Date();
@@ -183,7 +183,7 @@ function CronogramaGeral() {
     const days: ({ d: number; iso: string } | null)[] = [];
     for (let i = 0; i < startDow; i++) days.push(null);
     for (let d = 1; d <= last.getDate(); d++) {
-      const iso = `${mes.ano}-${String(mes.mes + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      const iso = dateOnlyIso(mes.ano, mes.mes, d);
       days.push({ d, iso });
     }
     while (days.length % 7 !== 0) days.push(null);
@@ -215,7 +215,7 @@ function CronogramaGeral() {
     if (cursos.length === 0) return r;
     for (const cell of grid) {
       if (!cell) continue;
-      const dow = new Date(cell.iso + "T00:00:00").getDay();
+      const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
       const dispSet = dispByDay.get(cell.iso) ?? new Set<string>();
       const semDisp = cursos.filter(c => c.formadores.length === 0 || !c.formadores.some(f => dispSet.has(f)));

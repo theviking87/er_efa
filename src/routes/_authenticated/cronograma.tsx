@@ -183,7 +183,7 @@ function CronogramaGeral() {
     const days: ({ d: number; iso: string } | null)[] = [];
     for (let i = 0; i < startDow; i++) days.push(null);
     for (let d = 1; d <= last.getDate(); d++) {
-      const iso = new Date(mes.ano, mes.mes, d).toISOString().slice(0, 10);
+      const iso = `${mes.ano}-${String(mes.mes + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
       days.push({ d, iso });
     }
     while (days.length % 7 !== 0) days.push(null);

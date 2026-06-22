@@ -55,6 +55,34 @@ function CronogramaGeral() {
   const inicioMes = new Date(mes.ano, mes.mes, 1).toISOString().slice(0, 10);
   const fimMes = new Date(mes.ano, mes.mes + 1, 0).toISOString().slice(0, 10);
 
+  const isProximoMes = useMemo(() => {
+    const hoje = new Date();
+    const prox = new Date(hoje.getFullYear(), hoje.getMonth() + 1, 1);
+    return mes.ano === prox.getFullYear() && mes.mes === prox.getMonth();
+  }, [mes]);
+
+  const cursosAtivos = useQuery({
+    queryKey: ["cursos-ativos-mes", inicioMes, fimMes],
+    enabled: isProximoMes,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cursos")
+        .select("id, codigo, nome, data_inicio, data_fim, estado, curso_ufcds(curso_ufcd_formadores(formador_id))")
+        .eq("estado", "ativo")
+        .lte("data_inicio", fimMes)
+        .gte("data_fim", inicioMes);
+      if (error) throw error;
+      return (data ?? []).map((c: any) => ({
+        id: c.id,
+        codigo: c.codigo,
+        nome: c.nome,
+        formadores: Array.from(new Set(
+          (c.curso_ufcds ?? []).flatMap((cu: any) => (cu.curso_ufcd_formadores ?? []).map((f: any) => f.formador_id))
+        )) as string[],
+      }));
+    },
+  });
+
   const formadores = useQuery({
     queryKey: ["formadores-todos"],
     queryFn: async () => (await supabase.from("formadores").select("id, nome, cor").order("nome")).data ?? [],
@@ -148,6 +176,40 @@ function CronogramaGeral() {
     return days;
   }, [mes]);
 
+  // Map data -> set de formador_ids com disponibilidade nesse dia (apenas tipo 'disponivel')
+  const dispByDay = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (disp.data ?? []).forEach((d: any) => {
+      if (d.tipo !== "disponivel") return;
+      const s = m.get(d.data) ?? new Set<string>();
+      s.add(d.formador_id);
+      m.set(d.data, s);
+    });
+    return m;
+  }, [disp.data]);
+
+  // Para cada dia: 'none' = nenhum formador (de cursos ativos) disponível; 'partial' = pelo menos um curso ativo sem qualquer formador disponível; null caso contrário
+  const dayStatus = useMemo(() => {
+    const r = new Map<string, "none" | "partial">();
+    if (!isProximoMes) return r;
+    const cursos = cursosAtivos.data ?? [];
+    if (cursos.length === 0) return r;
+    const todosFormadores = new Set<string>(cursos.flatMap(c => c.formadores));
+    if (todosFormadores.size === 0) return r;
+    for (const cell of grid) {
+      if (!cell) continue;
+      // só dias úteis (seg-sex)
+      const dow = new Date(cell.iso + "T00:00:00").getDay();
+      if (dow === 0 || dow === 6) continue;
+      const dispSet = dispByDay.get(cell.iso) ?? new Set<string>();
+      const algumDisponivel = [...todosFormadores].some(f => dispSet.has(f));
+      if (!algumDisponivel) { r.set(cell.iso, "none"); continue; }
+      const algumCursoSemDisp = cursos.some(c => c.formadores.length > 0 && !c.formadores.some(f => dispSet.has(f)));
+      if (algumCursoSemDisp) r.set(cell.iso, "partial");
+    }
+    return r;
+  }, [isProximoMes, cursosAtivos.data, dispByDay, grid]);
+
   const totalSessoes = (sessoes.data ?? []).length;
   const totalHoras = (sessoes.data ?? []).reduce((acc, s: any) => acc + Number(s.horas), 0);
   const totalDisp = (disp.data ?? []).filter((d: any) => d.tipo === "disponivel").length;
@@ -198,10 +260,16 @@ function CronogramaGeral() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground" /> Sessão</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
+          {isProximoMes && (
+            <>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-amber-200" /> Sem disponibilidade (algum curso ativo)</span>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-rose-200" /> Sem disponibilidade (nenhum formador)</span>
+            </>
+          )}
         </div>
 
         <div className="border rounded-md overflow-hidden bg-card">
@@ -209,8 +277,11 @@ function CronogramaGeral() {
             {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}
           </div>
           <div className="grid grid-cols-7 auto-rows-[minmax(130px,auto)]">
-            {grid.map((cell, i) => (
-              <div key={i} className="border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] bg-card">
+            {grid.map((cell, i) => {
+              const status = cell ? dayStatus.get(cell.iso) : undefined;
+              const bg = status === "none" ? "bg-rose-100/70" : status === "partial" ? "bg-amber-100/70" : "bg-card";
+              return (
+              <div key={i} className={"border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] " + bg}>
                 {cell && (
                   <>
                     <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>
@@ -256,7 +327,7 @@ function CronogramaGeral() {
                   </>
                 )}
               </div>
-            ))}
+            );})}
           </div>
         </div>
       </CardContent></Card>

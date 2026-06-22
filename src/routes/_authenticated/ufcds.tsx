@@ -204,6 +204,7 @@ function UfcdsPage() {
       setReplacementId("");
       setDeleteError("");
       qc.invalidateQueries({ queryKey: ["ufcds"] });
+      qc.invalidateQueries({ queryKey: ["ufcds-usage-map"] });
       qc.invalidateQueries({ queryKey: ["curso-ufcds"] });
       qc.invalidateQueries({ queryKey: ["curso-ufcds-flat"] });
       qc.invalidateQueries({ queryKey: ["curso-carga"] });

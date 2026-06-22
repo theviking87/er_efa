@@ -144,7 +144,10 @@ function UfcdsPage() {
                 <td className="px-4 py-2.5 font-mono text-xs">{u.codigo}</td>
                 <td className="px-4 py-2.5">{u.designacao}</td>
                 <td className="px-4 py-2.5 text-right text-muted-foreground">{u.horas_referencia} h</td>
-                <td className="px-4 py-2.5 text-right"><Button variant="ghost" size="sm" onClick={() => del(u.id)}><Trash2 className="size-3.5" /></Button></td>
+                <td className="px-4 py-2.5 text-right">
+                  <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="size-3.5" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => del(u.id)}><Trash2 className="size-3.5" /></Button>
+                </td>
               </tr>
             ))}
             {filtered.length === 0 && <tr><td colSpan={4} className="px-4 py-10 text-center text-muted-foreground">Sem UFCD no catálogo.</td></tr>}

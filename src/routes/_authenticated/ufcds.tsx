@@ -53,12 +53,30 @@ function UfcdsPage() {
 
   const save = useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.from("ufcds").insert({ ...form, horas_referencia: Number(form.horas_referencia) });
-      if (error) throw error;
+      const payload = { ...form, horas_referencia: Number(form.horas_referencia) };
+      if (editingId) {
+        const { error } = await supabase.from("ufcds").update(payload).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("ufcds").insert(payload);
+        if (error) throw error;
+      }
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ["ufcds"] }); setOpen(false); setForm({ codigo: "", designacao: "", horas_referencia: 25 }); toast.success("UFCD criada"); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["ufcds"] }); closeDialog(); toast.success(editingId ? "UFCD atualizada" : "UFCD criada"); },
     onError: (e: any) => toast.error("Erro", { description: e.message }),
   });
+
+  function closeDialog() {
+    setOpen(false);
+    setEditingId(null);
+    setForm({ codigo: "", designacao: "", horas_referencia: 25 });
+  }
+
+  function openEdit(u: any) {
+    setEditingId(u.id);
+    setForm({ codigo: u.codigo, designacao: u.designacao, horas_referencia: u.horas_referencia });
+    setOpen(true);
+  }
 
   async function del(id: string) {
     const { error } = await supabase.from("ufcds").delete().eq("id", id);

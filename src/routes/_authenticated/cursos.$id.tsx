@@ -284,9 +284,10 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
             </div>
             <div className="space-y-1.5"><Label>Horas totais</Label><Input type="number" min={1} value={horas} onChange={e => setHoras(Number(e.target.value))} /></div>
             <div className="space-y-1.5">
-              <Label>Formadores</Label>
+              <Label>Formadores com competência</Label>
               <div className="border rounded-md max-h-40 overflow-y-auto p-2 space-y-1">
-                {(formadoresList.data ?? []).length === 0 && <div className="text-xs text-muted-foreground px-1">Sem formadores ativos.</div>}
+                {!ufcdId && <div className="text-xs text-muted-foreground px-1">Escolha primeiro uma UFCD.</div>}
+                {ufcdId && (formadoresList.data ?? []).length === 0 && <div className="text-xs text-muted-foreground px-1">Nenhum formador ativo com competência para esta UFCD.</div>}
                 {(formadoresList.data ?? []).map((f: any) => (
                   <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
                     <Checkbox checked={formadores.includes(f.id)} onCheckedChange={(c) => setFormadores(c ? [...formadores, f.id] : formadores.filter(x => x !== f.id))} />

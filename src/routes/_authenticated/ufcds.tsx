@@ -29,6 +29,7 @@ type ExtractedUfcd = {
 function UfcdsPage() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState({ codigo: "", designacao: "", horas_referencia: 25 });
   const [q, setQ] = useState("");
 

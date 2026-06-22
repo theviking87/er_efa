@@ -30,7 +30,20 @@ type Formador = {
   cor?: string;
 };
 
-const COLORS = ["#E11D48","#2563EB","#059669","#D97706","#7C3AED","#0891B2","#DB2777","#65A30D","#DC2626","#4F46E5"];
+const COLORS = [
+  // Vermelhos / rosas
+  "#E11D48","#DC2626","#B91C1C","#F43F5E","#DB2777","#EC4899","#BE185D","#9D174D",
+  // Laranjas / amarelos
+  "#EA580C","#F97316","#FB923C","#D97706","#F59E0B","#FBBF24","#CA8A04","#A16207",
+  // Verdes
+  "#65A30D","#16A34A","#059669","#10B981","#22C55E","#15803D","#166534","#047857",
+  // Cianos / azuis
+  "#0891B2","#06B6D4","#0EA5E9","#2563EB","#3B82F6","#1D4ED8","#1E40AF","#0369A1",
+  // Roxos / violetas
+  "#7C3AED","#8B5CF6","#A855F7","#6D28D9","#5B21B6","#4F46E5","#4338CA","#3730A3",
+  // Magentas / terra / neutros
+  "#C026D3","#A21CAF","#86198F","#92400E","#78350F","#713F12","#525252","#404040",
+];
 
 export function FormadorDialog({
   open, onOpenChange, initial,

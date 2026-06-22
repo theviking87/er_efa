@@ -78,9 +78,18 @@ function UfcdsPage() {
     setOpen(true);
   }
 
-  async function del(id: string) {
+  async function del(id: string, codigo: string) {
+    const { count } = await supabase
+      .from("curso_ufcds")
+      .select("id", { count: "exact", head: true })
+      .eq("ufcd_id", id);
+    if ((count ?? 0) > 0) {
+      return toast.error(`UFCD ${codigo} está associada a ${count} curso(s) e não pode ser eliminada.`);
+    }
+    if (!confirm(`Eliminar UFCD ${codigo}? Esta ação é irreversível.`)) return;
     const { error } = await supabase.from("ufcds").delete().eq("id", id);
     if (error) return toast.error(error.message);
+    toast.success("UFCD eliminada");
     qc.invalidateQueries({ queryKey: ["ufcds"] });
   }
 
@@ -146,7 +155,7 @@ function UfcdsPage() {
                 <td className="px-4 py-2.5 text-right text-muted-foreground">{u.horas_referencia} h</td>
                 <td className="px-4 py-2.5 text-right">
                   <Button variant="ghost" size="sm" onClick={() => openEdit(u)}><Pencil className="size-3.5" /></Button>
-                  <Button variant="ghost" size="sm" onClick={() => del(u.id)}><Trash2 className="size-3.5" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => del(u.id, u.codigo)}><Trash2 className="size-3.5" /></Button>
                 </td>
               </tr>
             ))}

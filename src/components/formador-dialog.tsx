@@ -16,6 +16,7 @@ type Formador = {
   nif?: string | null;
   cc?: string | null;
   validade_cc?: string | null;
+  data_nascimento?: string | null;
   morada?: string | null;
   codigo_postal?: string | null;
   localidade?: string | null;

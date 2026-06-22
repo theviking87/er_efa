@@ -188,27 +188,31 @@ function CronogramaGeral() {
     return m;
   }, [disp.data]);
 
-  // Para cada dia: 'none' = nenhum formador (de cursos ativos) disponível; 'partial' = pelo menos um curso ativo sem qualquer formador disponível; null caso contrário
-  const dayStatus = useMemo(() => {
-    const r = new Map<string, "none" | "partial">();
+  const PALETA = ["#fde68a", "#bbf7d0", "#fbcfe8", "#bfdbfe", "#ddd6fe", "#fed7aa", "#a7f3d0", "#fecaca"];
+  const cursosComCor = useMemo(() => {
+    return (cursosAtivos.data ?? []).map((c, i) => ({ ...c, cor: PALETA[i % PALETA.length] }));
+  }, [cursosAtivos.data]);
+
+  // Para cada dia: lista de cursos ativos sem qualquer formador disponível
+  const dayMissing = useMemo(() => {
+    const r = new Map<string, { todos: boolean; cursos: { id: string; codigo: string; cor: string }[] }>();
     if (!isProximoMes) return r;
-    const cursos = cursosAtivos.data ?? [];
+    const cursos = cursosComCor;
     if (cursos.length === 0) return r;
-    const todosFormadores = new Set<string>(cursos.flatMap(c => c.formadores));
-    if (todosFormadores.size === 0) return r;
     for (const cell of grid) {
       if (!cell) continue;
-      // só dias úteis (seg-sex)
       const dow = new Date(cell.iso + "T00:00:00").getDay();
       if (dow === 0 || dow === 6) continue;
       const dispSet = dispByDay.get(cell.iso) ?? new Set<string>();
-      const algumDisponivel = [...todosFormadores].some(f => dispSet.has(f));
-      if (!algumDisponivel) { r.set(cell.iso, "none"); continue; }
-      const algumCursoSemDisp = cursos.some(c => c.formadores.length > 0 && !c.formadores.some(f => dispSet.has(f)));
-      if (algumCursoSemDisp) r.set(cell.iso, "partial");
+      const semDisp = cursos.filter(c => c.formadores.length === 0 || !c.formadores.some(f => dispSet.has(f)));
+      if (semDisp.length === 0) continue;
+      r.set(cell.iso, {
+        todos: semDisp.length === cursos.length,
+        cursos: semDisp.map(c => ({ id: c.id, codigo: c.codigo, cor: c.cor })),
+      });
     }
     return r;
-  }, [isProximoMes, cursosAtivos.data, dispByDay, grid]);
+  }, [isProximoMes, cursosComCor, dispByDay, grid]);
 
   const totalSessoes = (sessoes.data ?? []).length;
   const totalHoras = (sessoes.data ?? []).reduce((acc, s: any) => acc + Number(s.horas), 0);
@@ -264,10 +268,14 @@ function CronogramaGeral() {
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground" /> Sessão</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
-          {isProximoMes && (
+          {isProximoMes && cursosComCor.length > 0 && (
             <>
-              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-amber-200" /> Sem disponibilidade (algum curso ativo)</span>
-              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-rose-200" /> Sem disponibilidade (nenhum formador)</span>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-red-500" /> Nenhum curso com disponibilidade</span>
+              {cursosComCor.map(c => (
+                <span key={c.id} className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-sm" style={{ background: c.cor }} /> {c.codigo} sem disponibilidade
+                </span>
+              ))}
             </>
           )}
         </div>
@@ -278,10 +286,24 @@ function CronogramaGeral() {
           </div>
           <div className="grid grid-cols-7 auto-rows-[minmax(130px,auto)]">
             {grid.map((cell, i) => {
-              const status = cell ? dayStatus.get(cell.iso) : undefined;
-              const bg = status === "none" ? "bg-rose-100/70" : status === "partial" ? "bg-amber-100/70" : "bg-card";
+              const miss = cell ? dayMissing.get(cell.iso) : undefined;
+              let bgStyle: React.CSSProperties | undefined;
+              if (miss) {
+                if (miss.todos) {
+                  bgStyle = { background: "rgba(239,68,68,0.35)" };
+                } else {
+                  const n = miss.cursos.length;
+                  const stops = miss.cursos.map((c, idx) => {
+                    const a = (idx * 100) / n;
+                    const b = ((idx + 1) * 100) / n;
+                    return `${c.cor} ${a}%, ${c.cor} ${b}%`;
+                  }).join(", ");
+                  bgStyle = { background: `linear-gradient(135deg, ${stops})` };
+                }
+              }
+              const title = miss ? (miss.todos ? "Nenhum curso ativo tem formador disponível" : "Sem disponibilidade: " + miss.cursos.map(c => c.codigo).join(", ")) : undefined;
               return (
-              <div key={i} className={"border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] " + bg}>
+              <div key={i} title={title} style={bgStyle} className="border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px]">
                 {cell && (
                   <>
                     <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>

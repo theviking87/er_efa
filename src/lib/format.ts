@@ -1,5 +1,35 @@
+export function dateOnlyIso(year: number, monthIndex: number, day: number) {
+  return `${year}-${String(monthIndex + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+}
+
+export function localDateIso(date = new Date()) {
+  return dateOnlyIso(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
+export function parseDateOnly(dateStr?: string | null): Date | null {
+  if (!dateStr) return null;
+  const iso = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (!iso) return null;
+  const result = new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]));
+  if (result.getUTCFullYear() !== +iso[1] || result.getUTCMonth() !== +iso[2] - 1 || result.getUTCDate() !== +iso[3]) return null;
+  return result;
+}
+
+export function addDaysIso(dateStr: string, days: number) {
+  const dt = parseDateOnly(dateStr);
+  if (!dt) return dateStr;
+  dt.setUTCDate(dt.getUTCDate() + days);
+  return dateOnlyIso(dt.getUTCFullYear(), dt.getUTCMonth(), dt.getUTCDate());
+}
+
+export function weekdayFromIso(dateStr: string) {
+  return parseDateOnly(dateStr)?.getUTCDay() ?? 0;
+}
+
 export const fmtDate = (d?: string | null) => {
   if (!d) return "—";
+  const dateOnly = parseDateOnly(d);
+  if (dateOnly) return `${String(dateOnly.getUTCDate()).padStart(2, "0")}/${String(dateOnly.getUTCMonth() + 1).padStart(2, "0")}/${dateOnly.getUTCFullYear()}`;
   const dt = new Date(d);
   if (isNaN(dt.getTime())) return d;
   return dt.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" });

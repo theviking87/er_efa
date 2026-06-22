@@ -260,10 +260,16 @@ function CronogramaGeral() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-muted-foreground">
+        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground" /> Sessão</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
+          {isProximoMes && (
+            <>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-amber-200" /> Sem disponibilidade (algum curso ativo)</span>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-rose-200" /> Sem disponibilidade (nenhum formador)</span>
+            </>
+          )}
         </div>
 
         <div className="border rounded-md overflow-hidden bg-card">
@@ -271,8 +277,11 @@ function CronogramaGeral() {
             {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}
           </div>
           <div className="grid grid-cols-7 auto-rows-[minmax(130px,auto)]">
-            {grid.map((cell, i) => (
-              <div key={i} className="border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] bg-card">
+            {grid.map((cell, i) => {
+              const status = cell ? dayStatus.get(cell.iso) : undefined;
+              const bg = status === "none" ? "bg-rose-100/70" : status === "partial" ? "bg-amber-100/70" : "bg-card";
+              return (
+              <div key={i} className={"border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] " + bg}>
                 {cell && (
                   <>
                     <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>

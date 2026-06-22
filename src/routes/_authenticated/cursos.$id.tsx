@@ -227,7 +227,17 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
   const [conflict, setConflict] = useState<{ cursos: { id: string; codigo: string; nome: string }[] } | null>(null);
 
   const ufcds = useQuery({ queryKey: ["ufcds"], queryFn: async () => (await supabase.from("ufcds").select("*").order("codigo")).data ?? [] });
-  const formadoresList = useQuery({ queryKey: ["formadores-ativos"], queryFn: async () => (await supabase.from("formadores").select("id, nome, cor, estado").eq("estado","ativo").order("nome")).data ?? [] });
+  const formadoresList = useQuery({
+    queryKey: ["formadores-ativos-ufcd", ufcdId],
+    enabled: !!ufcdId,
+    queryFn: async () => {
+      const { data: comp } = await supabase.from("formador_ufcds" as any).select("formador_id").eq("ufcd_id", ufcdId);
+      const ids = (comp ?? []).map((r: any) => r.formador_id);
+      if (ids.length === 0) return [];
+      const { data } = await supabase.from("formadores").select("id, nome, cor, estado").eq("estado", "ativo").in("id", ids).order("nome");
+      return data ?? [];
+    },
+  });
 
   async function doInsert() {
     const { data, error } = await supabase.from("curso_ufcds").insert({ curso_id: cursoId, ufcd_id: ufcdId, horas_totais: horas } as never).select().single();

@@ -327,7 +327,7 @@ function CronogramaGeral() {
                   </>
                 )}
               </div>
-            ))}
+            );})}
           </div>
         </div>
       </CardContent></Card>

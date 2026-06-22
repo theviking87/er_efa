@@ -268,10 +268,14 @@ function CronogramaGeral() {
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground" /> Sessão</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
-          {isProximoMes && (
+          {isProximoMes && cursosComCor.length > 0 && (
             <>
-              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-amber-200" /> Sem disponibilidade (algum curso ativo)</span>
-              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-rose-200" /> Sem disponibilidade (nenhum formador)</span>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-red-500" /> Nenhum curso com disponibilidade</span>
+              {cursosComCor.map(c => (
+                <span key={c.id} className="inline-flex items-center gap-1.5">
+                  <span className="size-2 rounded-sm" style={{ background: c.cor }} /> {c.codigo} sem disponibilidade
+                </span>
+              ))}
             </>
           )}
         </div>
@@ -282,10 +286,24 @@ function CronogramaGeral() {
           </div>
           <div className="grid grid-cols-7 auto-rows-[minmax(130px,auto)]">
             {grid.map((cell, i) => {
-              const status = cell ? dayStatus.get(cell.iso) : undefined;
-              const bg = status === "none" ? "bg-rose-100/70" : status === "partial" ? "bg-amber-100/70" : "bg-card";
+              const miss = cell ? dayMissing.get(cell.iso) : undefined;
+              let bgStyle: React.CSSProperties | undefined;
+              if (miss) {
+                if (miss.todos) {
+                  bgStyle = { background: "rgba(239,68,68,0.35)" };
+                } else {
+                  const n = miss.cursos.length;
+                  const stops = miss.cursos.map((c, idx) => {
+                    const a = (idx * 100) / n;
+                    const b = ((idx + 1) * 100) / n;
+                    return `${c.cor} ${a}%, ${c.cor} ${b}%`;
+                  }).join(", ");
+                  bgStyle = { background: `linear-gradient(135deg, ${stops})` };
+                }
+              }
+              const title = miss ? (miss.todos ? "Nenhum curso ativo tem formador disponível" : "Sem disponibilidade: " + miss.cursos.map(c => c.codigo).join(", ")) : undefined;
               return (
-              <div key={i} className={"border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] " + bg}>
+              <div key={i} title={title} style={bgStyle} className="border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px]">
                 {cell && (
                   <>
                     <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>

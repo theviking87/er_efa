@@ -12,6 +12,7 @@ import { FileSpreadsheet, FileText } from "lucide-react";
 import { exportSigoCurso, exportRelatorioFormadores, exportRelatorioCursos, exportRelatorioFaltas } from "@/lib/exports";
 import { exportSigoCursoPdf, exportRelatorioFormadoresPdf, exportRelatorioCursosPdf, exportRelatorioFaltasPdf } from "@/lib/pdf-exports";
 import { toast } from "sonner";
+import { localDateIso } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios e SIGO — Gestão Pedagógica" }] }),
@@ -22,11 +23,11 @@ function RelatoriosPage() {
   const [cursoId, setCursoId] = useState("");
   const [inicio, setInicio] = useState(() => {
     const d = new Date(); d.setDate(1);
-    return d.toISOString().slice(0, 10);
+    return localDateIso(d);
   });
   const [fim, setFim] = useState(() => {
     const d = new Date(); d.setMonth(d.getMonth() + 1); d.setDate(0);
-    return d.toISOString().slice(0, 10);
+    return localDateIso(d);
   });
   const [busy, setBusy] = useState<string | null>(null);
 

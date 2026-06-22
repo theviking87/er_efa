@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, BookOpen, Users, Calendar, ListChecks } from "lucide-react";
-import { fmtDate, fmtHoras } from "@/lib/format";
+import { addDaysIso, fmtDate, fmtHoras, localDateIso } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Painel — Gestão Pedagógica" }] }),
@@ -43,9 +43,8 @@ function Dashboard() {
   const proximas = useQuery({
     queryKey: ["dashboard-proximas-sessoes"],
     queryFn: async () => {
-      const hoje = new Date().toISOString().slice(0, 10);
-      const em7 = new Date(); em7.setDate(em7.getDate() + 7);
-      const lim = em7.toISOString().slice(0, 10);
+      const hoje = localDateIso();
+      const lim = addDaysIso(hoje, 7);
       const { data } = await supabase
         .from("sessoes")
         .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(id,nome,abreviatura,cor), curso:cursos(id,nome,codigo), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")

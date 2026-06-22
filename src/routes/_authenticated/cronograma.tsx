@@ -176,6 +176,40 @@ function CronogramaGeral() {
     return days;
   }, [mes]);
 
+  // Map data -> set de formador_ids com disponibilidade nesse dia (apenas tipo 'disponivel')
+  const dispByDay = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (disp.data ?? []).forEach((d: any) => {
+      if (d.tipo !== "disponivel") return;
+      const s = m.get(d.data) ?? new Set<string>();
+      s.add(d.formador_id);
+      m.set(d.data, s);
+    });
+    return m;
+  }, [disp.data]);
+
+  // Para cada dia: 'none' = nenhum formador (de cursos ativos) disponível; 'partial' = pelo menos um curso ativo sem qualquer formador disponível; null caso contrário
+  const dayStatus = useMemo(() => {
+    const r = new Map<string, "none" | "partial">();
+    if (!isProximoMes) return r;
+    const cursos = cursosAtivos.data ?? [];
+    if (cursos.length === 0) return r;
+    const todosFormadores = new Set<string>(cursos.flatMap(c => c.formadores));
+    if (todosFormadores.size === 0) return r;
+    for (const cell of grid) {
+      if (!cell) continue;
+      // só dias úteis (seg-sex)
+      const dow = new Date(cell.iso + "T00:00:00").getDay();
+      if (dow === 0 || dow === 6) continue;
+      const dispSet = dispByDay.get(cell.iso) ?? new Set<string>();
+      const algumDisponivel = [...todosFormadores].some(f => dispSet.has(f));
+      if (!algumDisponivel) { r.set(cell.iso, "none"); continue; }
+      const algumCursoSemDisp = cursos.some(c => c.formadores.length > 0 && !c.formadores.some(f => dispSet.has(f)));
+      if (algumCursoSemDisp) r.set(cell.iso, "partial");
+    }
+    return r;
+  }, [isProximoMes, cursosAtivos.data, dispByDay, grid]);
+
   const totalSessoes = (sessoes.data ?? []).length;
   const totalHoras = (sessoes.data ?? []).reduce((acc, s: any) => acc + Number(s.horas), 0);
   const totalDisp = (disp.data ?? []).filter((d: any) => d.tipo === "disponivel").length;

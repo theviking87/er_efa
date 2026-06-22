@@ -296,6 +296,42 @@ export type Database = {
           },
         ]
       }
+      formador_ufcds: {
+        Row: {
+          created_at: string
+          formador_id: string
+          id: string
+          ufcd_id: string
+        }
+        Insert: {
+          created_at?: string
+          formador_id: string
+          id?: string
+          ufcd_id: string
+        }
+        Update: {
+          created_at?: string
+          formador_id?: string
+          id?: string
+          ufcd_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formador_ufcds_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: false
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formador_ufcds_ufcd_id_fkey"
+            columns: ["ufcd_id"]
+            isOneToOne: false
+            referencedRelation: "ufcds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formadores: {
         Row: {
           abreviatura: string | null

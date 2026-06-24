@@ -353,7 +353,7 @@ function CronogramaGeral() {
   function next() { setMes(m => m.mes === 11 ? { ano: m.ano + 1, mes: 0 } : { ano: m.ano, mes: m.mes + 1 }); }
   function hoje() { const d = new Date(); setMes({ ano: d.getFullYear(), mes: d.getMonth() }); }
 
-  function imprimirDiasSemDisp() {
+  async function imprimirDiasSemDisp() {
     if (!cursoFiltro) return toast.error("Seleciona um curso primeiro");
     const curso = (cursosTodos.data ?? []).find((c: any) => c.id === cursoFiltro) as any;
     if (!curso) return;

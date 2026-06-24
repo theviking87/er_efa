@@ -1044,6 +1044,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
   const [motivo, setMotivo] = useState("");
   const [hi, setHi] = useState("");
   const [hf, setHf] = useState("");
+  const [dataSess, setDataSess] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Inicializa com a ufcd e horário da sessão quando abre
@@ -1053,8 +1054,10 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       setNovoFormadorId(sessao.formador_id ?? "");
       setHi(String(sessao.hora_inicio ?? "").slice(0, 5));
       setHf(String(sessao.hora_fim ?? "").slice(0, 5));
+      setDataSess(String(sessao.data ?? "").slice(0, 10));
     }
   }, [sessao?.id]);
+
 
   // UFCDs do curso (para escolher)
   const cursoUfcds = useQuery({

@@ -618,53 +618,59 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
       {/* ÁREA DE IMPRESSÃO — só visível quando se imprime */}
       <div id="cronograma-print" className="hidden print:block">
-        <div className="mb-3">
-          <div className="text-xs text-muted-foreground">{cursoCodigo}</div>
-          <div className="font-semibold text-lg">{cursoNome}</div>
-          <div className="text-sm">Cronograma · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
+        {/* PÁGINA 1 — Cronograma do mês (uma folha) */}
+        <div className="cronograma-page">
+          <div className="mb-2">
+            <div className="text-xs text-muted-foreground">{cursoCodigo}</div>
+            <div className="font-semibold text-lg leading-tight">{cursoNome}</div>
+            <div className="text-sm">Cronograma · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
+          </div>
+
+          <div className="cronograma-grid grid grid-cols-7 border border-gray-400 text-[9px]" style={{ gridAutoRows: "1fr" }}>
+            {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => (
+              <div key={d} className="border border-gray-400 bg-gray-100 px-1 py-0.5 font-semibold text-center uppercase">{d}</div>
+            ))}
+            {grid.map((cell, i) => (
+              <div key={i} className="border border-gray-300 p-1 align-top overflow-hidden">
+                {cell && (
+                  <>
+                    <div className="text-[10px] font-semibold mb-0.5">{cell.d}</div>
+                    <div className="space-y-0.5">
+                      {(sessoesByDay.get(cell.iso) ?? []).flatMap((s: any) => {
+                        const [hiH, hiM] = String(s.hora_inicio).split(":").map(Number);
+                        const [hfH, hfM] = String(s.hora_fim).split(":").map(Number);
+                        const startMin = hiH * 60 + hiM;
+                        const endMin = hfH * 60 + hfM;
+                        const linhas: { from: string; to: string }[] = [];
+                        let cur = startMin;
+                        while (cur < endMin) {
+                          const nxt = Math.min(cur + 60, endMin);
+                          const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}h${m % 60 === 0 ? "" : String(m % 60).padStart(2, "0")}`;
+                          linhas.push({ from: fmt(cur), to: fmt(nxt) });
+                          cur = nxt;
+                        }
+                        return linhas.map((l, idx) => (
+                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
+                            <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
+                            {" "}{formadorLabel(s.formador)} ({s.curso_ufcd?.ufcd?.codigo})
+                          </div>
+                        ));
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
         </div>
 
-        <div className="grid grid-cols-7 border border-gray-400 text-[9px]" style={{ gridAutoRows: "minmax(70px, auto)" }}>
-          {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => (
-            <div key={d} className="border border-gray-400 bg-gray-100 px-1 py-0.5 font-semibold text-center uppercase">{d}</div>
-          ))}
-          {grid.map((cell, i) => (
-            <div key={i} className="border border-gray-300 p-1 align-top" style={{ minHeight: "70px" }}>
-              {cell && (
-                <>
-                  <div className="text-[10px] font-semibold mb-0.5">{cell.d}</div>
-                  <div className="space-y-0.5">
-                    {(sessoesByDay.get(cell.iso) ?? []).flatMap((s: any) => {
-                      // Partir a sessão em linhas de 1h: 9h-10h, 10h-11h, ...
-                      const [hiH, hiM] = String(s.hora_inicio).split(":").map(Number);
-                      const [hfH, hfM] = String(s.hora_fim).split(":").map(Number);
-                      const startMin = hiH * 60 + hiM;
-                      const endMin = hfH * 60 + hfM;
-                      const linhas: { from: string; to: string }[] = [];
-                      let cur = startMin;
-                      while (cur < endMin) {
-                        const nxt = Math.min(cur + 60, endMin);
-                        const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}h${m % 60 === 0 ? "" : String(m % 60).padStart(2, "0")}`;
-                        linhas.push({ from: fmt(cur), to: fmt(nxt) });
-                        cur = nxt;
-                      }
-                      return linhas.map((l, idx) => (
-                        <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
-                          <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
-                          {" "}{formadorLabel(s.formador)} ({s.curso_ufcd?.ufcd?.codigo})
-                        </div>
-                      ));
-                    })}
-                  </div>
-
-                </>
-              )}
-            </div>
-          ))}
-        </div>
-
-
-        <div className="mt-3 text-[10px]" style={{ pageBreakBefore: "always", breakBefore: "page" }}>
+        {/* PÁGINA 2 — Gestão de horas */}
+        <div className="horas-page text-[10px]">
+          <div className="mb-2">
+            <div className="text-xs text-muted-foreground">{cursoCodigo}</div>
+            <div className="font-semibold text-lg leading-tight">{cursoNome}</div>
+            <div className="text-sm">Gestão de horas · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
+          </div>
           <div className="font-semibold mb-1">Formadores deste mês — UFCD em curso e horas em falta (inclui {MONTH_NAMES[mes.mes]})</div>
 
           <table className="w-full border-collapse text-[9px]">

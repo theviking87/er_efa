@@ -826,8 +826,8 @@ function CreateDispDialog({
       hora_inicio: hi,
       hora_fim: hf,
       tipo,
-
       notas: notas.trim() || null,
+
       curso_id: cursoId || null,
     } as never);
 

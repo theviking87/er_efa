@@ -914,7 +914,7 @@ function SessaoChip({ sessao, onDelete, onPresencas, onSubstituir }: { sessao: a
           <button onClick={onPresencas} className="text-[10px] hover:underline" title="Marcar presenças">✓</button>
         )}
         {onSubstituir && (
-          <button onClick={onSubstituir} className="text-[10px] hover:underline" title="Substituir formador">↻</button>
+          <button onClick={onSubstituir} className="text-[10px] hover:underline" title="Substituir UFCD / formador">↻</button>
         )}
         <button onClick={onDelete} className="text-[10px] hover:underline" title="Apagar">×</button>
       </div>

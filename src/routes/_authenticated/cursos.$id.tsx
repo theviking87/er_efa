@@ -331,7 +331,7 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
   const [formadores, setFormadores] = useState<string[]>([]);
   const [conflict, setConflict] = useState<{ cursos: { id: string; codigo: string; nome: string }[] } | null>(null);
 
-  const ufcds = useQuery({ queryKey: ["ufcds"], queryFn: async () => (await supabase.from("ufcds").select("*").order("codigo")).data ?? [] });
+  const ufcds = useQuery({ queryKey: ["ufcds"], queryFn: async () => ((await supabase.from("ufcds").select("*")).data ?? []).sort((a: any, b: any) => compareUfcdCodigo(a.codigo, b.codigo)) });
   const formadoresList = useQuery({
     queryKey: ["formadores-ativos-ufcd", ufcdId],
     enabled: !!ufcdId,

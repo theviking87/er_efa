@@ -253,6 +253,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
       <AtribuirUfcdDialog open={open} onOpenChange={setOpen} cursoId={cursoId} onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })} />
       <GerirFormadoresUfcdDialog
         info={manageUfcd}
+        cursoId={cursoId}
         onOpenChange={(v) => { if (!v) setManageUfcd(null); }}
         onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })}
       />

@@ -287,23 +287,36 @@ function CronogramaGeral() {
     if (!cursoFiltro) return toast.error("Seleciona um curso primeiro");
     const curso = (cursosTodos.data ?? []).find((c: any) => c.id === cursoFiltro) as any;
     if (!curso) return;
-    const diasSem: { iso: string; dow: string }[] = [];
+    const diasSem: { iso: string; dow: string; periodo: string }[] = [];
     const semanaLbl = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const dispData = disp.data ?? [];
+    const cursoInfo = (cursosAtivos.data ?? []).find((c: any) => c.id === cursoFiltro);
+    const formadoresDoCurso = new Set<string>(cursoInfo?.formadores ?? []);
+    const toMin = (h: string) => {
+      const [hh, mm] = (h ?? "").split(":").map(Number);
+      return (hh || 0) * 60 + (mm || 0);
+    };
+    // Manhã: 09:00-13:00 (540-780). Tarde: 14:00-17:00 (840-1020).
     for (const cell of grid) {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
-      // Tem disponibilidade para este curso se: dispo específica deste curso OU dispo geral de um formador atribuído ao curso
-      const cursoInfo = (cursosAtivos.data ?? []).find((c: any) => c.id === cursoFiltro);
-      const formadoresDoCurso = new Set<string>(cursoInfo?.formadores ?? []);
-      const tem = dispData.some((d: any) => {
-        if (d.data !== cell.iso || d.tipo !== "disponivel") return false;
-        if (d.curso_id === cursoFiltro) return true;
-        if (!d.curso_id && formadoresDoCurso.has(d.formador_id)) return true;
-        return false;
-      });
-      if (!tem) diasSem.push({ iso: cell.iso, dow: semanaLbl[dow] });
+      let cobreManha = false;
+      let cobreTarde = false;
+      for (const d of dispData as any[]) {
+        if (d.data !== cell.iso || d.tipo !== "disponivel") continue;
+        if (!(d.curso_id === cursoFiltro || (!d.curso_id && formadoresDoCurso.has(d.formador_id)))) continue;
+        const ini = toMin(d.hora_inicio);
+        const fim = toMin(d.hora_fim);
+        if (ini < 780 && fim > 540) cobreManha = true;
+        if (ini < 1020 && fim > 840) cobreTarde = true;
+        if (cobreManha && cobreTarde) break;
+      }
+      if (cobreManha && cobreTarde) continue;
+      let periodo = "Dia todo";
+      if (cobreManha && !cobreTarde) periodo = "Tarde";
+      else if (!cobreManha && cobreTarde) periodo = "Manhã";
+      diasSem.push({ iso: cell.iso, dow: semanaLbl[dow], periodo });
     }
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const w = doc.internal.pageSize.getWidth();
@@ -318,12 +331,15 @@ function CronogramaGeral() {
 
     if (diasSem.length === 0) {
       doc.setFontSize(11);
-      doc.text("Todos os dias úteis do mês têm pelo menos uma disponibilidade.", 14, 30);
+      doc.text("Todos os dias úteis do mês têm disponibilidade de manhã e de tarde.", 14, 30);
     } else {
+      const totalDias = diasSem.filter(d => d.periodo === "Dia todo").length;
+      const totalManha = diasSem.filter(d => d.periodo === "Manhã").length;
+      const totalTarde = diasSem.filter(d => d.periodo === "Tarde").length;
       autoTable(doc, {
         startY: 24,
-        head: [["Data", "Dia da semana"]],
-        body: diasSem.map(d => [fmtDate(d.iso), d.dow === "Sáb" ? "Sábado" : `${d.dow}-feira`]),
+        head: [["Data", "Dia da semana", "Período sem disponibilidade"]],
+        body: diasSem.map(d => [fmtDate(d.iso), d.dow === "Sáb" ? "Sábado" : `${d.dow}-feira`, d.periodo]),
         styles: { font: "helvetica", fontSize: 10, cellPadding: 2.5 },
         headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [248, 250, 252] },
@@ -332,10 +348,15 @@ function CronogramaGeral() {
       const yEnd = (doc as any).lastAutoTable.finalY ?? 24;
       doc.setFontSize(9);
       doc.setTextColor(100, 116, 139);
-      doc.text(`Total: ${diasSem.length} dia(s) sem disponibilidade`, 14, yEnd + 8);
+      doc.text(
+        `Total: ${diasSem.length} registo(s) — ${totalDias} dia(s) inteiro(s), ${totalManha} manhã(s), ${totalTarde} tarde(s)`,
+        14,
+        yEnd + 8,
+      );
     }
     doc.save(`Dias_sem_disponibilidade_${curso.codigo}_${mes.ano}-${String(mes.mes + 1).padStart(2, "0")}.pdf`);
   }
+
 
   return (
     <PageContainer>

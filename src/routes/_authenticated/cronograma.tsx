@@ -515,7 +515,10 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
         .select("curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))")
         .eq("formador_id", slot!.formador_id);
       if (error) throw error;
-      return (data ?? []).map((r: any) => r.curso_ufcd).filter((x: any) => x && x.curso);
+      return (data ?? [])
+        .map((r: any) => r.curso_ufcd)
+        .filter((x: any) => x && x.curso)
+        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
 

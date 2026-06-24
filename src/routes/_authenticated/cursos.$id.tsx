@@ -1177,7 +1177,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
   const ufcdChanged = sessao && novoCursoUfcdId && novoCursoUfcdId !== (sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id);
 
   return (
-    <Dialog open={!!sessao} onOpenChange={(v) => { if (!v) { onClose(); setNovoFormadorId(""); setMotivo(""); setHi(""); setHf(""); } }}>
+    <Dialog open={!!sessao} onOpenChange={(v) => { if (!v) { onClose(); setNovoFormadorId(""); setMotivo(""); setHi(""); setHf(""); setDataSess(""); } }}>
       <DialogContent>
         <DialogHeader><DialogTitle>Editar sessão</DialogTitle></DialogHeader>
         {sessao && (
@@ -1198,6 +1198,10 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Data *</Label>
+              <Input type="date" value={dataSess} onChange={e => setDataSess(e.target.value)} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Hora de início *</Label>
@@ -1208,6 +1212,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
                 <Input type="time" value={hf} onChange={e => setHf(e.target.value)} />
               </div>
             </div>
+
             <div className="space-y-1.5">
               <Label>Formador *</Label>
               <Select value={novoFormadorId} onValueChange={setNovoFormadorId}>

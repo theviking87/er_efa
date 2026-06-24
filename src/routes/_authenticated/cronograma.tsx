@@ -170,6 +170,8 @@ function CronogramaGeral() {
     }
     if (mostrar !== "sessoes") {
       (disp.data ?? []).forEach((d: any) => {
+        // Quando filtrado por curso, mostrar apenas disponibilidades associadas a esse curso.
+        if (cursoFiltro && d.curso_id !== cursoFiltro) return;
         const slot: DispSlot = {
           kind: "disp",
           id: d.id,
@@ -192,7 +194,8 @@ function CronogramaGeral() {
     // sort each day by hora_inicio
     for (const arr of m.values()) arr.sort((a, b) => (a.hora_inicio ?? "").localeCompare(b.hora_inicio ?? ""));
     return m;
-  }, [sessoes.data, disp.data, mostrar]);
+  }, [sessoes.data, disp.data, mostrar, cursoFiltro]);
+
 
   const grid = useMemo(() => {
     const first = new Date(mes.ano, mes.mes, 1);

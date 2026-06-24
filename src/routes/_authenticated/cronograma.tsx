@@ -381,23 +381,40 @@ function CronogramaGeral() {
                         }
                         const isDisp = slot.tipo === "disponivel";
                         return (
-                          <button
+                          <div
                             key={"d" + slot.id}
-                            onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
-                            disabled={!isDisp}
-                            className={"block w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
-                              (isDisp ? "hover:bg-emerald-50 cursor-pointer" : "cursor-not-allowed opacity-80")}
+                            className={"relative group w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
+                              (isDisp ? "hover:bg-emerald-50 cursor-pointer" : "opacity-80")}
                             style={{
                               borderColor: isDisp ? "rgb(16,185,129)" : "rgb(244,63,94)",
                               color: slot.formador_cor,
                             }}
-                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.notas ? "\n" + slot.notas : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
+                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.curso_codigo ? "\nCurso: " + slot.curso_codigo : ""}${slot.notas ? "\n" + slot.notas : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
+                            onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
                           >
                             <div className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</div>
                             <div className="truncate font-medium">{slot.formador_nome}</div>
-                            <div className="truncate opacity-80">{isDisp ? "Disponível" : "Indisponível"}</div>
-                          </button>
+                            <div className="truncate opacity-80">
+                              {isDisp ? "Disponível" : "Indisponível"}
+                              {slot.curso_codigo ? ` · ${slot.curso_codigo}` : ""}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!confirm("Apagar esta disponibilidade?")) return;
+                                const { error } = await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
+                                if (error) return toast.error(error.message);
+                                toast.success("Disponibilidade apagada");
+                                qc.invalidateQueries({ queryKey: ["disp-geral"] });
+                                qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
+                              }}
+                              className="absolute top-0 right-0 px-1 text-[10px] text-rose-600 opacity-0 group-hover:opacity-100 print:hidden"
+                              title="Apagar disponibilidade"
+                            >✕</button>
+                          </div>
                         );
+
                       })}
                     </div>
                   </>

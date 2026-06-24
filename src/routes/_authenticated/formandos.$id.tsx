@@ -6,10 +6,12 @@ import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Pencil, Trash2, Download, Upload } from "lucide-react";
 import { EstadoFormandoBadge } from "./formandos.index";
 import { FormandoDialog } from "@/components/formando-dialog";
 import { fmtDate, INSCRICAO_ESTADO_LABEL } from "@/lib/format";
+import { compareUfcdCodigo } from "@/lib/utils";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 

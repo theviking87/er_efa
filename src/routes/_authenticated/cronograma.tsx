@@ -677,11 +677,13 @@ function CreateDispDialog({
 
     setSaving(true);
     let notasFinais = notas.trim();
+    let cursoIdFinal: string | null = null;
     if (cursoUfcdId) {
       const cu = (ufcdsAtribuidas.data ?? []).find((x: any) => x.id === cursoUfcdId) as any;
       if (cu) {
         const ctx = `${cu.curso.codigo} · ${cu.ufcd.codigo} (faltam ${cu.horas_faltam}h)`;
         notasFinais = notasFinais ? `${ctx} — ${notasFinais}` : ctx;
+        cursoIdFinal = cu.curso.id;
       }
     }
 
@@ -692,7 +694,9 @@ function CreateDispDialog({
       hora_fim: horaFim,
       tipo,
       notas: notasFinais || null,
+      curso_id: cursoIdFinal,
     } as never);
+
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Disponibilidade lançada");

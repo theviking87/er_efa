@@ -251,6 +251,7 @@ function CronogramaGeral() {
             <div className="font-semibold text-lg min-w-[170px] text-center">{MONTH_NAMES[mes.mes]} {mes.ano}</div>
             <Button variant="outline" size="icon" onClick={next}><ChevronRight className="size-4" /></Button>
             <Button variant="ghost" size="sm" onClick={hoje}>Hoje</Button>
+            <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4 mr-1" />Imprimir</Button>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <select

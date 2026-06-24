@@ -132,6 +132,18 @@ function FormandoDetail() {
             )}
           </CardContent></Card>
         </TabsContent>
+
+        <TabsContent value="pra">
+          <Card><CardContent className="p-6 space-y-6">
+            {q.data.inscricoes.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-8">Sem inscrições. Os PRA aparecem aqui após inscrever o formando num curso.</div>
+            ) : (
+              q.data.inscricoes.map((i: any) => (
+                <PraCurso key={i.id} cursoFormandoId={i.id} curso={i.curso} />
+              ))
+            )}
+          </CardContent></Card>
+        </TabsContent>
       </Tabs>
 
       <FormandoDialog open={editing} onOpenChange={setEditing} initial={f as any} />

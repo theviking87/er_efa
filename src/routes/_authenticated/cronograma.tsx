@@ -822,8 +822,9 @@ function CreateDispDialog({
   async function criar() {
     if (!data) return;
     if (!formadorId) return toast.error("Escolhe o formador");
-    const hi = diaTodo ? "00:00" : horaInicio;
-    const hf = diaTodo ? "23:59" : horaFim;
+    const hi = horaInicio;
+    const hf = horaFim;
+
     if (!hi || !hf || hf <= hi) return toast.error("Horário inválido");
 
 

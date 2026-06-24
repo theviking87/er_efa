@@ -620,6 +620,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const [presencasSessao, setPresencasSessao] = useState<any | null>(null);
   const [substituirSessao, setSubstituirSessao] = useState<any | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [analiseOpen, setAnaliseOpen] = useState(false);
 
   const inicioMes = dateOnlyIso(mes.ano, mes.mes, 1);
   const fimMes = dateOnlyIso(mes.ano, mes.mes + 1, 0);

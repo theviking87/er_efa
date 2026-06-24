@@ -762,9 +762,8 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       const { data } = await supabase
         .from("curso_ufcds")
         .select("id, ufcd_id, ufcd:ufcds(codigo, designacao)")
-        .eq("curso_id", cursoId)
-        .order("ordem");
-      return data ?? [];
+        .eq("curso_id", cursoId);
+      return (data ?? []).sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
 

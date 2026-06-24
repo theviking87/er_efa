@@ -62,6 +62,7 @@ function CronogramaGeral() {
   const [mostrar, setMostrar] = useState<"ambos" | "sessoes" | "disp">("ambos");
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
+  const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
 
 
   useEffect(() => {

@@ -273,6 +273,44 @@ function CronogramaGeral() {
     return r;
   }, [mostrar, cursosComCor, coverageByDay, grid]);
 
+  // Disponibilidades sobrepostas: mesmo curso, mesmo dia, formadores diferentes, intervalos que se intersetam.
+  const overlapDispIds = useMemo(() => {
+    const matched = new Set<string>();
+    const cursos = cursosAtivos.data ?? [];
+    const toMin = (h: string) => {
+      const [hh, mm] = (h ?? "").split(":").map(Number);
+      return (hh || 0) * 60 + (mm || 0);
+    };
+    type Item = { id: string; formador_id: string; s: number; e: number };
+    const byCursoDay = new Map<string, Item[]>();
+    (disp.data ?? []).forEach((d: any) => {
+      if (d.tipo !== "disponivel") return;
+      const cursosAlvo = d.curso_id
+        ? [d.curso_id]
+        : cursos.filter((c: any) => c.formadores.includes(d.formador_id)).map((c: any) => c.id);
+      const item: Item = { id: d.id, formador_id: d.formador_id, s: toMin(d.hora_inicio), e: toMin(d.hora_fim) };
+      for (const cid of cursosAlvo) {
+        const k = `${cid}|${d.data}`;
+        const arr = byCursoDay.get(k) ?? [];
+        arr.push(item);
+        byCursoDay.set(k, arr);
+      }
+    });
+    for (const arr of byCursoDay.values()) {
+      for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+          const a = arr[i], b = arr[j];
+          if (a.formador_id === b.formador_id) continue;
+          if (a.s < b.e && b.s < a.e) {
+            matched.add(a.id);
+            matched.add(b.id);
+          }
+        }
+      }
+    }
+    return matched;
+  }, [disp.data, cursosAtivos.data]);
+
 
 
   const totalSessoes = (sessoes.data ?? []).length;
@@ -424,8 +462,10 @@ function CronogramaGeral() {
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground" /> Sessão</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
+          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm ring-2 ring-amber-500" /> Disponibilidade sobreposta (mesmo curso, &gt;1 formador)</span>
           {mostrar === "disp" && cursosComCor.length > 0 && (
             <>
+
               <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-red-500" /> Sem disponibilidade para nenhum curso</span>
               {cursosComCor.map(c => (
                 <span key={c.id} className="inline-flex items-center gap-1.5">
@@ -494,18 +534,23 @@ function CronogramaGeral() {
                           );
                         }
                         const isDisp = slot.tipo === "disponivel";
+                        const isOverlap = isDisp && overlapDispIds.has(slot.id);
                         return (
                           <div
                             key={"d" + slot.id}
                             className={"relative group w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
-                              (isDisp ? "hover:bg-emerald-50 cursor-pointer" : "opacity-80")}
+                              (isDisp ? "hover:bg-emerald-50 cursor-pointer " : "opacity-80 ") +
+                              (isOverlap ? "ring-2 ring-amber-500 ring-offset-1" : "")}
                             style={{
                               borderColor: isDisp ? "rgb(16,185,129)" : "rgb(244,63,94)",
                               color: slot.formador_cor,
                             }}
-                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.curso_codigo ? "\nCurso: " + slot.curso_codigo : ""}${slot.notas ? "\n" + slot.notas : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
+                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.curso_codigo ? "\nCurso: " + slot.curso_codigo : ""}${slot.notas ? "\n" + slot.notas : ""}${isOverlap ? "\n\n⚠ Outro formador deu disponibilidade sobreposta para o mesmo curso" : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
                             onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
                           >
+                            {isOverlap && (
+                              <span className="absolute -top-1 -left-1 bg-amber-500 text-white rounded-full size-3.5 flex items-center justify-center text-[9px] font-bold leading-none print:hidden" title="Sobreposta">↔</span>
+                            )}
                             <div className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</div>
                             <div className="truncate font-medium">{slot.formador_nome}</div>
                             <div className="truncate opacity-80">

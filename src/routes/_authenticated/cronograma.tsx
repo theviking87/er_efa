@@ -62,6 +62,7 @@ function CronogramaGeral() {
   const [mostrar, setMostrar] = useState<"ambos" | "sessoes" | "disp">("ambos");
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
+  const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
 
 
   useEffect(() => {
@@ -582,72 +583,86 @@ function CronogramaGeral() {
                 }}
                 className={"border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] " + (canCreate ? "cursor-pointer hover:bg-emerald-50/40" : "")}
               >
-                {cell && (
-                  <>
-                    <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>
-                    <div className="space-y-1">
-                      {(slotsByDay.get(cell.iso) ?? []).map((slot) => {
-                        if (slot.kind === "sessao") {
-                          return (
-                            <Link
-                              key={"s" + slot.id}
-                              to="/cursos/$id"
-                              params={{ id: slot.curso_id }}
-                              className="block text-[11px] leading-tight rounded px-1.5 py-1 hover:opacity-80 transition"
-                              style={{ background: `${slot.formador_cor}20`, color: slot.formador_cor, borderLeft: `2px solid ${slot.formador_cor}` }}
-                              title={`${slot.curso_codigo} — ${slot.curso_nome}\n${slot.ufcd_codigo}\n${slot.formador_nome}`}
-                            >
-                              <div className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</div>
-                              <div className="truncate font-medium">{slot.curso_codigo}</div>
-                              <div className="truncate opacity-80">{slot.formador_nome}</div>
-                            </Link>
-                          );
-                        }
-                        const isDisp = slot.tipo === "disponivel";
-                        const isOverlap = isDisp && overlapDispIds.has(slot.id);
-                        return (
-                          <div
-                            key={"d" + slot.id}
-                            className={"relative group w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
-                              (isDisp ? "hover:bg-emerald-50 cursor-pointer " : "opacity-80 ") +
-                              (isOverlap ? "ring-2 ring-amber-500 ring-offset-1" : "")}
-                            style={{
-                              borderColor: isDisp ? "rgb(16,185,129)" : "rgb(244,63,94)",
-                              color: slot.formador_cor,
+                {cell && (() => {
+                  const renderSlot = (slot: any) => {
+                    if (slot.kind === "sessao") {
+                      return (
+                        <Link
+                          key={"s" + slot.id}
+                          to="/cursos/$id"
+                          params={{ id: slot.curso_id }}
+                          className="block text-[11px] leading-tight rounded px-1.5 py-1 hover:opacity-80 transition"
+                          style={{ background: `${slot.formador_cor}20`, color: slot.formador_cor, borderLeft: `2px solid ${slot.formador_cor}` }}
+                          title={`${slot.curso_codigo} — ${slot.curso_nome}\n${slot.ufcd_codigo}\n${slot.formador_nome}`}
+                        >
+                          <div className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</div>
+                          <div className="truncate font-medium">{slot.curso_codigo}</div>
+                          <div className="truncate opacity-80">{slot.formador_nome}</div>
+                        </Link>
+                      );
+                    }
+                    const isDisp = slot.tipo === "disponivel";
+                    const isOverlap = isDisp && overlapDispIds.has(slot.id);
+                    return (
+                      <div
+                        key={"d" + slot.id}
+                        className={"relative group w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition bg-background/80 " +
+                          (isDisp ? "hover:bg-emerald-50 cursor-pointer " : "opacity-80 ") +
+                          (isOverlap ? "ring-2 ring-amber-500 ring-offset-1" : "")}
+                        style={{
+                          borderColor: isDisp ? "rgb(16,185,129)" : "rgb(244,63,94)",
+                          color: slot.formador_cor,
+                        }}
+                        title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.curso_codigo ? "\nCurso: " + slot.curso_codigo : ""}${slot.notas ? "\n" + slot.notas : ""}${isOverlap ? "\n\n⚠ Outro formador deu disponibilidade sobreposta para o mesmo curso" : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
+                        onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
+                      >
+                        {isOverlap && (
+                          <span className="absolute -top-1 -left-1 bg-amber-500 text-white rounded-full size-3.5 flex items-center justify-center text-[9px] font-bold leading-none print:hidden" title="Sobreposta">↔</span>
+                        )}
+                        <div className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</div>
+                        <div className="truncate font-medium">{slot.formador_nome}</div>
+                        <div className="truncate opacity-80">
+                          {isDisp ? "Disponível" : "Indisponível"}
+                          {slot.curso_codigo ? ` · ${slot.curso_codigo}` : ""}
+                        </div>
+                        <div className="absolute top-0 right-0 flex opacity-0 group-hover:opacity-100 print:hidden">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); setEditDisp(slot); }}
+                            className="px-1 text-[10px] text-sky-600 hover:underline"
+                            title="Editar disponibilidade"
+                          >✎</button>
+                          <button
+                            type="button"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              if (!confirm("Apagar esta disponibilidade?")) return;
+                              const { error } = await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
+                              if (error) return toast.error(error.message);
+                              toast.success("Disponibilidade apagada");
+                              qc.invalidateQueries({ queryKey: ["disp-geral"] });
+                              qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
                             }}
-                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.curso_codigo ? "\nCurso: " + slot.curso_codigo : ""}${slot.notas ? "\n" + slot.notas : ""}${isOverlap ? "\n\n⚠ Outro formador deu disponibilidade sobreposta para o mesmo curso" : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
-                            onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
-                          >
-                            {isOverlap && (
-                              <span className="absolute -top-1 -left-1 bg-amber-500 text-white rounded-full size-3.5 flex items-center justify-center text-[9px] font-bold leading-none print:hidden" title="Sobreposta">↔</span>
-                            )}
-                            <div className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</div>
-                            <div className="truncate font-medium">{slot.formador_nome}</div>
-                            <div className="truncate opacity-80">
-                              {isDisp ? "Disponível" : "Indisponível"}
-                              {slot.curso_codigo ? ` · ${slot.curso_codigo}` : ""}
-                            </div>
-                            <button
-                              type="button"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                if (!confirm("Apagar esta disponibilidade?")) return;
-                                const { error } = await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
-                                if (error) return toast.error(error.message);
-                                toast.success("Disponibilidade apagada");
-                                qc.invalidateQueries({ queryKey: ["disp-geral"] });
-                                qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
-                              }}
-                              className="absolute top-0 right-0 px-1 text-[10px] text-rose-600 opacity-0 group-hover:opacity-100 print:hidden"
-                              title="Apagar disponibilidade"
-                            >✕</button>
-                          </div>
-                        );
-
-                      })}
-                    </div>
-                  </>
-                )}
+                            className="px-1 text-[10px] text-rose-600"
+                            title="Apagar disponibilidade"
+                          >✕</button>
+                        </div>
+                      </div>
+                    );
+                  };
+                  const slots = slotsByDay.get(cell.iso) ?? [];
+                  const manhaSlots = slots.filter((s: any) => (s.hora_inicio ?? "") < "13:00");
+                  const tardeSlots = slots.filter((s: any) => (s.hora_inicio ?? "") >= "13:00");
+                  return (
+                    <>
+                      <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>
+                      <div className="grid grid-rows-2 gap-1">
+                        <div className="space-y-1">{manhaSlots.map(renderSlot)}</div>
+                        <div className="space-y-1">{tardeSlots.map(renderSlot)}</div>
+                      </div>
+                    </>
+                  );
+                })()}
               </div>
             );})}
           </div>
@@ -705,6 +720,14 @@ function CronogramaGeral() {
         formadores={(formadores.data ?? []) as any[]}
         defaultFormadorId={formadorFiltro || null}
         onClose={() => setCreateDate(null)}
+      />
+      <CreateDispDialog
+        key={editDisp?.id ?? "edit"}
+        data={editDisp?.data ?? null}
+        formadores={(formadores.data ?? []) as any[]}
+        defaultFormadorId={null}
+        editing={editDisp}
+        onClose={() => setEditDisp(null)}
       />
     </PageContainer>
   );
@@ -894,14 +917,17 @@ function CreateDispDialog({
   data,
   formadores,
   defaultFormadorId,
+  editing,
   onClose,
 }: {
   data: string | null;
   formadores: any[];
   defaultFormadorId: string | null;
+  editing?: DispSlot | null;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const isEdit = !!editing;
   const [formadorId, setFormadorId] = useState<string>("");
   const [tipo, setTipo] = useState<"disponivel" | "indisponivel">("disponivel");
   const [horaInicio, setHoraInicio] = useState("09:00");
@@ -919,7 +945,15 @@ function CreateDispDialog({
   }
 
   useMemo(() => {
-    if (data) {
+    if (editing) {
+      setFormadorId(editing.formador_id);
+      setTipo(editing.tipo);
+      setHoraInicio(editing.hora_inicio?.slice(0, 5) ?? "09:00");
+      setHoraFim(editing.hora_fim?.slice(0, 5) ?? "13:00");
+      setCursoId(editing.curso_id ?? "");
+      setNotas(editing.notas ?? "");
+      setPeriodo("custom");
+    } else if (data) {
       setFormadorId(defaultFormadorId ?? "");
       setTipo("disponivel");
       setHoraInicio("09:00");
@@ -928,7 +962,7 @@ function CreateDispDialog({
       setNotas("");
       setPeriodo("custom");
     }
-  }, [data]);
+  }, [data, editing?.id]);
 
 
 
@@ -965,20 +999,22 @@ function CreateDispDialog({
 
 
     setSaving(true);
-    const { error } = await supabase.from("formador_disponibilidades" as any).insert({
+    const payload = {
       formador_id: formadorId,
       data,
       hora_inicio: hi,
       hora_fim: hf,
       tipo,
       notas: notas.trim() || null,
-
       curso_id: cursoId || null,
-    } as never);
+    };
+    const { error } = isEdit
+      ? await supabase.from("formador_disponibilidades" as any).update(payload as never).eq("id", editing!.id)
+      : await supabase.from("formador_disponibilidades" as any).insert(payload as never);
 
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Disponibilidade lançada");
+    toast.success(isEdit ? "Disponibilidade atualizada" : "Disponibilidade lançada");
     qc.invalidateQueries({ queryKey: ["disp-geral"] });
     qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
     onClose();
@@ -989,7 +1025,7 @@ function CreateDispDialog({
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> Lançar disponibilidade</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> {isEdit ? "Editar disponibilidade" : "Lançar disponibilidade"}</DialogTitle>
         </DialogHeader>
         {data && (
           <div className="space-y-3">
@@ -1062,7 +1098,7 @@ function CreateDispDialog({
         )}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={criar} disabled={saving || !formadorId}>{saving ? "A guardar…" : "Lançar"}</Button>
+          <Button onClick={criar} disabled={saving || !formadorId}>{saving ? "A guardar…" : (isEdit ? "Guardar" : "Lançar")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

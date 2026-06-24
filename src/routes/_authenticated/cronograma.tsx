@@ -772,8 +772,15 @@ function CreateDispDialog({
   const [horaFim, setHoraFim] = useState("13:00");
   const [cursoId, setCursoId] = useState<string>("");
   const [notas, setNotas] = useState("");
-  const [diaTodo, setDiaTodo] = useState(false);
+  const [periodo, setPeriodo] = useState<"manha" | "tarde" | "dia" | "custom">("custom");
   const [saving, setSaving] = useState(false);
+
+  function aplicarPeriodo(p: "manha" | "tarde" | "dia" | "custom") {
+    setPeriodo(p);
+    if (p === "manha") { setHoraInicio("09:00"); setHoraFim("13:00"); }
+    else if (p === "tarde") { setHoraInicio("14:00"); setHoraFim("17:00"); }
+    else if (p === "dia") { setHoraInicio("09:00"); setHoraFim("17:00"); }
+  }
 
   useMemo(() => {
     if (data) {
@@ -783,9 +790,10 @@ function CreateDispDialog({
       setHoraFim("13:00");
       setCursoId("");
       setNotas("");
-      setDiaTodo(false);
+      setPeriodo("custom");
     }
   }, [data]);
+
 
 
   // Cursos onde este formador tem UFCDs atribuídas e ainda por concluir

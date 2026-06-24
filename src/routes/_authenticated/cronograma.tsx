@@ -108,6 +108,12 @@ function CronogramaGeral() {
     queryFn: async () => (await supabase.from("formadores").select("id, nome, cor").order("nome")).data ?? [],
   });
 
+  const cursosTodos = useQuery({
+    queryKey: ["cursos-cronograma-filter"],
+    queryFn: async () => (await supabase.from("cursos").select("id, codigo, nome").order("codigo")).data ?? [],
+  });
+
+
   const sessoes = useQuery({
     queryKey: ["sessoes-geral", inicioMes, fimMes, formadorFiltro, cursoFiltro],
     queryFn: async () => {

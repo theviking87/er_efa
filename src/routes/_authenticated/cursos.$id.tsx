@@ -715,6 +715,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
       <SubstituirFormadorDialog
         sessao={substituirSessao}
+        cursoId={cursoId}
+
         onClose={() => setSubstituirSessao(null)}
         onSaved={() => {
           qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
@@ -722,38 +724,65 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
         }}
       />
+
     </CardContent></Card>
   );
 }
 
-function SubstituirFormadorDialog({ sessao, onClose, onSaved }: { sessao: any | null; onClose: () => void; onSaved: () => void }) {
+function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessao: any | null; cursoId: string; onClose: () => void; onSaved: () => void }) {
   const [novoFormadorId, setNovoFormadorId] = useState("");
+  const [novoCursoUfcdId, setNovoCursoUfcdId] = useState("");
   const [motivo, setMotivo] = useState("");
   const [saving, setSaving] = useState(false);
 
-  const ufcdId = sessao?.curso_ufcd?.id ?? sessao?.curso_ufcd_id;
+  // Inicializa com a ufcd da sessão quando abre
+  useEffect(() => {
+    if (sessao) {
+      setNovoCursoUfcdId(sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id ?? "");
+      setNovoFormadorId("");
+    }
+  }, [sessao?.id]);
+
+  // UFCDs do curso (para escolher)
+  const cursoUfcds = useQuery({
+    queryKey: ["subst-curso-ufcds", cursoId],
+    enabled: !!sessao,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("curso_ufcds")
+        .select("id, ufcd_id, ufcd:ufcds(codigo, designacao)")
+        .eq("curso_id", cursoId)
+        .order("ordem");
+      return data ?? [];
+    },
+  });
+
+  const selectedCursoUfcd = (cursoUfcds.data ?? []).find((cu: any) => cu.id === novoCursoUfcdId);
+  const realUfcdId = (selectedCursoUfcd as any)?.ufcd_id;
 
   const candidatos = useQuery({
-    queryKey: ["subst-candidatos", ufcdId, sessao?.formador_id],
-    enabled: !!sessao && !!ufcdId,
+    queryKey: ["subst-candidatos", realUfcdId, sessao?.formador_id, novoCursoUfcdId],
+    enabled: !!sessao && !!realUfcdId,
     queryFn: async () => {
-      // Buscar a ufcd_id real
-      const { data: cu } = await supabase.from("curso_ufcds").select("ufcd_id").eq("id", ufcdId).maybeSingle();
-      const realUfcdId = (cu as any)?.ufcd_id;
-      if (!realUfcdId) return [];
       const { data: comp } = await supabase.from("formador_ufcds" as any).select("formador_id").eq("ufcd_id", realUfcdId);
-      const ids = ((comp ?? []) as any[]).map(r => r.formador_id).filter(id => id !== sessao?.formador_id);
-      if (ids.length === 0) return [];
-      const { data } = await supabase.from("formadores").select("id, nome, cor, estado").in("id", ids).eq("estado", "ativo").order("nome");
+      const ids = ((comp ?? []) as any[]).map(r => r.formador_id);
+      // Se mudou a UFCD, mostra todos os competentes; se mantém a UFCD, exclui o formador atual
+      const filteredIds = novoCursoUfcdId === (sessao?.curso_ufcd?.id ?? sessao?.curso_ufcd_id)
+        ? ids.filter(id => id !== sessao?.formador_id)
+        : ids;
+      if (filteredIds.length === 0) return [];
+      const { data } = await supabase.from("formadores").select("id, nome, cor, estado").in("id", filteredIds).eq("estado", "ativo").order("nome");
       return data ?? [];
     },
   });
 
   async function substituir() {
-    if (!sessao || !novoFormadorId) return;
+    if (!sessao || !novoFormadorId || !novoCursoUfcdId) return;
     setSaving(true);
     const originalId = sessao.formador_id;
     const originalNome = sessao.formador?.nome ?? "formador anterior";
+    const ufcdChanged = novoCursoUfcdId !== (sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id);
+    const formadorChanged = novoFormadorId !== originalId;
 
     // Verificar conflito de horário do novo formador nesse dia
     const { data: conflitos } = await supabase.from("sessoes")
@@ -763,52 +792,89 @@ function SubstituirFormadorDialog({ sessao, onClose, onSaved }: { sessao: any | 
     if (hasConflict) { setSaving(false); return toast.error("Novo formador tem outra sessão neste período"); }
 
     // Atualizar sessão
-    const { error } = await supabase.from("sessoes").update({ formador_id: novoFormadorId } as never).eq("id", sessao.id);
+    const { error } = await supabase.from("sessoes")
+      .update({ formador_id: novoFormadorId, curso_ufcd_id: novoCursoUfcdId } as never)
+      .eq("id", sessao.id);
     if (error) { setSaving(false); return toast.error(error.message); }
 
-    // Registar disponibilidade (indisponivel) do formador original com nota de troca
-    const notaOriginal = `Troca de formador: substituído por novo formador${motivo ? ` — ${motivo}` : ""}`;
-    await supabase.from("formador_disponibilidades" as any).insert({
-      formador_id: originalId,
-      data: sessao.data,
-      hora_inicio: sessao.hora_inicio,
-      hora_fim: sessao.hora_fim,
-      tipo: "indisponivel",
-      notas: notaOriginal,
-    } as any);
+    // Garantir competência registada e atribuição ao curso/ufcd para o novo formador
+    if (realUfcdId) {
+      await supabase.from("formador_ufcds" as any).upsert(
+        { formador_id: novoFormadorId, ufcd_id: realUfcdId } as any,
+        { onConflict: "formador_id,ufcd_id" } as any,
+      );
+    }
+    const { data: jaAtrib } = await supabase
+      .from("curso_ufcd_formadores" as any)
+      .select("id")
+      .eq("curso_ufcd_id", novoCursoUfcdId)
+      .eq("formador_id", novoFormadorId)
+      .maybeSingle();
+    if (!jaAtrib) {
+      await supabase.from("curso_ufcd_formadores" as any).insert({ curso_ufcd_id: novoCursoUfcdId, formador_id: novoFormadorId } as any);
+    }
 
-    // Registar disponibilidade (disponivel) do novo formador a confirmar troca
-    await supabase.from("formador_disponibilidades" as any).insert({
-      formador_id: novoFormadorId,
-      data: sessao.data,
-      hora_inicio: sessao.hora_inicio,
-      hora_fim: sessao.hora_fim,
-      tipo: "disponivel",
-      notas: `Troca de formador: substitui ${originalNome}${motivo ? ` — ${motivo}` : ""}`,
-    } as any);
+    // Registar disponibilidades só se o formador mudou
+    if (formadorChanged) {
+      const motivoTxt = motivo ? ` — ${motivo}` : "";
+      const ufcdTxt = ufcdChanged ? " e UFCD" : "";
+      await supabase.from("formador_disponibilidades" as any).insert({
+        formador_id: originalId,
+        data: sessao.data,
+        hora_inicio: sessao.hora_inicio,
+        hora_fim: sessao.hora_fim,
+        tipo: "indisponivel",
+        notas: `Troca de formador${ufcdTxt}: substituído por novo formador${motivoTxt}`,
+      } as any);
+      await supabase.from("formador_disponibilidades" as any).insert({
+        formador_id: novoFormadorId,
+        data: sessao.data,
+        hora_inicio: sessao.hora_inicio,
+        hora_fim: sessao.hora_fim,
+        tipo: "disponivel",
+        notas: `Troca de formador${ufcdTxt}: substitui ${originalNome}${motivoTxt}`,
+      } as any);
+    }
 
     setSaving(false);
-    toast.success("Formador substituído", { description: "Disponibilidades lançadas com aviso de troca." });
+    toast.success(
+      ufcdChanged && formadorChanged ? "Sessão atualizada (UFCD e formador)" :
+      ufcdChanged ? "UFCD da sessão alterada" : "Formador substituído",
+      { description: formadorChanged ? "Disponibilidades lançadas com aviso de troca." : undefined },
+    );
     setNovoFormadorId(""); setMotivo("");
     onSaved();
     onClose();
   }
 
+  const ufcdChanged = sessao && novoCursoUfcdId && novoCursoUfcdId !== (sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id);
+
   return (
     <Dialog open={!!sessao} onOpenChange={(v) => { if (!v) { onClose(); setNovoFormadorId(""); setMotivo(""); } }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Substituir formador</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Substituir UFCD / formador</DialogTitle></DialogHeader>
         {sessao && (
           <div className="space-y-3 text-sm">
             <div className="bg-muted/40 rounded-md p-3 space-y-0.5">
               <div><span className="text-muted-foreground">Sessão:</span> <span className="font-medium">{fmtDate(sessao.data)} · {sessao.hora_inicio?.slice(0,5)}–{sessao.hora_fim?.slice(0,5)}</span></div>
-              <div><span className="text-muted-foreground">UFCD:</span> <span className="font-medium">{sessao.curso_ufcd?.ufcd?.codigo} — {sessao.curso_ufcd?.ufcd?.designacao}</span></div>
+              <div><span className="text-muted-foreground">UFCD atual:</span> <span className="font-medium">{sessao.curso_ufcd?.ufcd?.codigo} — {sessao.curso_ufcd?.ufcd?.designacao}</span></div>
               <div><span className="text-muted-foreground">Formador atual:</span> <span className="font-medium">{sessao.formador?.nome}</span></div>
             </div>
             <div className="space-y-1.5">
-              <Label>Novo formador *</Label>
+              <Label>UFCD *</Label>
+              <Select value={novoCursoUfcdId} onValueChange={(v) => { setNovoCursoUfcdId(v); setNovoFormadorId(""); }}>
+                <SelectTrigger><SelectValue placeholder="Escolher UFCD…" /></SelectTrigger>
+                <SelectContent>
+                  {(cursoUfcds.data ?? []).map((cu: any) => (
+                    <SelectItem key={cu.id} value={cu.id}>{cu.ufcd?.codigo} — {cu.ufcd?.designacao}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Formador *</Label>
               <Select value={novoFormadorId} onValueChange={setNovoFormadorId}>
-                <SelectTrigger><SelectValue placeholder={(candidatos.data ?? []).length === 0 ? "Sem outros formadores com competência" : "Escolher…"} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={(candidatos.data ?? []).length === 0 ? "Sem formadores com competência" : "Escolher…"} /></SelectTrigger>
                 <SelectContent>
                   {(candidatos.data ?? []).map((f: any) => (
                     <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
@@ -821,18 +887,21 @@ function SubstituirFormadorDialog({ sessao, onClose, onSaved }: { sessao: any | 
               <Input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Ex.: doença, indisponibilidade…" />
             </div>
             <div className="text-xs text-muted-foreground">
-              Será automaticamente registada uma indisponibilidade para o formador atual e uma disponibilidade para o novo, ambas com aviso de que se trata de uma troca.
+              {ufcdChanged
+                ? "A UFCD da sessão será alterada. O novo formador ficará automaticamente com competência e atribuição à UFCD."
+                : "Será automaticamente registada uma indisponibilidade para o formador atual e uma disponibilidade para o novo, ambas com aviso de que se trata de uma troca."}
             </div>
           </div>
         )}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={substituir} disabled={!novoFormadorId || saving}>{saving ? "A substituir…" : "Confirmar troca"}</Button>
+          <Button onClick={substituir} disabled={!novoFormadorId || !novoCursoUfcdId || saving}>{saving ? "A guardar…" : "Confirmar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
+
 
 function SessaoChip({ sessao, onDelete, onPresencas, onSubstituir }: { sessao: any; onDelete: () => void; onPresencas?: () => void; onSubstituir?: () => void }) {
   return (
@@ -845,7 +914,7 @@ function SessaoChip({ sessao, onDelete, onPresencas, onSubstituir }: { sessao: a
           <button onClick={onPresencas} className="text-[10px] hover:underline" title="Marcar presenças">✓</button>
         )}
         {onSubstituir && (
-          <button onClick={onSubstituir} className="text-[10px] hover:underline" title="Substituir formador">↻</button>
+          <button onClick={onSubstituir} className="text-[10px] hover:underline" title="Substituir UFCD / formador">↻</button>
         )}
         <button onClick={onDelete} className="text-[10px] hover:underline" title="Apagar">×</button>
       </div>

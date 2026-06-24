@@ -1595,3 +1595,177 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
     </div>
   );
 }
+
+// ---------------- BULK RETROATIVOS DIALOG ----------------
+type BulkRow = {
+  key: string;
+  data: string;
+  cufId: string;
+  formadorId: string;
+  hi: string;
+  hf: string;
+};
+
+function makeRow(): BulkRow {
+  return {
+    key: Math.random().toString(36).slice(2),
+    data: "",
+    cufId: "",
+    formadorId: "",
+    hi: "09:00",
+    hf: "13:00",
+  };
+}
+
+function BulkRetroativosDialog({ open, onOpenChange, cursoId, onSaved }: { open: boolean; onOpenChange: (v: boolean) => void; cursoId: string; onSaved: () => void }) {
+  const [rows, setRows] = useState<BulkRow[]>([makeRow()]);
+  const [saving, setSaving] = useState(false);
+
+  const limiteRetroativo = useMemo(() => {
+    const hoje = new Date();
+    return dateOnlyIso(hoje.getFullYear(), hoje.getMonth(), 1); // primeiro dia do mês atual (exclusivo)
+  }, []);
+
+  const ufcds = useQuery({
+    queryKey: ["bulk-retro-ufcds", cursoId],
+    enabled: open,
+    queryFn: async () => {
+      const [cu, sess] = await Promise.all([
+        supabase.from("curso_ufcds")
+          .select("id, horas_totais, ufcd:ufcds(codigo,designacao), formadores:curso_ufcd_formadores(formador_id, formador:formadores(id,nome,abreviatura,cor))")
+          .eq("curso_id", cursoId),
+        supabase.from("sessoes").select("curso_ufcd_id, horas").eq("curso_id", cursoId),
+      ]);
+      const realizadas = new Map<string, number>();
+      (sess.data ?? []).forEach((s: any) => realizadas.set(s.curso_ufcd_id, (realizadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas)));
+      return (cu.data ?? []).map((u: any) => ({
+        ...u,
+        horas_realizadas: realizadas.get(u.id) ?? 0,
+        horas_em_falta: Math.max(0, Number(u.horas_totais) - (realizadas.get(u.id) ?? 0)),
+      })).sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
+    },
+  });
+
+  function update(key: string, patch: Partial<BulkRow>) {
+    setRows(rs => rs.map(r => r.key === key ? { ...r, ...patch } : r));
+  }
+  function remove(key: string) {
+    setRows(rs => rs.length === 1 ? [makeRow()] : rs.filter(r => r.key !== key));
+  }
+  function add() {
+    setRows(rs => [...rs, makeRow()]);
+  }
+  function reset() {
+    setRows([makeRow()]);
+  }
+
+  function formadoresDaUfcd(cufId: string): any[] {
+    const cu = (ufcds.data ?? []).find((u: any) => u.id === cufId);
+    if (!cu) return [];
+    return (cu.formadores ?? []).map((ff: any) => ff.formador).filter(Boolean);
+  }
+
+  async function save() {
+    // Validar
+    const erros: string[] = [];
+    const validas: BulkRow[] = [];
+    rows.forEach((r, idx) => {
+      const n = idx + 1;
+      if (!r.data && !r.cufId && !r.formadorId) return; // linha vazia, ignorar
+      if (!r.data) { erros.push(`Linha ${n}: dia em falta`); return; }
+      if (r.data >= limiteRetroativo) { erros.push(`Linha ${n}: data deve ser anterior ao mês atual`); return; }
+      if (!r.cufId) { erros.push(`Linha ${n}: UFCD em falta`); return; }
+      if (!r.formadorId) { erros.push(`Linha ${n}: formador em falta`); return; }
+      const horas = diffHoras(r.hi, r.hf);
+      if (horas <= 0) { erros.push(`Linha ${n}: horas inválidas`); return; }
+      validas.push(r);
+    });
+    if (validas.length === 0) return toast.error("Sem linhas válidas para lançar");
+    if (erros.length > 0) return toast.error("Corrija as linhas inválidas", { description: erros.slice(0, 4).join(" · ") });
+
+    setSaving(true);
+    const payload = validas.map(r => ({
+      curso_id: cursoId,
+      curso_ufcd_id: r.cufId,
+      formador_id: r.formadorId,
+      data: r.data,
+      hora_inicio: r.hi,
+      hora_fim: r.hf,
+      horas: diffHoras(r.hi, r.hf),
+    }));
+    const { error } = await supabase.from("sessoes").insert(payload as never);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success(`${validas.length} sessão(ões) retroativa(s) criada(s)`);
+    reset();
+    onOpenChange(false);
+    onSaved();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) reset(); }}>
+      <DialogContent className="max-w-5xl">
+        <DialogHeader>
+          <DialogTitle>Lançamentos retroativos em massa</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+            Só permite datas anteriores ao mês atual. Não é validada a disponibilidade declarada do formador.
+          </div>
+
+          <div className="border rounded-md overflow-hidden">
+            <div className="grid grid-cols-[150px_1fr_1fr_110px_110px_40px] gap-2 px-3 py-2 text-[11px] uppercase tracking-wide text-muted-foreground bg-muted/40">
+              <div>Dia</div><div>UFCD</div><div>Formador</div><div>Início</div><div>Fim</div><div></div>
+            </div>
+            <div className="divide-y max-h-[55vh] overflow-y-auto">
+              {rows.map(r => {
+                const formadores = formadoresDaUfcd(r.cufId);
+                return (
+                  <div key={r.key} className="grid grid-cols-[150px_1fr_1fr_110px_110px_40px] gap-2 px-3 py-2 items-center">
+                    <Input
+                      type="date"
+                      max={(() => { const d = new Date(limiteRetroativo); d.setDate(d.getDate() - 1); return dateOnlyIso(d.getFullYear(), d.getMonth(), d.getDate()); })()}
+                      value={r.data}
+                      onChange={e => update(r.key, { data: e.target.value })}
+                      className="h-8"
+                    />
+                    <Select value={r.cufId} onValueChange={(v) => {
+                      const fs = formadoresDaUfcd(v);
+                      const keep = fs.some((f: any) => f.id === r.formadorId) ? r.formadorId : (fs.length === 1 ? fs[0].id : "");
+                      update(r.key, { cufId: v, formadorId: keep });
+                    }}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Escolher UFCD…" /></SelectTrigger>
+                      <SelectContent>
+                        {(ufcds.data ?? []).map((u: any) => (
+                          <SelectItem key={u.id} value={u.id}>{u.ufcd?.codigo} — {u.ufcd?.designacao}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={r.formadorId} onValueChange={(v) => update(r.key, { formadorId: v })} disabled={!r.cufId}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue placeholder={!r.cufId ? "Escolher UFCD primeiro" : (formadores.length === 0 ? "Sem formadores atribuídos" : "Escolher…")} /></SelectTrigger>
+                      <SelectContent>
+                        {formadores.map((f: any) => (
+                          <SelectItem key={f.id} value={f.id}>{formadorLabel(f)}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Input type="time" value={r.hi} onChange={e => update(r.key, { hi: e.target.value })} className="h-8" />
+                    <Input type="time" value={r.hf} onChange={e => update(r.key, { hf: e.target.value })} className="h-8" />
+                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => remove(r.key)} title="Remover linha">
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+          <Button variant="outline" size="sm" onClick={add}><Plus className="size-4" /> Adicionar linha</Button>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={save} disabled={saving}>{saving ? "A guardar…" : "Lançar sessões"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}

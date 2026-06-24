@@ -200,7 +200,14 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
   return (
     <Card><CardContent className="p-6 space-y-4">
       <div className="flex justify-between items-center gap-2 flex-wrap">
-        <div className="text-sm text-muted-foreground">{data.data?.length ?? 0} UFCD atribuídas · {fmtHoras((data.data ?? []).reduce((a: number, u: any) => a + Number(u.horas_totais ?? 0), 0))} totais</div>
+        {(() => {
+          const totais = (data.data ?? []).reduce((a: number, u: any) => a + Number(u.horas_totais ?? 0), 0);
+          const realizadas = (data.data ?? []).reduce((a: number, u: any) => a + Number(u.horas_realizadas ?? 0), 0);
+          const emFalta = Math.max(0, totais - realizadas);
+          return (
+            <div className="text-sm text-muted-foreground">{data.data?.length ?? 0} UFCD atribuídas · {fmtHoras(totais)} totais · {fmtHoras(realizadas)} realizadas · {fmtHoras(emFalta)} em falta</div>
+          );
+        })()}
         <div className="flex items-center gap-2">
           <Input
             placeholder="Pesquisar UFCD…"

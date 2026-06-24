@@ -1025,7 +1025,7 @@ function CreateDispDialog({
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> Lançar disponibilidade</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> {isEdit ? "Editar disponibilidade" : "Lançar disponibilidade"}</DialogTitle>
         </DialogHeader>
         {data && (
           <div className="space-y-3">

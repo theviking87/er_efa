@@ -296,7 +296,74 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
         onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })}
       />
       <SessoesUfcdDialog info={sessoesUfcd} onOpenChange={(v) => { if (!v) setSessoesUfcd(null); }} />
+
+      <Dialog open={analiseOpen} onOpenChange={setAnaliseOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader><DialogTitle>Análise das UFCD</DialogTitle></DialogHeader>
+          {(() => {
+            const lista = (data.data ?? []);
+            const excedidas = lista
+              .filter((u: any) => Number(u.horas_realizadas) > Number(u.horas_totais))
+              .map((u: any) => ({
+                ...u,
+                excesso: Number(u.horas_realizadas) - Number(u.horas_totais),
+              }));
+            const semFormador = lista.filter((u: any) => (u.formadores ?? []).length === 0);
+            return (
+              <div className="space-y-5 text-sm">
+                <div className="text-xs text-muted-foreground">
+                  {lista.length} UFCD · {excedidas.length} com horas excedidas · {semFormador.length} sem formador
+                </div>
+                <div>
+                  <div className="font-medium mb-2 flex items-center gap-2">
+                    <AlertTriangle className="size-4 text-destructive" /> UFCD com horas excedidas
+                  </div>
+                  {excedidas.length === 0 ? (
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Nenhuma UFCD excedeu a carga horária.</div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {excedidas.map((u: any) => (
+                        <div key={u.id} className="flex items-center justify-between border rounded-md px-2.5 py-1.5 text-xs">
+                          <div className="min-w-0">
+                            <span className="font-mono text-muted-foreground mr-1.5">{u.ufcd.codigo}</span>
+                            <span className="font-medium">{u.ufcd.designacao}</span>
+                          </div>
+                          <div className="text-right tabular-nums shrink-0 ml-3">
+                            {fmtHoras(u.horas_realizadas)} / {u.horas_totais}h
+                            <span className="ml-2 text-destructive font-semibold">+{fmtHoras(u.excesso)}</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="font-medium mb-2 flex items-center gap-2">
+                    <AlertTriangle className="size-4 text-amber-600" /> UFCD sem formador
+                  </div>
+                  {semFormador.length === 0 ? (
+                    <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Todas as UFCD têm formador atribuído.</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {semFormador.map((u: any) => (
+                        <div key={u.id} className="flex items-center justify-between border rounded-md px-2.5 py-1.5 text-xs">
+                          <div className="min-w-0">
+                            <span className="font-mono text-muted-foreground mr-1.5">{u.ufcd.codigo}</span>
+                            <span className="font-medium">{u.ufcd.designacao}</span>
+                          </div>
+                          <span className="text-muted-foreground tabular-nums shrink-0 ml-3">{u.horas_totais}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </CardContent></Card>
+
   );
 }
 

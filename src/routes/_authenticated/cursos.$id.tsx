@@ -250,6 +250,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">
+                  <Button variant="ghost" size="sm" title="Ver sessões contabilizadas" onClick={() => setSessoesUfcd({ cursoUfcdId: u.id, codigo: u.ufcd.codigo, designacao: u.ufcd.designacao })}><Clock className="size-3.5" /></Button>
                   <Button variant="ghost" size="sm" title="Gerir formadores" onClick={() => setManageUfcd({
                     cursoUfcdId: u.id,
                     ufcdId: u.ufcd.id,

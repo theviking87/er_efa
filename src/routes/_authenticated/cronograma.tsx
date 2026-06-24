@@ -813,24 +813,21 @@ function CreateDispDialog({
 
             {formadorId && (
               <div className="space-y-1.5">
-                <Label>UFCD / Curso (opcional)</Label>
-                <Select value={cursoUfcdId || "_none"} onValueChange={(v) => setCursoUfcdId(v === "_none" ? "" : v)}>
+                <Label>Curso (opcional)</Label>
+                <Select value={cursoId || "_none"} onValueChange={(v) => setCursoId(v === "_none" ? "" : v)}>
                   <SelectTrigger>
-                    <SelectValue placeholder={ufcdsAtribuidas.data?.length === 0 ? "Sem UFCDs atribuídas em aberto" : "Escolher…"} />
+                    <SelectValue placeholder={cursosDoFormador.data?.length === 0 ? "Sem cursos com UFCDs por concluir" : "Escolher…"} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="_none">— Nenhuma —</SelectItem>
-                    {(ufcdsAtribuidas.data ?? []).map((cu: any) => {
-                      const ativo = cu.curso?.estado === "ativo";
-                      return (
-                        <SelectItem key={cu.id} value={cu.id}>
-                          {cu.curso.codigo} · {cu.ufcd.codigo} — {ativo ? "a decorrer · " : ""}faltam {cu.horas_faltam}h de {cu.horas_totais}h
-                        </SelectItem>
-                      );
-                    })}
+                    <SelectItem value="_none">— Nenhum —</SelectItem>
+                    {(cursosDoFormador.data ?? []).map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.codigo} — {c.nome} ({c.ufcds_abertas} UFCD{c.ufcds_abertas === 1 ? "" : "s"} por concluir)
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
-                <div className="text-xs text-muted-foreground">Apenas UFCDs atribuídas a este formador e ainda não concluídas.</div>
+                <div className="text-xs text-muted-foreground">A UFCD é escolhida depois, ao converter a disponibilidade em sessão.</div>
               </div>
             )}
 

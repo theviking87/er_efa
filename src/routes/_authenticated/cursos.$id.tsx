@@ -857,13 +857,18 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}
         </div>
         <div className="grid grid-cols-7 auto-rows-[minmax(110px,auto)]">
-          {grid.map((cell, i) => (
-            <div key={i} className="border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[110px] bg-card">
+          {grid.map((cell, i) => {
+            const feriado = cell ? feriadoNome(cell.iso) : null;
+            return (
+            <div key={i} className={`border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[110px] ${feriado ? "bg-muted/60" : "bg-card"}`}>
               {cell && (
                 <>
                   <button onClick={() => { setDialogData(cell.iso); setDialogOpen(true); }} className="text-xs text-muted-foreground hover:text-foreground w-full text-left mb-1">
                     {cell.d}
                   </button>
+                  {feriado && (
+                    <div className="text-[10px] text-muted-foreground italic leading-tight mb-1 truncate" title={feriado}>{feriado}</div>
+                  )}
                   <div className="space-y-1">
                     {(sessoesByDay.get(cell.iso) ?? []).map((s: any) => (
                       <SessaoChip key={s.id} sessao={s}
@@ -880,7 +885,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                 </>
               )}
             </div>
-          ))}
+            );
+          })}
+
         </div>
       </div>
 

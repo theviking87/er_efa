@@ -272,6 +272,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
         onOpenChange={(v) => { if (!v) setManageUfcd(null); }}
         onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })}
       />
+      <SessoesUfcdDialog info={sessoesUfcd} onOpenChange={(v) => { if (!v) setSessoesUfcd(null); }} />
     </CardContent></Card>
   );
 }

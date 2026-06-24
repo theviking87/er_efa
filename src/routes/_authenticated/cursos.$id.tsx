@@ -262,9 +262,10 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
 }
 
 function GerirFormadoresUfcdDialog({
-  info, onOpenChange, onSaved,
+  info, cursoId, onOpenChange, onSaved,
 }: {
   info: { cursoUfcdId: string; ufcdId: string; codigo: string; designacao: string; assigned: string[] } | null;
+  cursoId: string;
   onOpenChange: (v: boolean) => void;
   onSaved: () => void;
 }) {

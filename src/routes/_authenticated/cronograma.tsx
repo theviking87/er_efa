@@ -53,9 +53,11 @@ function CronogramaGeral() {
   const qc = useQueryClient();
   const [mes, setMes] = useState(() => { const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() }; });
   const [formadorFiltro, setFormadorFiltro] = useState<string>("");
+  const [cursoFiltro, setCursoFiltro] = useState<string>("");
   const [mostrar, setMostrar] = useState<"ambos" | "sessoes" | "disp">("ambos");
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
+
 
   useEffect(() => {
     const ch = supabase

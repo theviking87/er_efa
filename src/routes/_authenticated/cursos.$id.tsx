@@ -219,10 +219,22 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
             onChange={(e) => setSearch(e.target.value)}
             className="h-9 w-56"
           />
+          {(() => {
+            const excedidas = (data.data ?? []).filter((u: any) => Number(u.horas_realizadas) > Number(u.horas_totais));
+            return (
+              <Button variant="outline" size="sm" onClick={() => setAnaliseOpen(true)}>
+                <AlertTriangle className="size-4" /> Análise
+                {excedidas.length > 0 && (
+                  <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">{excedidas.length}</Badge>
+                )}
+              </Button>
+            );
+          })()}
           <Button variant="outline" size="sm" onClick={imprimirSemFormador}><FileText className="size-4" /> UFCD sem formador</Button>
           <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
         </div>
       </div>
+
       {(data.data?.length ?? 0) === 0 && <div className="text-sm text-muted-foreground text-center py-8">Sem UFCD atribuídas. Atribua a primeira.</div>}
       <div className="space-y-2">
         {(data.data ?? []).filter((u: any) => {

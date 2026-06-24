@@ -1081,12 +1081,31 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     return s;
   }, [ufcds.data]);
 
+  const formadoresDoCursoList = useMemo(() => {
+    const m = new Map<string, any>();
+    (ufcds.data ?? []).forEach((u: any) =>
+      (u.formadores ?? []).forEach((ff: any) => {
+        if (ff.formador?.id && !m.has(ff.formador.id)) m.set(ff.formador.id, ff.formador);
+      })
+    );
+    return Array.from(m.values()).sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+  }, [ufcds.data]);
+
+  const isRetroativo = useMemo(() => {
+    if (!data) return false;
+    const hoje = new Date();
+    const inicioMesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return new Date(data + "T00:00:00") < inicioMesAtual;
+  }, [data]);
+
   function aplicarSlot(s: any) {
     setFormadorId(s.formador_id);
     setHi(String(s.hora_inicio).slice(0, 5));
     setHf(String(s.hora_fim).slice(0, 5));
     setCufId("");
   }
+
+
 
   async function save() {
     if (!data || !cufId || !formadorId) return toast.error("Preencha todos os campos");
@@ -1106,26 +1125,37 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
       return toast.error("Formador indisponível", { description: `${i.motivo || "Inatividade"} (${i.data_inicio} → ${i.data_fim})` });
     }
 
-    // Validar contra disponibilidades declaradas pelo formador nesse dia
+    // Validar contra disponibilidades declaradas pelo formador nesse dia.
+    // Sessões em meses anteriores ao atual são permitidas sem disponibilidade declarada (lançamento retroativo).
+    const hoje = new Date();
+    const inicioMesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const dataSessao = new Date(data + "T00:00:00");
+    const isRetroativo = dataSessao < inicioMesAtual;
+
     const dispDoFormador = (dispDia.data ?? []).filter((d: any) => d.formador_id === formadorId);
     const hiN = hi + ":00";
     const hfN = hf + ":00";
     const indisp = dispDoFormador.find((d: any) => d.tipo === "indisponivel" && !(hfN <= d.hora_inicio || hiN >= d.hora_fim));
     if (indisp) { setErro({ titulo: "Formador indisponível", descricao: "O formador marcou este período como indisponível." }); return; }
-    const disponiveis = dispDoFormador.filter((d: any) => d.tipo === "disponivel");
-    if (disponiveis.length === 0) {
-      setErro({ titulo: "Sem disponibilidade", descricao: "O formador não declarou disponibilidade para este dia." });
-      return;
+
+    if (!isRetroativo) {
+      const disponiveis = dispDoFormador.filter((d: any) => d.tipo === "disponivel");
+      if (disponiveis.length === 0) {
+        setErro({ titulo: "Sem disponibilidade", descricao: "O formador não declarou disponibilidade para este dia." });
+        return;
+      }
+      const dentro = disponiveis.some((d: any) => hiN >= d.hora_inicio && hfN <= d.hora_fim);
+      if (!dentro) {
+        const janelas = disponiveis.map((d: any) => `${String(d.hora_inicio).slice(0,5)}–${String(d.hora_fim).slice(0,5)}`).join(", ");
+        setErro({
+          titulo: "Estás a marcar mais horas que as declaradas",
+          descricao: `A sessão (${hi}–${hf}) está fora da disponibilidade do formador. Janelas declaradas neste dia: ${janelas}.`,
+        });
+        return;
+      }
     }
-    const dentro = disponiveis.some((d: any) => hiN >= d.hora_inicio && hfN <= d.hora_fim);
-    if (!dentro) {
-      const janelas = disponiveis.map((d: any) => `${String(d.hora_inicio).slice(0,5)}–${String(d.hora_fim).slice(0,5)}`).join(", ");
-      setErro({
-        titulo: "Estás a marcar mais horas que as declaradas",
-        descricao: `A sessão (${hi}–${hf}) está fora da disponibilidade do formador. Janelas declaradas neste dia: ${janelas}.`,
-      });
-      return;
-    }
+
+
 
 
     const { error } = await supabase.from("sessoes").insert({
@@ -1160,7 +1190,24 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
             <Input type="date" value={data} onChange={e => { setData(e.target.value); setFormadorId(""); setCufId(""); }} />
           </div>
 
-          {data && (
+          {data && isRetroativo && (
+            <div className="space-y-1.5">
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Lançamento retroativo (mês anterior ao atual) — não é exigida disponibilidade declarada. Escolhe o formador manualmente.
+              </div>
+              <Label className="text-xs">Formador *</Label>
+              <Select value={formadorId} onValueChange={(v) => { setFormadorId(v); setCufId(""); }}>
+                <SelectTrigger><SelectValue placeholder="Escolher formador deste curso…" /></SelectTrigger>
+                <SelectContent>
+                  {formadoresDoCursoList.map((f: any) => (
+                    <SelectItem key={f.id} value={f.id}>{formadorLabel(f)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {data && !isRetroativo && (
             <div className="space-y-1.5">
               <Label className="text-xs">Formadores com disponibilidade neste dia</Label>
               <div className="border rounded-md max-h-56 overflow-y-auto divide-y bg-muted/30">
@@ -1191,6 +1238,8 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
               </div>
             </div>
           )}
+
+
 
           {formadorId && (
             <div className="space-y-1.5">

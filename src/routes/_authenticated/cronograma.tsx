@@ -233,28 +233,48 @@ function CronogramaGeral() {
     return cursoFiltro ? base.filter(c => c.id === cursoFiltro) : base;
   }, [cursosAtivos.data, cursoFiltro]);
 
-  // Por dia: conjunto de curso_ids que têm pelo menos uma disponibilidade (geral ou específica)
+  // Por dia × curso: cobertura de manhã (09-13) e tarde (14-17).
   const coverageByDay = useMemo(() => {
-    const m = new Map<string, Set<string>>();
+    const m = new Map<string, Map<string, { manha: boolean; tarde: boolean }>>();
     const cursos = cursosComCor;
+    const toMin = (h: string) => {
+      const [hh, mm] = (h ?? "").split(":").map(Number);
+      return (hh || 0) * 60 + (mm || 0);
+    };
+    const ensure = (iso: string, cid: string) => {
+      let dayMap = m.get(iso);
+      if (!dayMap) { dayMap = new Map(); m.set(iso, dayMap); }
+      let v = dayMap.get(cid);
+      if (!v) { v = { manha: false, tarde: false }; dayMap.set(cid, v); }
+      return v;
+    };
     (disp.data ?? []).forEach((d: any) => {
       if (d.tipo !== "disponivel") return;
-      const set = m.get(d.data) ?? new Set<string>();
-      if (d.curso_id) {
-        // disponibilidade específica → cobre apenas esse curso
-        set.add(d.curso_id);
-      } else {
-        // disponibilidade geral → cobre todos os cursos onde o formador está atribuído
-        cursos.forEach(c => { if (c.formadores.includes(d.formador_id)) set.add(c.id); });
+      const ini = toMin(d.hora_inicio);
+      const fim = toMin(d.hora_fim);
+      const cobreManha = ini < 780 && fim > 540;
+      const cobreTarde = ini < 1020 && fim > 840;
+      const alvo: string[] = d.curso_id
+        ? [d.curso_id]
+        : cursos.filter(c => c.formadores.includes(d.formador_id)).map(c => c.id);
+      for (const cid of alvo) {
+        const v = ensure(d.data, cid);
+        if (cobreManha) v.manha = true;
+        if (cobreTarde) v.tarde = true;
       }
-      m.set(d.data, set);
     });
     return m;
   }, [disp.data, cursosComCor]);
 
-  // Para cada dia: lista de cursos ativos sem disponibilidade
+  // Para cada dia: cursos sem manhã / sem tarde / sem nada.
+  type MissingInfo = {
+    todos: boolean;
+    cursos: { id: string; codigo: string; cor: string }[]; // sem nada (dia todo)
+    manha: { id: string; codigo: string; cor: string }[];
+    tarde: { id: string; codigo: string; cor: string }[];
+  };
   const dayMissing = useMemo(() => {
-    const r = new Map<string, { todos: boolean; cursos: { id: string; codigo: string; cor: string }[] }>();
+    const r = new Map<string, MissingInfo>();
     if (mostrar !== "disp") return r;
     const cursos = cursosComCor;
     if (cursos.length === 0) return r;
@@ -262,12 +282,23 @@ function CronogramaGeral() {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
-      const cov = coverageByDay.get(cell.iso) ?? new Set<string>();
-      const semDisp = cursos.filter(c => !cov.has(c.id));
-      if (semDisp.length === 0) continue;
+      const cov = coverageByDay.get(cell.iso) ?? new Map<string, { manha: boolean; tarde: boolean }>();
+      const semNada: { id: string; codigo: string; cor: string }[] = [];
+      const semManha: { id: string; codigo: string; cor: string }[] = [];
+      const semTarde: { id: string; codigo: string; cor: string }[] = [];
+      for (const c of cursos) {
+        const v = cov.get(c.id) ?? { manha: false, tarde: false };
+        const entry = { id: c.id, codigo: c.codigo, cor: c.cor };
+        if (!v.manha && !v.tarde) semNada.push(entry);
+        else if (!v.manha) semManha.push(entry);
+        else if (!v.tarde) semTarde.push(entry);
+      }
+      if (semNada.length === 0 && semManha.length === 0 && semTarde.length === 0) continue;
       r.set(cell.iso, {
-        todos: semDisp.length === cursos.length,
-        cursos: semDisp.map(c => ({ id: c.id, codigo: c.codigo, cor: c.cor })),
+        todos: semNada.length === cursos.length,
+        cursos: semNada,
+        manha: semManha,
+        tarde: semTarde,
       });
     }
     return r;

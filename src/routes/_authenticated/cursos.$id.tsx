@@ -298,7 +298,8 @@ function SessoesUfcdDialog({
     },
   });
 
-  const total = (sessoes.data ?? []).reduce((a: number, s: any) => a + Number(s.horas ?? 0), 0);
+  const horasSessao = (s: any) => diffHoras(String(s.hora_inicio).slice(0,5), String(s.hora_fim).slice(0,5));
+  const total = (sessoes.data ?? []).reduce((a: number, s: any) => a + horasSessao(s), 0);
 
   return (
     <Dialog open={!!info} onOpenChange={onOpenChange}>

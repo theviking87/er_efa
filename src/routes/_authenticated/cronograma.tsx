@@ -360,8 +360,16 @@ function CronogramaGeral() {
     const diasSem: { iso: string; dow: string; periodo: string }[] = [];
     const semanaLbl = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
     const dispData = disp.data ?? [];
-    const cursoInfo = (cursosAtivos.data ?? []).find((c: any) => c.id === cursoFiltro);
-    const formadoresDoCurso = new Set<string>(cursoInfo?.formadores ?? []);
+    // Procura formadores do curso em cursosAtivos; se não existir, busca direto à BD para evitar saltar disp. gerais.
+    let formadoresDoCurso = new Set<string>(((cursosAtivos.data ?? []).find((c: any) => c.id === cursoFiltro)?.formadores) ?? []);
+    if (formadoresDoCurso.size === 0) {
+      const { data: cuRows } = await supabase
+        .from("curso_ufcds")
+        .select("curso_ufcd_formadores(formador_id)")
+        .eq("curso_id", cursoFiltro);
+      const ids = (cuRows ?? []).flatMap((cu: any) => (cu.curso_ufcd_formadores ?? []).map((f: any) => f.formador_id));
+      formadoresDoCurso = new Set<string>(ids);
+    }
     const toMin = (h: string) => {
       const [hh, mm] = (h ?? "").split(":").map(Number);
       return (hh || 0) * 60 + (mm || 0);

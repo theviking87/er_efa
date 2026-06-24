@@ -534,18 +534,23 @@ function CronogramaGeral() {
                           );
                         }
                         const isDisp = slot.tipo === "disponivel";
+                        const isOverlap = isDisp && overlapDispIds.has(slot.id);
                         return (
                           <div
                             key={"d" + slot.id}
                             className={"relative group w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
-                              (isDisp ? "hover:bg-emerald-50 cursor-pointer" : "opacity-80")}
+                              (isDisp ? "hover:bg-emerald-50 cursor-pointer " : "opacity-80 ") +
+                              (isOverlap ? "ring-2 ring-amber-500 ring-offset-1" : "")}
                             style={{
                               borderColor: isDisp ? "rgb(16,185,129)" : "rgb(244,63,94)",
                               color: slot.formador_cor,
                             }}
-                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.curso_codigo ? "\nCurso: " + slot.curso_codigo : ""}${slot.notas ? "\n" + slot.notas : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
+                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.curso_codigo ? "\nCurso: " + slot.curso_codigo : ""}${slot.notas ? "\n" + slot.notas : ""}${isOverlap ? "\n\n⚠ Outro formador deu disponibilidade sobreposta para o mesmo curso" : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
                             onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
                           >
+                            {isOverlap && (
+                              <span className="absolute -top-1 -left-1 bg-amber-500 text-white rounded-full size-3.5 flex items-center justify-center text-[9px] font-bold leading-none print:hidden" title="Sobreposta">↔</span>
+                            )}
                             <div className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</div>
                             <div className="truncate font-medium">{slot.formador_nome}</div>
                             <div className="truncate opacity-80">

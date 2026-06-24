@@ -291,6 +291,16 @@ function CronogramaGeral() {
                 <option key={f.id} value={f.id}>{f.nome}</option>
               ))}
             </select>
+            <select
+              value={cursoFiltro}
+              onChange={e => setCursoFiltro(e.target.value)}
+              className="text-sm border border-input rounded-md px-2.5 py-1.5 bg-background"
+            >
+              <option value="">Todos os cursos</option>
+              {(cursosTodos.data ?? []).map((c: any) => (
+                <option key={c.id} value={c.id}>{c.codigo} — {c.nome}</option>
+              ))}
+            </select>
             <div className="text-xs text-muted-foreground">
               {totalSessoes} sessões · {fmtHoras(totalHoras)} · {totalDisp} dispon.
             </div>

@@ -780,11 +780,74 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           <Button variant="outline" size="icon" onClick={next}><ChevronRight className="size-4" /></Button>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setAnaliseOpen(true)}>
+            <AlertTriangle className="size-4" /> Análise
+            {(analise.conflitos.length + analise.incompletos.length) > 0 && (
+              <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
+                {analise.conflitos.length + analise.incompletos.length}
+              </Badge>
+            )}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4" /> Imprimir</Button>
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}><FileText className="size-4" /> Retroativos em massa</Button>
           <Button size="sm" onClick={() => { setDialogData(null); setDialogOpen(true); }}><Plus className="size-4" /> Nova sessão</Button>
         </div>
       </div>
+
+      <Dialog open={analiseOpen} onOpenChange={setAnaliseOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Análise do cronograma</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 text-sm">
+            <div className="text-xs text-muted-foreground">
+              {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) · {analise.incompletos.length} dia(s) incompleto(s)
+            </div>
+
+            <div>
+              <div className="font-medium mb-2 flex items-center gap-2">
+                <AlertTriangle className="size-4 text-destructive" /> Sobreposições de horário
+              </div>
+              {analise.conflitos.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Sem conflitos.</div>
+              ) : (
+                <div className="space-y-2">
+                  {analise.conflitos.map(c => (
+                    <div key={c.data} className="border rounded-md p-2">
+                      <div className="font-medium text-xs mb-1">{fmtDate(c.data)}</div>
+                      <div className="space-y-0.5">
+                        {c.sessoes.map((s: any) => (
+                          <div key={s.id} className="text-xs text-muted-foreground">
+                            {String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)} · {formadorLabel(s.formador)} · {s.curso_ufcd?.ufcd?.codigo ?? "—"}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="font-medium mb-2 flex items-center gap-2">
+                <Clock className="size-4 text-amber-600" /> Dias sem ocupação completa (9h–17h / 7h)
+              </div>
+              {analise.incompletos.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Todos os dias estão completos.</div>
+              ) : (
+                <div className="space-y-1">
+                  {analise.incompletos.map(d => (
+                    <div key={d.data} className="flex items-center justify-between border rounded-md px-2 py-1.5 text-xs">
+                      <span className="font-medium">{fmtDate(d.data)}</span>
+                      <span className="text-muted-foreground">{d.inicio}–{d.fim} · {fmtHoras(d.horas)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* CRONOGRAMA ECRÃ — calendário mensal */}
       <div className="border rounded-md overflow-hidden bg-card print:hidden">

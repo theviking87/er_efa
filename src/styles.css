@@ -167,11 +167,40 @@
 }
 
 @media print {
-  @page { size: A4 landscape; margin: 10mm; }
-  body { background: white !important; }
+  @page { size: A4 landscape; margin: 8mm; }
+  html, body { background: white !important; }
   body * { visibility: hidden !important; }
   #cronograma-print, #cronograma-print * { visibility: visible !important; }
   #cronograma-print { position: absolute; inset: 0; padding: 0; margin: 0; color: black !important; }
-  #cronograma-print table { page-break-inside: auto; }
-  #cronograma-print tr { page-break-inside: avoid; }
+
+  /* Página 1: cronograma forçado a caber numa única folha */
+  #cronograma-print > .cronograma-page {
+    page-break-after: always;
+    break-after: page;
+    page-break-inside: avoid;
+    break-inside: avoid;
+    height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+  #cronograma-print > .cronograma-page > .cronograma-grid {
+    flex: 1 1 auto;
+    min-height: 0;
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+  #cronograma-print > .cronograma-page .cronograma-grid > div {
+    page-break-inside: avoid;
+    break-inside: avoid;
+  }
+
+  /* Página 2: gestão de horas */
+  #cronograma-print > .horas-page {
+    page-break-before: always;
+    break-before: page;
+  }
+  #cronograma-print > .horas-page table { page-break-inside: auto; }
+  #cronograma-print > .horas-page tr { page-break-inside: avoid; }
 }

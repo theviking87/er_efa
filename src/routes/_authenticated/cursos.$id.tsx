@@ -979,10 +979,12 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   // UFCD em que o formador escolhido está atribuído neste curso E ainda tem horas em falta
   const ufcdsDoFormador = useMemo(() => {
     if (!formadorId) return [];
-    return (ufcds.data ?? []).filter((u: any) =>
-      u.horas_em_falta > 0 &&
-      (u.formadores ?? []).some((ff: any) => ff.formador?.id === formadorId)
-    );
+    return (ufcds.data ?? [])
+      .filter((u: any) =>
+        u.horas_em_falta > 0 &&
+        (u.formadores ?? []).some((ff: any) => ff.formador?.id === formadorId)
+      )
+      .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
   }, [formadorId, ufcds.data]);
 
   const cufSelecionada = useMemo(() => (ufcds.data ?? []).find((u: any) => u.id === cufId), [ufcds.data, cufId]);

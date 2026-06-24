@@ -1081,12 +1081,31 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     return s;
   }, [ufcds.data]);
 
+  const formadoresDoCursoList = useMemo(() => {
+    const m = new Map<string, any>();
+    (ufcds.data ?? []).forEach((u: any) =>
+      (u.formadores ?? []).forEach((ff: any) => {
+        if (ff.formador?.id && !m.has(ff.formador.id)) m.set(ff.formador.id, ff.formador);
+      })
+    );
+    return Array.from(m.values()).sort((a, b) => String(a.nome).localeCompare(String(b.nome)));
+  }, [ufcds.data]);
+
+  const isRetroativo = useMemo(() => {
+    if (!data) return false;
+    const hoje = new Date();
+    const inicioMesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    return new Date(data + "T00:00:00") < inicioMesAtual;
+  }, [data]);
+
   function aplicarSlot(s: any) {
     setFormadorId(s.formador_id);
     setHi(String(s.hora_inicio).slice(0, 5));
     setHf(String(s.hora_fim).slice(0, 5));
     setCufId("");
   }
+
+
 
   async function save() {
     if (!data || !cufId || !formadorId) return toast.error("Preencha todos os campos");

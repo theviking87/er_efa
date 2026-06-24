@@ -19,6 +19,7 @@ import {
   INSCRICAO_ESTADO_LABEL, FALTA_TIPO_LABEL, formadorLabel,
 } from "@/lib/format";
 import { toast } from "sonner";
+import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 
@@ -154,10 +155,12 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
       (sess.data ?? []).forEach((s: any) => {
         horasRealizadasMap.set(s.curso_ufcd_id, (horasRealizadasMap.get(s.curso_ufcd_id) ?? 0) + Number(s.horas));
       });
-      return (cu.data ?? []).map((u: any) => ({
-        ...u,
-        horas_realizadas: horasRealizadasMap.get(u.id) ?? 0,
-      }));
+      return (cu.data ?? [])
+        .map((u: any) => ({
+          ...u,
+          horas_realizadas: horasRealizadasMap.get(u.id) ?? 0,
+        }))
+        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
 
@@ -328,7 +331,7 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
   const [formadores, setFormadores] = useState<string[]>([]);
   const [conflict, setConflict] = useState<{ cursos: { id: string; codigo: string; nome: string }[] } | null>(null);
 
-  const ufcds = useQuery({ queryKey: ["ufcds"], queryFn: async () => (await supabase.from("ufcds").select("*").order("codigo")).data ?? [] });
+  const ufcds = useQuery({ queryKey: ["ufcds"], queryFn: async () => ((await supabase.from("ufcds").select("*")).data ?? []).sort((a: any, b: any) => compareUfcdCodigo(a.codigo, b.codigo)) });
   const formadoresList = useQuery({
     queryKey: ["formadores-ativos-ufcd", ufcdId],
     enabled: !!ufcdId,
@@ -759,9 +762,8 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       const { data } = await supabase
         .from("curso_ufcds")
         .select("id, ufcd_id, ufcd:ufcds(codigo, designacao)")
-        .eq("curso_id", cursoId)
-        .order("ordem");
-      return data ?? [];
+        .eq("curso_id", cursoId);
+      return (data ?? []).sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
 
@@ -977,10 +979,12 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   // UFCD em que o formador escolhido está atribuído neste curso E ainda tem horas em falta
   const ufcdsDoFormador = useMemo(() => {
     if (!formadorId) return [];
-    return (ufcds.data ?? []).filter((u: any) =>
-      u.horas_em_falta > 0 &&
-      (u.formadores ?? []).some((ff: any) => ff.formador?.id === formadorId)
-    );
+    return (ufcds.data ?? [])
+      .filter((u: any) =>
+        u.horas_em_falta > 0 &&
+        (u.formadores ?? []).some((ff: any) => ff.formador?.id === formadorId)
+      )
+      .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
   }, [formadorId, ufcds.data]);
 
   const cufSelecionada = useMemo(() => (ufcds.data ?? []).find((u: any) => u.id === cufId), [ufcds.data, cufId]);

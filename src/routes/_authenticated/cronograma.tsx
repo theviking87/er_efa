@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { ChevronLeft, ChevronRight, CalendarPlus, Printer } from "lucide-react";
 import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso } from "@/lib/format";
 import { toast } from "sonner";
+import { compareUfcdCodigo } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cronograma")({
   head: () => ({ meta: [{ title: "Cronograma Geral — Gestão Pedagógica" }] }),
@@ -514,7 +515,10 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
         .select("curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))")
         .eq("formador_id", slot!.formador_id);
       if (error) throw error;
-      return (data ?? []).map((r: any) => r.curso_ufcd).filter((x: any) => x && x.curso);
+      return (data ?? [])
+        .map((r: any) => r.curso_ufcd)
+        .filter((x: any) => x && x.curso)
+        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
 
@@ -676,11 +680,13 @@ function CreateDispDialog({
       (sess ?? []).forEach((s: any) => {
         dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0));
       });
-      return cus.map((cu: any) => {
-        const dadasH = dadas.get(cu.id) ?? 0;
-        const faltam = Math.max(0, Number(cu.horas_totais ?? 0) - dadasH);
-        return { ...cu, horas_dadas: dadasH, horas_faltam: faltam };
-      });
+      return cus
+        .map((cu: any) => {
+          const dadasH = dadas.get(cu.id) ?? 0;
+          const faltam = Math.max(0, Number(cu.horas_totais ?? 0) - dadasH);
+          return { ...cu, horas_dadas: dadasH, horas_faltam: faltam };
+        })
+        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
 

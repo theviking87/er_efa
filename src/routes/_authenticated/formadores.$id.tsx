@@ -13,6 +13,7 @@ import { EstadoBadge } from "./formadores.index";
 import { FormadorDialog } from "@/components/formador-dialog";
 import { fmtDate } from "@/lib/format";
 import { toast } from "sonner";
+import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/formadores/$id")({
@@ -444,19 +445,14 @@ function CompetenciasTab({ formadorId }: { formadorId: string }) {
         designacao: c.ufcd?.designacao ?? "",
         horas_lecionadas: horasPorUfcd.get(c.ufcd_id) ?? 0,
       }));
-      items.sort((a, b) => {
-        const ac = a.codigo, bc = b.codigo;
-        const aIsLetter = /^[A-Za-z]/.test(ac), bIsLetter = /^[A-Za-z]/.test(bc);
-        if (aIsLetter !== bIsLetter) return aIsLetter ? -1 : 1;
-        return ac.localeCompare(bc, "pt", { numeric: true });
-      });
+      items.sort((a, b) => compareUfcdCodigo(a.codigo, b.codigo));
       return items;
     },
   });
 
   const ufcdsQ = useQuery({
     queryKey: ["ufcds-all"],
-    queryFn: async () => (await supabase.from("ufcds").select("id, codigo, designacao").order("codigo")).data ?? [],
+    queryFn: async () => ((await supabase.from("ufcds").select("id, codigo, designacao")).data ?? []).sort((a: any, b: any) => compareUfcdCodigo(a.codigo, b.codigo)),
   });
 
   const taken = new Set((q.data ?? []).map(i => i.ufcd_id));

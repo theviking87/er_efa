@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { extrairReferencialPdf, importarReferencial } from "@/lib/import-referencial.functions";
+import { compareUfcdCodigo } from "@/lib/utils";
 
 type UfcdRow = {
   id: string;
@@ -21,10 +22,7 @@ type UfcdRow = {
 };
 
 function compareUfcds(a: UfcdRow, b: UfcdRow) {
-  const aStartsWithLetter = /^[A-Za-zÀ-ÿ]/.test(a.codigo.trim());
-  const bStartsWithLetter = /^[A-Za-zÀ-ÿ]/.test(b.codigo.trim());
-  if (aStartsWithLetter !== bStartsWithLetter) return aStartsWithLetter ? -1 : 1;
-  return a.codigo.localeCompare(b.codigo, "pt-PT", { numeric: true, sensitivity: "base" });
+  return compareUfcdCodigo(a.codigo, b.codigo);
 }
 
 export const Route = createFileRoute("/_authenticated/ufcds")({

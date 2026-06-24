@@ -715,7 +715,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
       <SubstituirFormadorDialog
         sessao={substituirSessao}
-        cursoId={id}
+        cursoId={cursoId}
+
         onClose={() => setSubstituirSessao(null)}
         onSaved={() => {
           qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });

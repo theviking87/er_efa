@@ -641,6 +641,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4" /> Imprimir</Button>
+          <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}><FileText className="size-4" /> Retroativos em massa</Button>
           <Button size="sm" onClick={() => { setDialogData(null); setDialogOpen(true); }}><Plus className="size-4" /> Nova sessão</Button>
         </div>
       </div>

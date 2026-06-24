@@ -220,20 +220,37 @@ function ImportarCronograma() {
       const { error } = await supabase.from("sessoes").insert(payload);
       if (error) throw error;
 
-      // Auto-link formador competencies (formador_ufcds)
+      // Auto-link formador competencies (formador_ufcds) and assign to curso_ufcd (curso_ufcd_formadores)
       const cufcdMap = new Map(cufcds.map((c) => [c.id, c.ufcd_id]));
-      const pairsSet = new Set<string>();
-      const pairs: { formador_id: string; ufcd_id: string }[] = [];
+      const compSet = new Set<string>();
+      const comp: { formador_id: string; ufcd_id: string }[] = [];
+      const cuSet = new Set<string>();
+      const cu: { curso_ufcd_id: string; formador_id: string }[] = [];
       rows.forEach((r) => {
-        const ufcdId = cufcdMap.get(r.curso_ufcd_id!);
-        if (!ufcdId || !r.formador_id) return;
-        const key = `${r.formador_id}|${ufcdId}`;
-        if (pairsSet.has(key)) return;
-        pairsSet.add(key);
-        pairs.push({ formador_id: r.formador_id, ufcd_id: ufcdId });
+        if (!r.formador_id || !r.curso_ufcd_id) return;
+        const ufcdId = cufcdMap.get(r.curso_ufcd_id);
+        if (ufcdId) {
+          const k = `${r.formador_id}|${ufcdId}`;
+          if (!compSet.has(k)) { compSet.add(k); comp.push({ formador_id: r.formador_id, ufcd_id: ufcdId }); }
+        }
+        const k2 = `${r.curso_ufcd_id}|${r.formador_id}`;
+        if (!cuSet.has(k2)) { cuSet.add(k2); cu.push({ curso_ufcd_id: r.curso_ufcd_id, formador_id: r.formador_id }); }
       });
-      if (pairs.length) {
-        await supabase.from("formador_ufcds").upsert(pairs, { onConflict: "formador_id,ufcd_id", ignoreDuplicates: true });
+      if (comp.length) {
+        const { error: e1 } = await supabase.from("formador_ufcds").upsert(comp, { onConflict: "formador_id,ufcd_id", ignoreDuplicates: true });
+        if (e1) console.error("formador_ufcds upsert", e1);
+      }
+      if (cu.length) {
+        // get existing to avoid dupes (table may not have unique constraint)
+        const { data: existing } = await supabase.from("curso_ufcd_formadores")
+          .select("curso_ufcd_id, formador_id")
+          .in("curso_ufcd_id", Array.from(new Set(cu.map(x => x.curso_ufcd_id))));
+        const existSet = new Set((existing ?? []).map((e: any) => `${e.curso_ufcd_id}|${e.formador_id}`));
+        const toInsert = cu.filter(x => !existSet.has(`${x.curso_ufcd_id}|${x.formador_id}`));
+        if (toInsert.length) {
+          const { error: e2 } = await supabase.from("curso_ufcd_formadores").insert(toInsert as never);
+          if (e2) console.error("curso_ufcd_formadores insert", e2);
+        }
       }
 
       toast.success(`${payload.length} sessões importadas`);

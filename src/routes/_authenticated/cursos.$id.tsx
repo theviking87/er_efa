@@ -339,7 +339,7 @@ function SessoesUfcdDialog({
                       </span>
                     ) : <span className="text-muted-foreground">—</span>}
                   </td>
-                  <td className="px-3 py-1.5 text-right">{fmtHoras(Number(s.horas))}</td>
+                  <td className="px-3 py-1.5 text-right">{fmtHoras(horasSessao(s))}</td>
                 </tr>
               ))}
             </tbody>

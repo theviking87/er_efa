@@ -452,7 +452,7 @@ function CompetenciasTab({ formadorId }: { formadorId: string }) {
 
   const ufcdsQ = useQuery({
     queryKey: ["ufcds-all"],
-    queryFn: async () => (await supabase.from("ufcds").select("id, codigo, designacao").order("codigo")).data ?? [],
+    queryFn: async () => ((await supabase.from("ufcds").select("id, codigo, designacao")).data ?? []).sort((a: any, b: any) => compareUfcdCodigo(a.codigo, b.codigo)),
   });
 
   const taken = new Set((q.data ?? []).map(i => i.ufcd_id));

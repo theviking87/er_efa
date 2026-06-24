@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
+import { feriadoNome } from "@/lib/feriados";
+
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
   head: () => ({ meta: [{ title: "Curso — Gestão Pedagógica" }] }),
@@ -855,13 +857,18 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}
         </div>
         <div className="grid grid-cols-7 auto-rows-[minmax(110px,auto)]">
-          {grid.map((cell, i) => (
-            <div key={i} className="border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[110px] bg-card">
+          {grid.map((cell, i) => {
+            const feriado = cell ? feriadoNome(cell.iso) : null;
+            return (
+            <div key={i} className={`border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[110px] ${feriado ? "bg-muted/60" : "bg-card"}`}>
               {cell && (
                 <>
                   <button onClick={() => { setDialogData(cell.iso); setDialogOpen(true); }} className="text-xs text-muted-foreground hover:text-foreground w-full text-left mb-1">
                     {cell.d}
                   </button>
+                  {feriado && (
+                    <div className="text-[10px] text-muted-foreground italic leading-tight mb-1 truncate" title={feriado}>{feriado}</div>
+                  )}
                   <div className="space-y-1">
                     {(sessoesByDay.get(cell.iso) ?? []).map((s: any) => (
                       <SessaoChip key={s.id} sessao={s}
@@ -878,7 +885,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                 </>
               )}
             </div>
-          ))}
+            );
+          })}
+
         </div>
       </div>
 
@@ -922,11 +931,16 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
             ))}
           </div>
           <div className="cronograma-grid grid grid-cols-7 border border-gray-400 text-[9px]">
-            {grid.map((cell, i) => (
-              <div key={i} className="cronograma-cell border-r border-b border-gray-300 last:border-r-0 p-1 align-top overflow-hidden" style={{ borderRight: (i % 7 === 6) ? "none" : undefined }}>
+            {grid.map((cell, i) => {
+              const feriado = cell ? feriadoNome(cell.iso) : null;
+              return (
+              <div key={i} className={`cronograma-cell border-r border-b border-gray-300 last:border-r-0 p-1 align-top overflow-hidden ${feriado ? "bg-gray-200" : ""}`} style={{ borderRight: (i % 7 === 6) ? "none" : undefined }}>
                 {cell && (
                   <>
                     <div className="text-[10px] font-semibold mb-0.5 leading-none">{cell.d}</div>
+                    {feriado && (
+                      <div className="text-[7px] italic text-gray-600 leading-tight mb-0.5 truncate">{feriado}</div>
+                    )}
                     <div className="space-y-0.5">
                       {(sessoesByDay.get(cell.iso) ?? []).flatMap((s: any) => {
                         const [hiH, hiM] = String(s.hora_inicio).split(":").map(Number);
@@ -952,7 +966,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                   </>
                 )}
               </div>
-            ))}
+              );
+            })}
+
           </div>
         </div>
 

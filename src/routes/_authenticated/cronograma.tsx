@@ -52,6 +52,7 @@ function CronogramaGeral() {
   const [formadorFiltro, setFormadorFiltro] = useState<string>("");
   const [mostrar, setMostrar] = useState<"ambos" | "sessoes" | "disp">("ambos");
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
+  const [createDate, setCreateDate] = useState<string | null>(null);
 
   useEffect(() => {
     const ch = supabase

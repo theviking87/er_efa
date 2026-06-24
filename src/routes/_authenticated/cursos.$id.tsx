@@ -1144,7 +1144,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       const ufcdTxt = ufcdChanged ? " e UFCD" : "";
       await supabase.from("formador_disponibilidades" as any).insert({
         formador_id: originalId,
-        data: sessao.data,
+        data: dataSess,
         hora_inicio: hiFull,
         hora_fim: hfFull,
         tipo: "indisponivel",
@@ -1152,12 +1152,13 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       } as any);
       await supabase.from("formador_disponibilidades" as any).insert({
         formador_id: novoFormadorId,
-        data: sessao.data,
+        data: dataSess,
         hora_inicio: hiFull,
         hora_fim: hfFull,
         tipo: "disponivel",
         notas: `Troca de formador${ufcdTxt}: substitui ${originalNome}${motivoTxt}`,
       } as any);
+
     }
 
     setSaving(false);

@@ -721,6 +721,14 @@ function CronogramaGeral() {
         defaultFormadorId={formadorFiltro || null}
         onClose={() => setCreateDate(null)}
       />
+      <CreateDispDialog
+        key={editDisp?.id ?? "edit"}
+        data={editDisp?.data ?? null}
+        formadores={(formadores.data ?? []) as any[]}
+        defaultFormadorId={null}
+        editing={editDisp}
+        onClose={() => setEditDisp(null)}
+      />
     </PageContainer>
   );
 }

@@ -820,6 +820,17 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         }}
       />
 
+      <BulkRetroativosDialog
+        open={bulkOpen}
+        onOpenChange={setBulkOpen}
+        cursoId={cursoId}
+        onSaved={() => {
+          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
+          qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
+          qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
+        }}
+      />
+
     </CardContent></Card>
   );
 }

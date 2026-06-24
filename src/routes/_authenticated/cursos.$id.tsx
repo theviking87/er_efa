@@ -1044,6 +1044,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
   const [motivo, setMotivo] = useState("");
   const [hi, setHi] = useState("");
   const [hf, setHf] = useState("");
+  const [dataSess, setDataSess] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Inicializa com a ufcd e horário da sessão quando abre
@@ -1053,8 +1054,10 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       setNovoFormadorId(sessao.formador_id ?? "");
       setHi(String(sessao.hora_inicio ?? "").slice(0, 5));
       setHf(String(sessao.hora_fim ?? "").slice(0, 5));
+      setDataSess(String(sessao.data ?? "").slice(0, 10));
     }
   }, [sessao?.id]);
+
 
   // UFCDs do curso (para escolher)
   const cursoUfcds = useQuery({
@@ -1095,25 +1098,28 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
     const formadorChanged = novoFormadorId !== originalId;
 
     if (!hi || !hf) { setSaving(false); return toast.error("Horário inválido"); }
+    if (!dataSess) { setSaving(false); return toast.error("Data inválida"); }
     const horas = diffHoras(hi, hf);
     if (horas <= 0) { setSaving(false); return toast.error("Horas inválidas"); }
     const hiFull = hi.length === 5 ? `${hi}:00` : hi;
     const hfFull = hf.length === 5 ? `${hf}:00` : hf;
+    const dataChanged = dataSess !== String(sessao.data).slice(0, 10);
     const horarioChanged =
-      hiFull !== String(sessao.hora_inicio) || hfFull !== String(sessao.hora_fim);
+      hiFull !== String(sessao.hora_inicio) || hfFull !== String(sessao.hora_fim) || dataChanged;
 
     // Verificar conflito de horário do novo formador nesse dia
     const { data: conflitos } = await supabase.from("sessoes")
       .select("id, hora_inicio, hora_fim")
-      .eq("formador_id", novoFormadorId).eq("data", sessao.data);
+      .eq("formador_id", novoFormadorId).eq("data", dataSess);
     const hasConflict = (conflitos ?? []).some((s: any) => s.id !== sessao.id && !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
     if (hasConflict) { setSaving(false); return toast.error("Novo formador tem outra sessão neste período"); }
 
     // Atualizar sessão
     const { error } = await supabase.from("sessoes")
-      .update({ formador_id: novoFormadorId, curso_ufcd_id: novoCursoUfcdId, hora_inicio: hi, hora_fim: hf, horas } as never)
+      .update({ formador_id: novoFormadorId, curso_ufcd_id: novoCursoUfcdId, data: dataSess, hora_inicio: hi, hora_fim: hf, horas } as never)
       .eq("id", sessao.id);
     if (error) { setSaving(false); return toast.error(error.message); }
+
 
     // Garantir competência registada e atribuição ao curso/ufcd para o novo formador
     if (realUfcdId) {
@@ -1138,7 +1144,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       const ufcdTxt = ufcdChanged ? " e UFCD" : "";
       await supabase.from("formador_disponibilidades" as any).insert({
         formador_id: originalId,
-        data: sessao.data,
+        data: dataSess,
         hora_inicio: hiFull,
         hora_fim: hfFull,
         tipo: "indisponivel",
@@ -1146,12 +1152,13 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       } as any);
       await supabase.from("formador_disponibilidades" as any).insert({
         formador_id: novoFormadorId,
-        data: sessao.data,
+        data: dataSess,
         hora_inicio: hiFull,
         hora_fim: hfFull,
         tipo: "disponivel",
         notas: `Troca de formador${ufcdTxt}: substitui ${originalNome}${motivoTxt}`,
       } as any);
+
     }
 
     setSaving(false);
@@ -1170,7 +1177,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
   const ufcdChanged = sessao && novoCursoUfcdId && novoCursoUfcdId !== (sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id);
 
   return (
-    <Dialog open={!!sessao} onOpenChange={(v) => { if (!v) { onClose(); setNovoFormadorId(""); setMotivo(""); setHi(""); setHf(""); } }}>
+    <Dialog open={!!sessao} onOpenChange={(v) => { if (!v) { onClose(); setNovoFormadorId(""); setMotivo(""); setHi(""); setHf(""); setDataSess(""); } }}>
       <DialogContent>
         <DialogHeader><DialogTitle>Editar sessão</DialogTitle></DialogHeader>
         {sessao && (
@@ -1191,6 +1198,10 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-1.5">
+              <Label>Data *</Label>
+              <Input type="date" value={dataSess} onChange={e => setDataSess(e.target.value)} />
+            </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>Hora de início *</Label>
@@ -1201,6 +1212,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
                 <Input type="time" value={hf} onChange={e => setHf(e.target.value)} />
               </div>
             </div>
+
             <div className="space-y-1.5">
               <Label>Formador *</Label>
               <Select value={novoFormadorId} onValueChange={setNovoFormadorId}>

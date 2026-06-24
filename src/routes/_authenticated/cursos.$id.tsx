@@ -455,13 +455,17 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
               <div className="border rounded-md max-h-40 overflow-y-auto p-2 space-y-1">
                 {!ufcdId && <div className="text-xs text-muted-foreground px-1">Escolha primeiro uma UFCD.</div>}
                 {ufcdId && (formadoresList.data ?? []).length === 0 && <div className="text-xs text-muted-foreground px-1">Nenhum formador ativo com competência para esta UFCD.</div>}
-                {(formadoresList.data ?? []).map((f: any) => (
-                  <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
-                    <Checkbox checked={formadores.includes(f.id)} onCheckedChange={(c) => setFormadores(c ? [...formadores, f.id] : formadores.filter(x => x !== f.id))} />
-                    <span className="size-2 rounded-full" style={{ background: f.cor }} />
-                    {f.nome}
-                  </label>
-                ))}
+                {(formadoresList.data ?? []).map((f: any) => {
+                  const h = horasNoCurso.data?.get(f.id) ?? 0;
+                  return (
+                    <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
+                      <Checkbox checked={formadores.includes(f.id)} onCheckedChange={(c) => setFormadores(c ? [...formadores, f.id] : formadores.filter(x => x !== f.id))} />
+                      <span className="size-2 rounded-full" style={{ background: f.cor }} />
+                      <span className="flex-1 truncate">{f.nome}</span>
+                      <Badge variant="secondary" className="text-[10px] tabular-nums">{fmtHoras(h)} no curso</Badge>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>

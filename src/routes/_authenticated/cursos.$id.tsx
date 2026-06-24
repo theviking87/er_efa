@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, Upload, Users, FileText, Clock } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, Upload, Users, FileText, Clock, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { exportSigoCurso, exportFaltasCurso } from "@/lib/exports";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -620,6 +620,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const [presencasSessao, setPresencasSessao] = useState<any | null>(null);
   const [substituirSessao, setSubstituirSessao] = useState<any | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
+  const [analiseOpen, setAnaliseOpen] = useState(false);
 
   const inicioMes = dateOnlyIso(mes.ano, mes.mes, 1);
   const fimMes = dateOnlyIso(mes.ano, mes.mes + 1, 0);
@@ -657,6 +658,51 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       }));
     },
   });
+
+  // Todas as sessões do curso para análise global
+  const todasSessoes = useQuery({
+    queryKey: ["sessoes-todas", cursoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+        .eq("curso_id", cursoId).order("data").order("hora_inicio");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const analise = useMemo(() => {
+    const byDay = new Map<string, any[]>();
+    (todasSessoes.data ?? []).forEach((s: any) => {
+      const arr = byDay.get(s.data) ?? []; arr.push(s); byDay.set(s.data, arr);
+    });
+    const conflitos: { data: string; sessoes: any[] }[] = [];
+    const incompletos: { data: string; horas: number; inicio: string; fim: string }[] = [];
+    const toMin = (t: string) => { const [h, m] = String(t).slice(0, 5).split(":").map(Number); return h * 60 + m; };
+    Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b)).forEach(([data, sess]) => {
+      // Conflitos: pares de sessões com intervalos sobrepostos
+      const conf: any[] = [];
+      for (let i = 0; i < sess.length; i++) {
+        for (let j = i + 1; j < sess.length; j++) {
+          const a = sess[i], b = sess[j];
+          if (toMin(a.hora_inicio) < toMin(b.hora_fim) && toMin(b.hora_inicio) < toMin(a.hora_fim)) {
+            if (!conf.includes(a)) conf.push(a);
+            if (!conf.includes(b)) conf.push(b);
+          }
+        }
+      }
+      if (conf.length) conflitos.push({ data, sessoes: conf });
+      // Dia incompleto: total < 7h ou não cobre 9:00-17:00
+      const inicio = sess.reduce((m: number, s: any) => Math.min(m, toMin(s.hora_inicio)), 24 * 60);
+      const fim = sess.reduce((m: number, s: any) => Math.max(m, toMin(s.hora_fim)), 0);
+      const totalH = sess.reduce((a: number, s: any) => a + Number(s.horas ?? 0), 0);
+      if (totalH < 7 || inicio > 9 * 60 || fim < 17 * 60) {
+        const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        incompletos.push({ data, horas: totalH, inicio: fmt(inicio), fim: fmt(fim) });
+      }
+    });
+    return { conflitos, incompletos, totalDias: byDay.size };
+  }, [todasSessoes.data]);
 
   const sessoesByDay = useMemo(() => {
     const m = new Map<string, any[]>();
@@ -734,11 +780,74 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           <Button variant="outline" size="icon" onClick={next}><ChevronRight className="size-4" /></Button>
         </div>
         <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setAnaliseOpen(true)}>
+            <AlertTriangle className="size-4" /> Análise
+            {(analise.conflitos.length + analise.incompletos.length) > 0 && (
+              <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
+                {analise.conflitos.length + analise.incompletos.length}
+              </Badge>
+            )}
+          </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4" /> Imprimir</Button>
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}><FileText className="size-4" /> Retroativos em massa</Button>
           <Button size="sm" onClick={() => { setDialogData(null); setDialogOpen(true); }}><Plus className="size-4" /> Nova sessão</Button>
         </div>
       </div>
+
+      <Dialog open={analiseOpen} onOpenChange={setAnaliseOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Análise do cronograma</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-5 text-sm">
+            <div className="text-xs text-muted-foreground">
+              {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) · {analise.incompletos.length} dia(s) incompleto(s)
+            </div>
+
+            <div>
+              <div className="font-medium mb-2 flex items-center gap-2">
+                <AlertTriangle className="size-4 text-destructive" /> Sobreposições de horário
+              </div>
+              {analise.conflitos.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Sem conflitos.</div>
+              ) : (
+                <div className="space-y-2">
+                  {analise.conflitos.map(c => (
+                    <div key={c.data} className="border rounded-md p-2">
+                      <div className="font-medium text-xs mb-1">{fmtDate(c.data)}</div>
+                      <div className="space-y-0.5">
+                        {c.sessoes.map((s: any) => (
+                          <div key={s.id} className="text-xs text-muted-foreground">
+                            {String(s.hora_inicio).slice(0,5)}–{String(s.hora_fim).slice(0,5)} · {formadorLabel(s.formador)} · {s.curso_ufcd?.ufcd?.codigo ?? "—"}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="font-medium mb-2 flex items-center gap-2">
+                <Clock className="size-4 text-amber-600" /> Dias sem ocupação completa (9h–17h / 7h)
+              </div>
+              {analise.incompletos.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Todos os dias estão completos.</div>
+              ) : (
+                <div className="space-y-1">
+                  {analise.incompletos.map(d => (
+                    <div key={d.data} className="flex items-center justify-between border rounded-md px-2 py-1.5 text-xs">
+                      <span className="font-medium">{fmtDate(d.data)}</span>
+                      <span className="text-muted-foreground">{d.inicio}–{d.fim} · {fmtHoras(d.horas)}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* CRONOGRAMA ECRÃ — calendário mensal */}
       <div className="border rounded-md overflow-hidden bg-card print:hidden">

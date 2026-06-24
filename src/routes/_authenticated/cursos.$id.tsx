@@ -925,13 +925,17 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
   const [novoFormadorId, setNovoFormadorId] = useState("");
   const [novoCursoUfcdId, setNovoCursoUfcdId] = useState("");
   const [motivo, setMotivo] = useState("");
+  const [hi, setHi] = useState("");
+  const [hf, setHf] = useState("");
   const [saving, setSaving] = useState(false);
 
-  // Inicializa com a ufcd da sessão quando abre
+  // Inicializa com a ufcd e horário da sessão quando abre
   useEffect(() => {
     if (sessao) {
       setNovoCursoUfcdId(sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id ?? "");
       setNovoFormadorId("");
+      setHi(String(sessao.hora_inicio ?? "").slice(0, 5));
+      setHf(String(sessao.hora_fim ?? "").slice(0, 5));
     }
   }, [sessao?.id]);
 

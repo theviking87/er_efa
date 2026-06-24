@@ -276,11 +276,22 @@ function CronogramaGeral() {
     if (!curso) return;
     const diasSem: { iso: string; dow: string }[] = [];
     const semanaLbl = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const dispData = disp.data ?? [];
     for (const cell of grid) {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
-      if (dayMissing.has(cell.iso)) {
+      // Tem disponibilidade para este curso se: dispo específica deste curso OU dispo geral de um formador atribuído ao curso
+      const cursoInfo = (cursosAtivos.data ?? []).find((c: any) => c.id === cursoFiltro);
+      const formadoresDoCurso = new Set<string>(cursoInfo?.formadores ?? []);
+      const tem = dispData.some((d: any) => {
+        if (d.data !== cell.iso || d.tipo !== "disponivel") return false;
+        if (d.curso_id === cursoFiltro) return true;
+        if (!d.curso_id && formadoresDoCurso.has(d.formador_id)) return true;
+        return false;
+      });
+      if (!tem) diasSem.push({ iso: cell.iso, dow: semanaLbl[dow] });
+    }
         diasSem.push({ iso: cell.iso, dow: semanaLbl[dow] });
       }
     }

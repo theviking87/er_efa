@@ -369,6 +369,48 @@ function CronogramaGeral() {
         </div>
       </CardContent></Card>
 
+      {/* ÁREA DE IMPRESSÃO — uma folha A4 paisagem */}
+      <div id="cronograma-print" className="hidden print:block">
+        <div className="cronograma-page">
+          <div className="cronograma-header mb-1.5">
+            <div className="font-semibold text-sm leading-tight">Cronograma Geral</div>
+            <div className="text-[10px] leading-tight">
+              {MONTH_NAMES[mes.mes]} {mes.ano}
+              {formadorFiltro ? ` · ${(formadores.data ?? []).find((f: any) => f.id === formadorFiltro)?.nome ?? ""}` : ""}
+            </div>
+          </div>
+          <div className="cronograma-weekdays grid grid-cols-7 border border-gray-400 border-b-0 text-[8px]">
+            {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => (
+              <div key={d} className="border-r border-gray-400 last:border-r-0 bg-gray-100 px-1 py-[1px] font-semibold text-center uppercase leading-none">{d}</div>
+            ))}
+          </div>
+          <div className="cronograma-grid grid grid-cols-7 border border-gray-400 text-[9px]">
+            {grid.map((cell, i) => (
+              <div key={i} className="cronograma-cell border-r border-b border-gray-300 last:border-r-0 p-1 align-top overflow-hidden" style={{ borderRight: (i % 7 === 6) ? "none" : undefined }}>
+                {cell && (
+                  <>
+                    <div className="text-[10px] font-semibold mb-0.5 leading-none">{cell.d}</div>
+                    <div className="space-y-0.5">
+                      {(slotsByDay.get(cell.iso) ?? []).map((slot: any) => {
+                        const cor = slot.formador_cor || "#888";
+                        const isSessao = slot.kind === "sessao";
+                        const tag = isSessao ? slot.curso_codigo : (slot.tipo === "disponivel" ? "Disp." : "Indisp.");
+                        return (
+                          <div key={slot.kind + slot.id} className="leading-tight" style={{ borderLeft: `2px solid ${cor}`, paddingLeft: "3px" }}>
+                            <span className="tabular-nums font-semibold">{slot.hora_inicio?.slice(0,5)}-{slot.hora_fim?.slice(0,5)}</span>
+                            {" "}{slot.formador_nome} ({tag})
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </>
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
       <ConvertDispDialog
         slot={convertSlot}
         onClose={() => setConvertSlot(null)}

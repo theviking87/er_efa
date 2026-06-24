@@ -1190,7 +1190,24 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
             <Input type="date" value={data} onChange={e => { setData(e.target.value); setFormadorId(""); setCufId(""); }} />
           </div>
 
-          {data && (
+          {data && isRetroativo && (
+            <div className="space-y-1.5">
+              <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+                Lançamento retroativo (mês anterior ao atual) — não é exigida disponibilidade declarada. Escolhe o formador manualmente.
+              </div>
+              <Label className="text-xs">Formador *</Label>
+              <Select value={formadorId} onValueChange={(v) => { setFormadorId(v); setCufId(""); }}>
+                <SelectTrigger><SelectValue placeholder="Escolher formador deste curso…" /></SelectTrigger>
+                <SelectContent>
+                  {formadoresDoCursoList.map((f: any) => (
+                    <SelectItem key={f.id} value={f.id}>{formadorLabel(f)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {data && !isRetroativo && (
             <div className="space-y-1.5">
               <Label className="text-xs">Formadores com disponibilidade neste dia</Label>
               <div className="border rounded-md max-h-56 overflow-y-auto divide-y bg-muted/30">
@@ -1221,6 +1238,8 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
               </div>
             </div>
           )}
+
+
 
           {formadorId && (
             <div className="space-y-1.5">

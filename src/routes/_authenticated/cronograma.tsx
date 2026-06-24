@@ -885,20 +885,20 @@ function CreateDispDialog({
               </div>
             </div>
 
-            {tipo === "indisponivel" && (
-              <div className="flex items-center justify-between rounded-md border px-3 py-2">
-                <div>
-                  <Label htmlFor="dia-todo" className="cursor-pointer">Dia todo</Label>
-                  <div className="text-xs text-muted-foreground">Marca o dia inteiro como indisponível</div>
-                </div>
-                <Switch id="dia-todo" checked={diaTodo} onCheckedChange={setDiaTodo} />
+            <div className="space-y-1.5">
+              <Label>Período</Label>
+              <div className="flex gap-2 flex-wrap">
+                <Button type="button" size="sm" variant={periodo === "manha" ? "default" : "outline"} onClick={() => aplicarPeriodo("manha")}>Manhã (09:00–13:00)</Button>
+                <Button type="button" size="sm" variant={periodo === "tarde" ? "default" : "outline"} onClick={() => aplicarPeriodo("tarde")}>Tarde (14:00–17:00)</Button>
+                <Button type="button" size="sm" variant={periodo === "dia" ? "default" : "outline"} onClick={() => aplicarPeriodo("dia")}>Dia todo (09:00–17:00)</Button>
               </div>
-            )}
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={diaTodo ? "00:00" : horaInicio} onChange={e => setHoraInicio(e.target.value)} disabled={diaTodo} /></div>
-              <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={diaTodo ? "23:59" : horaFim} onChange={e => setHoraFim(e.target.value)} disabled={diaTodo} /></div>
+              <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => { setHoraInicio(e.target.value); setPeriodo("custom"); }} /></div>
+              <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => { setHoraFim(e.target.value); setPeriodo("custom"); }} /></div>
             </div>
+
 
 
             {formadorId && (

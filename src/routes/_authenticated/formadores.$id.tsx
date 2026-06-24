@@ -295,6 +295,23 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
   async function add() {
     if (!form.data) { toast.error("Data obrigatória"); return; }
     if (form.hora_fim <= form.hora_inicio) { toast.error("Hora fim tem de ser depois da hora início"); return; }
+    // verificar sobreposição com disponibilidades já lançadas nesse dia
+    const { data: existentes } = await supabase
+      .from("formador_disponibilidades" as any)
+      .select("hora_inicio, hora_fim, tipo")
+      .eq("formador_id", formadorId)
+      .eq("data", form.data);
+    const hi = form.hora_inicio + (form.hora_inicio.length === 5 ? ":00" : "");
+    const hf = form.hora_fim + (form.hora_fim.length === 5 ? ":00" : "");
+    const sobreposta = ((existentes ?? []) as any[]).find(
+      (d) => !(hf <= d.hora_inicio || hi >= d.hora_fim)
+    );
+    if (sobreposta) {
+      toast.error("Já existe disponibilidade neste período", {
+        description: `${sobreposta.tipo === "disponivel" ? "Disponível" : "Indisponível"} ${String(sobreposta.hora_inicio).slice(0,5)}–${String(sobreposta.hora_fim).slice(0,5)} já registado neste dia.`,
+      });
+      return;
+    }
     const { error } = await supabase.from("formador_disponibilidades" as any).insert({ formador_id: formadorId, ...form } as any);
     if (error) return toast.error(error.message);
     toast.success("Disponibilidade adicionada");

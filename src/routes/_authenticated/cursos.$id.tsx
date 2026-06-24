@@ -175,11 +175,33 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
     qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
   }
 
+  function imprimirSemFormador() {
+    const lista = (data.data ?? []).filter((u: any) => (u.formadores ?? []).length === 0);
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>UFCD sem formador</title>
+      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#111}h1{font-size:16px;margin:0 0 4px}h2{font-size:12px;font-weight:normal;color:#555;margin:0 0 16px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px 8px;text-align:left}th{background:#eee}</style>
+      </head><body>
+      <h1>UFCD sem formador atribuído</h1>
+      <h2>Total: ${lista.length} UFCD${lista.length === 1 ? "" : "s"}</h2>
+      <table><thead><tr><th style="width:90px">Código</th><th>Designação</th><th style="width:70px;text-align:right">Horas</th></tr></thead>
+      <tbody>${lista.length === 0
+        ? '<tr><td colspan="3" style="text-align:center;color:#666">Todas as UFCD têm formador atribuído.</td></tr>'
+        : lista.map((u: any) => `<tr><td>${u.ufcd?.codigo ?? ""}</td><td>${u.ufcd?.designacao ?? ""}</td><td style="text-align:right">${u.horas_totais}h</td></tr>`).join("")}
+      </tbody></table>
+      <script>window.onload=()=>setTimeout(()=>window.print(),100)</script>
+      </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) return toast.error("Bloqueado pelo navegador");
+    w.document.write(html); w.document.close();
+  }
+
   return (
     <Card><CardContent className="p-6 space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2 flex-wrap">
         <div className="text-sm text-muted-foreground">{data.data?.length ?? 0} UFCD atribuídas · {fmtHoras((data.data ?? []).reduce((a: number, u: any) => a + Number(u.horas_totais ?? 0), 0))} totais</div>
-        <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={imprimirSemFormador}><FileText className="size-4" /> UFCD sem formador</Button>
+          <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
+        </div>
       </div>
       {(data.data?.length ?? 0) === 0 && <div className="text-sm text-muted-foreground text-center py-8">Sem UFCD atribuídas. Atribua a primeira.</div>}
       <div className="space-y-2">

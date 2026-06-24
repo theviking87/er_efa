@@ -137,7 +137,7 @@ function CronogramaGeral() {
         .gte("data", inicioMes).lte("data", fimMes)
         .order("data").order("hora_inicio");
       if (formadorFiltro) q = q.eq("formador_id", formadorFiltro);
-      if (cursoFiltro) q = q.eq("curso_id", cursoFiltro);
+      if (cursoFiltro) q = q.or(`curso_id.eq.${cursoFiltro},curso_id.is.null`);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as any[];

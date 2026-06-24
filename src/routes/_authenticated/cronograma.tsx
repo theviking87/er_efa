@@ -513,7 +513,7 @@ function CronogramaGeral() {
           <div className="grid grid-cols-7 bg-muted/40 text-xs uppercase text-muted-foreground">
             {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}
           </div>
-          <div className="grid grid-cols-7 auto-rows-[minmax(130px,auto)]">
+          <div className="grid grid-cols-7 auto-rows-[minmax(110px,auto)]">
             {grid.map((cell, i) => {
               const miss = cell ? dayMissing.get(cell.iso) : undefined;
               let bgStyle: React.CSSProperties | undefined;

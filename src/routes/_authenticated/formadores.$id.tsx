@@ -445,12 +445,7 @@ function CompetenciasTab({ formadorId }: { formadorId: string }) {
         designacao: c.ufcd?.designacao ?? "",
         horas_lecionadas: horasPorUfcd.get(c.ufcd_id) ?? 0,
       }));
-      items.sort((a, b) => {
-        const ac = a.codigo, bc = b.codigo;
-        const aIsLetter = /^[A-Za-z]/.test(ac), bIsLetter = /^[A-Za-z]/.test(bc);
-        if (aIsLetter !== bIsLetter) return aIsLetter ? -1 : 1;
-        return ac.localeCompare(bc, "pt", { numeric: true });
-      });
+      items.sort((a, b) => compareUfcdCodigo(a.codigo, b.codigo));
       return items;
     },
   });

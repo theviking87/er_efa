@@ -186,8 +186,12 @@
     flex-direction: column;
   }
   #cronograma-print > .cronograma-page > .cronograma-header { flex: 0 0 auto; }
-  #cronograma-print > .cronograma-page > .cronograma-weekdays { flex: 0 0 auto; }
+  #cronograma-print > .cronograma-page > .cronograma-weekdays {
+    flex: 0 0 auto;
+    grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important;
+  }
   #cronograma-print > .cronograma-page > .cronograma-grid {
+    grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important;
     flex: 1 1 auto;
     min-height: 0;
     grid-auto-rows: 1fr;

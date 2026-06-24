@@ -620,21 +620,23 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       <div id="cronograma-print" className="hidden print:block">
         {/* PÁGINA 1 — Cronograma do mês (uma folha) */}
         <div className="cronograma-page">
-          <div className="mb-2">
-            <div className="text-xs text-muted-foreground">{cursoCodigo}</div>
-            <div className="font-semibold text-lg leading-tight">{cursoNome}</div>
-            <div className="text-sm">Cronograma · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
+          <div className="cronograma-header mb-1.5">
+            <div className="text-[9px] text-muted-foreground leading-tight">{cursoCodigo}</div>
+            <div className="font-semibold text-sm leading-tight">{cursoNome}</div>
+            <div className="text-[10px] leading-tight">Cronograma · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
           </div>
 
-          <div className="cronograma-grid grid grid-cols-7 border border-gray-400 text-[9px]" style={{ gridAutoRows: "1fr" }}>
+          <div className="cronograma-weekdays grid grid-cols-7 border border-gray-400 border-b-0 text-[8px]">
             {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => (
-              <div key={d} className="border border-gray-400 bg-gray-100 px-1 py-0.5 font-semibold text-center uppercase">{d}</div>
+              <div key={d} className="border-r border-gray-400 last:border-r-0 bg-gray-100 px-1 py-[1px] font-semibold text-center uppercase leading-none">{d}</div>
             ))}
+          </div>
+          <div className="cronograma-grid grid grid-cols-7 border border-gray-400 text-[9px]">
             {grid.map((cell, i) => (
-              <div key={i} className="border border-gray-300 p-1 align-top overflow-hidden">
+              <div key={i} className="cronograma-cell border-r border-b border-gray-300 last:border-r-0 p-1 align-top overflow-hidden" style={{ borderRight: (i % 7 === 6) ? "none" : undefined }}>
                 {cell && (
                   <>
-                    <div className="text-[10px] font-semibold mb-0.5">{cell.d}</div>
+                    <div className="text-[10px] font-semibold mb-0.5 leading-none">{cell.d}</div>
                     <div className="space-y-0.5">
                       {(sessoesByDay.get(cell.iso) ?? []).flatMap((s: any) => {
                         const [hiH, hiM] = String(s.hora_inicio).split(":").map(Number);

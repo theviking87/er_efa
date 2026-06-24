@@ -1098,7 +1098,7 @@ function CreateDispDialog({
         )}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={criar} disabled={saving || !formadorId}>{saving ? "A guardar…" : "Lançar"}</Button>
+          <Button onClick={criar} disabled={saving || !formadorId}>{saving ? "A guardar…" : (isEdit ? "Guardar" : "Lançar")}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

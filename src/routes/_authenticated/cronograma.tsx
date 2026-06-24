@@ -292,9 +292,6 @@ function CronogramaGeral() {
       });
       if (!tem) diasSem.push({ iso: cell.iso, dow: semanaLbl[dow] });
     }
-        diasSem.push({ iso: cell.iso, dow: semanaLbl[dow] });
-      }
-    }
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     const w = doc.internal.pageSize.getWidth();
     doc.setFillColor(37, 99, 235);

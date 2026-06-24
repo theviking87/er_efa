@@ -402,8 +402,18 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
                 <option value="indisponivel">Indisponível</option>
               </select>
             </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label>Curso (opcional)</Label>
+              <select className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.curso_id} onChange={e => setForm({ ...form, curso_id: e.target.value })}>
+                <option value="">— Nenhum —</option>
+                {(cursosFormador.data ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.codigo} — {c.nome}</option>
+                ))}
+              </select>
+            </div>
             <div className="col-span-2 space-y-1.5"><Label>Notas</Label><Input value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} /></div>
           </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={add}>Adicionar</AlertDialogAction>

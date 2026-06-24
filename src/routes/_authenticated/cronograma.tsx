@@ -680,11 +680,13 @@ function CreateDispDialog({
       (sess ?? []).forEach((s: any) => {
         dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0));
       });
-      return cus.map((cu: any) => {
-        const dadasH = dadas.get(cu.id) ?? 0;
-        const faltam = Math.max(0, Number(cu.horas_totais ?? 0) - dadasH);
-        return { ...cu, horas_dadas: dadasH, horas_faltam: faltam };
-      });
+      return cus
+        .map((cu: any) => {
+          const dadasH = dadas.get(cu.id) ?? 0;
+          const faltam = Math.max(0, Number(cu.horas_totais ?? 0) - dadasH);
+          return { ...cu, horas_dadas: dadasH, horas_faltam: faltam };
+        })
+        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
 

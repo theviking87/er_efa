@@ -172,9 +172,20 @@ function CronogramaGeral() {
       });
     }
     if (mostrar !== "sessoes") {
+      const cursoFiltroInfo = cursoFiltro ? (cursosAtivos.data ?? []).find((c: any) => c.id === cursoFiltro) : null;
+      const formadoresDoCursoFiltro = new Set<string>(cursoFiltroInfo?.formadores ?? []);
       (disp.data ?? []).forEach((d: any) => {
-        // Quando filtrado por curso, mostrar apenas disponibilidades associadas a esse curso.
-        if (cursoFiltro && d.curso_id !== cursoFiltro) return;
+        // Quando filtrado por curso, mostrar disponibilidades específicas desse curso
+        // ou gerais (sem curso) de formadores atribuídos ao curso.
+        if (cursoFiltro) {
+          if (d.curso_id === cursoFiltro) {
+            // ok
+          } else if (!d.curso_id && formadoresDoCursoFiltro.has(d.formador_id)) {
+            // ok — disp geral cobre todos os cursos do formador
+          } else {
+            return;
+          }
+        }
         const slot: DispSlot = {
           kind: "disp",
           id: d.id,

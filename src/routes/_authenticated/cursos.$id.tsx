@@ -1106,26 +1106,37 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
       return toast.error("Formador indisponível", { description: `${i.motivo || "Inatividade"} (${i.data_inicio} → ${i.data_fim})` });
     }
 
-    // Validar contra disponibilidades declaradas pelo formador nesse dia
+    // Validar contra disponibilidades declaradas pelo formador nesse dia.
+    // Sessões em meses anteriores ao atual são permitidas sem disponibilidade declarada (lançamento retroativo).
+    const hoje = new Date();
+    const inicioMesAtual = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+    const dataSessao = new Date(data + "T00:00:00");
+    const isRetroativo = dataSessao < inicioMesAtual;
+
     const dispDoFormador = (dispDia.data ?? []).filter((d: any) => d.formador_id === formadorId);
     const hiN = hi + ":00";
     const hfN = hf + ":00";
     const indisp = dispDoFormador.find((d: any) => d.tipo === "indisponivel" && !(hfN <= d.hora_inicio || hiN >= d.hora_fim));
     if (indisp) { setErro({ titulo: "Formador indisponível", descricao: "O formador marcou este período como indisponível." }); return; }
-    const disponiveis = dispDoFormador.filter((d: any) => d.tipo === "disponivel");
-    if (disponiveis.length === 0) {
-      setErro({ titulo: "Sem disponibilidade", descricao: "O formador não declarou disponibilidade para este dia." });
-      return;
+
+    if (!isRetroativo) {
+      const disponiveis = dispDoFormador.filter((d: any) => d.tipo === "disponivel");
+      if (disponiveis.length === 0) {
+        setErro({ titulo: "Sem disponibilidade", descricao: "O formador não declarou disponibilidade para este dia." });
+        return;
+      }
+      const dentro = disponiveis.some((d: any) => hiN >= d.hora_inicio && hfN <= d.hora_fim);
+      if (!dentro) {
+        const janelas = disponiveis.map((d: any) => `${String(d.hora_inicio).slice(0,5)}–${String(d.hora_fim).slice(0,5)}`).join(", ");
+        setErro({
+          titulo: "Estás a marcar mais horas que as declaradas",
+          descricao: `A sessão (${hi}–${hf}) está fora da disponibilidade do formador. Janelas declaradas neste dia: ${janelas}.`,
+        });
+        return;
+      }
     }
-    const dentro = disponiveis.some((d: any) => hiN >= d.hora_inicio && hfN <= d.hora_fim);
-    if (!dentro) {
-      const janelas = disponiveis.map((d: any) => `${String(d.hora_inicio).slice(0,5)}–${String(d.hora_fim).slice(0,5)}`).join(", ");
-      setErro({
-        titulo: "Estás a marcar mais horas que as declaradas",
-        descricao: `A sessão (${hi}–${hf}) está fora da disponibilidade do formador. Janelas declaradas neste dia: ${janelas}.`,
-      });
-      return;
-    }
+
+
 
 
     const { error } = await supabase.from("sessoes").insert({

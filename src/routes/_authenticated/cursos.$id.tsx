@@ -226,7 +226,99 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
         })}
       </div>
       <AtribuirUfcdDialog open={open} onOpenChange={setOpen} cursoId={cursoId} onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })} />
+      <GerirFormadoresUfcdDialog
+        info={manageUfcd}
+        onOpenChange={(v) => { if (!v) setManageUfcd(null); }}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })}
+      />
     </CardContent></Card>
+  );
+}
+
+function GerirFormadoresUfcdDialog({
+  info, onOpenChange, onSaved,
+}: {
+  info: { cursoUfcdId: string; ufcdId: string; codigo: string; designacao: string; assigned: string[] } | null;
+  onOpenChange: (v: boolean) => void;
+  onSaved: () => void;
+}) {
+  const [selected, setSelected] = useState<string[]>([]);
+  const [saving, setSaving] = useState(false);
+
+  useMemo(() => { if (info) setSelected(info.assigned); }, [info]);
+
+  const candidatos = useQuery({
+    queryKey: ["gerir-form-ufcd", info?.ufcdId],
+    enabled: !!info,
+    queryFn: async () => {
+      const { data: comp } = await supabase.from("formador_ufcds" as any).select("formador_id").eq("ufcd_id", info!.ufcdId);
+      const ids = ((comp ?? []) as any[]).map((r) => r.formador_id);
+      if (ids.length === 0) return [];
+      const { data } = await supabase.from("formadores").select("id, nome, cor, estado").in("id", ids).eq("estado", "ativo").order("nome");
+      return data ?? [];
+    },
+  });
+
+  async function save() {
+    if (!info) return;
+    setSaving(true);
+    try {
+      const original = new Set(info.assigned);
+      const novo = new Set(selected);
+      const toAdd = [...novo].filter((x) => !original.has(x));
+      const toRemove = [...original].filter((x) => !novo.has(x));
+      if (toRemove.length) {
+        const { error } = await supabase.from("curso_ufcd_formadores").delete()
+          .eq("curso_ufcd_id", info.cursoUfcdId).in("formador_id", toRemove);
+        if (error) throw error;
+      }
+      if (toAdd.length) {
+        const { error } = await supabase.from("curso_ufcd_formadores")
+          .insert(toAdd.map((fid) => ({ curso_ufcd_id: info.cursoUfcdId, formador_id: fid })) as never);
+        if (error) throw error;
+      }
+      toast.success("Formadores atualizados");
+      onOpenChange(false);
+      onSaved();
+    } catch (e: any) {
+      toast.error(e.message ?? "Falhou guardar");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Dialog open={!!info} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Formadores — {info?.codigo}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-2">
+          <div className="text-sm text-muted-foreground">{info?.designacao}</div>
+          <div className="border rounded-md max-h-60 overflow-y-auto p-2 space-y-1">
+            {(candidatos.data ?? []).length === 0 && (
+              <div className="text-xs text-muted-foreground px-1 py-2">
+                Nenhum formador ativo com competência para esta UFCD. Atribua a competência na área do formador.
+              </div>
+            )}
+            {(candidatos.data ?? []).map((f: any) => (
+              <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
+                <Checkbox
+                  checked={selected.includes(f.id)}
+                  onCheckedChange={(c) => setSelected(c ? [...selected, f.id] : selected.filter((x) => x !== f.id))}
+                />
+                <span className="size-2 rounded-full" style={{ background: f.cor }} />
+                {f.nome}
+              </label>
+            ))}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={save} disabled={saving}>Guardar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

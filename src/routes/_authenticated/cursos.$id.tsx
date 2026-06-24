@@ -388,6 +388,21 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
     },
   });
 
+  const horasNoCurso = useQuery({
+    queryKey: ["form-horas-curso", cursoId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("curso_ufcd_formadores")
+        .select("formador_id, curso_ufcd:curso_ufcds!inner(curso_id, horas_totais)")
+        .eq("curso_ufcd.curso_id", cursoId);
+      const m = new Map<string, number>();
+      ((data ?? []) as any[]).forEach((r) => {
+        m.set(r.formador_id, (m.get(r.formador_id) ?? 0) + Number(r.curso_ufcd?.horas_totais ?? 0));
+      });
+      return m;
+    },
+  });
+
   async function doInsert() {
     const { data, error } = await supabase.from("curso_ufcds").insert({ curso_id: cursoId, ufcd_id: ufcdId, horas_totais: horas } as never).select().single();
     if (error) return toast.error(error.message);

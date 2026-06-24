@@ -375,8 +375,11 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
                 <div>
                   <div className="font-medium">{fmtDate(i.data)} · {i.hora_inicio?.slice(0,5)}–{i.hora_fim?.slice(0,5)}</div>
                   <div className="text-xs text-muted-foreground">
-                    {i.tipo === "disponivel" ? "Disponível" : "Indisponível"}{i.notas && ` · ${i.notas}`}
+                    {i.tipo === "disponivel" ? "Disponível" : "Indisponível"}
+                    {i.curso?.codigo && ` · ${i.curso.codigo}`}
+                    {i.notas && ` · ${i.notas}`}
                   </div>
+
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => del(i.id)}><Trash2 className="size-3.5" /></Button>

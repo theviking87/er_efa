@@ -170,7 +170,7 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
           .select("id, ufcd:ufcds(id, codigo, designacao)")
           .eq("curso_id", curso.id),
         supabase.from("formando_pra" as any)
-          .select("id, curso_ufcd_id, nome, storage_path")
+          .select("id, curso_ufcd_id, nome, storage_path, nota")
           .eq("curso_formando_id", cursoFormandoId),
       ]);
       const praMap = new Map<string, any>();

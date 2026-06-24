@@ -332,6 +332,15 @@ function CronogramaGeral() {
             <Button variant="outline" size="icon" onClick={next}><ChevronRight className="size-4" /></Button>
             <Button variant="ghost" size="sm" onClick={hoje}>Hoje</Button>
             <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4 mr-1" />Imprimir</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={imprimirDiasSemDisp}
+              disabled={!cursoFiltro}
+              title={cursoFiltro ? "PDF dos dias úteis sem disponibilidade para o curso selecionado" : "Seleciona um curso para ativar"}
+            >
+              <FileWarning className="size-4 mr-1" />Dias sem disponibilidade
+            </Button>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <select

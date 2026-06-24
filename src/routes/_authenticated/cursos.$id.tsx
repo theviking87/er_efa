@@ -614,7 +614,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   );
 }
 
-function SessaoChip({ sessao, onDelete, onPresencas }: { sessao: any; onDelete: () => void; onPresencas?: () => void }) {
+function SessaoChip({ sessao, onDelete, onPresencas, onSubstituir }: { sessao: any; onDelete: () => void; onPresencas?: () => void; onSubstituir?: () => void }) {
   return (
     <div className="text-[11px] leading-tight rounded px-1.5 py-1 group relative" style={{ background: `${sessao.formador?.cor}15`, color: sessao.formador?.cor, borderLeft: `2px solid ${sessao.formador?.cor}` }}>
       <div className="font-medium">{sessao.hora_inicio?.slice(0,5)}–{sessao.hora_fim?.slice(0,5)}</div>
@@ -623,6 +623,9 @@ function SessaoChip({ sessao, onDelete, onPresencas }: { sessao: any; onDelete: 
       <div className="absolute top-0.5 right-0.5 opacity-0 group-hover:opacity-100 transition flex gap-1 print:hidden">
         {onPresencas && (
           <button onClick={onPresencas} className="text-[10px] hover:underline" title="Marcar presenças">✓</button>
+        )}
+        {onSubstituir && (
+          <button onClick={onSubstituir} className="text-[10px] hover:underline" title="Substituir formador">↻</button>
         )}
         <button onClick={onDelete} className="text-[10px] hover:underline" title="Apagar">×</button>
       </div>

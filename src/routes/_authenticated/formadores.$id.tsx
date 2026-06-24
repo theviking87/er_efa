@@ -13,6 +13,7 @@ import { EstadoBadge } from "./formadores.index";
 import { FormadorDialog } from "@/components/formador-dialog";
 import { fmtDate } from "@/lib/format";
 import { toast } from "sonner";
+import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/_authenticated/formadores/$id")({

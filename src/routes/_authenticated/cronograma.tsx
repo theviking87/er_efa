@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+
 import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";

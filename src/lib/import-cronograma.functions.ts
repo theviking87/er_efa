@@ -27,7 +27,7 @@ export const extrairCronogramaPdf = createServerFn({ method: "POST" })
     // Load context: curso + UFCDs + formadores
     const [{ data: curso }, { data: cufcds }, { data: formadores }] = await Promise.all([
       supabase.from("cursos").select("id, codigo, nome, data_inicio, data_fim").eq("id", data.cursoId).maybeSingle(),
-      supabase.from("curso_ufcds").select("id, horas_totais, ufcd:ufcds(codigo, designacao)").eq("curso_id", data.cursoId),
+      supabase.from("curso_ufcds").select("id, horas_totais, ufcd_id, ufcd:ufcds(id, codigo, designacao)").eq("curso_id", data.cursoId),
       supabase.from("formadores").select("id, nome, abreviatura").eq("estado", "ativo"),
     ]);
 

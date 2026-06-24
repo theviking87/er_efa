@@ -203,7 +203,27 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
 
   async function remove(p: any) {
     await supabase.storage.from("formando-pra").remove([p.storage_path]);
-    await supabase.from("formando_pra" as any).delete().eq("id", p.id);
+    // keep row if it has a nota; otherwise delete entirely
+    if (p.nota && p.nota.trim().length > 0) {
+      await supabase.from("formando_pra" as any).update({ nome: null, storage_path: null } as any).eq("id", p.id);
+    } else {
+      await supabase.from("formando_pra" as any).delete().eq("id", p.id);
+    }
+    qc.invalidateQueries({ queryKey: ["pra-curso", cursoFormandoId] });
+  }
+
+  async function saveNota(cursoUfcdId: string, existing: any, nota: string) {
+    const value = nota.trim() || null;
+    if (existing) {
+      const { error } = await supabase.from("formando_pra" as any).update({ nota: value } as any).eq("id", existing.id);
+      if (error) return toast.error(error.message);
+    } else {
+      if (!value) return; // nothing to save
+      const { error } = await supabase.from("formando_pra" as any).insert(
+        { curso_formando_id: cursoFormandoId, curso_ufcd_id: cursoUfcdId, nota: value } as any,
+      );
+      if (error) return toast.error(error.message);
+    }
     qc.invalidateQueries({ queryKey: ["pra-curso", cursoFormandoId] });
   }
 

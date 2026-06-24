@@ -242,61 +242,18 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
         <div className="text-xs text-muted-foreground italic">Sem UFCD atribuídas a este curso.</div>
       ) : (
         <div className="space-y-1.5">
-          {ufcds.map((u: any) => {
-            const hasDoc = !!u.pra;
-            return (
-              <div
-                key={u.id}
-                className={
-                  "rounded-md border px-3 py-2 flex items-center gap-3 text-sm transition-colors " +
-                  (hasDoc
-                    ? "bg-green-500/10 border-green-500/40"
-                    : "bg-red-500/10 border-red-500/40")
-                }
-              >
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">{u.ufcd?.codigo}</span>
-                    <span className="truncate">{u.ufcd?.designacao}</span>
-                  </div>
-                  {hasDoc && (
-                    <div className="text-xs text-muted-foreground truncate mt-0.5">{u.pra.nome}</div>
-                  )}
-                </div>
-                {hasDoc ? (
-                  <>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => download(u.pra)}>
-                      <Download className="size-3.5" />
-                    </Button>
-                    <Button type="button" variant="ghost" size="sm" onClick={() => remove(u.pra)}>
-                      <Trash2 className="size-3.5" />
-                    </Button>
-                    <label className="cursor-pointer">
-                      <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border hover:bg-muted">
-                        <Upload className="size-3.5" /> Substituir
-                      </span>
-                      <input
-                        type="file"
-                        className="hidden"
-                        onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(u.id, f); e.target.value = ""; }}
-                      />
-                    </label>
-                  </>
-                ) : (
-                  <label className="cursor-pointer">
-                    <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border hover:bg-background">
-                      <Upload className="size-3.5" /> Carregar PRA
-                    </span>
-                    <Input
-                      type="file"
-                      className="hidden"
-                      onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(u.id, f); e.target.value = ""; }}
-                    />
-                  </label>
-                )}
-              </div>
-            );
-          })}
+          {ufcds.map((u: any) => (
+            <PraRow
+              key={u.id}
+              cursoUfcdId={u.id}
+              ufcd={u.ufcd}
+              pra={u.pra}
+              onUpload={(f) => upload(u.id, f)}
+              onDownload={() => download(u.pra)}
+              onRemove={() => remove(u.pra)}
+              onSaveNota={(nota) => saveNota(u.id, u.pra, nota)}
+            />
+          ))}
         </div>
       )}
     </div>

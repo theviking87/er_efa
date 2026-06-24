@@ -979,16 +979,24 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
     const ufcdChanged = novoCursoUfcdId !== (sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id);
     const formadorChanged = novoFormadorId !== originalId;
 
+    if (!hi || !hf) { setSaving(false); return toast.error("Horário inválido"); }
+    const horas = diffHoras(hi, hf);
+    if (horas <= 0) { setSaving(false); return toast.error("Horas inválidas"); }
+    const hiFull = hi.length === 5 ? `${hi}:00` : hi;
+    const hfFull = hf.length === 5 ? `${hf}:00` : hf;
+    const horarioChanged =
+      hiFull !== String(sessao.hora_inicio) || hfFull !== String(sessao.hora_fim);
+
     // Verificar conflito de horário do novo formador nesse dia
     const { data: conflitos } = await supabase.from("sessoes")
       .select("id, hora_inicio, hora_fim")
       .eq("formador_id", novoFormadorId).eq("data", sessao.data);
-    const hasConflict = (conflitos ?? []).some((s: any) => s.id !== sessao.id && !(sessao.hora_fim <= s.hora_inicio || sessao.hora_inicio >= s.hora_fim));
+    const hasConflict = (conflitos ?? []).some((s: any) => s.id !== sessao.id && !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
     if (hasConflict) { setSaving(false); return toast.error("Novo formador tem outra sessão neste período"); }
 
     // Atualizar sessão
     const { error } = await supabase.from("sessoes")
-      .update({ formador_id: novoFormadorId, curso_ufcd_id: novoCursoUfcdId } as never)
+      .update({ formador_id: novoFormadorId, curso_ufcd_id: novoCursoUfcdId, hora_inicio: hi, hora_fim: hf, horas } as never)
       .eq("id", sessao.id);
     if (error) { setSaving(false); return toast.error(error.message); }
 
@@ -1016,16 +1024,16 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
       await supabase.from("formador_disponibilidades" as any).insert({
         formador_id: originalId,
         data: sessao.data,
-        hora_inicio: sessao.hora_inicio,
-        hora_fim: sessao.hora_fim,
+        hora_inicio: hiFull,
+        hora_fim: hfFull,
         tipo: "indisponivel",
         notas: `Troca de formador${ufcdTxt}: substituído por novo formador${motivoTxt}`,
       } as any);
       await supabase.from("formador_disponibilidades" as any).insert({
         formador_id: novoFormadorId,
         data: sessao.data,
-        hora_inicio: sessao.hora_inicio,
-        hora_fim: sessao.hora_fim,
+        hora_inicio: hiFull,
+        hora_fim: hfFull,
         tipo: "disponivel",
         notas: `Troca de formador${ufcdTxt}: substitui ${originalNome}${motivoTxt}`,
       } as any);
@@ -1034,7 +1042,9 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
     setSaving(false);
     toast.success(
       ufcdChanged && formadorChanged ? "Sessão atualizada (UFCD e formador)" :
-      ufcdChanged ? "UFCD da sessão alterada" : "Formador substituído",
+      ufcdChanged ? "UFCD da sessão alterada" :
+      formadorChanged ? "Formador substituído" :
+      horarioChanged ? "Horário atualizado" : "Sessão atualizada",
       { description: formadorChanged ? "Disponibilidades lançadas com aviso de troca." : undefined },
     );
     setNovoFormadorId(""); setMotivo("");

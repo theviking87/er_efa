@@ -231,13 +231,13 @@ export const criarUfcdNoCurso = createServerFn({ method: "POST" })
       .from("curso_ufcds").select("id, horas_totais")
       .eq("curso_id", data.cursoId).eq("ufcd_id", ufcdId).maybeSingle();
     if (existeCU) {
-      return { id: existeCU.id, codigo: data.codigo, designacao: data.designacao, horas_totais: existeCU.horas_totais ?? 0, horas_existentes: 0 };
+      return { id: existeCU.id, ufcd_id: ufcdId!, codigo: data.codigo, designacao: data.designacao, horas_totais: existeCU.horas_totais ?? 0, horas_existentes: 0 };
     }
     const { data: cu, error: e2 } = await supabase
       .from("curso_ufcds")
       .insert({ curso_id: data.cursoId, ufcd_id: ufcdId, horas_totais: data.horas_referencia })
       .select("id, horas_totais").single();
     if (e2) throw new Error(e2.message);
-    return { id: cu.id, codigo: data.codigo, designacao: data.designacao, horas_totais: cu.horas_totais ?? 0, horas_existentes: 0 };
+    return { id: cu.id, ufcd_id: ufcdId!, codigo: data.codigo, designacao: data.designacao, horas_totais: cu.horas_totais ?? 0, horas_existentes: 0 };
   });
 

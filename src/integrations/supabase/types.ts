@@ -468,8 +468,9 @@ export type Database = {
           curso_formando_id: string
           curso_ufcd_id: string
           id: string
-          nome: string
-          storage_path: string
+          nome: string | null
+          nota: string | null
+          storage_path: string | null
           updated_at: string
         }
         Insert: {
@@ -477,8 +478,9 @@ export type Database = {
           curso_formando_id: string
           curso_ufcd_id: string
           id?: string
-          nome: string
-          storage_path: string
+          nome?: string | null
+          nota?: string | null
+          storage_path?: string | null
           updated_at?: string
         }
         Update: {
@@ -486,8 +488,9 @@ export type Database = {
           curso_formando_id?: string
           curso_ufcd_id?: string
           id?: string
-          nome?: string
-          storage_path?: string
+          nome?: string | null
+          nota?: string | null
+          storage_path?: string | null
           updated_at?: string
         }
         Relationships: [

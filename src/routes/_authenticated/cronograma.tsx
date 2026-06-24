@@ -427,6 +427,12 @@ function CronogramaGeral() {
         slot={convertSlot}
         onClose={() => setConvertSlot(null)}
       />
+      <CreateDispDialog
+        data={createDate}
+        formadores={(formadores.data ?? []) as any[]}
+        defaultFormadorId={formadorFiltro || null}
+        onClose={() => setCreateDate(null)}
+      />
     </PageContainer>
   );
 }

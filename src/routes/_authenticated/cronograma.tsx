@@ -172,9 +172,20 @@ function CronogramaGeral() {
       });
     }
     if (mostrar !== "sessoes") {
+      const cursoFiltroInfo = cursoFiltro ? (cursosAtivos.data ?? []).find((c: any) => c.id === cursoFiltro) : null;
+      const formadoresDoCursoFiltro = new Set<string>(cursoFiltroInfo?.formadores ?? []);
       (disp.data ?? []).forEach((d: any) => {
-        // Quando filtrado por curso, mostrar apenas disponibilidades associadas a esse curso.
-        if (cursoFiltro && d.curso_id !== cursoFiltro) return;
+        // Quando filtrado por curso, mostrar disponibilidades específicas desse curso
+        // ou gerais (sem curso) de formadores atribuídos ao curso.
+        if (cursoFiltro) {
+          if (d.curso_id === cursoFiltro) {
+            // ok
+          } else if (!d.curso_id && formadoresDoCursoFiltro.has(d.formador_id)) {
+            // ok — disp geral cobre todos os cursos do formador
+          } else {
+            return;
+          }
+        }
         const slot: DispSlot = {
           kind: "disp",
           id: d.id,
@@ -197,7 +208,7 @@ function CronogramaGeral() {
     // sort each day by hora_inicio
     for (const arr of m.values()) arr.sort((a, b) => (a.hora_inicio ?? "").localeCompare(b.hora_inicio ?? ""));
     return m;
-  }, [sessoes.data, disp.data, mostrar, cursoFiltro]);
+  }, [sessoes.data, disp.data, mostrar, cursoFiltro, cursosAtivos.data]);
 
 
   const grid = useMemo(() => {
@@ -563,6 +574,7 @@ function CronogramaGeral() {
 
 function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: () => void }) {
   const qc = useQueryClient();
+  const [cursoId, setCursoId] = useState("");
   const [cursoUfcdId, setCursoUfcdId] = useState("");
   const [horaInicio, setHoraInicio] = useState("");
   const [horaFim, setHoraFim] = useState("");
@@ -570,10 +582,9 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
   const [removerDisp, setRemoverDisp] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // UFCDs onde o formador está atribuído — filtradas ao curso da disponibilidade (se houver),
-  // ainda não concluídas, com horas em falta calculadas.
+  // UFCDs onde o formador está atribuído, com horas em falta.
   const opcoes = useQuery({
-    queryKey: ["ufcds-do-formador-conv", slot?.formador_id, slot?.curso_id],
+    queryKey: ["ufcds-do-formador-conv", slot?.formador_id],
     enabled: !!slot,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -581,10 +592,9 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
         .select("curso_ufcd:curso_ufcds(id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))")
         .eq("formador_id", slot!.formador_id);
       if (error) throw error;
-      let cus = (data ?? [])
+      const cus = (data ?? [])
         .map((r: any) => r.curso_ufcd)
         .filter((cu: any) => cu && cu.curso && !cu.concluida);
-      if (slot!.curso_id) cus = cus.filter((cu: any) => cu.curso.id === slot!.curso_id);
       if (cus.length === 0) return [];
       const ids = cus.map((cu: any) => cu.id);
       const { data: sess } = await supabase
@@ -606,19 +616,40 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     },
   });
 
+  // Cursos distintos a partir das opções
+  const cursosDisponiveis = useMemo(() => {
+    const m = new Map<string, { id: string; codigo: string; nome: string }>();
+    (opcoes.data ?? []).forEach((cu: any) => {
+      if (!m.has(cu.curso.id)) m.set(cu.curso.id, { id: cu.curso.id, codigo: cu.curso.codigo, nome: cu.curso.nome });
+    });
+    return Array.from(m.values()).sort((a, b) => a.codigo.localeCompare(b.codigo));
+  }, [opcoes.data]);
+
+  const opcoesFiltradas = useMemo(() => {
+    if (!cursoId) return [];
+    return (opcoes.data ?? []).filter((cu: any) => cu.curso.id === cursoId);
+  }, [opcoes.data, cursoId]);
+
   // reset on open
   useMemo(() => {
     if (slot) {
       setHoraInicio(slot.hora_inicio?.slice(0, 5) ?? "");
       setHoraFim(slot.hora_fim?.slice(0, 5) ?? "");
+      setCursoId(slot.curso_id ?? "");
       setCursoUfcdId("");
       setObservacoes("");
       setRemoverDisp(true);
     }
   }, [slot?.id]);
 
+  // Quando há apenas um curso disponível, pré-selecionar
+  useMemo(() => {
+    if (!cursoId && cursosDisponiveis.length === 1) setCursoId(cursosDisponiveis[0].id);
+  }, [cursosDisponiveis, cursoId]);
+
   async function criar() {
     if (!slot) return;
+    if (!cursoId) return toast.error("Escolhe o curso");
     if (!cursoUfcdId) return toast.error("Escolhe a UFCD");
     if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
 
@@ -652,6 +683,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
   }
 
   const open = !!slot;
+  const cursoLocked = !!slot?.curso_id;
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
@@ -664,24 +696,34 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
               <div><span className="text-muted-foreground">Formador:</span> <span className="font-medium">{slot.formador_nome}</span></div>
               <div><span className="text-muted-foreground">Data:</span> <span className="font-medium">{fmtDate(slot.data)}</span></div>
               <div><span className="text-muted-foreground">Janela:</span> <span className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</span></div>
-              {slot.notas && <div className="text-xs text-muted-foreground mt-1">“{slot.notas}”</div>}
+              {slot.notas && <div className="text-xs text-muted-foreground mt-1">"{slot.notas}"</div>}
+            </div>
+
+            <div className="space-y-1.5">
+              <Label>Curso *</Label>
+              <Select value={cursoId} onValueChange={(v) => { setCursoId(v); setCursoUfcdId(""); }} disabled={cursoLocked}>
+                <SelectTrigger><SelectValue placeholder={cursosDisponiveis.length === 0 ? "Sem cursos com UFCDs por concluir" : "Escolher…"} /></SelectTrigger>
+                <SelectContent>
+                  {cursosDisponiveis.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.codigo} — {c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {cursoLocked && <div className="text-xs text-muted-foreground">Curso definido na disponibilidade.</div>}
             </div>
 
             <div className="space-y-1.5">
               <Label>UFCD *</Label>
-              <Select value={cursoUfcdId} onValueChange={setCursoUfcdId}>
-                <SelectTrigger><SelectValue placeholder={opcoes.data?.length === 0 ? "Sem UFCDs por concluir atribuídas a este formador" : "Escolher…"} /></SelectTrigger>
+              <Select value={cursoUfcdId} onValueChange={setCursoUfcdId} disabled={!cursoId}>
+                <SelectTrigger><SelectValue placeholder={!cursoId ? "Escolhe primeiro o curso" : (opcoesFiltradas.length === 0 ? "Sem UFCDs por concluir neste curso" : "Escolher…")} /></SelectTrigger>
                 <SelectContent>
-                  {(opcoes.data ?? []).map((cu: any) => (
+                  {opcoesFiltradas.map((cu: any) => (
                     <SelectItem key={cu.id} value={cu.id}>
-                      {cu.curso?.codigo} · {cu.ufcd?.codigo} — {cu.ufcd?.designacao} (faltam {cu.horas_faltam}h de {cu.horas_totais}h)
+                      {cu.ufcd?.codigo} — {cu.ufcd?.designacao} (faltam {cu.horas_faltam}h de {cu.horas_totais}h)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              <div className="text-xs text-muted-foreground">
-                {slot.curso_codigo ? `Apenas UFCDs do curso ${slot.curso_codigo} atribuídas a este formador e ainda por concluir.` : "Apenas UFCDs atribuídas a este formador e ainda por concluir."}
-              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

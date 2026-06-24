@@ -201,13 +201,24 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
       <div className="flex justify-between items-center gap-2 flex-wrap">
         <div className="text-sm text-muted-foreground">{data.data?.length ?? 0} UFCD atribuídas · {fmtHoras((data.data ?? []).reduce((a: number, u: any) => a + Number(u.horas_totais ?? 0), 0))} totais</div>
         <div className="flex items-center gap-2">
+          <Input
+            placeholder="Pesquisar UFCD…"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="h-9 w-56"
+          />
           <Button variant="outline" size="sm" onClick={imprimirSemFormador}><FileText className="size-4" /> UFCD sem formador</Button>
           <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
         </div>
       </div>
       {(data.data?.length ?? 0) === 0 && <div className="text-sm text-muted-foreground text-center py-8">Sem UFCD atribuídas. Atribua a primeira.</div>}
       <div className="space-y-2">
-        {(data.data ?? []).map((u: any) => {
+        {(data.data ?? []).filter((u: any) => {
+          const q = search.trim().toLowerCase();
+          if (!q) return true;
+          return (u.ufcd?.codigo ?? "").toLowerCase().includes(q) || (u.ufcd?.designacao ?? "").toLowerCase().includes(q);
+        }).map((u: any) => {
+
           const pct = u.horas_totais > 0 ? Math.min(100, (u.horas_realizadas / u.horas_totais) * 100) : 0;
           const emFalta = Math.max(0, u.horas_totais - u.horas_realizadas);
           return (

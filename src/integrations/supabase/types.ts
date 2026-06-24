@@ -182,6 +182,7 @@ export type Database = {
       formador_disponibilidades: {
         Row: {
           created_at: string
+          curso_id: string | null
           data: string
           formador_id: string
           hora_fim: string
@@ -193,6 +194,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          curso_id?: string | null
           data: string
           formador_id: string
           hora_fim?: string
@@ -204,6 +206,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          curso_id?: string | null
           data?: string
           formador_id?: string
           hora_fim?: string
@@ -214,6 +217,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "formador_disponibilidades_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "formador_disponibilidades_formador_id_fkey"
             columns: ["formador_id"]

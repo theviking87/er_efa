@@ -1,11 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue, SelectGroup, SelectLabel } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -15,6 +15,7 @@ import {
   extrairCronogramaPdf,
   criarFormadorRapido,
   criarUfcdNoCurso,
+  getImportContext,
   type SessaoExtraida,
 } from "@/lib/import-cronograma.functions";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,11 +27,14 @@ export const Route = createFileRoute("/_authenticated/cursos_/$id/importar")({
 });
 
 type Row = SessaoExtraida & { curso_ufcd_id: string | null; formador_id: string | null };
-type Ufcd = { id: string; codigo: string; designacao: string; horas_totais: number; horas_existentes: number };
+type Ufcd = { id: string; ufcd_id: string | null; codigo: string; designacao: string; horas_totais: number; horas_existentes: number };
 type Formador = { id: string; nome: string; abreviatura: string | null };
+type UfcdCatalogo = { id: string; codigo: string; designacao: string; horas_referencia: number };
+type CursoOpt = { id: string; codigo: string; nome: string };
 
 const NEW_UFCD = "__new_ufcd__";
 const NEW_FORM = "__new_formador__";
+const CAT_PREFIX = "cat:";
 
 function ImportarCronograma() {
   const { id } = Route.useParams();
@@ -38,24 +42,45 @@ function ImportarCronograma() {
   const extrair = useServerFn(extrairCronogramaPdf);
   const novoFormador = useServerFn(criarFormadorRapido);
   const novaUfcd = useServerFn(criarUfcdNoCurso);
+  const fetchCtx = useServerFn(getImportContext);
 
+  const [cursoId, setCursoId] = useState<string>(id);
+  const [cursos, setCursos] = useState<CursoOpt[]>([]);
   const [file, setFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [rows, setRows] = useState<Row[]>([]);
   const [cufcds, setCufcds] = useState<Ufcd[]>([]);
   const [formadores, setFormadores] = useState<Formador[]>([]);
+  const [catalogo, setCatalogo] = useState<UfcdCatalogo[]>([]);
 
-  // dialogs
   const [ufcdDlg, setUfcdDlg] = useState<{ rowIdx: number; codigo: string; designacao: string; horas: string } | null>(null);
   const [formDlg, setFormDlg] = useState<{ rowIdx: number; nome: string; abreviatura: string } | null>(null);
 
+  // Load courses list
+  useEffect(() => {
+    supabase.from("cursos").select("id, codigo, nome").order("codigo").then(({ data }) => {
+      setCursos((data ?? []) as CursoOpt[]);
+    });
+  }, []);
+
+  // Load context whenever course changes
+  useEffect(() => {
+    if (!cursoId) return;
+    fetchCtx({ data: { cursoId } }).then((r) => {
+      setCufcds(r.curso_ufcds);
+      setFormadores(r.formadores);
+      setCatalogo(r.ufcds_catalogo);
+    }).catch(() => {});
+  }, [cursoId, fetchCtx]);
+
   async function onExtract() {
     if (!file) return toast.error("Seleciona um PDF");
+    if (!cursoId) return toast.error("Escolhe o curso");
     setLoading(true);
     try {
       const b64 = await fileToBase64(file);
-      const r = await extrair({ data: { cursoId: id, pdfBase64: b64, filename: file.name } });
+      const r = await extrair({ data: { cursoId, pdfBase64: b64, filename: file.name } });
       setCufcds(r.curso_ufcds);
       setFormadores(r.formadores);
       setRows(r.sessoes.map((s) => ({
@@ -71,7 +96,6 @@ function ImportarCronograma() {
     }
   }
 
-  // Validações
   const warnings = useMemo(() => {
     const ufcdExc: { ufcd: Ufcd; total: number }[] = [];
     const usoPorUfcd: Record<string, number> = {};
@@ -83,7 +107,6 @@ function ImportarCronograma() {
       const total = (usoPorUfcd[u.id] ?? 0) + u.horas_existentes;
       if (total > u.horas_totais) ufcdExc.push({ ufcd: u, total });
     });
-
     return { ufcdExc };
   }, [rows, cufcds]);
 
@@ -96,6 +119,23 @@ function ImportarCronograma() {
         designacao: guess.ufcd_nome ?? "",
         horas: "25",
       });
+      return;
+    }
+    if (v.startsWith(CAT_PREFIX)) {
+      const catId = v.slice(CAT_PREFIX.length);
+      const cat = catalogo.find((c) => c.id === catId);
+      if (!cat) return;
+      try {
+        const created = await novaUfcd({
+          data: { cursoId, codigo: cat.codigo, designacao: cat.designacao, horas_referencia: cat.horas_referencia },
+        });
+        const novo: Ufcd = { ...created };
+        setCufcds((cs) => (cs.some((c) => c.id === novo.id) ? cs : [...cs, novo]));
+        updateRow(i, { curso_ufcd_id: novo.id, ufcd_codigo: novo.codigo, ufcd_nome: novo.designacao });
+        toast.success(`UFCD ${cat.codigo} atribuída ao curso`);
+      } catch (e: any) {
+        toast.error(e.message ?? "Falhou atribuir UFCD");
+      }
       return;
     }
     updateRow(i, { curso_ufcd_id: v });
@@ -116,11 +156,10 @@ function ImportarCronograma() {
     }
     try {
       const created = await novaUfcd({
-        data: { cursoId: id, codigo: ufcdDlg.codigo.trim(), designacao: ufcdDlg.designacao.trim(), horas_referencia: horas },
+        data: { cursoId, codigo: ufcdDlg.codigo.trim(), designacao: ufcdDlg.designacao.trim(), horas_referencia: horas },
       });
       const novo: Ufcd = { ...created };
       setCufcds((cs) => (cs.some((c) => c.id === novo.id) ? cs : [...cs, novo]));
-      // aplica a todas as linhas que tinham o mesmo código original e ainda não estavam atribuídas
       const codigoAlvo = ufcdDlg.codigo.trim().toLowerCase();
       setRows((rs) => rs.map((r, idx) =>
         idx === ufcdDlg.rowIdx || (!r.curso_ufcd_id && (r.ufcd_codigo ?? "").toLowerCase() === codigoAlvo)
@@ -157,6 +196,7 @@ function ImportarCronograma() {
   }
 
   async function onSave() {
+    if (!cursoId) return toast.error("Escolhe o curso");
     const invalid = rows.filter((r) => !r.data || !r.hora_inicio || !r.hora_fim || !r.curso_ufcd_id || !r.formador_id);
     if (invalid.length) return toast.error(`${invalid.length} linha(s) incompletas. Preenche UFCD e formador.`);
 
@@ -168,7 +208,7 @@ function ImportarCronograma() {
     setSaving(true);
     try {
       const payload = rows.map((r) => ({
-        curso_id: id,
+        curso_id: cursoId,
         curso_ufcd_id: r.curso_ufcd_id!,
         formador_id: r.formador_id!,
         data: r.data,
@@ -179,8 +219,25 @@ function ImportarCronograma() {
       }));
       const { error } = await supabase.from("sessoes").insert(payload);
       if (error) throw error;
+
+      // Auto-link formador competencies (formador_ufcds)
+      const cufcdMap = new Map(cufcds.map((c) => [c.id, c.ufcd_id]));
+      const pairsSet = new Set<string>();
+      const pairs: { formador_id: string; ufcd_id: string }[] = [];
+      rows.forEach((r) => {
+        const ufcdId = cufcdMap.get(r.curso_ufcd_id!);
+        if (!ufcdId || !r.formador_id) return;
+        const key = `${r.formador_id}|${ufcdId}`;
+        if (pairsSet.has(key)) return;
+        pairsSet.add(key);
+        pairs.push({ formador_id: r.formador_id, ufcd_id: ufcdId });
+      });
+      if (pairs.length) {
+        await supabase.from("formador_ufcds").upsert(pairs, { onConflict: "formador_id,ufcd_id", ignoreDuplicates: true });
+      }
+
       toast.success(`${payload.length} sessões importadas`);
-      navigate({ to: "/cursos/$id", params: { id } });
+      navigate({ to: "/cursos/$id", params: { id: cursoId } });
     } catch (e: any) {
       toast.error(e.message ?? "Falhou gravar");
     } finally {
@@ -221,11 +278,15 @@ function ImportarCronograma() {
     });
   const removeRow = (i: number) => setRows((rs) => rs.filter((_, idx) => idx !== i));
 
+  const catalogoDisponivel = useMemo(() => {
+    const ids = new Set(cufcds.map((c) => c.ufcd_id).filter(Boolean) as string[]);
+    return catalogo.filter((c) => !ids.has(c.id));
+  }, [catalogo, cufcds]);
 
   return (
     <PageContainer>
       <div className="mb-2">
-        <Link to="/cursos/$id" params={{ id }} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5">
+        <Link to="/cursos/$id" params={{ id: cursoId || id }} className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5">
           <ArrowLeft className="size-3.5" /> Voltar ao curso
         </Link>
       </div>
@@ -237,17 +298,27 @@ function ImportarCronograma() {
       <Card>
         <CardContent className="p-6 space-y-4">
           <div className="flex flex-wrap items-end gap-3">
+            <div className="min-w-[260px]">
+              <label className="text-xs text-muted-foreground">Curso</label>
+              <Select value={cursoId} onValueChange={(v) => { setCursoId(v); setRows([]); }}>
+                <SelectTrigger><SelectValue placeholder="Escolher curso…" /></SelectTrigger>
+                <SelectContent>
+                  {cursos.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.codigo} — {c.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="grow min-w-[260px]">
               <label className="text-xs text-muted-foreground">Ficheiro PDF</label>
               <Input type="file" accept="application/pdf" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </div>
-            <Button onClick={onExtract} disabled={!file || loading}>
+            <Button onClick={onExtract} disabled={!file || loading || !cursoId}>
               <Sparkles className="size-4" /> {loading ? "A analisar PDF…" : "Extrair sessões"}
             </Button>
           </div>
           <p className="text-xs text-muted-foreground">
-            Se um formador ou UFCD não existir, podes criá-lo diretamente na coluna correspondente.
-            Apenas as sessões são criadas — não são geradas faltas nem disponibilidades.
+            UFCDs do catálogo selecionadas são automaticamente atribuídas ao curso. Ao gravar, as competências dos formadores são também atualizadas.
           </p>
         </CardContent>
       </Card>
@@ -296,7 +367,20 @@ function ImportarCronograma() {
                           <Select value={r.curso_ufcd_id ?? ""} onValueChange={(v) => handleUfcdChange(i, v)}>
                             <SelectTrigger className="h-8 min-w-[220px]"><SelectValue placeholder={r.ufcd_codigo ?? "—"} /></SelectTrigger>
                             <SelectContent>
-                              {cufcds.map((u) => <SelectItem key={u.id} value={u.id}>{u.codigo} — {u.designacao}</SelectItem>)}
+                              {cufcds.length > 0 && (
+                                <SelectGroup>
+                                  <SelectLabel>Já no curso</SelectLabel>
+                                  {cufcds.map((u) => <SelectItem key={u.id} value={u.id}>{u.codigo} — {u.designacao}</SelectItem>)}
+                                </SelectGroup>
+                              )}
+                              {catalogoDisponivel.length > 0 && (
+                                <SelectGroup>
+                                  <SelectLabel>Atribuir do catálogo</SelectLabel>
+                                  {catalogoDisponivel.map((u) => (
+                                    <SelectItem key={u.id} value={`${CAT_PREFIX}${u.id}`}>+ {u.codigo} — {u.designacao}</SelectItem>
+                                  ))}
+                                </SelectGroup>
+                              )}
                               <SelectItem value={NEW_UFCD} className="text-primary"><Plus className="size-3.5 inline mr-1" />Criar nova UFCD…</SelectItem>
                             </SelectContent>
                           </Select>
@@ -333,7 +417,6 @@ function ImportarCronograma() {
         </Card>
       )}
 
-      {/* Dialog criar UFCD */}
       <Dialog open={!!ufcdDlg} onOpenChange={(o) => !o && setUfcdDlg(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Nova UFCD para este curso</DialogTitle></DialogHeader>
@@ -351,7 +434,6 @@ function ImportarCronograma() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog criar Formador */}
       <Dialog open={!!formDlg} onOpenChange={(o) => !o && setFormDlg(null)}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo formador</DialogTitle></DialogHeader>

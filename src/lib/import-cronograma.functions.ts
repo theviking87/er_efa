@@ -27,7 +27,7 @@ export const extrairCronogramaPdf = createServerFn({ method: "POST" })
     // Load context: curso + UFCDs + formadores
     const [{ data: curso }, { data: cufcds }, { data: formadores }] = await Promise.all([
       supabase.from("cursos").select("id, codigo, nome, data_inicio, data_fim").eq("id", data.cursoId).maybeSingle(),
-      supabase.from("curso_ufcds").select("id, horas_totais, ufcd:ufcds(codigo, designacao)").eq("curso_id", data.cursoId),
+      supabase.from("curso_ufcds").select("id, horas_totais, ufcd_id, ufcd:ufcds(id, codigo, designacao)").eq("curso_id", data.cursoId),
       supabase.from("formadores").select("id, nome, abreviatura").eq("estado", "ativo"),
     ]);
 
@@ -131,6 +131,7 @@ ${formadorList}`;
       sessoes,
       curso_ufcds: (cufcds ?? []).map((u: any) => ({
         id: u.id,
+        ufcd_id: u.ufcd_id ?? u.ufcd?.id ?? null,
         codigo: u.ufcd?.codigo,
         designacao: u.ufcd?.designacao,
         horas_totais: u.horas_totais ?? 0,
@@ -140,6 +141,48 @@ ${formadorList}`;
       curso: { data_inicio: curso.data_inicio, data_fim: curso.data_fim },
     };
   });
+
+const ContextInput = z.object({ cursoId: z.string().uuid() });
+
+export const getImportContext = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d: unknown) => ContextInput.parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const [{ data: curso }, { data: cufcds }, { data: formadores }, { data: ufcdsAll }] = await Promise.all([
+      supabase.from("cursos").select("id, codigo, nome, data_inicio, data_fim").eq("id", data.cursoId).maybeSingle(),
+      supabase.from("curso_ufcds").select("id, horas_totais, ufcd_id, ufcd:ufcds(id, codigo, designacao)").eq("curso_id", data.cursoId),
+      supabase.from("formadores").select("id, nome, abreviatura").eq("estado", "ativo"),
+      supabase.from("ufcds").select("id, codigo, designacao, horas_referencia").order("codigo"),
+    ]);
+    if (!curso) throw new Error("Curso não encontrado");
+
+    const cufcdIds = (cufcds ?? []).map((u: any) => u.id);
+    const horasPorUfcd: Record<string, number> = {};
+    if (cufcdIds.length) {
+      const { data: sess } = await supabase
+        .from("sessoes").select("curso_ufcd_id, horas").in("curso_ufcd_id", cufcdIds);
+      (sess ?? []).forEach((s: any) => {
+        horasPorUfcd[s.curso_ufcd_id] = (horasPorUfcd[s.curso_ufcd_id] ?? 0) + Number(s.horas ?? 0);
+      });
+    }
+    return {
+      curso_ufcds: (cufcds ?? []).map((u: any) => ({
+        id: u.id,
+        ufcd_id: u.ufcd_id ?? u.ufcd?.id ?? null,
+        codigo: u.ufcd?.codigo,
+        designacao: u.ufcd?.designacao,
+        horas_totais: u.horas_totais ?? 0,
+        horas_existentes: horasPorUfcd[u.id] ?? 0,
+      })),
+      formadores: (formadores ?? []).map((f: any) => ({ id: f.id, nome: f.nome, abreviatura: f.abreviatura })),
+      ufcds_catalogo: (ufcdsAll ?? []).map((u: any) => ({
+        id: u.id, codigo: u.codigo, designacao: u.designacao, horas_referencia: u.horas_referencia,
+      })),
+      curso: { data_inicio: curso.data_inicio, data_fim: curso.data_fim },
+    };
+  });
+
 
 const FormadorInput = z.object({
   nome: z.string().min(1),
@@ -188,13 +231,13 @@ export const criarUfcdNoCurso = createServerFn({ method: "POST" })
       .from("curso_ufcds").select("id, horas_totais")
       .eq("curso_id", data.cursoId).eq("ufcd_id", ufcdId).maybeSingle();
     if (existeCU) {
-      return { id: existeCU.id, codigo: data.codigo, designacao: data.designacao, horas_totais: existeCU.horas_totais ?? 0, horas_existentes: 0 };
+      return { id: existeCU.id, ufcd_id: ufcdId!, codigo: data.codigo, designacao: data.designacao, horas_totais: existeCU.horas_totais ?? 0, horas_existentes: 0 };
     }
     const { data: cu, error: e2 } = await supabase
       .from("curso_ufcds")
       .insert({ curso_id: data.cursoId, ufcd_id: ufcdId, horas_totais: data.horas_referencia })
       .select("id, horas_totais").single();
     if (e2) throw new Error(e2.message);
-    return { id: cu.id, codigo: data.codigo, designacao: data.designacao, horas_totais: cu.horas_totais ?? 0, horas_existentes: 0 };
+    return { id: cu.id, ufcd_id: ufcdId!, codigo: data.codigo, designacao: data.designacao, horas_totais: cu.horas_totais ?? 0, horas_existentes: 0 };
   });
 

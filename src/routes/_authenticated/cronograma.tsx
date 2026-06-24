@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { ChevronLeft, ChevronRight, CalendarPlus, Printer } from "lucide-react";
 import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso } from "@/lib/format";
 import { toast } from "sonner";
+import { compareUfcdCodigo } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cronograma")({
   head: () => ({ meta: [{ title: "Cronograma Geral — Gestão Pedagógica" }] }),

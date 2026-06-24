@@ -931,11 +931,16 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
             ))}
           </div>
           <div className="cronograma-grid grid grid-cols-7 border border-gray-400 text-[9px]">
-            {grid.map((cell, i) => (
-              <div key={i} className="cronograma-cell border-r border-b border-gray-300 last:border-r-0 p-1 align-top overflow-hidden" style={{ borderRight: (i % 7 === 6) ? "none" : undefined }}>
+            {grid.map((cell, i) => {
+              const feriado = cell ? feriadoNome(cell.iso) : null;
+              return (
+              <div key={i} className={`cronograma-cell border-r border-b border-gray-300 last:border-r-0 p-1 align-top overflow-hidden ${feriado ? "bg-gray-200" : ""}`} style={{ borderRight: (i % 7 === 6) ? "none" : undefined }}>
                 {cell && (
                   <>
                     <div className="text-[10px] font-semibold mb-0.5 leading-none">{cell.d}</div>
+                    {feriado && (
+                      <div className="text-[7px] italic text-gray-600 leading-tight mb-0.5 truncate">{feriado}</div>
+                    )}
                     <div className="space-y-0.5">
                       {(sessoesByDay.get(cell.iso) ?? []).flatMap((s: any) => {
                         const [hiH, hiM] = String(s.hora_inicio).split(":").map(Number);
@@ -961,7 +966,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                   </>
                 )}
               </div>
-            ))}
+              );
+            })}
+
           </div>
         </div>
 

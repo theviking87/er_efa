@@ -144,6 +144,8 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
+  const [analiseOpen, setAnaliseOpen] = useState(false);
+
 
 
   const data = useQuery({

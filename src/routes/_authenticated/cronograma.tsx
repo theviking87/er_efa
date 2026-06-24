@@ -232,7 +232,7 @@ function CronogramaGeral() {
   // Para cada dia: lista de cursos ativos sem qualquer formador disponível
   const dayMissing = useMemo(() => {
     const r = new Map<string, { todos: boolean; cursos: { id: string; codigo: string; cor: string }[] }>();
-    if (!isProximoMes) return r;
+    if (mostrar !== "disp") return r;
     const cursos = cursosComCor;
     if (cursos.length === 0) return r;
     for (const cell of grid) {
@@ -248,7 +248,8 @@ function CronogramaGeral() {
       });
     }
     return r;
-  }, [isProximoMes, cursosComCor, dispByDay, grid]);
+  }, [mostrar, cursosComCor, dispByDay, grid]);
+
 
   const totalSessoes = (sessoes.data ?? []).length;
   const totalHoras = (sessoes.data ?? []).reduce((acc, s: any) => acc + Number(s.horas), 0);

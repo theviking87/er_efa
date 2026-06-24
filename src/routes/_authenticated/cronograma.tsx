@@ -52,6 +52,7 @@ function CronogramaGeral() {
   const [formadorFiltro, setFormadorFiltro] = useState<string>("");
   const [mostrar, setMostrar] = useState<"ambos" | "sessoes" | "disp">("ambos");
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
+  const [createDate, setCreateDate] = useState<string | null>(null);
 
   useEffect(() => {
     const ch = supabase
@@ -317,8 +318,19 @@ function CronogramaGeral() {
                 }
               }
               const title = miss ? (miss.todos ? "Nenhum curso ativo tem formador disponível" : "Sem disponibilidade: " + miss.cursos.map(c => c.codigo).join(", ")) : undefined;
+              const canCreate = mostrar === "disp" && !!cell;
               return (
-              <div key={i} title={title} style={bgStyle} className="border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px]">
+              <div
+                key={i}
+                title={title ?? (canCreate ? "Clicar para lançar disponibilidade" : undefined)}
+                style={bgStyle}
+                onClick={(e) => {
+                  if (!canCreate) return;
+                  if ((e.target as HTMLElement).closest("button,a")) return;
+                  setCreateDate(cell!.iso);
+                }}
+                className={"border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] " + (canCreate ? "cursor-pointer hover:bg-emerald-50/40" : "")}
+              >
                 {cell && (
                   <>
                     <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>
@@ -344,7 +356,7 @@ function CronogramaGeral() {
                         return (
                           <button
                             key={"d" + slot.id}
-                            onClick={() => isDisp && setConvertSlot(slot)}
+                            onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
                             disabled={!isDisp}
                             className={"block w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
                               (isDisp ? "hover:bg-emerald-50 cursor-pointer" : "cursor-not-allowed opacity-80")}
@@ -414,6 +426,12 @@ function CronogramaGeral() {
       <ConvertDispDialog
         slot={convertSlot}
         onClose={() => setConvertSlot(null)}
+      />
+      <CreateDispDialog
+        data={createDate}
+        formadores={(formadores.data ?? []) as any[]}
+        defaultFormadorId={formadorFiltro || null}
+        onClose={() => setCreateDate(null)}
       />
     </PageContainer>
   );
@@ -536,6 +554,180 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button onClick={criar} disabled={saving || !cursoUfcdId}>{saving ? "A criar…" : "Criar sessão"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+
+
+
+
+function CreateDispDialog({
+  data,
+  formadores,
+  defaultFormadorId,
+  onClose,
+}: {
+  data: string | null;
+  formadores: any[];
+  defaultFormadorId: string | null;
+  onClose: () => void;
+}) {
+  const qc = useQueryClient();
+  const [formadorId, setFormadorId] = useState<string>("");
+  const [tipo, setTipo] = useState<"disponivel" | "indisponivel">("disponivel");
+  const [horaInicio, setHoraInicio] = useState("09:00");
+  const [horaFim, setHoraFim] = useState("13:00");
+  const [cursoUfcdId, setCursoUfcdId] = useState<string>("");
+  const [notas, setNotas] = useState("");
+  const [saving, setSaving] = useState(false);
+
+  useMemo(() => {
+    if (data) {
+      setFormadorId(defaultFormadorId ?? "");
+      setTipo("disponivel");
+      setHoraInicio("09:00");
+      setHoraFim("13:00");
+      setCursoUfcdId("");
+      setNotas("");
+    }
+  }, [data]);
+
+  // UFCDs atribuídas ao formador, não concluídas, com horas dadas vs totais
+  const ufcdsAtribuidas = useQuery({
+    queryKey: ["ufcds-formador-disp", formadorId],
+    enabled: !!formadorId,
+    queryFn: async () => {
+      const { data: rows, error } = await supabase
+        .from("curso_ufcd_formadores")
+        .select("curso_ufcd:curso_ufcds(id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado, data_inicio, data_fim))")
+        .eq("formador_id", formadorId);
+      if (error) throw error;
+      const cus = (rows ?? [])
+        .map((r: any) => r.curso_ufcd)
+        .filter((cu: any) => cu && cu.curso && !cu.concluida);
+      if (cus.length === 0) return [];
+      const ids = cus.map((cu: any) => cu.id);
+      const { data: sess } = await supabase
+        .from("sessoes")
+        .select("curso_ufcd_id, horas")
+        .in("curso_ufcd_id", ids);
+      const dadas = new Map<string, number>();
+      (sess ?? []).forEach((s: any) => {
+        dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0));
+      });
+      return cus.map((cu: any) => {
+        const dadasH = dadas.get(cu.id) ?? 0;
+        const faltam = Math.max(0, Number(cu.horas_totais ?? 0) - dadasH);
+        return { ...cu, horas_dadas: dadasH, horas_faltam: faltam };
+      });
+    },
+  });
+
+  async function criar() {
+    if (!data) return;
+    if (!formadorId) return toast.error("Escolhe o formador");
+    if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
+
+    setSaving(true);
+    let notasFinais = notas.trim();
+    if (cursoUfcdId) {
+      const cu = (ufcdsAtribuidas.data ?? []).find((x: any) => x.id === cursoUfcdId) as any;
+      if (cu) {
+        const ctx = `${cu.curso.codigo} · ${cu.ufcd.codigo} (faltam ${cu.horas_faltam}h)`;
+        notasFinais = notasFinais ? `${ctx} — ${notasFinais}` : ctx;
+      }
+    }
+
+    const { error } = await supabase.from("formador_disponibilidades" as any).insert({
+      formador_id: formadorId,
+      data,
+      hora_inicio: horaInicio,
+      hora_fim: horaFim,
+      tipo,
+      notas: notasFinais || null,
+    } as never);
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Disponibilidade lançada");
+    qc.invalidateQueries({ queryKey: ["disp-geral"] });
+    qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
+    onClose();
+  }
+
+  const open = !!data;
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> Lançar disponibilidade</DialogTitle>
+        </DialogHeader>
+        {data && (
+          <div className="space-y-3">
+            <div className="text-sm bg-muted/40 rounded-md px-3 py-2">
+              <span className="text-muted-foreground">Data:</span> <span className="font-medium">{fmtDate(data)}</span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Formador *</Label>
+                <Select value={formadorId} onValueChange={setFormadorId}>
+                  <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
+                  <SelectContent>
+                    {formadores.map((f: any) => (
+                      <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Tipo *</Label>
+                <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="disponivel">Disponível</SelectItem>
+                    <SelectItem value="indisponivel">Indisponível</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} /></div>
+            </div>
+
+            {formadorId && (
+              <div className="space-y-1.5">
+                <Label>UFCD / Curso (opcional)</Label>
+                <Select value={cursoUfcdId || "_none"} onValueChange={(v) => setCursoUfcdId(v === "_none" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder={ufcdsAtribuidas.data?.length === 0 ? "Sem UFCDs atribuídas em aberto" : "Escolher…"} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="_none">— Nenhuma —</SelectItem>
+                    {(ufcdsAtribuidas.data ?? []).map((cu: any) => {
+                      const ativo = cu.curso?.estado === "ativo";
+                      return (
+                        <SelectItem key={cu.id} value={cu.id}>
+                          {cu.curso.codigo} · {cu.ufcd.codigo} — {ativo ? "a decorrer · " : ""}faltam {cu.horas_faltam}h de {cu.horas_totais}h
+                        </SelectItem>
+                      );
+                    })}
+                  </SelectContent>
+                </Select>
+                <div className="text-xs text-muted-foreground">Apenas UFCDs atribuídas a este formador e ainda não concluídas.</div>
+              </div>
+            )}
+
+            <div className="space-y-1.5"><Label>Notas</Label><Input value={notas} onChange={e => setNotas(e.target.value)} placeholder="Opcional" /></div>
+          </div>
+        )}
+        <DialogFooter>
+          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
+          <Button onClick={criar} disabled={saving || !formadorId}>{saving ? "A guardar…" : "Lançar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

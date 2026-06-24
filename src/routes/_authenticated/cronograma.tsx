@@ -83,7 +83,6 @@ function CronogramaGeral() {
 
   const cursosAtivos = useQuery({
     queryKey: ["cursos-ativos-mes", inicioMes, fimMes],
-    enabled: isProximoMes,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cursos")
@@ -102,6 +101,7 @@ function CronogramaGeral() {
       }));
     },
   });
+
 
   const formadores = useQuery({
     queryKey: ["formadores-todos"],

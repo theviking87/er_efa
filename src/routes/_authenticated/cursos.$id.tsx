@@ -19,6 +19,7 @@ import {
   INSCRICAO_ESTADO_LABEL, FALTA_TIPO_LABEL, formadorLabel,
 } from "@/lib/format";
 import { toast } from "sonner";
+import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 

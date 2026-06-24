@@ -659,6 +659,51 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     },
   });
 
+  // Todas as sessões do curso para análise global
+  const todasSessoes = useQuery({
+    queryKey: ["sessoes-todas", cursoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+        .eq("curso_id", cursoId).order("data").order("hora_inicio");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const analise = useMemo(() => {
+    const byDay = new Map<string, any[]>();
+    (todasSessoes.data ?? []).forEach((s: any) => {
+      const arr = byDay.get(s.data) ?? []; arr.push(s); byDay.set(s.data, arr);
+    });
+    const conflitos: { data: string; sessoes: any[] }[] = [];
+    const incompletos: { data: string; horas: number; inicio: string; fim: string }[] = [];
+    const toMin = (t: string) => { const [h, m] = String(t).slice(0, 5).split(":").map(Number); return h * 60 + m; };
+    Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b)).forEach(([data, sess]) => {
+      // Conflitos: pares de sessões com intervalos sobrepostos
+      const conf: any[] = [];
+      for (let i = 0; i < sess.length; i++) {
+        for (let j = i + 1; j < sess.length; j++) {
+          const a = sess[i], b = sess[j];
+          if (toMin(a.hora_inicio) < toMin(b.hora_fim) && toMin(b.hora_inicio) < toMin(a.hora_fim)) {
+            if (!conf.includes(a)) conf.push(a);
+            if (!conf.includes(b)) conf.push(b);
+          }
+        }
+      }
+      if (conf.length) conflitos.push({ data, sessoes: conf });
+      // Dia incompleto: total < 7h ou não cobre 9:00-17:00
+      const inicio = sess.reduce((m: number, s: any) => Math.min(m, toMin(s.hora_inicio)), 24 * 60);
+      const fim = sess.reduce((m: number, s: any) => Math.max(m, toMin(s.hora_fim)), 0);
+      const totalH = sess.reduce((a: number, s: any) => a + Number(s.horas ?? 0), 0);
+      if (totalH < 7 || inicio > 9 * 60 || fim < 17 * 60) {
+        const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
+        incompletos.push({ data, horas: totalH, inicio: fmt(inicio), fim: fmt(fim) });
+      }
+    });
+    return { conflitos, incompletos, totalDias: byDay.size };
+  }, [todasSessoes.data]);
+
   const sessoesByDay = useMemo(() => {
     const m = new Map<string, any[]>();
     (sessoes.data ?? []).forEach((s: any) => {

@@ -270,6 +270,52 @@ function CronogramaGeral() {
   function next() { setMes(m => m.mes === 11 ? { ano: m.ano + 1, mes: 0 } : { ano: m.ano, mes: m.mes + 1 }); }
   function hoje() { const d = new Date(); setMes({ ano: d.getFullYear(), mes: d.getMonth() }); }
 
+  function imprimirDiasSemDisp() {
+    if (!cursoFiltro) return toast.error("Seleciona um curso primeiro");
+    const curso = (cursosTodos.data ?? []).find((c: any) => c.id === cursoFiltro) as any;
+    if (!curso) return;
+    const diasSem: { iso: string; dow: string }[] = [];
+    const semanaLbl = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    for (const cell of grid) {
+      if (!cell) continue;
+      const dow = weekdayFromIso(cell.iso);
+      if (dow === 0 || dow === 6) continue;
+      if (dayMissing.has(cell.iso)) {
+        diasSem.push({ iso: cell.iso, dow: semanaLbl[dow] });
+      }
+    }
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const w = doc.internal.pageSize.getWidth();
+    doc.setFillColor(37, 99, 235);
+    doc.rect(0, 0, w, 18, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+    doc.text("Dias sem disponibilidade", 14, 11);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text(`${curso.codigo} · ${curso.nome} — ${MONTH_NAMES[mes.mes]} ${mes.ano}`, 14, 15.5);
+    doc.setTextColor(0, 0, 0);
+
+    if (diasSem.length === 0) {
+      doc.setFontSize(11);
+      doc.text("Todos os dias úteis do mês têm pelo menos uma disponibilidade.", 14, 30);
+    } else {
+      autoTable(doc, {
+        startY: 24,
+        head: [["Data", "Dia da semana"]],
+        body: diasSem.map(d => [fmtDate(d.iso), d.dow + "-feira".replace("Sáb-feira", "Sábado")]),
+        styles: { font: "helvetica", fontSize: 10, cellPadding: 2.5 },
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 14, right: 14 },
+      });
+      const yEnd = (doc as any).lastAutoTable.finalY ?? 24;
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Total: ${diasSem.length} dia(s) sem disponibilidade`, 14, yEnd + 8);
+    }
+    doc.save(`Dias_sem_disponibilidade_${curso.codigo}_${mes.ano}-${String(mes.mes + 1).padStart(2, "0")}.pdf`);
+  }
+
   return (
     <PageContainer>
       <PageHeader

@@ -1055,9 +1055,9 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
   const ufcdChanged = sessao && novoCursoUfcdId && novoCursoUfcdId !== (sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id);
 
   return (
-    <Dialog open={!!sessao} onOpenChange={(v) => { if (!v) { onClose(); setNovoFormadorId(""); setMotivo(""); } }}>
+    <Dialog open={!!sessao} onOpenChange={(v) => { if (!v) { onClose(); setNovoFormadorId(""); setMotivo(""); setHi(""); setHf(""); } }}>
       <DialogContent>
-        <DialogHeader><DialogTitle>Substituir UFCD / formador</DialogTitle></DialogHeader>
+        <DialogHeader><DialogTitle>Editar sessão</DialogTitle></DialogHeader>
         {sessao && (
           <div className="space-y-3 text-sm">
             <div className="bg-muted/40 rounded-md p-3 space-y-0.5">

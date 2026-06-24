@@ -136,6 +136,7 @@ function Field({ label, value }: { label: string; value?: string | null }) {
 
 // ---------------- UFCD TAB ----------------
 function UfcdsTab({ cursoId }: { cursoId: string }) {
+  const [manageUfcd, setManageUfcd] = useState<{ cursoUfcdId: string; ufcdId: string; codigo: string; designacao: string; assigned: string[] } | null>(null);
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
 

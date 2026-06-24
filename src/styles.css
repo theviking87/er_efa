@@ -185,13 +185,17 @@
     display: flex;
     flex-direction: column;
   }
+  #cronograma-print > .cronograma-page > .cronograma-header { flex: 0 0 auto; }
+  #cronograma-print > .cronograma-page > .cronograma-weekdays { flex: 0 0 auto; }
   #cronograma-print > .cronograma-page > .cronograma-grid {
     flex: 1 1 auto;
     min-height: 0;
+    grid-auto-rows: 1fr;
     page-break-inside: avoid;
     break-inside: avoid;
   }
-  #cronograma-print > .cronograma-page .cronograma-grid > div {
+  #cronograma-print > .cronograma-page .cronograma-cell {
+    min-height: 0;
     page-break-inside: avoid;
     break-inside: avoid;
   }

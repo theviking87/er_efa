@@ -1076,6 +1076,16 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
                 </SelectContent>
               </Select>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>Hora de início *</Label>
+                <Input type="time" value={hi} onChange={e => setHi(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <Label>Hora de fim *</Label>
+                <Input type="time" value={hf} onChange={e => setHf(e.target.value)} />
+              </div>
+            </div>
             <div className="space-y-1.5">
               <Label>Formador *</Label>
               <Select value={novoFormadorId} onValueChange={setNovoFormadorId}>

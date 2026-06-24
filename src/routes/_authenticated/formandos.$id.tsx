@@ -259,3 +259,85 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
     </div>
   );
 }
+
+function PraRow({
+  cursoUfcdId,
+  ufcd,
+  pra,
+  onUpload,
+  onDownload,
+  onRemove,
+  onSaveNota,
+}: {
+  cursoUfcdId: string;
+  ufcd: { codigo: string; designacao: string } | null;
+  pra: { id: string; nome: string | null; storage_path: string | null; nota: string | null } | null;
+  onUpload: (file: File) => void;
+  onDownload: () => void;
+  onRemove: () => void;
+  onSaveNota: (nota: string) => void;
+}) {
+  void cursoUfcdId;
+  const hasDoc = !!pra?.storage_path;
+  const [nota, setNota] = useState<string>(pra?.nota ?? "");
+  const initial = pra?.nota ?? "";
+
+  return (
+    <div
+      className={
+        "rounded-md border px-3 py-2 text-sm transition-colors " +
+        (hasDoc ? "bg-green-500/10 border-green-500/40" : "bg-red-500/10 border-red-500/40")
+      }
+    >
+      <div className="flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-xs text-muted-foreground">{ufcd?.codigo}</span>
+            <span className="truncate">{ufcd?.designacao}</span>
+          </div>
+          {hasDoc && pra?.nome && (
+            <div className="text-xs text-muted-foreground truncate mt-0.5">{pra.nome}</div>
+          )}
+        </div>
+        {hasDoc ? (
+          <>
+            <Button type="button" variant="ghost" size="sm" onClick={onDownload}>
+              <Download className="size-3.5" />
+            </Button>
+            <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
+              <Trash2 className="size-3.5" />
+            </Button>
+            <label className="cursor-pointer">
+              <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border hover:bg-muted">
+                <Upload className="size-3.5" /> Substituir
+              </span>
+              <input
+                type="file"
+                className="hidden"
+                onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }}
+              />
+            </label>
+          </>
+        ) : (
+          <label className="cursor-pointer">
+            <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border hover:bg-background">
+              <Upload className="size-3.5" /> Carregar PRA
+            </span>
+            <input
+              type="file"
+              className="hidden"
+              onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }}
+            />
+          </label>
+        )}
+      </div>
+      <Textarea
+        value={nota}
+        onChange={(e) => setNota(e.target.value)}
+        onBlur={() => { if ((nota ?? "") !== initial) onSaveNota(nota); }}
+        placeholder="Observações sobre o PRA (notas do formador)…"
+        className="mt-2 min-h-[52px] bg-background/60"
+      />
+    </div>
+  );
+}

@@ -570,19 +570,38 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
   const [removerDisp, setRemoverDisp] = useState(true);
   const [saving, setSaving] = useState(false);
 
-  // UFCD onde este formador está atribuído
+  // UFCDs onde o formador está atribuído — filtradas ao curso da disponibilidade (se houver),
+  // ainda não concluídas, com horas em falta calculadas.
   const opcoes = useQuery({
-    queryKey: ["ufcds-do-formador", slot?.formador_id],
+    queryKey: ["ufcds-do-formador-conv", slot?.formador_id, slot?.curso_id],
     enabled: !!slot,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("curso_ufcd_formadores")
-        .select("curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))")
+        .select("curso_ufcd:curso_ufcds(id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))")
         .eq("formador_id", slot!.formador_id);
       if (error) throw error;
-      return (data ?? [])
+      let cus = (data ?? [])
         .map((r: any) => r.curso_ufcd)
-        .filter((x: any) => x && x.curso)
+        .filter((cu: any) => cu && cu.curso && !cu.concluida);
+      if (slot!.curso_id) cus = cus.filter((cu: any) => cu.curso.id === slot!.curso_id);
+      if (cus.length === 0) return [];
+      const ids = cus.map((cu: any) => cu.id);
+      const { data: sess } = await supabase
+        .from("sessoes")
+        .select("curso_ufcd_id, horas")
+        .in("curso_ufcd_id", ids);
+      const dadas = new Map<string, number>();
+      (sess ?? []).forEach((s: any) => {
+        dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0));
+      });
+      return cus
+        .map((cu: any) => {
+          const dadasH = dadas.get(cu.id) ?? 0;
+          const faltam = Math.max(0, Number(cu.horas_totais ?? 0) - dadasH);
+          return { ...cu, horas_dadas: dadasH, horas_faltam: faltam };
+        })
+        .filter((cu: any) => cu.horas_faltam > 0)
         .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });

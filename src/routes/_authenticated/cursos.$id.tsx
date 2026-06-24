@@ -210,7 +210,16 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
                     ))}
                   </div>
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => del(u.id)}><Trash2 className="size-3.5" /></Button>
+                <div className="flex flex-col gap-1">
+                  <Button variant="ghost" size="sm" title="Gerir formadores" onClick={() => setManageUfcd({
+                    cursoUfcdId: u.id,
+                    ufcdId: u.ufcd.id,
+                    codigo: u.ufcd.codigo,
+                    designacao: u.ufcd.designacao,
+                    assigned: (u.formadores ?? []).map((ff: any) => ff.formador.id),
+                  })}><Users className="size-3.5" /></Button>
+                  <Button variant="ghost" size="sm" onClick={() => del(u.id)}><Trash2 className="size-3.5" /></Button>
+                </div>
               </div>
             </div>
           );

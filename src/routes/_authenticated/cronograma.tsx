@@ -211,25 +211,32 @@ function CronogramaGeral() {
     return days;
   }, [mes]);
 
-  // Map data -> set de formador_ids com disponibilidade nesse dia (apenas tipo 'disponivel')
-  const dispByDay = useMemo(() => {
-    const m = new Map<string, Set<string>>();
-    (disp.data ?? []).forEach((d: any) => {
-      if (d.tipo !== "disponivel") return;
-      const s = m.get(d.data) ?? new Set<string>();
-      s.add(d.formador_id);
-      m.set(d.data, s);
-    });
-    return m;
-  }, [disp.data]);
-
   const PALETA = ["#fde68a", "#bbf7d0", "#fbcfe8", "#bfdbfe", "#ddd6fe", "#fed7aa", "#a7f3d0", "#fecaca"];
   const cursosComCor = useMemo(() => {
     const base = (cursosAtivos.data ?? []).map((c, i) => ({ ...c, cor: PALETA[i % PALETA.length] }));
     return cursoFiltro ? base.filter(c => c.id === cursoFiltro) : base;
   }, [cursosAtivos.data, cursoFiltro]);
 
-  // Para cada dia: lista de cursos ativos sem qualquer formador disponível
+  // Por dia: conjunto de curso_ids que têm pelo menos uma disponibilidade (geral ou específica)
+  const coverageByDay = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    const cursos = cursosComCor;
+    (disp.data ?? []).forEach((d: any) => {
+      if (d.tipo !== "disponivel") return;
+      const set = m.get(d.data) ?? new Set<string>();
+      if (d.curso_id) {
+        // disponibilidade específica → cobre apenas esse curso
+        set.add(d.curso_id);
+      } else {
+        // disponibilidade geral → cobre todos os cursos onde o formador está atribuído
+        cursos.forEach(c => { if (c.formadores.includes(d.formador_id)) set.add(c.id); });
+      }
+      m.set(d.data, set);
+    });
+    return m;
+  }, [disp.data, cursosComCor]);
+
+  // Para cada dia: lista de cursos ativos sem disponibilidade
   const dayMissing = useMemo(() => {
     const r = new Map<string, { todos: boolean; cursos: { id: string; codigo: string; cor: string }[] }>();
     if (mostrar !== "disp") return r;
@@ -239,8 +246,8 @@ function CronogramaGeral() {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
-      const dispSet = dispByDay.get(cell.iso) ?? new Set<string>();
-      const semDisp = cursos.filter(c => c.formadores.length === 0 || !c.formadores.some(f => dispSet.has(f)));
+      const cov = coverageByDay.get(cell.iso) ?? new Set<string>();
+      const semDisp = cursos.filter(c => !cov.has(c.id));
       if (semDisp.length === 0) continue;
       r.set(cell.iso, {
         todos: semDisp.length === cursos.length,
@@ -248,7 +255,8 @@ function CronogramaGeral() {
       });
     }
     return r;
-  }, [mostrar, cursosComCor, dispByDay, grid]);
+  }, [mostrar, cursosComCor, coverageByDay, grid]);
+
 
 
   const totalSessoes = (sessoes.data ?? []).length;

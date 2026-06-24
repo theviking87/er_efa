@@ -9,6 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Switch } from "@/components/ui/switch";
+
 import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -770,6 +772,7 @@ function CreateDispDialog({
   const [horaFim, setHoraFim] = useState("13:00");
   const [cursoId, setCursoId] = useState<string>("");
   const [notas, setNotas] = useState("");
+  const [diaTodo, setDiaTodo] = useState(false);
   const [saving, setSaving] = useState(false);
 
   useMemo(() => {
@@ -780,8 +783,10 @@ function CreateDispDialog({
       setHoraFim("13:00");
       setCursoId("");
       setNotas("");
+      setDiaTodo(false);
     }
   }, [data]);
+
 
   // Cursos onde este formador tem UFCDs atribuídas e ainda por concluir
   const cursosDoFormador = useQuery({
@@ -809,16 +814,20 @@ function CreateDispDialog({
   async function criar() {
     if (!data) return;
     if (!formadorId) return toast.error("Escolhe o formador");
-    if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
+    const hi = diaTodo ? "00:00" : horaInicio;
+    const hf = diaTodo ? "23:59" : horaFim;
+    if (!hi || !hf || hf <= hi) return toast.error("Horário inválido");
+
 
     setSaving(true);
     const { error } = await supabase.from("formador_disponibilidades" as any).insert({
       formador_id: formadorId,
       data,
-      hora_inicio: horaInicio,
-      hora_fim: horaFim,
+      hora_inicio: hi,
+      hora_fim: hf,
       tipo,
       notas: notas.trim() || null,
+
       curso_id: cursoId || null,
     } as never);
 
@@ -867,10 +876,21 @@ function CreateDispDialog({
               </div>
             </div>
 
+            {tipo === "indisponivel" && (
+              <div className="flex items-center justify-between rounded-md border px-3 py-2">
+                <div>
+                  <Label htmlFor="dia-todo" className="cursor-pointer">Dia todo</Label>
+                  <div className="text-xs text-muted-foreground">Marca o dia inteiro como indisponível</div>
+                </div>
+                <Switch id="dia-todo" checked={diaTodo} onCheckedChange={setDiaTodo} />
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} /></div>
-              <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} /></div>
+              <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={diaTodo ? "00:00" : horaInicio} onChange={e => setHoraInicio(e.target.value)} disabled={diaTodo} /></div>
+              <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={diaTodo ? "23:59" : horaFim} onChange={e => setHoraFim(e.target.value)} disabled={diaTodo} /></div>
             </div>
+
 
             {formadorId && (
               <div className="space-y-1.5">

@@ -344,16 +344,20 @@ function GerirFormadoresUfcdDialog({
                 Nenhum formador ativo com competência para esta UFCD. Atribua a competência na área do formador.
               </div>
             )}
-            {(candidatos.data ?? []).map((f: any) => (
-              <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
-                <Checkbox
-                  checked={selected.includes(f.id)}
-                  onCheckedChange={(c) => setSelected(c ? [...selected, f.id] : selected.filter((x) => x !== f.id))}
-                />
-                <span className="size-2 rounded-full" style={{ background: f.cor }} />
-                {f.nome}
-              </label>
-            ))}
+            {(candidatos.data ?? []).map((f: any) => {
+              const h = horasNoCurso.data?.get(f.id) ?? 0;
+              return (
+                <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
+                  <Checkbox
+                    checked={selected.includes(f.id)}
+                    onCheckedChange={(c) => setSelected(c ? [...selected, f.id] : selected.filter((x) => x !== f.id))}
+                  />
+                  <span className="size-2 rounded-full" style={{ background: f.cor }} />
+                  <span className="flex-1 truncate">{f.nome}</span>
+                  <Badge variant="secondary" className="text-[10px] tabular-nums">{fmtHoras(h)} no curso</Badge>
+                </label>
+              );
+            })}
           </div>
         </div>
         <DialogFooter>

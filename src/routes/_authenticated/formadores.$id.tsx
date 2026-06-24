@@ -276,19 +276,37 @@ function DocumentosTab({ formadorId, items, onChange }: { formadorId: string; it
 function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ data: "", hora_inicio: "09:00", hora_fim: "18:00", tipo: "disponivel" as "disponivel" | "indisponivel", notas: "" });
+  const [form, setForm] = useState({ data: "", hora_inicio: "09:00", hora_fim: "18:00", tipo: "disponivel" as "disponivel" | "indisponivel", notas: "", curso_id: "" });
 
   const q = useQuery({
     queryKey: ["disponibilidades", formadorId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("formador_disponibilidades" as any)
-        .select("*")
+        .select("*, curso:cursos(id, codigo, nome)")
         .eq("formador_id", formadorId)
         .order("data", { ascending: false })
         .order("hora_inicio");
       if (error) throw error;
       return (data ?? []) as any[];
+    },
+  });
+
+  // Cursos onde o formador tem UFCDs atribuídas
+  const cursosFormador = useQuery({
+    queryKey: ["cursos-do-formador", formadorId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("curso_ufcd_formadores")
+        .select("curso_ufcd:curso_ufcds(curso:cursos(id, codigo, nome))")
+        .eq("formador_id", formadorId);
+      if (error) throw error;
+      const map = new Map<string, { id: string; codigo: string; nome: string }>();
+      (data ?? []).forEach((r: any) => {
+        const c = r.curso_ufcd?.curso;
+        if (c) map.set(c.id, c);
+      });
+      return Array.from(map.values()).sort((a, b) => a.codigo.localeCompare(b.codigo));
     },
   });
 
@@ -312,13 +330,24 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
       });
       return;
     }
-    const { error } = await supabase.from("formador_disponibilidades" as any).insert({ formador_id: formadorId, ...form } as any);
+    const payload = {
+      formador_id: formadorId,
+      data: form.data,
+      hora_inicio: form.hora_inicio,
+      hora_fim: form.hora_fim,
+      tipo: form.tipo,
+      notas: form.notas,
+      curso_id: form.curso_id || null,
+    };
+    const { error } = await supabase.from("formador_disponibilidades" as any).insert(payload as any);
     if (error) return toast.error(error.message);
     toast.success("Disponibilidade adicionada");
-    setForm({ data: "", hora_inicio: "09:00", hora_fim: "18:00", tipo: "disponivel", notas: "" });
+    setForm({ data: "", hora_inicio: "09:00", hora_fim: "18:00", tipo: "disponivel", notas: "", curso_id: "" });
     setOpen(false);
     qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
+    qc.invalidateQueries({ queryKey: ["disp-geral"] });
   }
+
 
   async function del(id: string) {
     const { error } = await supabase.from("formador_disponibilidades" as any).delete().eq("id", id);
@@ -346,8 +375,11 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
                 <div>
                   <div className="font-medium">{fmtDate(i.data)} · {i.hora_inicio?.slice(0,5)}–{i.hora_fim?.slice(0,5)}</div>
                   <div className="text-xs text-muted-foreground">
-                    {i.tipo === "disponivel" ? "Disponível" : "Indisponível"}{i.notas && ` · ${i.notas}`}
+                    {i.tipo === "disponivel" ? "Disponível" : "Indisponível"}
+                    {i.curso?.codigo && ` · ${i.curso.codigo}`}
+                    {i.notas && ` · ${i.notas}`}
                   </div>
+
                 </div>
               </div>
               <Button variant="ghost" size="sm" onClick={() => del(i.id)}><Trash2 className="size-3.5" /></Button>
@@ -370,8 +402,18 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
                 <option value="indisponivel">Indisponível</option>
               </select>
             </div>
+            <div className="col-span-2 space-y-1.5">
+              <Label>Curso (opcional)</Label>
+              <select className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.curso_id} onChange={e => setForm({ ...form, curso_id: e.target.value })}>
+                <option value="">— Nenhum —</option>
+                {(cursosFormador.data ?? []).map((c) => (
+                  <option key={c.id} value={c.id}>{c.codigo} — {c.nome}</option>
+                ))}
+              </select>
+            </div>
             <div className="col-span-2 space-y-1.5"><Label>Notas</Label><Input value={form.notas} onChange={e => setForm({ ...form, notas: e.target.value })} /></div>
           </div>
+
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={add}>Adicionar</AlertDialogAction>

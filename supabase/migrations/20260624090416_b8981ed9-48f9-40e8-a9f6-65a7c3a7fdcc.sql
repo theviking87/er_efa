@@ -1,0 +1,2 @@
+ALTER TABLE public.formador_disponibilidades ADD COLUMN IF NOT EXISTS curso_id uuid REFERENCES public.cursos(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS idx_disp_curso ON public.formador_disponibilidades(curso_id);

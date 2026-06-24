@@ -29,6 +29,8 @@ type DispSlot = {
   hora_fim: string;
   tipo: "disponivel" | "indisponivel";
   notas: string | null;
+  curso_id: string | null;
+  curso_codigo: string | null;
 };
 type SessaoSlot = {
   kind: "sessao";
@@ -46,13 +48,16 @@ type SessaoSlot = {
   ufcd_codigo: string;
 };
 
+
 function CronogramaGeral() {
   const qc = useQueryClient();
   const [mes, setMes] = useState(() => { const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() }; });
   const [formadorFiltro, setFormadorFiltro] = useState<string>("");
+  const [cursoFiltro, setCursoFiltro] = useState<string>("");
   const [mostrar, setMostrar] = useState<"ambos" | "sessoes" | "disp">("ambos");
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
+
 
   useEffect(() => {
     const ch = supabase
@@ -103,14 +108,21 @@ function CronogramaGeral() {
     queryFn: async () => (await supabase.from("formadores").select("id, nome, cor").order("nome")).data ?? [],
   });
 
+  const cursosTodos = useQuery({
+    queryKey: ["cursos-cronograma-filter"],
+    queryFn: async () => (await supabase.from("cursos").select("id, codigo, nome").order("codigo")).data ?? [],
+  });
+
+
   const sessoes = useQuery({
-    queryKey: ["sessoes-geral", inicioMes, fimMes, formadorFiltro],
+    queryKey: ["sessoes-geral", inicioMes, fimMes, formadorFiltro, cursoFiltro],
     queryFn: async () => {
       let q = supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura,cor), curso:cursos(id,nome,codigo), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador_id, curso_id, formador:formadores(id,nome,abreviatura,cor), curso:cursos(id,nome,codigo), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .gte("data", inicioMes).lte("data", fimMes)
         .order("data").order("hora_inicio");
       if (formadorFiltro) q = q.eq("formador_id", formadorFiltro);
+      if (cursoFiltro) q = q.eq("curso_id", cursoFiltro);
       const { data, error } = await q;
       if (error) throw error;
       return data ?? [];
@@ -118,18 +130,20 @@ function CronogramaGeral() {
   });
 
   const disp = useQuery({
-    queryKey: ["disp-geral", inicioMes, fimMes, formadorFiltro],
+    queryKey: ["disp-geral", inicioMes, fimMes, formadorFiltro, cursoFiltro],
     queryFn: async () => {
       let q = supabase.from("formador_disponibilidades" as any)
-        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, formador:formadores(id,nome,abreviatura,cor)")
+        .select("id, formador_id, data, hora_inicio, hora_fim, tipo, notas, curso_id, formador:formadores(id,nome,abreviatura,cor), curso:cursos(id,codigo)")
         .gte("data", inicioMes).lte("data", fimMes)
         .order("data").order("hora_inicio");
       if (formadorFiltro) q = q.eq("formador_id", formadorFiltro);
+      if (cursoFiltro) q = q.eq("curso_id", cursoFiltro);
       const { data, error } = await q;
       if (error) throw error;
       return (data ?? []) as any[];
     },
   });
+
 
   const slotsByDay = useMemo(() => {
     const m = new Map<string, (DispSlot | SessaoSlot)[]>();
@@ -167,9 +181,12 @@ function CronogramaGeral() {
           hora_fim: d.hora_fim,
           tipo: d.tipo,
           notas: d.notas,
+          curso_id: d.curso_id ?? null,
+          curso_codigo: d.curso?.codigo ?? null,
         };
         const arr = m.get(d.data) ?? [];
         arr.push(slot); m.set(d.data, arr);
+
       });
     }
     // sort each day by hora_inicio
@@ -274,6 +291,16 @@ function CronogramaGeral() {
                 <option key={f.id} value={f.id}>{f.nome}</option>
               ))}
             </select>
+            <select
+              value={cursoFiltro}
+              onChange={e => setCursoFiltro(e.target.value)}
+              className="text-sm border border-input rounded-md px-2.5 py-1.5 bg-background"
+            >
+              <option value="">Todos os cursos</option>
+              {(cursosTodos.data ?? []).map((c: any) => (
+                <option key={c.id} value={c.id}>{c.codigo} — {c.nome}</option>
+              ))}
+            </select>
             <div className="text-xs text-muted-foreground">
               {totalSessoes} sessões · {fmtHoras(totalHoras)} · {totalDisp} dispon.
             </div>
@@ -354,23 +381,40 @@ function CronogramaGeral() {
                         }
                         const isDisp = slot.tipo === "disponivel";
                         return (
-                          <button
+                          <div
                             key={"d" + slot.id}
-                            onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
-                            disabled={!isDisp}
-                            className={"block w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
-                              (isDisp ? "hover:bg-emerald-50 cursor-pointer" : "cursor-not-allowed opacity-80")}
+                            className={"relative group w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
+                              (isDisp ? "hover:bg-emerald-50 cursor-pointer" : "opacity-80")}
                             style={{
                               borderColor: isDisp ? "rgb(16,185,129)" : "rgb(244,63,94)",
                               color: slot.formador_cor,
                             }}
-                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.notas ? "\n" + slot.notas : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
+                            title={`${isDisp ? "Disponível" : "Indisponível"} — ${slot.formador_nome}${slot.curso_codigo ? "\nCurso: " + slot.curso_codigo : ""}${slot.notas ? "\n" + slot.notas : ""}${isDisp ? "\n\nClicar para criar sessão" : ""}`}
+                            onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
                           >
                             <div className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</div>
                             <div className="truncate font-medium">{slot.formador_nome}</div>
-                            <div className="truncate opacity-80">{isDisp ? "Disponível" : "Indisponível"}</div>
-                          </button>
+                            <div className="truncate opacity-80">
+                              {isDisp ? "Disponível" : "Indisponível"}
+                              {slot.curso_codigo ? ` · ${slot.curso_codigo}` : ""}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                if (!confirm("Apagar esta disponibilidade?")) return;
+                                const { error } = await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
+                                if (error) return toast.error(error.message);
+                                toast.success("Disponibilidade apagada");
+                                qc.invalidateQueries({ queryKey: ["disp-geral"] });
+                                qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
+                              }}
+                              className="absolute top-0 right-0 px-1 text-[10px] text-rose-600 opacity-0 group-hover:opacity-100 print:hidden"
+                              title="Apagar disponibilidade"
+                            >✕</button>
+                          </div>
                         );
+
                       })}
                     </div>
                   </>
@@ -633,11 +677,13 @@ function CreateDispDialog({
 
     setSaving(true);
     let notasFinais = notas.trim();
+    let cursoIdFinal: string | null = null;
     if (cursoUfcdId) {
       const cu = (ufcdsAtribuidas.data ?? []).find((x: any) => x.id === cursoUfcdId) as any;
       if (cu) {
         const ctx = `${cu.curso.codigo} · ${cu.ufcd.codigo} (faltam ${cu.horas_faltam}h)`;
         notasFinais = notasFinais ? `${ctx} — ${notasFinais}` : ctx;
+        cursoIdFinal = cu.curso.id;
       }
     }
 
@@ -648,7 +694,9 @@ function CreateDispDialog({
       hora_fim: horaFim,
       tipo,
       notas: notasFinais || null,
+      curso_id: cursoIdFinal,
     } as never);
+
     setSaving(false);
     if (error) return toast.error(error.message);
     toast.success("Disponibilidade lançada");

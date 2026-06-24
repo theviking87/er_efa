@@ -961,10 +961,8 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
     queryFn: async () => {
       const { data: comp } = await supabase.from("formador_ufcds" as any).select("formador_id").eq("ufcd_id", realUfcdId);
       const ids = ((comp ?? []) as any[]).map(r => r.formador_id);
-      // Se mudou a UFCD, mostra todos os competentes; se mantém a UFCD, exclui o formador atual
-      const filteredIds = novoCursoUfcdId === (sessao?.curso_ufcd?.id ?? sessao?.curso_ufcd_id)
-        ? ids.filter(id => id !== sessao?.formador_id)
-        : ids;
+      // Inclui sempre o formador atual para permitir editar apenas horário/UFCD
+      const filteredIds = Array.from(new Set([...(sessao?.formador_id ? [sessao.formador_id] : []), ...ids]));
       if (filteredIds.length === 0) return [];
       const { data } = await supabase.from("formadores").select("id, nome, cor, estado").in("id", filteredIds).eq("estado", "ativo").order("nome");
       return data ?? [];

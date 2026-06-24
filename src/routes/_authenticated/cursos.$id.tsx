@@ -277,6 +277,89 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
   );
 }
 
+function SessoesUfcdDialog({
+  info, onOpenChange,
+}: {
+  info: { cursoUfcdId: string; codigo: string; designacao: string } | null;
+  onOpenChange: (v: boolean) => void;
+}) {
+  const sessoes = useQuery({
+    queryKey: ["sessoes-ufcd", info?.cursoUfcdId],
+    enabled: !!info,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(nome, abreviatura, cor)")
+        .eq("curso_ufcd_id", info!.cursoUfcdId)
+        .order("data", { ascending: true })
+        .order("hora_inicio", { ascending: true });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const total = (sessoes.data ?? []).reduce((a: number, s: any) => a + Number(s.horas ?? 0), 0);
+
+  return (
+    <Dialog open={!!info} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">
+        <DialogHeader>
+          <DialogTitle>Sessões contabilizadas</DialogTitle>
+          {info && (
+            <div className="text-sm text-muted-foreground">
+              <span className="font-mono">{info.codigo}</span> — {info.designacao}
+            </div>
+          )}
+        </DialogHeader>
+        <div className="flex-1 overflow-auto border rounded-md">
+          <table className="w-full text-sm">
+            <thead className="bg-muted/40 text-xs uppercase text-muted-foreground sticky top-0">
+              <tr>
+                <th className="px-3 py-2 text-left">Data</th>
+                <th className="px-3 py-2 text-left">Horário</th>
+                <th className="px-3 py-2 text-left">Formador</th>
+                <th className="px-3 py-2 text-right">Horas</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y">
+              {sessoes.isLoading && <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">A carregar…</td></tr>}
+              {!sessoes.isLoading && (sessoes.data ?? []).length === 0 && (
+                <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">Sem sessões lançadas.</td></tr>
+              )}
+              {(sessoes.data ?? []).map((s: any) => (
+                <tr key={s.id} className="hover:bg-muted/30">
+                  <td className="px-3 py-1.5">{fmtDate(s.data)}</td>
+                  <td className="px-3 py-1.5 font-mono text-xs">{s.hora_inicio?.slice(0,5)}–{s.hora_fim?.slice(0,5)}</td>
+                  <td className="px-3 py-1.5">
+                    {s.formador ? (
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="size-1.5 rounded-full" style={{ background: s.formador.cor }} />
+                        {s.formador.nome}
+                      </span>
+                    ) : <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className="px-3 py-1.5 text-right">{fmtHoras(Number(s.horas))}</td>
+                </tr>
+              ))}
+            </tbody>
+            {(sessoes.data ?? []).length > 0 && (
+              <tfoot className="bg-muted/20 font-medium">
+                <tr>
+                  <td colSpan={3} className="px-3 py-2 text-right">Total</td>
+                  <td className="px-3 py-2 text-right">{fmtHoras(total)}</td>
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+        <DialogFooter>
+          <Button variant="ghost" onClick={() => onOpenChange(false)}>Fechar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 function GerirFormadoresUfcdDialog({
   info, cursoId, onOpenChange, onSaved,
 }: {

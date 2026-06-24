@@ -155,10 +155,12 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
       (sess.data ?? []).forEach((s: any) => {
         horasRealizadasMap.set(s.curso_ufcd_id, (horasRealizadasMap.get(s.curso_ufcd_id) ?? 0) + Number(s.horas));
       });
-      return (cu.data ?? []).map((u: any) => ({
-        ...u,
-        horas_realizadas: horasRealizadasMap.get(u.id) ?? 0,
-      }));
+      return (cu.data ?? [])
+        .map((u: any) => ({
+          ...u,
+          horas_realizadas: horasRealizadasMap.get(u.id) ?? 0,
+        }))
+        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
 

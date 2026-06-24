@@ -302,7 +302,7 @@ function CronogramaGeral() {
       autoTable(doc, {
         startY: 24,
         head: [["Data", "Dia da semana"]],
-        body: diasSem.map(d => [fmtDate(d.iso), d.dow + "-feira".replace("Sáb-feira", "Sábado")]),
+        body: diasSem.map(d => [fmtDate(d.iso), d.dow === "Sáb" ? "Sábado" : `${d.dow}-feira`]),
         styles: { font: "helvetica", fontSize: 10, cellPadding: 2.5 },
         headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
         alternateRowStyles: { fillColor: [248, 250, 252] },

@@ -175,9 +175,12 @@ function CronogramaGeral() {
           hora_fim: d.hora_fim,
           tipo: d.tipo,
           notas: d.notas,
+          curso_id: d.curso_id ?? null,
+          curso_codigo: d.curso?.codigo ?? null,
         };
         const arr = m.get(d.data) ?? [];
         arr.push(slot); m.set(d.data, arr);
+
       });
     }
     // sort each day by hora_inicio

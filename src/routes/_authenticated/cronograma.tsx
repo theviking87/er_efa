@@ -9,7 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ChevronLeft, ChevronRight, CalendarPlus, Printer } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning } from "lucide-react";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso } from "@/lib/format";
 import { toast } from "sonner";
 import { compareUfcdCodigo } from "@/lib/utils";
@@ -268,6 +270,60 @@ function CronogramaGeral() {
   function next() { setMes(m => m.mes === 11 ? { ano: m.ano + 1, mes: 0 } : { ano: m.ano, mes: m.mes + 1 }); }
   function hoje() { const d = new Date(); setMes({ ano: d.getFullYear(), mes: d.getMonth() }); }
 
+  function imprimirDiasSemDisp() {
+    if (!cursoFiltro) return toast.error("Seleciona um curso primeiro");
+    const curso = (cursosTodos.data ?? []).find((c: any) => c.id === cursoFiltro) as any;
+    if (!curso) return;
+    const diasSem: { iso: string; dow: string }[] = [];
+    const semanaLbl = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+    const dispData = disp.data ?? [];
+    for (const cell of grid) {
+      if (!cell) continue;
+      const dow = weekdayFromIso(cell.iso);
+      if (dow === 0 || dow === 6) continue;
+      // Tem disponibilidade para este curso se: dispo específica deste curso OU dispo geral de um formador atribuído ao curso
+      const cursoInfo = (cursosAtivos.data ?? []).find((c: any) => c.id === cursoFiltro);
+      const formadoresDoCurso = new Set<string>(cursoInfo?.formadores ?? []);
+      const tem = dispData.some((d: any) => {
+        if (d.data !== cell.iso || d.tipo !== "disponivel") return false;
+        if (d.curso_id === cursoFiltro) return true;
+        if (!d.curso_id && formadoresDoCurso.has(d.formador_id)) return true;
+        return false;
+      });
+      if (!tem) diasSem.push({ iso: cell.iso, dow: semanaLbl[dow] });
+    }
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const w = doc.internal.pageSize.getWidth();
+    doc.setFillColor(37, 99, 235);
+    doc.rect(0, 0, w, 18, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFont("helvetica", "bold"); doc.setFontSize(13);
+    doc.text("Dias sem disponibilidade", 14, 11);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text(`${curso.codigo} · ${curso.nome} — ${MONTH_NAMES[mes.mes]} ${mes.ano}`, 14, 15.5);
+    doc.setTextColor(0, 0, 0);
+
+    if (diasSem.length === 0) {
+      doc.setFontSize(11);
+      doc.text("Todos os dias úteis do mês têm pelo menos uma disponibilidade.", 14, 30);
+    } else {
+      autoTable(doc, {
+        startY: 24,
+        head: [["Data", "Dia da semana"]],
+        body: diasSem.map(d => [fmtDate(d.iso), d.dow === "Sáb" ? "Sábado" : `${d.dow}-feira`]),
+        styles: { font: "helvetica", fontSize: 10, cellPadding: 2.5 },
+        headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 250, 252] },
+        margin: { left: 14, right: 14 },
+      });
+      const yEnd = (doc as any).lastAutoTable.finalY ?? 24;
+      doc.setFontSize(9);
+      doc.setTextColor(100, 116, 139);
+      doc.text(`Total: ${diasSem.length} dia(s) sem disponibilidade`, 14, yEnd + 8);
+    }
+    doc.save(`Dias_sem_disponibilidade_${curso.codigo}_${mes.ano}-${String(mes.mes + 1).padStart(2, "0")}.pdf`);
+  }
+
   return (
     <PageContainer>
       <PageHeader
@@ -284,6 +340,15 @@ function CronogramaGeral() {
             <Button variant="outline" size="icon" onClick={next}><ChevronRight className="size-4" /></Button>
             <Button variant="ghost" size="sm" onClick={hoje}>Hoje</Button>
             <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4 mr-1" />Imprimir</Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={imprimirDiasSemDisp}
+              disabled={!cursoFiltro}
+              title={cursoFiltro ? "PDF dos dias úteis sem disponibilidade para o curso selecionado" : "Seleciona um curso para ativar"}
+            >
+              <FileWarning className="size-4 mr-1" />Dias sem disponibilidade
+            </Button>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <select

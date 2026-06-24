@@ -933,7 +933,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
   useEffect(() => {
     if (sessao) {
       setNovoCursoUfcdId(sessao.curso_ufcd?.id ?? sessao.curso_ufcd_id ?? "");
-      setNovoFormadorId("");
+      setNovoFormadorId(sessao.formador_id ?? "");
       setHi(String(sessao.hora_inicio ?? "").slice(0, 5));
       setHf(String(sessao.hora_fim ?? "").slice(0, 5));
     }

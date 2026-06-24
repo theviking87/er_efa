@@ -22,6 +22,8 @@ import { toast } from "sonner";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
+import { feriadoNome } from "@/lib/feriados";
+
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
   head: () => ({ meta: [{ title: "Curso — Gestão Pedagógica" }] }),

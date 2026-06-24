@@ -707,7 +707,7 @@ function CreateDispDialog({
   const [tipo, setTipo] = useState<"disponivel" | "indisponivel">("disponivel");
   const [horaInicio, setHoraInicio] = useState("09:00");
   const [horaFim, setHoraFim] = useState("13:00");
-  const [cursoUfcdId, setCursoUfcdId] = useState<string>("");
+  const [cursoId, setCursoId] = useState<string>("");
   const [notas, setNotas] = useState("");
   const [saving, setSaving] = useState(false);
 
@@ -717,41 +717,31 @@ function CreateDispDialog({
       setTipo("disponivel");
       setHoraInicio("09:00");
       setHoraFim("13:00");
-      setCursoUfcdId("");
+      setCursoId("");
       setNotas("");
     }
   }, [data]);
 
-  // UFCDs atribuídas ao formador, não concluídas, com horas dadas vs totais
-  const ufcdsAtribuidas = useQuery({
-    queryKey: ["ufcds-formador-disp", formadorId],
+  // Cursos onde este formador tem UFCDs atribuídas e ainda por concluir
+  const cursosDoFormador = useQuery({
+    queryKey: ["cursos-formador-disp", formadorId],
     enabled: !!formadorId,
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from("curso_ufcd_formadores")
-        .select("curso_ufcd:curso_ufcds(id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado, data_inicio, data_fim))")
+        .select("curso_ufcd:curso_ufcds(id, horas_totais, concluida, curso:cursos(id, codigo, nome, estado))")
         .eq("formador_id", formadorId);
       if (error) throw error;
-      const cus = (rows ?? [])
-        .map((r: any) => r.curso_ufcd)
-        .filter((cu: any) => cu && cu.curso && !cu.concluida);
-      if (cus.length === 0) return [];
-      const ids = cus.map((cu: any) => cu.id);
-      const { data: sess } = await supabase
-        .from("sessoes")
-        .select("curso_ufcd_id, horas")
-        .in("curso_ufcd_id", ids);
-      const dadas = new Map<string, number>();
-      (sess ?? []).forEach((s: any) => {
-        dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0));
+      const map = new Map<string, { id: string; codigo: string; nome: string; estado: string; ufcds_abertas: number }>();
+      (rows ?? []).forEach((r: any) => {
+        const cu = r.curso_ufcd;
+        if (!cu || !cu.curso || cu.concluida) return;
+        const c = cu.curso;
+        const cur = map.get(c.id) ?? { id: c.id, codigo: c.codigo, nome: c.nome, estado: c.estado, ufcds_abertas: 0 };
+        cur.ufcds_abertas += 1;
+        map.set(c.id, cur);
       });
-      return cus
-        .map((cu: any) => {
-          const dadasH = dadas.get(cu.id) ?? 0;
-          const faltam = Math.max(0, Number(cu.horas_totais ?? 0) - dadasH);
-          return { ...cu, horas_dadas: dadasH, horas_faltam: faltam };
-        })
-        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
+      return Array.from(map.values()).sort((a, b) => a.codigo.localeCompare(b.codigo));
     },
   });
 
@@ -761,25 +751,14 @@ function CreateDispDialog({
     if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
 
     setSaving(true);
-    let notasFinais = notas.trim();
-    let cursoIdFinal: string | null = null;
-    if (cursoUfcdId) {
-      const cu = (ufcdsAtribuidas.data ?? []).find((x: any) => x.id === cursoUfcdId) as any;
-      if (cu) {
-        const ctx = `${cu.curso.codigo} · ${cu.ufcd.codigo} (faltam ${cu.horas_faltam}h)`;
-        notasFinais = notasFinais ? `${ctx} — ${notasFinais}` : ctx;
-        cursoIdFinal = cu.curso.id;
-      }
-    }
-
     const { error } = await supabase.from("formador_disponibilidades" as any).insert({
       formador_id: formadorId,
       data,
       hora_inicio: horaInicio,
       hora_fim: horaFim,
       tipo,
-      notas: notasFinais || null,
-      curso_id: cursoIdFinal,
+      notas: notas.trim() || null,
+      curso_id: cursoId || null,
     } as never);
 
     setSaving(false);

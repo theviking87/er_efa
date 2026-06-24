@@ -245,7 +245,7 @@ function GerirFormadoresUfcdDialog({
   const [selected, setSelected] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
 
-  useMemo(() => { if (info) setSelected(info.assigned); }, [info]);
+  useEffect(() => { if (info) setSelected(info.assigned); }, [info]);
 
   const candidatos = useQuery({
     queryKey: ["gerir-form-ufcd", info?.ufcdId],

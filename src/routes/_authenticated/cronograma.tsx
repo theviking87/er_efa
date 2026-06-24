@@ -273,6 +273,44 @@ function CronogramaGeral() {
     return r;
   }, [mostrar, cursosComCor, coverageByDay, grid]);
 
+  // Disponibilidades sobrepostas: mesmo curso, mesmo dia, formadores diferentes, intervalos que se intersetam.
+  const overlapDispIds = useMemo(() => {
+    const matched = new Set<string>();
+    const cursos = cursosAtivos.data ?? [];
+    const toMin = (h: string) => {
+      const [hh, mm] = (h ?? "").split(":").map(Number);
+      return (hh || 0) * 60 + (mm || 0);
+    };
+    type Item = { id: string; formador_id: string; s: number; e: number };
+    const byCursoDay = new Map<string, Item[]>();
+    (disp.data ?? []).forEach((d: any) => {
+      if (d.tipo !== "disponivel") return;
+      const cursosAlvo = d.curso_id
+        ? [d.curso_id]
+        : cursos.filter((c: any) => c.formadores.includes(d.formador_id)).map((c: any) => c.id);
+      const item: Item = { id: d.id, formador_id: d.formador_id, s: toMin(d.hora_inicio), e: toMin(d.hora_fim) };
+      for (const cid of cursosAlvo) {
+        const k = `${cid}|${d.data}`;
+        const arr = byCursoDay.get(k) ?? [];
+        arr.push(item);
+        byCursoDay.set(k, arr);
+      }
+    });
+    for (const arr of byCursoDay.values()) {
+      for (let i = 0; i < arr.length; i++) {
+        for (let j = i + 1; j < arr.length; j++) {
+          const a = arr[i], b = arr[j];
+          if (a.formador_id === b.formador_id) continue;
+          if (a.s < b.e && b.s < a.e) {
+            matched.add(a.id);
+            matched.add(b.id);
+          }
+        }
+      }
+    }
+    return matched;
+  }, [disp.data, cursosAtivos.data]);
+
 
 
   const totalSessoes = (sessoes.data ?? []).length;

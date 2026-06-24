@@ -208,7 +208,7 @@ function CronogramaGeral() {
     // sort each day by hora_inicio
     for (const arr of m.values()) arr.sort((a, b) => (a.hora_inicio ?? "").localeCompare(b.hora_inicio ?? ""));
     return m;
-  }, [sessoes.data, disp.data, mostrar, cursoFiltro]);
+  }, [sessoes.data, disp.data, mostrar, cursoFiltro, cursosAtivos.data]);
 
 
   const grid = useMemo(() => {

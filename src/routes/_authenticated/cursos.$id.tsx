@@ -286,6 +286,22 @@ function GerirFormadoresUfcdDialog({
     },
   });
 
+  const horasNoCurso = useQuery({
+    queryKey: ["form-horas-curso", cursoId],
+    enabled: !!info,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("curso_ufcd_formadores")
+        .select("formador_id, curso_ufcd:curso_ufcds!inner(curso_id, horas_totais)")
+        .eq("curso_ufcd.curso_id", cursoId);
+      const m = new Map<string, number>();
+      ((data ?? []) as any[]).forEach((r) => {
+        m.set(r.formador_id, (m.get(r.formador_id) ?? 0) + Number(r.curso_ufcd?.horas_totais ?? 0));
+      });
+      return m;
+    },
+  });
+
   async function save() {
     if (!info) return;
     setSaving(true);

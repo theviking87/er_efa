@@ -29,6 +29,8 @@ type DispSlot = {
   hora_fim: string;
   tipo: "disponivel" | "indisponivel";
   notas: string | null;
+  curso_id: string | null;
+  curso_codigo: string | null;
 };
 type SessaoSlot = {
   kind: "sessao";
@@ -45,6 +47,7 @@ type SessaoSlot = {
   curso_nome: string;
   ufcd_codigo: string;
 };
+
 
 function CronogramaGeral() {
   const qc = useQueryClient();

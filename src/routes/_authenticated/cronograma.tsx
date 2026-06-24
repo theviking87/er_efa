@@ -814,11 +814,10 @@ function CreateDispDialog({
   async function criar() {
     if (!data) return;
     if (!formadorId) return toast.error("Escolhe o formador");
-    if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
-
     const hi = diaTodo ? "00:00" : horaInicio;
     const hf = diaTodo ? "23:59" : horaFim;
     if (!hi || !hf || hf <= hi) return toast.error("Horário inválido");
+
 
     setSaving(true);
     const { error } = await supabase.from("formador_disponibilidades" as any).insert({

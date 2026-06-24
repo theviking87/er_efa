@@ -668,20 +668,20 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
             </div>
 
             <div className="space-y-1.5">
-              <Label>UFCD / Curso *</Label>
+              <Label>UFCD *</Label>
               <Select value={cursoUfcdId} onValueChange={setCursoUfcdId}>
-                <SelectTrigger><SelectValue placeholder={opcoes.data?.length === 0 ? "Sem UFCD atribuídas a este formador" : "Escolher…"} /></SelectTrigger>
+                <SelectTrigger><SelectValue placeholder={opcoes.data?.length === 0 ? "Sem UFCDs por concluir atribuídas a este formador" : "Escolher…"} /></SelectTrigger>
                 <SelectContent>
                   {(opcoes.data ?? []).map((cu: any) => (
                     <SelectItem key={cu.id} value={cu.id}>
-                      {cu.curso?.codigo} · {cu.ufcd?.codigo} — {cu.ufcd?.designacao}
+                      {cu.curso?.codigo} · {cu.ufcd?.codigo} — {cu.ufcd?.designacao} (faltam {cu.horas_faltam}h de {cu.horas_totais}h)
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
-              {opcoes.data?.length === 0 && (
-                <div className="text-xs text-muted-foreground">Atribui primeiro este formador a uma UFCD num curso.</div>
-              )}
+              <div className="text-xs text-muted-foreground">
+                {slot.curso_codigo ? `Apenas UFCDs do curso ${slot.curso_codigo} atribuídas a este formador e ainda por concluir.` : "Apenas UFCDs atribuídas a este formador e ainda por concluir."}
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">

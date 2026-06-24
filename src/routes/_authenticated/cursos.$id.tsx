@@ -178,7 +178,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
   return (
     <Card><CardContent className="p-6 space-y-4">
       <div className="flex justify-between items-center">
-        <div className="text-sm text-muted-foreground">{data.data?.length ?? 0} UFCD atribuídas</div>
+        <div className="text-sm text-muted-foreground">{data.data?.length ?? 0} UFCD atribuídas · {fmtHoras((data.data ?? []).reduce((a: number, u: any) => a + Number(u.horas_totais ?? 0), 0))} totais</div>
         <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
       </div>
       {(data.data?.length ?? 0) === 0 && <div className="text-sm text-muted-foreground text-center py-8">Sem UFCD atribuídas. Atribua a primeira.</div>}

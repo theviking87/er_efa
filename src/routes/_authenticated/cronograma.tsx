@@ -816,13 +816,18 @@ function CreateDispDialog({
     if (!formadorId) return toast.error("Escolhe o formador");
     if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
 
+    const hi = diaTodo ? "00:00" : horaInicio;
+    const hf = diaTodo ? "23:59" : horaFim;
+    if (!hi || !hf || hf <= hi) return toast.error("Horário inválido");
+
     setSaving(true);
     const { error } = await supabase.from("formador_disponibilidades" as any).insert({
       formador_id: formadorId,
       data,
-      hora_inicio: horaInicio,
-      hora_fim: horaFim,
+      hora_inicio: hi,
+      hora_fim: hf,
       tipo,
+
       notas: notas.trim() || null,
       curso_id: cursoId || null,
     } as never);

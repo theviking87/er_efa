@@ -651,16 +651,16 @@ function CronogramaGeral() {
                     );
                   };
                   const slots = slotsByDay.get(cell.iso) ?? [];
-                  const manhaSlots = slots.filter((s: any) => (s.hora_inicio ?? "") < "13:00");
+                  const fullSlots = slots.filter((s: any) => (s.hora_inicio ?? "") < "13:00" && (s.hora_fim ?? "") > "13:00");
+                  const manhaSlots = slots.filter((s: any) => (s.hora_fim ?? "") <= "13:00");
                   const tardeSlots = slots.filter((s: any) => (s.hora_inicio ?? "") >= "13:00");
                   return (
-                    <>
-                      <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>
-                      <div className="grid grid-rows-2 gap-1">
-                        <div className="space-y-1">{manhaSlots.map(renderSlot)}</div>
-                        <div className="space-y-1">{tardeSlots.map(renderSlot)}</div>
-                      </div>
-                    </>
+                    <div className="flex flex-col gap-1 min-h-[100px]">
+                      <div className="text-xs text-muted-foreground">{cell.d}</div>
+                      {fullSlots.length > 0 && <div className="space-y-1">{fullSlots.map(renderSlot)}</div>}
+                      {manhaSlots.length > 0 && <div className="space-y-1">{manhaSlots.map(renderSlot)}</div>}
+                      {tardeSlots.length > 0 && <div className="space-y-1 mt-auto">{tardeSlots.map(renderSlot)}</div>}
+                    </div>
                   );
                 })()}
               </div>

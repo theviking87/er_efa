@@ -275,14 +275,17 @@ function GerirFormadoresUfcdDialog({
   useEffect(() => { if (info) setSelected(info.assigned); }, [info]);
 
   const candidatos = useQuery({
-    queryKey: ["gerir-form-ufcd", info?.ufcdId],
+    queryKey: ["gerir-form-ufcd", info?.ufcdId, info?.assigned.join(",")],
     enabled: !!info,
     queryFn: async () => {
       const { data: comp } = await supabase.from("formador_ufcds" as any).select("formador_id").eq("ufcd_id", info!.ufcdId);
-      const ids = ((comp ?? []) as any[]).map((r) => r.formador_id);
+      const compIds = ((comp ?? []) as any[]).map((r) => r.formador_id);
+      const ids = Array.from(new Set([...compIds, ...(info?.assigned ?? [])]));
       if (ids.length === 0) return [];
-      const { data } = await supabase.from("formadores").select("id, nome, cor, estado").in("id", ids).eq("estado", "ativo").order("nome");
-      return data ?? [];
+      const { data } = await supabase.from("formadores").select("id, nome, cor, estado").in("id", ids).order("nome");
+      // keep ativos + qualquer já atribuído (mesmo que inativo/sem competência)
+      const assignedSet = new Set(info?.assigned ?? []);
+      return (data ?? []).filter((f: any) => f.estado === "ativo" || assignedSet.has(f.id));
     },
   });
 

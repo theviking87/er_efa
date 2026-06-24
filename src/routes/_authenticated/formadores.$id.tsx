@@ -292,21 +292,17 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
     },
   });
 
-  // Cursos onde o formador tem UFCDs atribuídas
+  // Cursos ativos (para associar a disponibilidade)
   const cursosFormador = useQuery({
-    queryKey: ["cursos-do-formador", formadorId],
+    queryKey: ["cursos-ativos-para-disp"],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from("curso_ufcd_formadores")
-        .select("curso_ufcd:curso_ufcds(curso:cursos(id, codigo, nome))")
-        .eq("formador_id", formadorId);
+        .from("cursos")
+        .select("id, codigo, nome")
+        .eq("estado", "ativo")
+        .order("codigo");
       if (error) throw error;
-      const map = new Map<string, { id: string; codigo: string; nome: string }>();
-      (data ?? []).forEach((r: any) => {
-        const c = r.curso_ufcd?.curso;
-        if (c) map.set(c.id, c);
-      });
-      return Array.from(map.values()).sort((a, b) => a.codigo.localeCompare(b.codigo));
+      return (data ?? []) as { id: string; codigo: string; nome: string }[];
     },
   });
 

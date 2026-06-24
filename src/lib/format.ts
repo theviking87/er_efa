@@ -88,10 +88,19 @@ export const FALTA_TIPO_LABEL: Record<string, string> = {
   injustificada: "Injustificada",
 };
 
+// Pausa de almoço: 13:00 - 14:00 é descontada automaticamente quando
+// o intervalo da sessão a inclui (ex.: 9h-17h conta 7h, dia inteiro conta 7h).
+const ALMOCO_INI = 13 * 60;
+const ALMOCO_FIM = 14 * 60;
+
 export function diffHoras(inicio: string, fim: string): number {
   const [hi, mi] = inicio.split(":").map(Number);
   const [hf, mf] = fim.split(":").map(Number);
-  return Math.max(0, (hf * 60 + mf - hi * 60 - mi) / 60);
+  const ini = hi * 60 + mi;
+  const fim_ = hf * 60 + mf;
+  const bruto = Math.max(0, fim_ - ini);
+  const overlap = Math.max(0, Math.min(fim_, ALMOCO_FIM) - Math.max(ini, ALMOCO_INI));
+  return Math.max(0, (bruto - overlap) / 60);
 }
 
 export const MONTH_NAMES = [

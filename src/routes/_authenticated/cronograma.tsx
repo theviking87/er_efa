@@ -222,8 +222,9 @@ function CronogramaGeral() {
 
   const PALETA = ["#fde68a", "#bbf7d0", "#fbcfe8", "#bfdbfe", "#ddd6fe", "#fed7aa", "#a7f3d0", "#fecaca"];
   const cursosComCor = useMemo(() => {
-    return (cursosAtivos.data ?? []).map((c, i) => ({ ...c, cor: PALETA[i % PALETA.length] }));
-  }, [cursosAtivos.data]);
+    const base = (cursosAtivos.data ?? []).map((c, i) => ({ ...c, cor: PALETA[i % PALETA.length] }));
+    return cursoFiltro ? base.filter(c => c.id === cursoFiltro) : base;
+  }, [cursosAtivos.data, cursoFiltro]);
 
   // Para cada dia: lista de cursos ativos sem qualquer formador disponível
   const dayMissing = useMemo(() => {

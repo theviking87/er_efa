@@ -318,8 +318,19 @@ function CronogramaGeral() {
                 }
               }
               const title = miss ? (miss.todos ? "Nenhum curso ativo tem formador disponível" : "Sem disponibilidade: " + miss.cursos.map(c => c.codigo).join(", ")) : undefined;
+              const canCreate = mostrar === "disp" && !!cell;
               return (
-              <div key={i} title={title} style={bgStyle} className="border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px]">
+              <div
+                key={i}
+                title={title ?? (canCreate ? "Clicar para lançar disponibilidade" : undefined)}
+                style={bgStyle}
+                onClick={(e) => {
+                  if (!canCreate) return;
+                  if ((e.target as HTMLElement).closest("button,a")) return;
+                  setCreateDate(cell!.iso);
+                }}
+                className={"border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[130px] " + (canCreate ? "cursor-pointer hover:bg-emerald-50/40" : "")}
+              >
                 {cell && (
                   <>
                     <div className="text-xs text-muted-foreground mb-1">{cell.d}</div>
@@ -345,7 +356,7 @@ function CronogramaGeral() {
                         return (
                           <button
                             key={"d" + slot.id}
-                            onClick={() => isDisp && setConvertSlot(slot)}
+                            onClick={(e) => { e.stopPropagation(); if (isDisp) setConvertSlot(slot); }}
                             disabled={!isDisp}
                             className={"block w-full text-left text-[11px] leading-tight rounded px-1.5 py-1 border-2 border-dashed transition " +
                               (isDisp ? "hover:bg-emerald-50 cursor-pointer" : "cursor-not-allowed opacity-80")}

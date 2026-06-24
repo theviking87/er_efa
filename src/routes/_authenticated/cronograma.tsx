@@ -520,16 +520,55 @@ function CronogramaGeral() {
                 if (miss.todos) {
                   bgStyle = { background: "rgba(239,68,68,0.35)" };
                 } else {
-                  const n = miss.cursos.length;
-                  const stops = miss.cursos.map((c, idx) => {
-                    const a = (idx * 100) / n;
-                    const b = ((idx + 1) * 100) / n;
-                    return `${c.cor} ${a}%, ${c.cor} ${b}%`;
-                  }).join(", ");
-                  bgStyle = { background: `linear-gradient(135deg, ${stops})` };
+                  const manhaCursos = [...miss.cursos, ...miss.manha];
+                  const tardeCursos = [...miss.cursos, ...miss.tarde];
+                  const stopsOf = (arr: { cor: string }[]) => {
+                    if (arr.length === 0) return null;
+                    const n = arr.length;
+                    return arr.map((c, idx) => {
+                      const a = (idx * 100) / n;
+                      const b = ((idx + 1) * 100) / n;
+                      return `${c.cor} ${a}%, ${c.cor} ${b}%`;
+                    }).join(", ");
+                  };
+                  const layers: string[] = [];
+                  const sizes: string[] = [];
+                  const positions: string[] = [];
+                  const repeats: string[] = [];
+                  const manhaStops = stopsOf(manhaCursos);
+                  const tardeStops = stopsOf(tardeCursos);
+                  if (manhaStops) {
+                    layers.push(`linear-gradient(90deg, ${manhaStops})`);
+                    sizes.push("100% 50%");
+                    positions.push("top left");
+                    repeats.push("no-repeat");
+                  }
+                  if (tardeStops) {
+                    layers.push(`linear-gradient(90deg, ${tardeStops})`);
+                    sizes.push("100% 50%");
+                    positions.push("bottom left");
+                    repeats.push("no-repeat");
+                  }
+                  if (layers.length) {
+                    bgStyle = {
+                      backgroundImage: layers.join(", "),
+                      backgroundSize: sizes.join(", "),
+                      backgroundPosition: positions.join(", "),
+                      backgroundRepeat: repeats.join(", "),
+                    };
+                  }
                 }
               }
-              const title = miss ? (miss.todos ? "Nenhum curso ativo tem formador disponível" : "Sem disponibilidade: " + miss.cursos.map(c => c.codigo).join(", ")) : undefined;
+              const titleParts: string[] = [];
+              if (miss) {
+                if (miss.todos) titleParts.push("Nenhum curso ativo tem formador disponível");
+                else {
+                  if (miss.cursos.length) titleParts.push("Sem disponibilidade (dia todo): " + miss.cursos.map(c => c.codigo).join(", "));
+                  if (miss.manha.length) titleParts.push("Sem disponibilidade de manhã: " + miss.manha.map(c => c.codigo).join(", "));
+                  if (miss.tarde.length) titleParts.push("Sem disponibilidade de tarde: " + miss.tarde.map(c => c.codigo).join(", "));
+                }
+              }
+              const title = titleParts.length ? titleParts.join("\n") : undefined;
               const canCreate = mostrar === "disp" && !!cell;
               return (
               <div

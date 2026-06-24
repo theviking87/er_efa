@@ -462,6 +462,51 @@ export type Database = {
           },
         ]
       }
+      formando_pra: {
+        Row: {
+          created_at: string
+          curso_formando_id: string
+          curso_ufcd_id: string
+          id: string
+          nome: string
+          storage_path: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          curso_formando_id: string
+          curso_ufcd_id: string
+          id?: string
+          nome: string
+          storage_path: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          curso_formando_id?: string
+          curso_ufcd_id?: string
+          id?: string
+          nome?: string
+          storage_path?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formando_pra_curso_formando_id_fkey"
+            columns: ["curso_formando_id"]
+            isOneToOne: false
+            referencedRelation: "curso_formandos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "formando_pra_curso_ufcd_id_fkey"
+            columns: ["curso_ufcd_id"]
+            isOneToOne: false
+            referencedRelation: "curso_ufcds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formandos: {
         Row: {
           cc: string | null

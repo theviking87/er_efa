@@ -6,10 +6,12 @@ import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Pencil, Trash2 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { ArrowLeft, Pencil, Trash2, Download, Upload } from "lucide-react";
 import { EstadoFormandoBadge } from "./formandos.index";
 import { FormandoDialog } from "@/components/formando-dialog";
 import { fmtDate, INSCRICAO_ESTADO_LABEL } from "@/lib/format";
+import { compareUfcdCodigo } from "@/lib/utils";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -89,6 +91,7 @@ function FormandoDetail() {
         <TabsList>
           <TabsTrigger value="dados">Dados</TabsTrigger>
           <TabsTrigger value="inscricoes">Inscrições</TabsTrigger>
+          <TabsTrigger value="pra">PRA</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados">
@@ -129,6 +132,18 @@ function FormandoDetail() {
             )}
           </CardContent></Card>
         </TabsContent>
+
+        <TabsContent value="pra">
+          <Card><CardContent className="p-6 space-y-6">
+            {q.data.inscricoes.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-8">Sem inscrições. Os PRA aparecem aqui após inscrever o formando num curso.</div>
+            ) : (
+              q.data.inscricoes.map((i: any) => (
+                <PraCurso key={i.id} cursoFormandoId={i.id} curso={i.curso} />
+              ))
+            )}
+          </CardContent></Card>
+        </TabsContent>
       </Tabs>
 
       <FormandoDialog open={editing} onOpenChange={setEditing} initial={f as any} />
@@ -141,6 +156,128 @@ function Field({ label, value }: { label: string; value?: string | null }) {
     <div>
       <div className="text-xs uppercase tracking-wide text-muted-foreground">{label}</div>
       <div className="mt-0.5">{value || <span className="text-muted-foreground">—</span>}</div>
+    </div>
+  );
+}
+
+function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: { id: string; nome: string; codigo: string } }) {
+  const qc = useQueryClient();
+  const q = useQuery({
+    queryKey: ["pra-curso", cursoFormandoId],
+    queryFn: async () => {
+      const [cu, pra] = await Promise.all([
+        supabase.from("curso_ufcds")
+          .select("id, ufcd:ufcds(id, codigo, designacao)")
+          .eq("curso_id", curso.id),
+        supabase.from("formando_pra" as any)
+          .select("id, curso_ufcd_id, nome, storage_path")
+          .eq("curso_formando_id", cursoFormandoId),
+      ]);
+      const praMap = new Map<string, any>();
+      ((pra.data ?? []) as any[]).forEach((p) => praMap.set(p.curso_ufcd_id, p));
+      return (cu.data ?? [])
+        .map((u: any) => ({ ...u, pra: praMap.get(u.id) ?? null }))
+        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
+    },
+  });
+
+  async function upload(cursoUfcdId: string, file: File) {
+    const path = `${cursoFormandoId}/${cursoUfcdId}/${Date.now()}_${file.name}`;
+    const up = await supabase.storage.from("formando-pra").upload(path, file);
+    if (up.error) return toast.error(up.error.message);
+    const { error } = await supabase.from("formando_pra" as any).upsert(
+      { curso_formando_id: cursoFormandoId, curso_ufcd_id: cursoUfcdId, nome: file.name, storage_path: path } as any,
+      { onConflict: "curso_formando_id,curso_ufcd_id" } as any,
+    );
+    if (error) return toast.error(error.message);
+    toast.success("PRA carregado");
+    qc.invalidateQueries({ queryKey: ["pra-curso", cursoFormandoId] });
+  }
+
+  async function download(p: any) {
+    const { data, error } = await supabase.storage.from("formando-pra").createSignedUrl(p.storage_path, 60);
+    if (error || !data) return toast.error("Erro a abrir documento");
+    window.open(data.signedUrl, "_blank");
+  }
+
+  async function remove(p: any) {
+    await supabase.storage.from("formando-pra").remove([p.storage_path]);
+    await supabase.from("formando_pra" as any).delete().eq("id", p.id);
+    qc.invalidateQueries({ queryKey: ["pra-curso", cursoFormandoId] });
+  }
+
+  const ufcds = q.data ?? [];
+  const comDoc = ufcds.filter((u: any) => u.pra).length;
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Link to="/cursos/$id" params={{ id: curso.id }} className="font-medium hover:underline">
+          {curso.codigo} — {curso.nome}
+        </Link>
+        <div className="text-xs text-muted-foreground">{comDoc} / {ufcds.length} PRA carregados</div>
+      </div>
+      {ufcds.length === 0 ? (
+        <div className="text-xs text-muted-foreground italic">Sem UFCD atribuídas a este curso.</div>
+      ) : (
+        <div className="space-y-1.5">
+          {ufcds.map((u: any) => {
+            const hasDoc = !!u.pra;
+            return (
+              <div
+                key={u.id}
+                className={
+                  "rounded-md border px-3 py-2 flex items-center gap-3 text-sm transition-colors " +
+                  (hasDoc
+                    ? "bg-green-500/10 border-green-500/40"
+                    : "bg-red-500/10 border-red-500/40")
+                }
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-mono text-xs text-muted-foreground">{u.ufcd?.codigo}</span>
+                    <span className="truncate">{u.ufcd?.designacao}</span>
+                  </div>
+                  {hasDoc && (
+                    <div className="text-xs text-muted-foreground truncate mt-0.5">{u.pra.nome}</div>
+                  )}
+                </div>
+                {hasDoc ? (
+                  <>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => download(u.pra)}>
+                      <Download className="size-3.5" />
+                    </Button>
+                    <Button type="button" variant="ghost" size="sm" onClick={() => remove(u.pra)}>
+                      <Trash2 className="size-3.5" />
+                    </Button>
+                    <label className="cursor-pointer">
+                      <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border hover:bg-muted">
+                        <Upload className="size-3.5" /> Substituir
+                      </span>
+                      <input
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(u.id, f); e.target.value = ""; }}
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <label className="cursor-pointer">
+                    <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border hover:bg-background">
+                      <Upload className="size-3.5" /> Carregar PRA
+                    </span>
+                    <Input
+                      type="file"
+                      className="hidden"
+                      onChange={(e) => { const f = e.target.files?.[0]; if (f) upload(u.id, f); e.target.value = ""; }}
+                    />
+                  </label>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

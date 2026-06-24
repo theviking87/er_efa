@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, Upload, Users } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, Upload, Users, FileText } from "lucide-react";
 import { exportSigoCurso, exportFaltasCurso } from "@/lib/exports";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -175,11 +175,33 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
     qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
   }
 
+  function imprimirSemFormador() {
+    const lista = (data.data ?? []).filter((u: any) => (u.formadores ?? []).length === 0);
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>UFCD sem formador</title>
+      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#111}h1{font-size:16px;margin:0 0 4px}h2{font-size:12px;font-weight:normal;color:#555;margin:0 0 16px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px 8px;text-align:left}th{background:#eee}</style>
+      </head><body>
+      <h1>UFCD sem formador atribuído</h1>
+      <h2>Total: ${lista.length} UFCD${lista.length === 1 ? "" : "s"}</h2>
+      <table><thead><tr><th style="width:90px">Código</th><th>Designação</th><th style="width:70px;text-align:right">Horas</th></tr></thead>
+      <tbody>${lista.length === 0
+        ? '<tr><td colspan="3" style="text-align:center;color:#666">Todas as UFCD têm formador atribuído.</td></tr>'
+        : lista.map((u: any) => `<tr><td>${u.ufcd?.codigo ?? ""}</td><td>${u.ufcd?.designacao ?? ""}</td><td style="text-align:right">${u.horas_totais}h</td></tr>`).join("")}
+      </tbody></table>
+      <script>window.onload=()=>setTimeout(()=>window.print(),100)</script>
+      </body></html>`;
+    const w = window.open("", "_blank");
+    if (!w) return toast.error("Bloqueado pelo navegador");
+    w.document.write(html); w.document.close();
+  }
+
   return (
     <Card><CardContent className="p-6 space-y-4">
-      <div className="flex justify-between items-center">
+      <div className="flex justify-between items-center gap-2 flex-wrap">
         <div className="text-sm text-muted-foreground">{data.data?.length ?? 0} UFCD atribuídas · {fmtHoras((data.data ?? []).reduce((a: number, u: any) => a + Number(u.horas_totais ?? 0), 0))} totais</div>
-        <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={imprimirSemFormador}><FileText className="size-4" /> UFCD sem formador</Button>
+          <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
+        </div>
       </div>
       {(data.data?.length ?? 0) === 0 && <div className="text-sm text-muted-foreground text-center py-8">Sem UFCD atribuídas. Atribua a primeira.</div>}
       <div className="space-y-2">
@@ -231,6 +253,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
       <AtribuirUfcdDialog open={open} onOpenChange={setOpen} cursoId={cursoId} onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })} />
       <GerirFormadoresUfcdDialog
         info={manageUfcd}
+        cursoId={cursoId}
         onOpenChange={(v) => { if (!v) setManageUfcd(null); }}
         onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })}
       />
@@ -239,9 +262,10 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
 }
 
 function GerirFormadoresUfcdDialog({
-  info, onOpenChange, onSaved,
+  info, cursoId, onOpenChange, onSaved,
 }: {
   info: { cursoUfcdId: string; ufcdId: string; codigo: string; designacao: string; assigned: string[] } | null;
+  cursoId: string;
   onOpenChange: (v: boolean) => void;
   onSaved: () => void;
 }) {
@@ -259,6 +283,22 @@ function GerirFormadoresUfcdDialog({
       if (ids.length === 0) return [];
       const { data } = await supabase.from("formadores").select("id, nome, cor, estado").in("id", ids).eq("estado", "ativo").order("nome");
       return data ?? [];
+    },
+  });
+
+  const horasNoCurso = useQuery({
+    queryKey: ["form-horas-curso", cursoId],
+    enabled: !!info,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("curso_ufcd_formadores")
+        .select("formador_id, curso_ufcd:curso_ufcds!inner(curso_id, horas_totais)")
+        .eq("curso_ufcd.curso_id", cursoId);
+      const m = new Map<string, number>();
+      ((data ?? []) as any[]).forEach((r) => {
+        m.set(r.formador_id, (m.get(r.formador_id) ?? 0) + Number(r.curso_ufcd?.horas_totais ?? 0));
+      });
+      return m;
     },
   });
 
@@ -304,16 +344,20 @@ function GerirFormadoresUfcdDialog({
                 Nenhum formador ativo com competência para esta UFCD. Atribua a competência na área do formador.
               </div>
             )}
-            {(candidatos.data ?? []).map((f: any) => (
-              <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
-                <Checkbox
-                  checked={selected.includes(f.id)}
-                  onCheckedChange={(c) => setSelected(c ? [...selected, f.id] : selected.filter((x) => x !== f.id))}
-                />
-                <span className="size-2 rounded-full" style={{ background: f.cor }} />
-                {f.nome}
-              </label>
-            ))}
+            {(candidatos.data ?? []).map((f: any) => {
+              const h = horasNoCurso.data?.get(f.id) ?? 0;
+              return (
+                <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
+                  <Checkbox
+                    checked={selected.includes(f.id)}
+                    onCheckedChange={(c) => setSelected(c ? [...selected, f.id] : selected.filter((x) => x !== f.id))}
+                  />
+                  <span className="size-2 rounded-full" style={{ background: f.cor }} />
+                  <span className="flex-1 truncate">{f.nome}</span>
+                  <Badge variant="secondary" className="text-[10px] tabular-nums">{fmtHoras(h)} no curso</Badge>
+                </label>
+              );
+            })}
           </div>
         </div>
         <DialogFooter>
@@ -341,6 +385,21 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
       if (ids.length === 0) return [];
       const { data } = await supabase.from("formadores").select("id, nome, cor, estado").eq("estado", "ativo").in("id", ids).order("nome");
       return data ?? [];
+    },
+  });
+
+  const horasNoCurso = useQuery({
+    queryKey: ["form-horas-curso", cursoId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("curso_ufcd_formadores")
+        .select("formador_id, curso_ufcd:curso_ufcds!inner(curso_id, horas_totais)")
+        .eq("curso_ufcd.curso_id", cursoId);
+      const m = new Map<string, number>();
+      ((data ?? []) as any[]).forEach((r) => {
+        m.set(r.formador_id, (m.get(r.formador_id) ?? 0) + Number(r.curso_ufcd?.horas_totais ?? 0));
+      });
+      return m;
     },
   });
 
@@ -396,13 +455,17 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
               <div className="border rounded-md max-h-40 overflow-y-auto p-2 space-y-1">
                 {!ufcdId && <div className="text-xs text-muted-foreground px-1">Escolha primeiro uma UFCD.</div>}
                 {ufcdId && (formadoresList.data ?? []).length === 0 && <div className="text-xs text-muted-foreground px-1">Nenhum formador ativo com competência para esta UFCD.</div>}
-                {(formadoresList.data ?? []).map((f: any) => (
-                  <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
-                    <Checkbox checked={formadores.includes(f.id)} onCheckedChange={(c) => setFormadores(c ? [...formadores, f.id] : formadores.filter(x => x !== f.id))} />
-                    <span className="size-2 rounded-full" style={{ background: f.cor }} />
-                    {f.nome}
-                  </label>
-                ))}
+                {(formadoresList.data ?? []).map((f: any) => {
+                  const h = horasNoCurso.data?.get(f.id) ?? 0;
+                  return (
+                    <label key={f.id} className="flex items-center gap-2 text-sm px-2 py-1 rounded hover:bg-muted cursor-pointer">
+                      <Checkbox checked={formadores.includes(f.id)} onCheckedChange={(c) => setFormadores(c ? [...formadores, f.id] : formadores.filter(x => x !== f.id))} />
+                      <span className="size-2 rounded-full" style={{ background: f.cor }} />
+                      <span className="flex-1 truncate">{f.nome}</span>
+                      <Badge variant="secondary" className="text-[10px] tabular-nums">{fmtHoras(h)} no curso</Badge>
+                    </label>
+                  );
+                })}
               </div>
             </div>
           </div>

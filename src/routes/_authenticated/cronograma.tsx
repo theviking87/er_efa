@@ -917,14 +917,17 @@ function CreateDispDialog({
   data,
   formadores,
   defaultFormadorId,
+  editing,
   onClose,
 }: {
   data: string | null;
   formadores: any[];
   defaultFormadorId: string | null;
+  editing?: DispSlot | null;
   onClose: () => void;
 }) {
   const qc = useQueryClient();
+  const isEdit = !!editing;
   const [formadorId, setFormadorId] = useState<string>("");
   const [tipo, setTipo] = useState<"disponivel" | "indisponivel">("disponivel");
   const [horaInicio, setHoraInicio] = useState("09:00");
@@ -942,7 +945,15 @@ function CreateDispDialog({
   }
 
   useMemo(() => {
-    if (data) {
+    if (editing) {
+      setFormadorId(editing.formador_id);
+      setTipo(editing.tipo);
+      setHoraInicio(editing.hora_inicio?.slice(0, 5) ?? "09:00");
+      setHoraFim(editing.hora_fim?.slice(0, 5) ?? "13:00");
+      setCursoId(editing.curso_id ?? "");
+      setNotas(editing.notas ?? "");
+      setPeriodo("custom");
+    } else if (data) {
       setFormadorId(defaultFormadorId ?? "");
       setTipo("disponivel");
       setHoraInicio("09:00");
@@ -951,7 +962,7 @@ function CreateDispDialog({
       setNotas("");
       setPeriodo("custom");
     }
-  }, [data]);
+  }, [data, editing?.id]);
 
 
 
@@ -988,20 +999,22 @@ function CreateDispDialog({
 
 
     setSaving(true);
-    const { error } = await supabase.from("formador_disponibilidades" as any).insert({
+    const payload = {
       formador_id: formadorId,
       data,
       hora_inicio: hi,
       hora_fim: hf,
       tipo,
       notas: notas.trim() || null,
-
       curso_id: cursoId || null,
-    } as never);
+    };
+    const { error } = isEdit
+      ? await supabase.from("formador_disponibilidades" as any).update(payload as never).eq("id", editing!.id)
+      : await supabase.from("formador_disponibilidades" as any).insert(payload as never);
 
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Disponibilidade lançada");
+    toast.success(isEdit ? "Disponibilidade atualizada" : "Disponibilidade lançada");
     qc.invalidateQueries({ queryKey: ["disp-geral"] });
     qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
     onClose();

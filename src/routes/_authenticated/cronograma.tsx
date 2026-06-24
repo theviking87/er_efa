@@ -83,7 +83,6 @@ function CronogramaGeral() {
 
   const cursosAtivos = useQuery({
     queryKey: ["cursos-ativos-mes", inicioMes, fimMes],
-    enabled: isProximoMes,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cursos")
@@ -102,6 +101,7 @@ function CronogramaGeral() {
       }));
     },
   });
+
 
   const formadores = useQuery({
     queryKey: ["formadores-todos"],
@@ -170,6 +170,8 @@ function CronogramaGeral() {
     }
     if (mostrar !== "sessoes") {
       (disp.data ?? []).forEach((d: any) => {
+        // Quando filtrado por curso, mostrar apenas disponibilidades associadas a esse curso.
+        if (cursoFiltro && d.curso_id !== cursoFiltro) return;
         const slot: DispSlot = {
           kind: "disp",
           id: d.id,
@@ -192,7 +194,8 @@ function CronogramaGeral() {
     // sort each day by hora_inicio
     for (const arr of m.values()) arr.sort((a, b) => (a.hora_inicio ?? "").localeCompare(b.hora_inicio ?? ""));
     return m;
-  }, [sessoes.data, disp.data, mostrar]);
+  }, [sessoes.data, disp.data, mostrar, cursoFiltro]);
+
 
   const grid = useMemo(() => {
     const first = new Date(mes.ano, mes.mes, 1);
@@ -229,7 +232,7 @@ function CronogramaGeral() {
   // Para cada dia: lista de cursos ativos sem qualquer formador disponível
   const dayMissing = useMemo(() => {
     const r = new Map<string, { todos: boolean; cursos: { id: string; codigo: string; cor: string }[] }>();
-    if (!isProximoMes) return r;
+    if (mostrar !== "disp") return r;
     const cursos = cursosComCor;
     if (cursos.length === 0) return r;
     for (const cell of grid) {
@@ -245,7 +248,8 @@ function CronogramaGeral() {
       });
     }
     return r;
-  }, [isProximoMes, cursosComCor, dispByDay, grid]);
+  }, [mostrar, cursosComCor, dispByDay, grid]);
+
 
   const totalSessoes = (sessoes.data ?? []).length;
   const totalHoras = (sessoes.data ?? []).reduce((acc, s: any) => acc + Number(s.horas), 0);
@@ -312,9 +316,9 @@ function CronogramaGeral() {
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground" /> Sessão</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
-          {isProximoMes && cursosComCor.length > 0 && (
+          {mostrar === "disp" && cursosComCor.length > 0 && (
             <>
-              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-red-500" /> Nenhum curso com disponibilidade</span>
+              <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-red-500" /> Sem disponibilidade para nenhum curso</span>
               {cursosComCor.map(c => (
                 <span key={c.id} className="inline-flex items-center gap-1.5">
                   <span className="size-2 rounded-sm" style={{ background: c.cor }} /> {c.codigo} sem disponibilidade
@@ -322,6 +326,7 @@ function CronogramaGeral() {
               ))}
             </>
           )}
+
         </div>
 
         <div className="border rounded-md overflow-hidden bg-card">

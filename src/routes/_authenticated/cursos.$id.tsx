@@ -946,6 +946,24 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     return rows;
   }, [resumoMes, cargaCurso.data]);
 
+  const formadoresPorCursoUfcd = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (cargaCurso.data ?? []).forEach((u: any) => {
+      m.set(
+        u.id,
+        new Set((u.formadores ?? []).map((ff: any) => ff.formador?.id).filter(Boolean)),
+      );
+    });
+    return m;
+  }, [cargaCurso.data]);
+
+  function sessaoSemFormadorAtribuido(s: any) {
+    const nome = String(s.formador?.nome ?? "").trim().toLowerCase();
+    const cursoUfcdId = s.curso_ufcd?.id ?? s.curso_ufcd_id;
+    const formadoresAtribuidos = cursoUfcdId ? formadoresPorCursoUfcd.get(cursoUfcdId) : undefined;
+    return !s.formador_id || !nome || nome.includes("falta") || nome.includes("sem formador") || nome.includes("por atribuir") || nome.includes("a definir") || nome.includes("não atribuído") || nome.includes("nao atribuido") || formadoresAtribuidos?.size === 0;
+  }
+
   // Build calendar grid (Mon first)
   const grid = useMemo(() => {
     const first = new Date(mes.ano, mes.mes, 1);
@@ -969,6 +987,34 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
   const totalMes = resumoMes.reduce((a, r) => a + r.horas, 0);
 
+  function imprimirCronograma() {
+    const node = document.getElementById("cronograma-print");
+    if (!node) return window.print();
+    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
+      .map((el) => el.outerHTML)
+      .join("\n");
+    const w = window.open("", "_blank");
+    if (!w) return toast.error("Bloqueado pelo navegador");
+    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Cronograma ${cursoCodigo}</title>${styles}
+      <style>
+        @page { size: A4 landscape; margin: 6mm; }
+        html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
+        #cronograma-print { display: block !important; position: static !important; inset: auto !important; width: 285mm !important; margin: 0 !important; padding: 0 !important; color: black !important; }
+        #cronograma-print, #cronograma-print * { visibility: visible !important; box-sizing: border-box !important; }
+        #cronograma-print > .cronograma-page { height: 186mm !important; max-height: 186mm !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+        #cronograma-print > .cronograma-page > .cronograma-header { flex: 0 0 auto !important; }
+        #cronograma-print > .cronograma-page > .cronograma-weekdays { flex: 0 0 auto !important; grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important; }
+        #cronograma-print > .cronograma-page > .cronograma-grid { flex: 1 1 auto !important; min-height: 0 !important; grid-auto-rows: 1fr !important; grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important; }
+        #cronograma-print > .cronograma-page .cronograma-cell { min-height: 0 !important; overflow: hidden !important; }
+        #cronograma-print > .horas-page { height: 186mm !important; max-height: 186mm !important; overflow: hidden !important; page-break-before: auto !important; break-before: auto !important; page-break-after: avoid !important; break-after: avoid !important; page-break-inside: avoid !important; break-inside: avoid !important; font-size: 8px !important; line-height: 1.1 !important; }
+        #cronograma-print > .horas-page th, #cronograma-print > .horas-page td { padding: 1px 2px !important; line-height: 1.1 !important; }
+        #cronograma-print > .horas-page table { page-break-inside: auto !important; break-inside: auto !important; }
+        #cronograma-print > .horas-page tr { page-break-inside: avoid !important; break-inside: avoid !important; }
+        .text-red-600 { color: #dc2626 !important; font-weight: 700 !important; }
+      </style></head><body><div id="cronograma-print"><div class="cronograma-page">${node.querySelector(".cronograma-page")?.innerHTML ?? ""}</div><div class="horas-page text-[10px]">${node.querySelector(".horas-page")?.innerHTML ?? ""}</div></div><script>window.onload=()=>setTimeout(()=>{window.focus();window.print();},250)<\/script></body></html>`);
+    w.document.close();
+  }
+
 
 
 
@@ -990,7 +1036,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
               </Badge>
             )}
           </Button>
-          <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4" /> Imprimir</Button>
+          <Button variant="outline" size="sm" onClick={imprimirCronograma}><Printer className="size-4" /> Imprimir</Button>
           
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}><FileText className="size-4" /> Retroativos em massa</Button>
           <Button size="sm" onClick={() => { setDialogData(null); setDialogOpen(true); }}><Plus className="size-4" /> Nova sessão</Button>
@@ -1205,13 +1251,14 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                           linhas.push({ from: fmt(cur), to: fmt(nxt) });
                           cur = nxt;
                         }
+                        const semFormador = sessaoSemFormadorAtribuido(s);
                         return linhas.map((l, idx) => (
-                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
+                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${semFormador ? "#dc2626" : (s.formador?.cor || "#888")}`, paddingLeft: "3px" }}>
                             <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
                             {" "}
-                            {s.formador_id
-                              ? <>{s.formador?.nome} ({s.curso_ufcd?.ufcd?.codigo})</>
-                              : <span className="font-bold" style={{ color: "#dc2626" }}>em falta</span>}
+                            {!semFormador
+                              ? <>{s.formador.nome} ({s.curso_ufcd?.ufcd?.codigo})</>
+                              : <span className="font-bold text-red-600">em falta</span>}
                           </div>
                         ));
                       })}

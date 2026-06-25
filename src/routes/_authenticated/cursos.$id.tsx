@@ -760,8 +760,10 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       const arr = byDay.get(s.data) ?? []; arr.push(s); byDay.set(s.data, arr);
     });
     const conflitos: { data: string; sessoes: any[] }[] = [];
-    const incompletos: { data: string; horas: number; inicio: string; fim: string }[] = [];
+    const incompletos: { data: string; horas: number; falta: string }[] = [];
     const toMin = (t: string) => { const [h, m] = String(t).slice(0, 5).split(":").map(Number); return h * 60 + m; };
+    const MANHA_INI = 9 * 60, MANHA_FIM = 13 * 60;
+    const TARDE_INI = 14 * 60, TARDE_FIM = 17 * 60;
     Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b)).forEach(([data, sess]) => {
       // Conflitos: pares de sessões com intervalos sobrepostos
       const conf: any[] = [];
@@ -775,13 +777,23 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         }
       }
       if (conf.length) conflitos.push({ data, sessoes: conf });
-      // Dia incompleto: total < 7h ou não cobre 9:00-17:00
-      const inicio = sess.reduce((m: number, s: any) => Math.min(m, toMin(s.hora_inicio)), 24 * 60);
-      const fim = sess.reduce((m: number, s: any) => Math.max(m, toMin(s.hora_fim)), 0);
+      // Cobertura de manhã (9-13) e tarde (14-17): coberto se a união das sessões cobre o intervalo
+      const cobre = (ini: number, fim: number) => {
+        const ivs = sess.map((s: any) => [Math.max(ini, toMin(s.hora_inicio)), Math.min(fim, toMin(s.hora_fim))] as [number, number])
+          .filter(([a, b]) => b > a).sort((a, b) => a[0] - b[0]);
+        let cur = ini;
+        for (const [a, b] of ivs) {
+          if (a > cur) return false;
+          if (b > cur) cur = b;
+        }
+        return cur >= fim;
+      };
+      const manhaOk = cobre(MANHA_INI, MANHA_FIM);
+      const tardeOk = cobre(TARDE_INI, TARDE_FIM);
       const totalH = sess.reduce((a: number, s: any) => a + Number(s.horas ?? 0), 0);
-      if (totalH < 7 || inicio > 9 * 60 || fim < 17 * 60) {
-        const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}:${String(m % 60).padStart(2, "0")}`;
-        incompletos.push({ data, horas: totalH, inicio: fmt(inicio), fim: fmt(fim) });
+      if (!manhaOk || !tardeOk) {
+        const falta = !manhaOk && !tardeOk ? "Manhã + Tarde" : !manhaOk ? "Manhã (09:00–13:00)" : "Tarde (14:00–17:00)";
+        incompletos.push({ data, horas: totalH, falta });
       }
     });
     return { conflitos, incompletos, totalDias: byDay.size };
@@ -922,7 +934,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                   {analise.incompletos.map(d => (
                     <div key={d.data} className="flex items-center justify-between border rounded-md px-2 py-1.5 text-xs">
                       <span className="font-medium">{fmtDate(d.data)}</span>
-                      <span className="text-muted-foreground">{d.inicio}–{d.fim} · {fmtHoras(d.horas)}</span>
+                      <span className="text-muted-foreground">Falta: {d.falta} · {fmtHoras(d.horas)} ocupadas</span>
                     </div>
                   ))}
                 </div>

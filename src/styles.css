@@ -173,14 +173,14 @@
   #cronograma-print, #cronograma-print * { visibility: visible !important; }
   #cronograma-print { position: absolute; inset: 0; padding: 0; margin: 0; color: black !important; }
 
-  /* Página 1: cronograma forçado a caber numa única folha */
+  /* Página 1: cronograma forçado a caber numa única folha A4 landscape */
   #cronograma-print > .cronograma-page {
     page-break-after: always;
     break-after: page;
     page-break-inside: avoid;
     break-inside: avoid;
-    height: 100vh;
-    max-height: 100vh;
+    height: 194mm;
+    max-height: 194mm;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -195,13 +195,10 @@
     flex: 1 1 auto;
     min-height: 0;
     grid-auto-rows: 1fr;
-    page-break-inside: avoid;
-    break-inside: avoid;
   }
   #cronograma-print > .cronograma-page .cronograma-cell {
     min-height: 0;
-    page-break-inside: avoid;
-    break-inside: avoid;
+    overflow: hidden;
   }
 
   /* Página 2: gestão de horas */

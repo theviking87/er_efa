@@ -402,7 +402,19 @@ function CronogramaGeral() {
         if (ini < 1020 && fim > 840) cobreTarde = true;
         if (cobreManha && cobreTarde) break;
       }
+      // Sessões já marcadas para o curso contam como cobertura.
+      if (!(cobreManha && cobreTarde)) {
+        for (const s of (sessoes.data ?? []) as any[]) {
+          if (s.data !== cell.iso || s.curso_id !== cursoFiltro) continue;
+          const ini = toMin(s.hora_inicio);
+          const fim = toMin(s.hora_fim);
+          if (ini < 780 && fim > 540) cobreManha = true;
+          if (ini < 1020 && fim > 840) cobreTarde = true;
+          if (cobreManha && cobreTarde) break;
+        }
+      }
       if (cobreManha && cobreTarde) continue;
+
       let periodo = "Dia todo";
       if (cobreManha && !cobreTarde) periodo = "Tarde";
       else if (!cobreManha && cobreTarde) periodo = "Manhã";

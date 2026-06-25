@@ -152,6 +152,33 @@ function CronogramaGeral() {
     },
   });
 
+  const ferias = useQuery({
+    queryKey: ["curso-ferias-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("curso_ferias" as any)
+        .select("id, curso_id, data_inicio, data_fim, motivo, curso:cursos(id,codigo,nome)")
+        .order("data_inicio");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  // Map dia ISO -> Set<curso_id> de cursos em férias
+  const feriasByDay = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (ferias.data ?? []).forEach((f: any) => {
+      const di = new Date(f.data_inicio + "T00:00:00");
+      const df = new Date(f.data_fim + "T00:00:00");
+      for (let d = new Date(di); d <= df; d.setDate(d.getDate() + 1)) {
+        const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+        let s = m.get(iso);
+        if (!s) { s = new Set(); m.set(iso, s); }
+        s.add(f.curso_id);
+      }
+    });
+    return m;
+  }, [ferias.data]);
+
 
   const slotsByDay = useMemo(() => {
     const m = new Map<string, (DispSlot | SessaoSlot)[]>();

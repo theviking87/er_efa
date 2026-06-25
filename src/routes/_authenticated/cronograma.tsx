@@ -766,14 +766,25 @@ function CronogramaGeral() {
                   const tardeSlots = slots.filter((s: any) => (s.hora_inicio ?? "") >= "13:00");
                   const dow = weekdayFromIso(cell.iso);
                   const isUtil = dow !== 0 && dow !== 6;
+                  const feriasSet = feriasByDay.get(cell.iso);
+                  const feriasCursos = feriasSet
+                    ? (cursosTodos.data ?? []).filter((c: any) => feriasSet.has(c.id))
+                    : [];
+                  const emFerias = cursoFiltro ? feriasSet?.has(cursoFiltro) : (feriasCursos.length > 0);
                   const sc = sessoesCoverByDay.get(cell.iso) ?? { manha: false, tarde: false };
-                  const diaIncompleto = !!cursoFiltro && isUtil && !(sc.manha && sc.tarde);
+                  const diaIncompleto = !!cursoFiltro && isUtil && !emFerias && !(sc.manha && sc.tarde);
                   const semSessaoLabel = !sc.manha && !sc.tarde ? "sem sessão" : !sc.manha ? "sem sessão (manhã)" : "sem sessão (tarde)";
                   return (
                     <div className="flex flex-col gap-1 h-full min-h-[120px]">
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-xs text-muted-foreground">{cell.d}</span>
-                        {diaIncompleto && (
+                        {emFerias && (
+                          <span
+                            className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-sky-100 text-sky-800 border border-sky-300 inline-flex items-center gap-0.5"
+                            title={`Férias: ${feriasCursos.map((c: any) => c.codigo).join(", ") || "curso"}`}
+                          ><Palmtree className="size-2.5" /> Férias</span>
+                        )}
+                        {!emFerias && diaIncompleto && (
                           <span
                             className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-100 text-amber-800 border border-amber-300"
                             title="Dia sem cobertura completa de sessões para o curso filtrado"

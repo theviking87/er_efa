@@ -399,8 +399,14 @@ function CronogramaGeral() {
       if (hf > "13:00") cur.tarde = true;
       m.set(x.data, cur);
     });
+    // Dias de férias do curso filtrado: considerar coberto (dia inteiro)
+    if (cursoFiltro) {
+      for (const [iso, set] of feriasByDay.entries()) {
+        if (set.has(cursoFiltro)) m.set(iso, { manha: true, tarde: true });
+      }
+    }
     return m;
-  }, [sessoes.data, cursoFiltro]);
+  }, [sessoes.data, cursoFiltro, feriasByDay]);
 
 
 

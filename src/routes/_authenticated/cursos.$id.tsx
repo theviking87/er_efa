@@ -1070,13 +1070,24 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           const tw = doc.getTextWidth(label) + 4;
           const th = 5.5;
           const bx = x + (cellW - tw) / 2;
-          const by = y + (cellH - th) / 2 + 1;
+          // Posição vertical conforme o período em falta
+          let by: number;
+          if (!coverManha && coverTarde) {
+            // Falta manhã → caixa em cima (logo após o número do dia)
+            by = y + 10;
+          } else if (coverManha && !coverTarde) {
+            // Falta tarde → caixa em baixo
+            by = y + cellH - th - 1.5;
+          } else {
+            // Dia todo → meio
+            by = y + (cellH - th) / 2;
+          }
           doc.setFillColor(254, 226, 226);
           doc.setDrawColor(220, 38, 38);
           doc.setLineWidth(0.4);
-          doc.rect(bx, by - th + 1.5, tw, th, "FD");
+          doc.rect(bx, by, tw, th, "FD");
           doc.setTextColor(153, 27, 27);
-          doc.text(label, x + cellW / 2, by + 1.5, { align: "center" });
+          doc.text(label, x + cellW / 2, by + th - 1.5, { align: "center" });
           doc.setDrawColor(180); doc.setLineWidth(0.2);
         }
       }

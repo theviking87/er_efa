@@ -355,15 +355,21 @@ function CronogramaGeral() {
     return matched;
   }, [disp.data, cursosAtivos.data]);
 
-  // Dias com sessões atribuídas (apenas relevante quando há curso filtrado).
-  const diasComSessao = useMemo(() => {
-    const s = new Set<string>();
+  // Cobertura de sessões por dia (manhã/tarde) para o curso filtrado.
+  const sessoesCoverByDay = useMemo(() => {
+    const m = new Map<string, { manha: boolean; tarde: boolean }>();
     (sessoes.data ?? []).forEach((x: any) => {
       if (cursoFiltro && x.curso_id !== cursoFiltro) return;
-      s.add(x.data);
+      const hi = x.hora_inicio ?? "";
+      const hf = x.hora_fim ?? "";
+      const cur = m.get(x.data) ?? { manha: false, tarde: false };
+      if (hi < "13:00") cur.manha = true;
+      if (hf > "13:00") cur.tarde = true;
+      m.set(x.data, cur);
     });
-    return s;
+    return m;
   }, [sessoes.data, cursoFiltro]);
+
 
 
 

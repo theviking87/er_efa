@@ -538,6 +538,10 @@ function CronogramaGeral() {
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm ring-2 ring-amber-500" /> Disponibilidade sobreposta (mesmo curso, &gt;1 formador)</span>
+          {cursoFiltro && (
+            <span className="inline-flex items-center gap-1.5"><span className="text-[9px] font-semibold uppercase px-1 rounded bg-amber-100 text-amber-800 border border-amber-300">sem sessão</span> Dia útil sem sessão atribuída ao curso</span>
+          )}
+
           {mostrar === "disp" && cursosComCor.length > 0 && (
             <>
 

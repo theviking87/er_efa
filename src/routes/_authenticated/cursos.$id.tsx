@@ -24,6 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({

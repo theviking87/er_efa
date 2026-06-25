@@ -809,9 +809,28 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const toMin = (t: string) => { const [h, m] = String(t).slice(0, 5).split(":").map(Number); return h * 60 + m; };
     const MANHA_INI = 9 * 60, MANHA_FIM = 13 * 60;
     const TARDE_INI = 14 * 60, TARDE_FIM = 17 * 60;
-    Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b)).forEach(([data, sess]) => {
-      if (feriasDias.has(data)) return; // ignorar dias de férias do curso
-      // Conflitos: pares de sessões com intervalos sobrepostos
+    const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
+    // Construir conjunto de dias a analisar: todos os dias úteis dos meses que têm sessões
+    const mesesComSessao = new Set<string>();
+    Array.from(byDay.keys()).forEach(data => mesesComSessao.add(data.slice(0, 7)));
+    const diasAnalise = new Set<string>(byDay.keys());
+    mesesComSessao.forEach(ym => {
+      const [y, m] = ym.split("-").map(Number);
+      const last = new Date(y, m, 0).getDate();
+      for (let d = 1; d <= last; d++) {
+        const dt = new Date(y, m - 1, d);
+        const dow = dt.getDay();
+        if (dow === 0 || dow === 6) continue;
+        diasAnalise.add(isoOf(dt));
+      }
+    });
+
+    Array.from(diasAnalise).sort().forEach(data => {
+      if (feriasDias.has(data)) return;
+      if (feriadoNome(data)) return;
+      const sess = byDay.get(data) ?? [];
+      // Conflitos
       const conf: any[] = [];
       for (let i = 0; i < sess.length; i++) {
         for (let j = i + 1; j < sess.length; j++) {
@@ -823,7 +842,6 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         }
       }
       if (conf.length) conflitos.push({ data, sessoes: conf });
-      // Cobertura de manhã (9-13) e tarde (14-17): coberto se a união das sessões cobre o intervalo
       const cobre = (ini: number, fim: number) => {
         const ivs = sess.map((s: any) => [Math.max(ini, toMin(s.hora_inicio)), Math.min(fim, toMin(s.hora_fim))] as [number, number])
           .filter(([a, b]) => b > a).sort((a, b) => a[0] - b[0]);
@@ -838,12 +856,13 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       const tardeOk = cobre(TARDE_INI, TARDE_FIM);
       const totalH = sess.reduce((a: number, s: any) => a + Number(s.horas ?? 0), 0);
       if (!manhaOk || !tardeOk) {
-        const falta = !manhaOk && !tardeOk ? "Manhã + Tarde" : !manhaOk ? "Manhã (09:00–13:00)" : "Tarde (14:00–17:00)";
+        const falta = !manhaOk && !tardeOk ? "Dia inteiro (sem sessões)" : !manhaOk ? "Manhã (09:00–13:00)" : "Tarde (14:00–17:00)";
         incompletos.push({ data, horas: totalH, falta });
       }
     });
     return { conflitos, incompletos, totalDias: byDay.size };
   }, [todasSessoes.data, feriasDias]);
+
 
   const sessoesByDay = useMemo(() => {
     const m = new Map<string, any[]>();

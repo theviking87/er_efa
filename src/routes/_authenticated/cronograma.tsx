@@ -347,7 +347,7 @@ function CronogramaGeral() {
       });
     }
     return r;
-  }, [mostrar, cursosComCor, coverageByDay, grid]);
+  }, [mostrar, cursosComCor, coverageByDay, grid, feriasByDay]);
 
   // Disponibilidades sobrepostas: mesmo curso, mesmo dia, formadores diferentes, intervalos que se intersetam.
   const overlapDispIds = useMemo(() => {

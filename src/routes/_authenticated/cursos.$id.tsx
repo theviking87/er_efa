@@ -769,8 +769,26 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryKey: ["sessoes-todas", cursoId],
     queryFn: async () => {
       const { data, error } = await supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
         .eq("curso_id", cursoId).order("data").order("hora_inicio");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Sessões de OUTROS cursos para detectar conflitos do mesmo formador
+  const sessoesOutrosCursos = useQuery({
+    queryKey: ["sessoes-outros-cursos", cursoId, (todasSessoes.data ?? []).length],
+    enabled: (todasSessoes.data ?? []).length > 0,
+    queryFn: async () => {
+      const formIds = Array.from(new Set((todasSessoes.data ?? []).map((s: any) => s.formador_id).filter(Boolean)));
+      const datas = Array.from(new Set((todasSessoes.data ?? []).map((s: any) => s.data)));
+      if (formIds.length === 0 || datas.length === 0) return [];
+      const { data, error } = await supabase.from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, formador_id, curso_id, formador:formadores(id,nome,abreviatura), curso:cursos(codigo, nome), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+        .neq("curso_id", cursoId)
+        .in("formador_id", formIds as string[])
+        .in("data", datas);
       if (error) throw error;
       return data ?? [];
     },

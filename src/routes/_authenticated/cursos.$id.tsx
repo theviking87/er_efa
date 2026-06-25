@@ -1279,7 +1279,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                             >
                               <span className="tabular-nums font-semibold">{slot.from}-{slot.to}</span>{" "}
                               {!semFormador
-                                ? <>{sessao.formador.nome} ({sessao.curso_ufcd?.ufcd?.codigo})</>
+                                ? <>{formadorLabel(sessao.formador)} ({sessao.curso_ufcd?.ufcd?.codigo})</>
                                 : <span className="font-bold text-red-600">em falta</span>}
                             </div>
                           );

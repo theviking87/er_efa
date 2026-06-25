@@ -189,10 +189,10 @@
   #cronograma-print > .cronograma-page > .cronograma-header { flex: 0 0 auto; }
   #cronograma-print > .cronograma-page > .cronograma-weekdays {
     flex: 0 0 auto;
-    grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important;
+    grid-template-columns: repeat(5, 1fr) !important;
   }
   #cronograma-print > .cronograma-page > .cronograma-grid {
-    grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important;
+    grid-template-columns: repeat(5, 1fr) !important;
     flex: 1 1 auto;
     min-height: 0;
     grid-auto-rows: 1fr;
@@ -202,6 +202,12 @@
     overflow: hidden;
   }
   #cronograma-print > .cronograma-page .cronograma-cell > * { min-height: 0; }
+  #cronograma-print > .cronograma-page .cronograma-session-line {
+    font-size: 7px !important;
+    line-height: 1.03 !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+  }
   #cronograma-print > .cronograma-page .text-red-600 { color: #dc2626 !important; font-weight: 700 !important; }
 
   /* Página 2: gestão de horas */

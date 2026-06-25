@@ -502,6 +502,15 @@ function CronogramaGeral() {
             >
               <FileWarning className="size-4 mr-1" />Dias sem disponibilidade
             </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => setCreateDate(ymdLocal(new Date()))}
+              title="Lançar disponibilidade"
+            >
+              <CalendarPlus className="size-4 mr-1" />Lançar disponibilidade
+            </Button>
+
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <select

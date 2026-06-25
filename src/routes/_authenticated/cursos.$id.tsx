@@ -1207,7 +1207,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                         }
                         const semForm = !s.formador_id;
                         return linhas.map((l, idx) => (
-                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${semForm ? "#dc2626" : (s.formador?.cor || "#888")}`, paddingLeft: "3px" }}>
+                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
                             <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
                             {" "}
                             {semForm ? (

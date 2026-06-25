@@ -964,15 +964,6 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     return !s.formador_id || !nome || nome.includes("falta") || nome.includes("sem formador") || nome.includes("por atribuir") || nome.includes("a definir") || nome.includes("não atribuído") || nome.includes("nao atribuido") || formadoresAtribuidos?.size === 0 || (formadoresAtribuidos !== undefined && !!s.formador_id && !formadoresAtribuidos.has(s.formador_id));
   }
 
-  const printWeeks = useMemo(() => {
-    const weeks: ({ d: number; iso: string } | null)[][] = [];
-    for (let i = 0; i < grid.length; i += 7) {
-      const weekdays = grid.slice(i, i + 5);
-      if (weekdays.some(Boolean)) weeks.push(weekdays);
-    }
-    return weeks;
-  }, [grid]);
-
   // Build calendar grid (Mon first)
   const grid = useMemo(() => {
     const first = new Date(mes.ano, mes.mes, 1);
@@ -987,6 +978,15 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     while (days.length % 7 !== 0) days.push(null);
     return days;
   }, [mes]);
+
+  const printWeeks = useMemo(() => {
+    const weeks: ({ d: number; iso: string } | null)[][] = [];
+    for (let i = 0; i < grid.length; i += 7) {
+      const weekdays = grid.slice(i, i + 5);
+      if (weekdays.some(Boolean)) weeks.push(weekdays);
+    }
+    return weeks;
+  }, [grid]);
 
 
 

@@ -355,6 +355,17 @@ function CronogramaGeral() {
     return matched;
   }, [disp.data, cursosAtivos.data]);
 
+  // Dias com sessões atribuídas (apenas relevante quando há curso filtrado).
+  const diasComSessao = useMemo(() => {
+    const s = new Set<string>();
+    (sessoes.data ?? []).forEach((x: any) => {
+      if (cursoFiltro && x.curso_id !== cursoFiltro) return;
+      s.add(x.data);
+    });
+    return s;
+  }, [sessoes.data, cursoFiltro]);
+
+
 
 
   const totalSessoes = (sessoes.data ?? []).length;

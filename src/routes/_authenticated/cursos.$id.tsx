@@ -1542,6 +1542,15 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     const horas = diffHoras(hi, hf);
     if (horas <= 0) return toast.error("Horas inválidas");
 
+    const { data: fer } = await supabase.from("curso_ferias" as any)
+      .select("data_inicio, data_fim, motivo").eq("curso_id", cursoId)
+      .lte("data_inicio", data).gte("data_fim", data);
+    if ((fer ?? []).length > 0) {
+      const f = (fer as any[])[0];
+      return toast.error("Curso em férias", { description: `${f.motivo || "Férias"} (${f.data_inicio} → ${f.data_fim})` });
+    }
+
+
     const { data: conflitos } = await supabase.from("sessoes")
       .select("hora_inicio, hora_fim").eq("formador_id", formadorId).eq("data", data);
     const hasConflict = (conflitos ?? []).some(s => !(hf <= s.hora_inicio || hi >= s.hora_fim));

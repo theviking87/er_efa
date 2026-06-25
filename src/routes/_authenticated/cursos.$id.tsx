@@ -810,6 +810,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const MANHA_INI = 9 * 60, MANHA_FIM = 13 * 60;
     const TARDE_INI = 14 * 60, TARDE_FIM = 17 * 60;
     Array.from(byDay.entries()).sort(([a], [b]) => a.localeCompare(b)).forEach(([data, sess]) => {
+      if (feriasDias.has(data)) return; // ignorar dias de férias do curso
       // Conflitos: pares de sessões com intervalos sobrepostos
       const conf: any[] = [];
       for (let i = 0; i < sess.length; i++) {

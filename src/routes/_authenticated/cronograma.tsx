@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 
-import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning, Palmtree } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso, localDateIso } from "@/lib/format";
@@ -63,6 +63,8 @@ function CronogramaGeral() {
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
   const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
+  const [feriasOpen, setFeriasOpen] = useState(false);
+
 
 
   useEffect(() => {
@@ -510,6 +512,15 @@ function CronogramaGeral() {
             >
               <CalendarPlus className="size-4 mr-1" />Lançar disponibilidade
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFeriasOpen(true)}
+              title="Lançar período de férias / inatividade do formador"
+            >
+              <Palmtree className="size-4 mr-1" />Lançar férias
+            </Button>
+
 
           </div>
           <div className="flex items-center gap-3 flex-wrap">
@@ -792,6 +803,13 @@ function CronogramaGeral() {
         slot={convertSlot}
         onClose={() => setConvertSlot(null)}
       />
+      <FeriasDialog
+        open={feriasOpen}
+        onClose={() => setFeriasOpen(false)}
+        formadores={(formadores.data ?? []) as any[]}
+        defaultFormadorId={formadorFiltro || null}
+      />
+
       <CreateDispDialog
         data={createDate}
         formadores={(formadores.data ?? []) as any[]}
@@ -1184,6 +1202,82 @@ function CreateDispDialog({
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
           <Button onClick={criar} disabled={saving || !formadorId}>{saving ? "A guardar…" : (isEdit ? "Guardar" : "Lançar")}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function FeriasDialog({ open, onClose, formadores, defaultFormadorId }: {
+  open: boolean;
+  onClose: () => void;
+  formadores: any[];
+  defaultFormadorId: string | null;
+}) {
+  const qc = useQueryClient();
+  const [formadorId, setFormadorId] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
+  const [motivo, setMotivo] = useState("Férias");
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      setFormadorId(defaultFormadorId ?? "");
+      setDataInicio("");
+      setDataFim("");
+      setMotivo("Férias");
+    }
+  }, [open, defaultFormadorId]);
+
+  async function guardar() {
+    if (!formadorId) return toast.error("Escolhe o formador");
+    if (!dataInicio || !dataFim) return toast.error("Datas obrigatórias");
+    if (dataFim < dataInicio) return toast.error("Data fim anterior ao início");
+    setSaving(true);
+    const { error } = await supabase.from("formador_inatividades").insert({
+      formador_id: formadorId,
+      data_inicio: dataInicio,
+      data_fim: dataFim,
+      motivo: motivo.trim() || "Férias",
+    });
+    setSaving(false);
+    if (error) return toast.error(error.message);
+    toast.success("Período de férias registado");
+    qc.invalidateQueries({ queryKey: ["formador", formadorId] });
+    onClose();
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Palmtree className="size-4" /> Lançar férias / inatividade</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label>Formador *</Label>
+            <Select value={formadorId} onValueChange={setFormadorId}>
+              <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
+              <SelectContent>
+                {formadores.map((f: any) => (
+                  <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1.5"><Label>Início *</Label><Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} /></div>
+            <div className="space-y-1.5"><Label>Fim *</Label><Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} /></div>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Motivo</Label>
+            <Input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Férias" />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={guardar} disabled={saving}>{saving ? "A guardar…" : "Lançar"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

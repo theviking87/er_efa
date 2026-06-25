@@ -697,14 +697,26 @@ function CronogramaGeral() {
                   const fullSlots = slots.filter((s: any) => (s.hora_inicio ?? "") < "13:00" && (s.hora_fim ?? "") > "13:00");
                   const manhaSlots = slots.filter((s: any) => (s.hora_fim ?? "") <= "13:00");
                   const tardeSlots = slots.filter((s: any) => (s.hora_inicio ?? "") >= "13:00");
+                  const dow = weekdayFromIso(cell.iso);
+                  const isUtil = dow !== 0 && dow !== 6;
+                  const semSessao = !!cursoFiltro && isUtil && !diasComSessao.has(cell.iso);
                   return (
                     <div className="flex flex-col gap-1 h-full min-h-[120px]">
-                      <div className="text-xs text-muted-foreground">{cell.d}</div>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className="text-xs text-muted-foreground">{cell.d}</span>
+                        {semSessao && (
+                          <span
+                            className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-100 text-amber-800 border border-amber-300"
+                            title="Sem sessão atribuída para o curso filtrado"
+                          >sem sessão</span>
+                        )}
+                      </div>
                       {fullSlots.length > 0 && <div className="space-y-1">{fullSlots.map(renderSlot)}</div>}
                       {manhaSlots.length > 0 && <div className="space-y-1">{manhaSlots.map(renderSlot)}</div>}
                       {tardeSlots.length > 0 && <div className="space-y-1 mt-auto">{tardeSlots.map(renderSlot)}</div>}
                     </div>
                   );
+
                 })()}
               </div>
             );})}

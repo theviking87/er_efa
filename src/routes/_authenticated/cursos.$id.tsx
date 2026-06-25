@@ -1137,9 +1137,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setAnaliseOpen(true)}>
             <AlertTriangle className="size-4" /> Análise
-            {(analise.conflitos.length + analise.incompletos.length) > 0 && (
+            {(analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length) > 0 && (
               <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
-                {analise.conflitos.length + analise.incompletos.length}
+                {analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length}
               </Badge>
             )}
           </Button>

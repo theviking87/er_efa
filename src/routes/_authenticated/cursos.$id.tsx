@@ -23,8 +23,6 @@ import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
-import jsPDF from "jspdf";
-import autoTable from "jspdf-autotable";
 
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
@@ -971,167 +969,6 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
   const totalMes = resumoMes.reduce((a, r) => a + r.horas, 0);
 
-  function imprimirCalendarioPdf() {
-    const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-    const pageW = doc.internal.pageSize.getWidth();
-    const pageH = doc.internal.pageSize.getHeight();
-    const margin = 8;
-
-    // Header
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, 0, pageW, 14, "F");
-    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text(`${cursoCodigo} — ${cursoNome}`, margin, 9);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text(`Cronograma · ${MONTH_NAMES[mes.mes]} ${mes.ano}`, pageW - margin, 9, { align: "right" });
-    doc.setTextColor(0, 0, 0);
-
-    // Weekday header
-    const cols = 7;
-    const gridTop = 18;
-    const gridBottom = pageH - 10;
-    const cellW = (pageW - margin * 2) / cols;
-    const weekdays = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado", "Domingo"];
-    doc.setFillColor(241, 245, 249);
-    doc.rect(margin, gridTop, cellW * cols, 5, "F");
-    doc.setFont("helvetica", "bold"); doc.setFontSize(8);
-    weekdays.forEach((w, i) => {
-      doc.text(w, margin + cellW * i + cellW / 2, gridTop + 3.5, { align: "center" });
-    });
-
-    const rows = Math.ceil(grid.length / 7);
-    const cellH = (gridBottom - (gridTop + 5)) / rows;
-    doc.setDrawColor(180);
-    doc.setLineWidth(0.2);
-
-    grid.forEach((cell, idx) => {
-      const r = Math.floor(idx / 7);
-      const c = idx % 7;
-      const x = margin + c * cellW;
-      const y = gridTop + 5 + r * cellH;
-      const feriado = cell ? feriadoNome(cell.iso) : null;
-      const feriasMotivo = cell ? feriasDias.get(cell.iso) : null;
-      const dow = cell ? weekdayFromIso(cell.iso) : 0;
-      const isUtil = cell ? dow !== 0 && dow !== 6 : false;
-      const sessDoDia = cell ? (sessoesByDay.get(cell.iso) ?? []) : [];
-
-      // Background
-      if (!cell) doc.setFillColor(245, 245, 245);
-      else if (feriasMotivo) doc.setFillColor(224, 242, 254);
-      else if (feriado) doc.setFillColor(229, 231, 235);
-      else doc.setFillColor(255, 255, 255);
-      doc.rect(x, y, cellW, cellH, "F");
-      doc.rect(x, y, cellW, cellH, "S");
-
-      if (!cell) return;
-
-      // Day number
-      doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.setTextColor(60, 60, 60);
-      doc.text(String(cell.d), x + 1.5, y + 4);
-
-      let cursorY = y + 8;
-
-      // Holiday / férias label
-      if (feriasMotivo) {
-        doc.setFont("helvetica", "bold"); doc.setFontSize(7); doc.setTextColor(7, 89, 133);
-        doc.text(`Férias: ${feriasMotivo}`, x + 1.5, cursorY); cursorY += 3;
-      } else if (feriado) {
-        doc.setFont("helvetica", "italic"); doc.setFontSize(7); doc.setTextColor(80, 80, 80);
-        const t = doc.splitTextToSize(feriado, cellW - 3);
-        doc.text(t, x + 1.5, cursorY); cursorY += 3 * t.length;
-      }
-
-      // Calcular cobertura manhã/tarde antes de desenhar para reservar espaço
-      let coverManha = false, coverTarde = false;
-      for (const s of sessDoDia) {
-        if ((s.hora_inicio ?? "") < "13:00") coverManha = true;
-        if ((s.hora_fim ?? "") > "13:00") coverTarde = true;
-      }
-      const showWarn = isUtil && !feriado && !feriasMotivo && !(coverManha && coverTarde);
-      const warnTh = 5;
-
-      const drawWarn = (by: number) => {
-        doc.setFont("helvetica", "bold"); doc.setFontSize(11);
-        doc.setTextColor(220, 38, 38);
-        doc.text("FALTA", x + cellW / 2, by, { align: "center" });
-        doc.setTextColor(0, 0, 0);
-      };
-
-      // FALTA manhã → texto no topo, antes das sessões
-      const missManha = showWarn && !coverManha;
-      const missTarde = showWarn && !coverTarde;
-      const missDia = missManha && missTarde;
-
-      if (missManha && !missDia) {
-        drawWarn(cursorY + warnTh - 1);
-        cursorY += warnTh + 2;
-      }
-
-      // Sessões (limite inferior reservado se houver caixa em baixo)
-      const sessLimit = (missTarde && !missDia) ? y + cellH - warnTh - 2 : y + cellH - 1;
-      doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(0, 0, 0);
-      sessDoDia.forEach((s: any) => {
-        if (cursorY > sessLimit - 1) return;
-        const hi = String(s.hora_inicio).slice(0, 5);
-        const hf = String(s.hora_fim).slice(0, 5);
-        const cod = s.curso_ufcd?.ufcd?.codigo ?? "—";
-        const form = s.formador?.abreviatura ?? s.formador?.nome ?? "";
-        const line = `${hi}–${hf} ${cod} · ${form}`;
-        const wrapped = doc.splitTextToSize(line, cellW - 3);
-        wrapped.forEach((ln: string) => {
-          if (cursorY > sessLimit) return;
-          doc.text(ln, x + 1.5, cursorY); cursorY += 2.8;
-        });
-      });
-
-      // FALTA tarde → texto em baixo; dia inteiro → centro
-      if (missDia) {
-        drawWarn(y + cellH / 2 + 1);
-      } else if (missTarde) {
-        drawWarn(y + cellH - 2);
-      }
-    });
-
-    // Footer
-    doc.setFontSize(7); doc.setTextColor(100);
-    doc.text(`Gerado em ${new Date().toLocaleString("pt-PT")}`, margin, pageH - 4);
-    const sem = (analise.incompletos ?? []).length;
-    doc.text(`Dias úteis sem sessão (no mês com sessões): ${sem}`, pageW - margin, pageH - 4, { align: "right" });
-
-    // PÁGINA 2 — Gestão de horas (mesmo conteúdo que printFooter)
-    doc.addPage("a4", "landscape");
-    doc.setFillColor(37, 99, 235);
-    doc.rect(0, 0, pageW, 14, "F");
-    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
-    doc.text(`${cursoCodigo} — ${cursoNome}`, margin, 9);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
-    doc.text(`Gestão de horas · ${MONTH_NAMES[mes.mes]} ${mes.ano}`, pageW - margin, 9, { align: "right" });
-    doc.setTextColor(0, 0, 0);
-
-    autoTable(doc, {
-      startY: 20,
-      margin: { left: margin, right: margin },
-      head: [["Formador", "UFCD", "Totais", "Realizadas", "Em falta"]],
-      body: printFooter.length === 0
-        ? [[{ content: "Sem atribuições neste mês.", colSpan: 5, styles: { halign: "center", textColor: 120 } } as any]]
-        : printFooter.map(r => [
-            r.formador,
-            r.ufcd,
-            fmtHoras(r.horas_totais),
-            fmtHoras(r.realizadas),
-            fmtHoras(r.em_falta),
-          ]),
-      styles: { font: "helvetica", fontSize: 9, cellPadding: 2 },
-      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
-      alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right", fontStyle: "bold" } },
-    });
-
-    doc.setFontSize(7); doc.setTextColor(100);
-    doc.text(`Gerado em ${new Date().toLocaleString("pt-PT")}`, margin, pageH - 4);
-
-    doc.save(`Calendario_${cursoCodigo}_${mes.ano}-${String(mes.mes+1).padStart(2,"0")}.pdf`);
-  }
 
 
 
@@ -1154,7 +991,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
             )}
           </Button>
           <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4" /> Imprimir</Button>
-          <Button variant="outline" size="sm" onClick={imprimirCalendarioPdf}><Printer className="size-4" /> Análise Sessões em falta</Button>
+          
           <Button variant="outline" size="sm" onClick={() => setBulkOpen(true)}><FileText className="size-4" /> Retroativos em massa</Button>
           <Button size="sm" onClick={() => { setDialogData(null); setDialogOpen(true); }}><Plus className="size-4" /> Nova sessão</Button>
         </div>
@@ -1368,10 +1205,16 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                           linhas.push({ from: fmt(cur), to: fmt(nxt) });
                           cur = nxt;
                         }
+                        const semForm = !s.formador_id;
                         return linhas.map((l, idx) => (
-                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
+                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${semForm ? "#dc2626" : (s.formador?.cor || "#888")}`, paddingLeft: "3px" }}>
                             <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
-                            {" "}{formadorLabel(s.formador)} ({s.curso_ufcd?.ufcd?.codigo})
+                            {" "}
+                            {semForm ? (
+                              <span className="font-bold text-red-600">FALTA</span>
+                            ) : (
+                              <>{formadorLabel(s.formador)} ({s.curso_ufcd?.ufcd?.codigo})</>
+                            )}
                           </div>
                         ));
                       })}

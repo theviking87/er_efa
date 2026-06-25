@@ -961,8 +961,17 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const nome = String(s.formador?.nome ?? "").trim().toLowerCase();
     const cursoUfcdId = s.curso_ufcd?.id ?? s.curso_ufcd_id;
     const formadoresAtribuidos = cursoUfcdId ? formadoresPorCursoUfcd.get(cursoUfcdId) : undefined;
-    return !s.formador_id || !nome || nome.includes("falta") || nome.includes("sem formador") || nome.includes("por atribuir") || nome.includes("a definir") || nome.includes("não atribuído") || nome.includes("nao atribuido") || formadoresAtribuidos?.size === 0;
+    return !s.formador_id || !nome || nome.includes("falta") || nome.includes("sem formador") || nome.includes("por atribuir") || nome.includes("a definir") || nome.includes("não atribuído") || nome.includes("nao atribuido") || formadoresAtribuidos?.size === 0 || (formadoresAtribuidos !== undefined && !!s.formador_id && !formadoresAtribuidos.has(s.formador_id));
   }
+
+  const printWeeks = useMemo(() => {
+    const weeks: ({ d: number; iso: string } | null)[][] = [];
+    for (let i = 0; i < grid.length; i += 7) {
+      const weekdays = grid.slice(i, i + 5);
+      if (weekdays.some(Boolean)) weeks.push(weekdays);
+    }
+    return weeks;
+  }, [grid]);
 
   // Build calendar grid (Mon first)
   const grid = useMemo(() => {
@@ -1003,9 +1012,10 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         #cronograma-print, #cronograma-print * { visibility: visible !important; box-sizing: border-box !important; }
         #cronograma-print > .cronograma-page { height: 186mm !important; max-height: 186mm !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; break-inside: avoid !important; }
         #cronograma-print > .cronograma-page > .cronograma-header { flex: 0 0 auto !important; }
-        #cronograma-print > .cronograma-page > .cronograma-weekdays { flex: 0 0 auto !important; grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important; }
-        #cronograma-print > .cronograma-page > .cronograma-grid { flex: 1 1 auto !important; min-height: 0 !important; grid-auto-rows: 1fr !important; grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important; }
+        #cronograma-print > .cronograma-page > .cronograma-weekdays { flex: 0 0 auto !important; grid-template-columns: repeat(5, 1fr) !important; }
+        #cronograma-print > .cronograma-page > .cronograma-grid { flex: 1 1 auto !important; min-height: 0 !important; grid-auto-rows: 1fr !important; grid-template-columns: repeat(5, 1fr) !important; }
         #cronograma-print > .cronograma-page .cronograma-cell { min-height: 0 !important; overflow: hidden !important; }
+        #cronograma-print > .cronograma-page .cronograma-session-line { font-size: 7px !important; line-height: 1.03 !important; white-space: nowrap !important; overflow: hidden !important; }
         #cronograma-print > .horas-page { height: 186mm !important; max-height: 186mm !important; overflow: hidden !important; page-break-before: auto !important; break-before: auto !important; page-break-after: avoid !important; break-after: avoid !important; page-break-inside: avoid !important; break-inside: avoid !important; font-size: 8px !important; line-height: 1.1 !important; }
         #cronograma-print > .horas-page th, #cronograma-print > .horas-page td { padding: 1px 2px !important; line-height: 1.1 !important; }
         #cronograma-print > .horas-page table { page-break-inside: auto !important; break-inside: auto !important; }
@@ -1221,16 +1231,16 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
             <div className="text-[10px] leading-tight">Cronograma · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
           </div>
 
-          <div className="cronograma-weekdays grid grid-cols-7 border border-gray-400 border-b-0 text-[8px]">
-            {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => (
+          <div className="cronograma-weekdays grid grid-cols-5 border border-gray-400 border-b-0 text-[8px]">
+            {["Seg","Ter","Qua","Qui","Sex"].map(d => (
               <div key={d} className="border-r border-gray-400 last:border-r-0 bg-gray-100 px-1 py-[1px] font-semibold text-center uppercase leading-none">{d}</div>
             ))}
           </div>
-          <div className="cronograma-grid grid grid-cols-7 border border-gray-400 text-[9px]">
-            {grid.map((cell, i) => {
+          <div className="cronograma-grid grid grid-cols-5 border border-gray-400 text-[8px]" style={{ gridTemplateRows: `repeat(${printWeeks.length}, minmax(0, 1fr))` }}>
+            {printWeeks.flat().map((cell, i) => {
               const feriado = cell ? feriadoNome(cell.iso) : null;
               return (
-              <div key={i} className={`cronograma-cell border-r border-b border-gray-300 last:border-r-0 p-1 align-top overflow-hidden ${feriado ? "bg-gray-200" : ""}`} style={{ borderRight: (i % 7 === 6) ? "none" : undefined }}>
+              <div key={i} className={`cronograma-cell border-r border-b border-gray-300 last:border-r-0 p-0.5 align-top overflow-hidden ${feriado ? "bg-gray-200" : ""}`} style={{ borderRight: (i % 5 === 4) ? "none" : undefined }}>
                 {cell && (
                   <>
                     <div className="text-[10px] font-semibold mb-0.5 leading-none">{cell.d}</div>
@@ -1253,7 +1263,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                         }
                         const semFormador = sessaoSemFormadorAtribuido(s);
                         return linhas.map((l, idx) => (
-                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${semFormador ? "#dc2626" : (s.formador?.cor || "#888")}`, paddingLeft: "3px" }}>
+                          <div key={s.id + "-" + idx} className="cronograma-session-line" style={{ borderLeft: `2px solid ${semFormador ? "#dc2626" : (s.formador?.cor || "#888")}`, paddingLeft: "2px" }}>
                             <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
                             {" "}
                             {!semFormador

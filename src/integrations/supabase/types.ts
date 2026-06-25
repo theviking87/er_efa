@@ -14,6 +14,44 @@ export type Database = {
   }
   public: {
     Tables: {
+      curso_ferias: {
+        Row: {
+          created_at: string
+          curso_id: string
+          data_fim: string
+          data_inicio: string
+          id: string
+          motivo: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          curso_id: string
+          data_fim: string
+          data_inicio: string
+          id?: string
+          motivo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          curso_id?: string
+          data_fim?: string
+          data_inicio?: string
+          id?: string
+          motivo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curso_ferias_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curso_formandos: {
         Row: {
           created_at: string

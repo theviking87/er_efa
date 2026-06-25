@@ -75,6 +75,7 @@ function CronogramaGeral() {
       .on("postgres_changes", { event: "*", schema: "public", table: "curso_ufcd_formadores" }, () => qc.invalidateQueries({ queryKey: ["cursos-ativos-mes"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "formador_disponibilidades" }, () => { qc.invalidateQueries({ queryKey: ["disp-geral"] }); })
       .on("postgres_changes", { event: "*", schema: "public", table: "sessoes" }, () => { qc.invalidateQueries({ queryKey: ["sessoes-geral"] }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "curso_ferias" }, () => { qc.invalidateQueries({ queryKey: ["curso-ferias-all"] }); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);
@@ -151,6 +152,33 @@ function CronogramaGeral() {
       return (data ?? []) as any[];
     },
   });
+
+  const ferias = useQuery({
+    queryKey: ["curso-ferias-all"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("curso_ferias" as any)
+        .select("id, curso_id, data_inicio, data_fim, motivo, curso:cursos(id,codigo,nome)")
+        .order("data_inicio");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  // Map dia ISO -> Set<curso_id> de cursos em férias
+  const feriasByDay = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (ferias.data ?? []).forEach((f: any) => {
+      const di = new Date(f.data_inicio + "T00:00:00");
+      const df = new Date(f.data_fim + "T00:00:00");
+      for (let d = new Date(di); d <= df; d.setDate(d.getDate() + 1)) {
+        const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+        let s = m.get(iso);
+        if (!s) { s = new Set(); m.set(iso, s); }
+        s.add(f.curso_id);
+      }
+    });
+    return m;
+  }, [ferias.data]);
 
 
   const slotsByDay = useMemo(() => {
@@ -297,11 +325,13 @@ function CronogramaGeral() {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
+      const feriasSet = feriasByDay.get(cell.iso);
       const cov = coverageByDay.get(cell.iso) ?? new Map<string, { manha: boolean; tarde: boolean }>();
       const semNada: { id: string; codigo: string; cor: string }[] = [];
       const semManha: { id: string; codigo: string; cor: string }[] = [];
       const semTarde: { id: string; codigo: string; cor: string }[] = [];
       for (const c of cursos) {
+        if (feriasSet?.has(c.id)) continue; // dia de férias do curso — não conta como falta
         const v = cov.get(c.id) ?? { manha: false, tarde: false };
         const entry = { id: c.id, codigo: c.codigo, cor: c.cor };
         if (!v.manha && !v.tarde) semNada.push(entry);
@@ -317,7 +347,7 @@ function CronogramaGeral() {
       });
     }
     return r;
-  }, [mostrar, cursosComCor, coverageByDay, grid]);
+  }, [mostrar, cursosComCor, coverageByDay, grid, feriasByDay]);
 
   // Disponibilidades sobrepostas: mesmo curso, mesmo dia, formadores diferentes, intervalos que se intersetam.
   const overlapDispIds = useMemo(() => {
@@ -369,8 +399,14 @@ function CronogramaGeral() {
       if (hf > "13:00") cur.tarde = true;
       m.set(x.data, cur);
     });
+    // Dias de férias do curso filtrado: considerar coberto (dia inteiro)
+    if (cursoFiltro) {
+      for (const [iso, set] of feriasByDay.entries()) {
+        if (set.has(cursoFiltro)) m.set(iso, { manha: true, tarde: true });
+      }
+    }
     return m;
-  }, [sessoes.data, cursoFiltro]);
+  }, [sessoes.data, cursoFiltro, feriasByDay]);
 
 
 
@@ -410,6 +446,7 @@ function CronogramaGeral() {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
+      if (feriasByDay.get(cell.iso)?.has(cursoFiltro)) continue; // dia de férias do curso
       let cobreManha = false;
       let cobreTarde = false;
       for (const d of dispData as any[]) {
@@ -729,14 +766,25 @@ function CronogramaGeral() {
                   const tardeSlots = slots.filter((s: any) => (s.hora_inicio ?? "") >= "13:00");
                   const dow = weekdayFromIso(cell.iso);
                   const isUtil = dow !== 0 && dow !== 6;
+                  const feriasSet = feriasByDay.get(cell.iso);
+                  const feriasCursos = feriasSet
+                    ? (cursosTodos.data ?? []).filter((c: any) => feriasSet.has(c.id))
+                    : [];
+                  const emFerias = cursoFiltro ? feriasSet?.has(cursoFiltro) : (feriasCursos.length > 0);
                   const sc = sessoesCoverByDay.get(cell.iso) ?? { manha: false, tarde: false };
-                  const diaIncompleto = !!cursoFiltro && isUtil && !(sc.manha && sc.tarde);
+                  const diaIncompleto = !!cursoFiltro && isUtil && !emFerias && !(sc.manha && sc.tarde);
                   const semSessaoLabel = !sc.manha && !sc.tarde ? "sem sessão" : !sc.manha ? "sem sessão (manhã)" : "sem sessão (tarde)";
                   return (
                     <div className="flex flex-col gap-1 h-full min-h-[120px]">
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-xs text-muted-foreground">{cell.d}</span>
-                        {diaIncompleto && (
+                        {emFerias && (
+                          <span
+                            className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-sky-100 text-sky-800 border border-sky-300 inline-flex items-center gap-0.5"
+                            title={`Férias: ${feriasCursos.map((c: any) => c.codigo).join(", ") || "curso"}`}
+                          ><Palmtree className="size-2.5" /> Férias</span>
+                        )}
+                        {!emFerias && diaIncompleto && (
                           <span
                             className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-100 text-amber-800 border border-amber-300"
                             title="Dia sem cobertura completa de sessões para o curso filtrado"
@@ -806,8 +854,8 @@ function CronogramaGeral() {
       <FeriasDialog
         open={feriasOpen}
         onClose={() => setFeriasOpen(false)}
-        formadores={(formadores.data ?? []) as any[]}
-        defaultFormadorId={formadorFiltro || null}
+        cursos={(cursosTodos.data ?? []) as any[]}
+        defaultCursoId={cursoFiltro || null}
       />
 
       <CreateDispDialog
@@ -1208,60 +1256,101 @@ function CreateDispDialog({
   );
 }
 
-function FeriasDialog({ open, onClose, formadores, defaultFormadorId }: {
+function FeriasDialog({ open, onClose, cursos, defaultCursoId }: {
   open: boolean;
   onClose: () => void;
-  formadores: any[];
-  defaultFormadorId: string | null;
+  cursos: any[];
+  defaultCursoId: string | null;
 }) {
   const qc = useQueryClient();
-  const [formadorId, setFormadorId] = useState("");
+  const [cursoId, setCursoId] = useState("");
   const [dataInicio, setDataInicio] = useState("");
   const [dataFim, setDataFim] = useState("");
   const [motivo, setMotivo] = useState("Férias");
+  const [editId, setEditId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+
+  const lista = useQuery({
+    queryKey: ["curso-ferias-list", cursoId],
+    enabled: open && !!cursoId,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("curso_ferias" as any)
+        .select("id, data_inicio, data_fim, motivo")
+        .eq("curso_id", cursoId)
+        .order("data_inicio", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
 
   useEffect(() => {
     if (open) {
-      setFormadorId(defaultFormadorId ?? "");
-      setDataInicio("");
-      setDataFim("");
-      setMotivo("Férias");
+      setCursoId(defaultCursoId ?? "");
+      reset();
     }
-  }, [open, defaultFormadorId]);
+  }, [open, defaultCursoId]);
+
+  function reset() {
+    setDataInicio("");
+    setDataFim("");
+    setMotivo("Férias");
+    setEditId(null);
+  }
+
+  function editar(f: any) {
+    setEditId(f.id);
+    setDataInicio(f.data_inicio);
+    setDataFim(f.data_fim);
+    setMotivo(f.motivo ?? "Férias");
+  }
+
+  async function apagar(id: string) {
+    if (!confirm("Apagar este período de férias?")) return;
+    const { error } = await supabase.from("curso_ferias" as any).delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Férias apagadas");
+    qc.invalidateQueries({ queryKey: ["curso-ferias-list", cursoId] });
+    qc.invalidateQueries({ queryKey: ["curso-ferias-all"] });
+    qc.invalidateQueries({ queryKey: ["curso-ferias", cursoId] });
+  }
 
   async function guardar() {
-    if (!formadorId) return toast.error("Escolhe o formador");
+    if (!cursoId) return toast.error("Escolhe o curso");
     if (!dataInicio || !dataFim) return toast.error("Datas obrigatórias");
     if (dataFim < dataInicio) return toast.error("Data fim anterior ao início");
     setSaving(true);
-    const { error } = await supabase.from("formador_inatividades").insert({
-      formador_id: formadorId,
+    const payload = {
+      curso_id: cursoId,
       data_inicio: dataInicio,
       data_fim: dataFim,
       motivo: motivo.trim() || "Férias",
-    });
+    };
+    const { error } = editId
+      ? await supabase.from("curso_ferias" as any).update(payload).eq("id", editId)
+      : await supabase.from("curso_ferias" as any).insert(payload);
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success("Período de férias registado");
-    qc.invalidateQueries({ queryKey: ["formador", formadorId] });
-    onClose();
+    toast.success(editId ? "Férias atualizadas" : "Férias registadas");
+    qc.invalidateQueries({ queryKey: ["curso-ferias-list", cursoId] });
+    qc.invalidateQueries({ queryKey: ["curso-ferias-all"] });
+    qc.invalidateQueries({ queryKey: ["curso-ferias", cursoId] });
+    reset();
   }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><Palmtree className="size-4" /> Lançar férias / inatividade</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><Palmtree className="size-4" /> Férias do curso</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Formador *</Label>
-            <Select value={formadorId} onValueChange={setFormadorId}>
+            <Label>Curso *</Label>
+            <Select value={cursoId} onValueChange={(v) => { setCursoId(v); reset(); }}>
               <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
               <SelectContent>
-                {formadores.map((f: any) => (
-                  <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                {cursos.map((c: any) => (
+                  <SelectItem key={c.id} value={c.id}>{c.codigo} — {c.nome}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -1274,10 +1363,35 @@ function FeriasDialog({ open, onClose, formadores, defaultFormadorId }: {
             <Label>Motivo</Label>
             <Input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Férias" />
           </div>
+          <div className="flex justify-end gap-2">
+            {editId && <Button variant="ghost" size="sm" onClick={reset}>Cancelar edição</Button>}
+            <Button size="sm" onClick={guardar} disabled={saving || !cursoId}>{saving ? "A guardar…" : (editId ? "Atualizar" : "Lançar")}</Button>
+          </div>
+
+          {cursoId && (
+            <div className="border-t pt-3">
+              <div className="text-xs font-semibold text-muted-foreground mb-2">Períodos registados</div>
+              {(lista.data ?? []).length === 0 ? (
+                <div className="text-xs text-muted-foreground italic">Sem férias registadas.</div>
+              ) : (
+                <div className="space-y-1 max-h-48 overflow-y-auto">
+                  {(lista.data ?? []).map((f: any) => (
+                    <div key={f.id} className="flex items-center justify-between gap-2 text-xs border rounded px-2 py-1.5">
+                      <div className="flex-1 min-w-0">
+                        <div className="font-medium tabular-nums">{fmtDate(f.data_inicio)} → {fmtDate(f.data_fim)}</div>
+                        <div className="text-muted-foreground truncate">{f.motivo || "Férias"}</div>
+                      </div>
+                      <button onClick={() => editar(f)} className="text-sky-600 hover:underline">Editar</button>
+                      <button onClick={() => apagar(f.id)} className="text-rose-600 hover:underline">Apagar</button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={guardar} disabled={saving}>{saving ? "A guardar…" : "Lançar"}</Button>
+          <Button variant="outline" onClick={onClose}>Fechar</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

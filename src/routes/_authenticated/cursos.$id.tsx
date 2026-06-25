@@ -959,10 +959,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
   function sessaoSemFormadorAtribuido(s: any) {
     const nome = String(s.formador?.nome ?? "").trim().toLowerCase();
-    const nomesEmFalta = new Set(["", "em falta", "falta", "sem formador", "por atribuir", "a definir", "não atribuído", "nao atribuido"]);
     const cursoUfcdId = s.curso_ufcd?.id ?? s.curso_ufcd_id;
     const formadoresAtribuidos = cursoUfcdId ? formadoresPorCursoUfcd.get(cursoUfcdId) : undefined;
-    return !s.formador_id || nomesEmFalta.has(nome) || formadoresAtribuidos?.size === 0;
+    return !s.formador_id || !nome || nome.includes("falta") || nome.includes("sem formador") || nome.includes("por atribuir") || nome.includes("a definir") || nome.includes("não atribuído") || nome.includes("nao atribuido") || formadoresAtribuidos?.size === 0;
   }
 
   // Build calendar grid (Mon first)

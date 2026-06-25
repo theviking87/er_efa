@@ -803,6 +803,13 @@ function CronogramaGeral() {
         slot={convertSlot}
         onClose={() => setConvertSlot(null)}
       />
+      <FeriasDialog
+        open={feriasOpen}
+        onClose={() => setFeriasOpen(false)}
+        formadores={(formadores.data ?? []) as any[]}
+        defaultFormadorId={formadorFiltro || null}
+      />
+
       <CreateDispDialog
         data={createDate}
         formadores={(formadores.data ?? []) as any[]}

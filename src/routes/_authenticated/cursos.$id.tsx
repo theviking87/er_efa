@@ -1048,30 +1048,27 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         if ((s.hora_fim ?? "") > "13:00") coverTarde = true;
       }
       const showWarn = isUtil && !feriado && !feriasMotivo && !(coverManha && coverTarde);
-      const warnLabel = showWarn ? (!coverManha && !coverTarde ? "SEM SESSÃO" : !coverManha ? "FALTA MANHÃ" : "FALTA TARDE") : "";
-      const warnTh = 5.5;
+      const warnTh = 5;
 
       const drawWarn = (by: number) => {
-        doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-        const tw = doc.getTextWidth(warnLabel) + 4;
-        const bx = x + (cellW - tw) / 2;
-        doc.setFillColor(254, 226, 226);
-        doc.setDrawColor(220, 38, 38);
-        doc.setLineWidth(0.4);
-        doc.rect(bx, by, tw, warnTh, "FD");
-        doc.setTextColor(153, 27, 27);
-        doc.text(warnLabel, x + cellW / 2, by + warnTh - 1.5, { align: "center" });
-        doc.setDrawColor(180); doc.setLineWidth(0.2);
+        doc.setFont("helvetica", "bold"); doc.setFontSize(11);
+        doc.setTextColor(220, 38, 38);
+        doc.text("FALTA", x + cellW / 2, by, { align: "center" });
+        doc.setTextColor(0, 0, 0);
       };
 
-      // FALTA MANHÃ → caixa no topo, antes das sessões
-      if (showWarn && warnLabel === "FALTA MANHÃ") {
-        drawWarn(cursorY);
-        cursorY += warnTh + 3.5;
+      // FALTA manhã → texto no topo, antes das sessões
+      const missManha = showWarn && !coverManha;
+      const missTarde = showWarn && !coverTarde;
+      const missDia = missManha && missTarde;
+
+      if (missManha && !missDia) {
+        drawWarn(cursorY + warnTh - 1);
+        cursorY += warnTh + 2;
       }
 
       // Sessões (limite inferior reservado se houver caixa em baixo)
-      const sessLimit = (showWarn && warnLabel === "FALTA TARDE") ? y + cellH - warnTh - 3.5 : y + cellH - 1;
+      const sessLimit = (missTarde && !missDia) ? y + cellH - warnTh - 2 : y + cellH - 1;
       doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(0, 0, 0);
       sessDoDia.forEach((s: any) => {
         if (cursorY > sessLimit - 1) return;
@@ -1087,11 +1084,11 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         });
       });
 
-      // FALTA TARDE → caixa em baixo; SEM SESSÃO → centro
-      if (showWarn && warnLabel === "FALTA TARDE") {
-        drawWarn(y + cellH - warnTh - 1.5);
-      } else if (showWarn && warnLabel === "SEM SESSÃO") {
-        drawWarn(y + (cellH - warnTh) / 2);
+      // FALTA tarde → texto em baixo; dia inteiro → centro
+      if (missDia) {
+        drawWarn(y + cellH / 2 + 1);
+      } else if (missTarde) {
+        drawWarn(y + cellH - 2);
       }
     });
 

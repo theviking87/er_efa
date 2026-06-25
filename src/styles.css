@@ -180,8 +180,8 @@
     break-after: page;
     page-break-inside: avoid;
     break-inside: avoid;
-    height: 188mm;
-    max-height: 188mm;
+    height: 186mm;
+    max-height: 186mm;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -212,8 +212,8 @@
     break-after: avoid;
     page-break-inside: avoid;
     break-inside: avoid;
-    height: 188mm;
-    max-height: 188mm;
+    height: 186mm;
+    max-height: 186mm;
     margin: 0 !important;
     overflow: hidden;
     font-size: 8px !important;

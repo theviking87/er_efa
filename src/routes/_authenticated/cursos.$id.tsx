@@ -1002,15 +1002,17 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
         #cronograma-print { display: block !important; position: static !important; inset: auto !important; width: 285mm !important; margin: 0 !important; padding: 0 !important; color: black !important; }
         #cronograma-print, #cronograma-print * { visibility: visible !important; box-sizing: border-box !important; }
-        #cronograma-print > .cronograma-page { height: 188mm !important; max-height: 188mm !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; break-inside: avoid !important; }
+        #cronograma-print > .cronograma-page { height: 186mm !important; max-height: 186mm !important; overflow: hidden !important; display: flex !important; flex-direction: column !important; page-break-after: always !important; break-after: page !important; page-break-inside: avoid !important; break-inside: avoid !important; }
         #cronograma-print > .cronograma-page > .cronograma-header { flex: 0 0 auto !important; }
         #cronograma-print > .cronograma-page > .cronograma-weekdays { flex: 0 0 auto !important; grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important; }
         #cronograma-print > .cronograma-page > .cronograma-grid { flex: 1 1 auto !important; min-height: 0 !important; grid-auto-rows: 1fr !important; grid-template-columns: repeat(5, 1fr) 0.55fr 0.55fr !important; }
         #cronograma-print > .cronograma-page .cronograma-cell { min-height: 0 !important; overflow: hidden !important; }
-        #cronograma-print > .horas-page { height: 188mm !important; max-height: 188mm !important; overflow: hidden !important; page-break-before: auto !important; break-before: auto !important; page-break-after: avoid !important; break-after: avoid !important; page-break-inside: avoid !important; break-inside: avoid !important; font-size: 8px !important; line-height: 1.1 !important; }
+        #cronograma-print > .horas-page { height: 186mm !important; max-height: 186mm !important; overflow: hidden !important; page-break-before: auto !important; break-before: auto !important; page-break-after: avoid !important; break-after: avoid !important; page-break-inside: avoid !important; break-inside: avoid !important; font-size: 8px !important; line-height: 1.1 !important; }
         #cronograma-print > .horas-page th, #cronograma-print > .horas-page td { padding: 1px 2px !important; line-height: 1.1 !important; }
+        #cronograma-print > .horas-page table { page-break-inside: auto !important; break-inside: auto !important; }
+        #cronograma-print > .horas-page tr { page-break-inside: avoid !important; break-inside: avoid !important; }
         .text-red-600 { color: #dc2626 !important; font-weight: 700 !important; }
-      </style></head><body>${node.outerHTML}<script>window.onload=()=>setTimeout(()=>{window.focus();window.print();},250)<\/script></body></html>`);
+      </style></head><body><div id="cronograma-print"><div class="cronograma-page">${node.querySelector(".cronograma-page")?.innerHTML ?? ""}</div><div class="horas-page text-[10px]">${node.querySelector(".horas-page")?.innerHTML ?? ""}</div></div><script>window.onload=()=>setTimeout(()=>{window.focus();window.print();},250)<\/script></body></html>`);
     w.document.close();
   }
 

@@ -964,6 +964,16 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     return !s.formador_id || !nome || nome.includes("falta") || nome.includes("sem formador") || nome.includes("por atribuir") || nome.includes("a definir") || nome.includes("não atribuído") || nome.includes("nao atribuido") || formadoresAtribuidos?.size === 0 || (formadoresAtribuidos !== undefined && !!s.formador_id && !formadoresAtribuidos.has(s.formador_id));
   }
 
+  const printSlots = useMemo(() => ([
+    { from: "09h", to: "10h", start: 9 * 60, end: 10 * 60, period: "manha" },
+    { from: "10h", to: "11h", start: 10 * 60, end: 11 * 60, period: "manha" },
+    { from: "11h", to: "12h", start: 11 * 60, end: 12 * 60, period: "manha" },
+    { from: "12h", to: "13h", start: 12 * 60, end: 13 * 60, period: "manha" },
+    { from: "14h", to: "15h", start: 14 * 60, end: 15 * 60, period: "tarde" },
+    { from: "15h", to: "16h", start: 15 * 60, end: 16 * 60, period: "tarde" },
+    { from: "16h", to: "17h", start: 16 * 60, end: 17 * 60, period: "tarde" },
+  ]), []);
+
   // Build calendar grid (Mon first)
   const grid = useMemo(() => {
     const first = new Date(mes.ano, mes.mes, 1);
@@ -1015,7 +1025,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         #cronograma-print > .cronograma-page > .cronograma-weekdays { flex: 0 0 auto !important; grid-template-columns: repeat(5, 1fr) !important; }
         #cronograma-print > .cronograma-page > .cronograma-grid { flex: 1 1 auto !important; min-height: 0 !important; grid-auto-rows: 1fr !important; grid-template-columns: repeat(5, 1fr) !important; }
         #cronograma-print > .cronograma-page .cronograma-cell { min-height: 0 !important; overflow: hidden !important; }
-        #cronograma-print > .cronograma-page .cronograma-session-line { font-size: 7px !important; line-height: 1.03 !important; white-space: nowrap !important; overflow: hidden !important; }
+        #cronograma-print > .cronograma-page .cronograma-session-line { font-size: 8px !important; line-height: 1.12 !important; white-space: nowrap !important; overflow: hidden !important; }
+        #cronograma-print > .cronograma-page .cronograma-session-line.afternoon-start { margin-top: 3px !important; }
         #cronograma-print > .horas-page { height: 186mm !important; max-height: 186mm !important; overflow: hidden !important; page-break-before: auto !important; break-before: auto !important; page-break-after: avoid !important; break-after: avoid !important; page-break-inside: avoid !important; break-inside: avoid !important; font-size: 8px !important; line-height: 1.1 !important; }
         #cronograma-print > .horas-page th, #cronograma-print > .horas-page td { padding: 1px 2px !important; line-height: 1.1 !important; }
         #cronograma-print > .horas-page table { page-break-inside: auto !important; break-inside: auto !important; }
@@ -1247,31 +1258,33 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                     {feriado && (
                       <div className="text-[7px] italic text-gray-600 leading-tight mb-0.5 truncate">{feriado}</div>
                     )}
-                    <div className="space-y-0.5">
-                      {(sessoesByDay.get(cell.iso) ?? []).flatMap((s: any) => {
-                        const [hiH, hiM] = String(s.hora_inicio).split(":").map(Number);
-                        const [hfH, hfM] = String(s.hora_fim).split(":").map(Number);
-                        const startMin = hiH * 60 + hiM;
-                        const endMin = hfH * 60 + hfM;
-                        const linhas: { from: string; to: string }[] = [];
-                        let cur = startMin;
-                        while (cur < endMin) {
-                          const nxt = Math.min(cur + 60, endMin);
-                          const fmt = (m: number) => `${String(Math.floor(m / 60)).padStart(2, "0")}h${m % 60 === 0 ? "" : String(m % 60).padStart(2, "0")}`;
-                          linhas.push({ from: fmt(cur), to: fmt(nxt) });
-                          cur = nxt;
-                        }
-                        const semFormador = sessaoSemFormadorAtribuido(s);
-                        return linhas.map((l, idx) => (
-                          <div key={s.id + "-" + idx} className="cronograma-session-line" style={{ borderLeft: `2px solid ${semFormador ? "#dc2626" : (s.formador?.cor || "#888")}`, paddingLeft: "2px" }}>
-                            <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
-                            {" "}
-                            {!semFormador
-                              ? <>{s.formador.nome} ({s.curso_ufcd?.ufcd?.codigo})</>
-                              : <span className="font-bold text-red-600">em falta</span>}
-                          </div>
-                        ));
-                      })}
+                    <div>
+                      {(() => {
+                        const sessDoDia = sessoesByDay.get(cell.iso) ?? [];
+                        const diaUtil = weekdayFromIso(cell.iso) !== 0 && weekdayFromIso(cell.iso) !== 6;
+                        const feriasMotivo = feriasDias.get(cell.iso);
+                        if (!diaUtil || feriado || feriasMotivo) return null;
+                        const toMin = (t: string) => {
+                          const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+                          return h * 60 + (m || 0);
+                        };
+                        return printSlots.map((slot) => {
+                          const sessao = sessDoDia.find((s: any) => toMin(s.hora_inicio) < slot.end && toMin(s.hora_fim) > slot.start);
+                          const semFormador = !sessao || sessaoSemFormadorAtribuido(sessao);
+                          return (
+                            <div
+                              key={`${cell.iso}-${slot.from}`}
+                              className={`cronograma-session-line ${slot.period === "tarde" && slot.from === "14h" ? "afternoon-start" : ""}`}
+                              style={{ borderLeft: `2px solid ${semFormador ? "#dc2626" : (sessao?.formador?.cor || "#888")}`, paddingLeft: "2px" }}
+                            >
+                              <span className="tabular-nums font-semibold">{slot.from}-{slot.to}</span>{" "}
+                              {!semFormador
+                                ? <>{sessao.formador.nome} ({sessao.curso_ufcd?.ufcd?.codigo})</>
+                                : <span className="font-bold text-red-600">em falta</span>}
+                            </div>
+                          );
+                        });
+                      })()}
                     </div>
                   </>
                 )}

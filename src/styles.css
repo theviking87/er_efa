@@ -203,11 +203,12 @@
   }
   #cronograma-print > .cronograma-page .cronograma-cell > * { min-height: 0; }
   #cronograma-print > .cronograma-page .cronograma-session-line {
-    font-size: 7px !important;
-    line-height: 1.03 !important;
+    font-size: 8px !important;
+    line-height: 1.12 !important;
     white-space: nowrap !important;
     overflow: hidden !important;
   }
+  #cronograma-print > .cronograma-page .cronograma-session-line.afternoon-start { margin-top: 3px !important; }
   #cronograma-print > .cronograma-page .text-red-600 { color: #dc2626 !important; font-weight: 700 !important; }
 
   /* Página 2: gestão de horas */

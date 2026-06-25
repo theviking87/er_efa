@@ -934,7 +934,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                   {analise.incompletos.map(d => (
                     <div key={d.data} className="flex items-center justify-between border rounded-md px-2 py-1.5 text-xs">
                       <span className="font-medium">{fmtDate(d.data)}</span>
-                      <span className="text-muted-foreground">{d.inicio}–{d.fim} · {fmtHoras(d.horas)}</span>
+                      <span className="text-muted-foreground">Falta: {d.falta} · {fmtHoras(d.horas)} ocupadas</span>
                     </div>
                   ))}
                 </div>

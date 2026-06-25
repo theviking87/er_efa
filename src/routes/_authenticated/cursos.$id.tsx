@@ -1186,6 +1186,30 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
             <div>
               <div className="font-medium mb-2 flex items-center gap-2">
+                <AlertTriangle className="size-4 text-destructive" /> Formador noutro curso à mesma hora
+              </div>
+              {analise.conflitosOutroCurso.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Sem conflitos cruzados.</div>
+              ) : (
+                <div className="space-y-2">
+                  {analise.conflitosOutroCurso.map((c, idx) => (
+                    <div key={idx} className="border rounded-md p-2">
+                      <div className="font-medium text-xs mb-1">{fmtDate(c.data)} · {formadorLabel(c.sessao.formador)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Este curso: {String(c.sessao.hora_inicio).slice(0,5)}–{String(c.sessao.hora_fim).slice(0,5)} · {c.sessao.curso_ufcd?.ufcd?.codigo ?? "—"}
+                      </div>
+                      <div className="text-xs text-destructive">
+                        Outro curso ({c.outra.curso?.codigo ?? ""} {c.outra.curso?.nome ?? ""}): {String(c.outra.hora_inicio).slice(0,5)}–{String(c.outra.hora_fim).slice(0,5)} · {c.outra.curso_ufcd?.ufcd?.codigo ?? "—"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+
+            <div>
+              <div className="font-medium mb-2 flex items-center gap-2">
                 <Clock className="size-4 text-amber-600" /> Dias sem ocupação completa (9h–17h / 7h)
               </div>
               {analise.incompletos.length === 0 ? (

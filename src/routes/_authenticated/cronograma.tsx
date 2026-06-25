@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 
-import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning, Palmtree } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso, localDateIso } from "@/lib/format";
@@ -63,6 +63,8 @@ function CronogramaGeral() {
   const [convertSlot, setConvertSlot] = useState<DispSlot | null>(null);
   const [createDate, setCreateDate] = useState<string | null>(null);
   const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
+  const [feriasOpen, setFeriasOpen] = useState(false);
+
 
 
   useEffect(() => {

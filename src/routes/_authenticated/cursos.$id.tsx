@@ -969,7 +969,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                         onSubstituir={() => setSubstituirSessao(s)}
                         onDelete={async () => {
                           await supabase.from("sessoes").delete().eq("id", s.id);
-                          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
+                          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] }); qc.invalidateQueries({ queryKey: ["sessoes-todas", cursoId] });
                           qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
                           qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
                         }} />
@@ -1108,7 +1108,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         cursoId={cursoId}
         defaultDate={dialogData ?? undefined}
         onSaved={() => {
-          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
+          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] }); qc.invalidateQueries({ queryKey: ["sessoes-todas", cursoId] });
           qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
           qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
         }}
@@ -1126,7 +1126,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
         onClose={() => setSubstituirSessao(null)}
         onSaved={() => {
-          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
+          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] }); qc.invalidateQueries({ queryKey: ["sessoes-todas", cursoId] });
           qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
           qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
         }}
@@ -1137,7 +1137,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         onOpenChange={setBulkOpen}
         cursoId={cursoId}
         onSaved={() => {
-          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
+          qc.invalidateQueries({ queryKey: ["sessoes", cursoId] }); qc.invalidateQueries({ queryKey: ["sessoes-todas", cursoId] });
           qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
           qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
         }}

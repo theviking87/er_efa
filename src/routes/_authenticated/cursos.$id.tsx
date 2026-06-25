@@ -1729,9 +1729,19 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
 
 
     const { data: conflitos } = await supabase.from("sessoes")
-      .select("hora_inicio, hora_fim").eq("formador_id", formadorId).eq("data", data);
-    const hasConflict = (conflitos ?? []).some(s => !(hf <= s.hora_inicio || hi >= s.hora_fim));
-    if (hasConflict) return toast.error("Conflito de horário", { description: "Formador tem outra sessão neste período." });
+      .select("hora_inicio, hora_fim, curso_id, curso:cursos(codigo, nome), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+      .eq("formador_id", formadorId).eq("data", data);
+    const choque = (conflitos ?? []).find((s: any) => !(hf <= s.hora_inicio || hi >= s.hora_fim));
+    if (choque) {
+      const outroCurso = (choque as any).curso_id !== cursoId;
+      const c = (choque as any).curso;
+      const cod = (choque as any).curso_ufcd?.ufcd?.codigo ?? "";
+      return toast.error("Conflito de horário", {
+        description: outroCurso
+          ? `Formador já tem sessão noutro curso: ${c?.codigo ?? ""} ${c?.nome ?? ""} (${String((choque as any).hora_inicio).slice(0,5)}–${String((choque as any).hora_fim).slice(0,5)}${cod ? " · " + cod : ""}).`
+          : `Formador tem outra sessão neste curso neste período (${String((choque as any).hora_inicio).slice(0,5)}–${String((choque as any).hora_fim).slice(0,5)}).`,
+      });
+    }
 
     const { data: inat } = await supabase.from("formador_inatividades")
       .select("data_inicio, data_fim, motivo").eq("formador_id", formadorId)

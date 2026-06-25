@@ -295,7 +295,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
         onOpenChange={(v) => { if (!v) setManageUfcd(null); }}
         onSaved={() => qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] })}
       />
-      <SessoesUfcdDialog info={sessoesUfcd} onOpenChange={(v) => { if (!v) setSessoesUfcd(null); }} />
+      <SessoesUfcdDialog info={sessoesUfcd} cursoId={cursoId} onOpenChange={(v) => { if (!v) setSessoesUfcd(null); }} />
 
       <Dialog open={analiseOpen} onOpenChange={setAnaliseOpen}>
         <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
@@ -368,18 +368,21 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
 }
 
 function SessoesUfcdDialog({
-  info, onOpenChange,
+  info, cursoId, onOpenChange,
 }: {
   info: { cursoUfcdId: string; codigo: string; designacao: string } | null;
+  cursoId: string;
   onOpenChange: (v: boolean) => void;
 }) {
+  const qc = useQueryClient();
+  const [editSess, setEditSess] = useState<any | null>(null);
   const sessoes = useQuery({
     queryKey: ["sessoes-ufcd", info?.cursoUfcdId],
     enabled: !!info,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(nome, abreviatura, cor)")
+        .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id, formador_id, formador:formadores(id, nome, abreviatura, cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .eq("curso_ufcd_id", info!.cursoUfcdId)
         .order("data", { ascending: true })
         .order("hora_inicio", { ascending: true });
@@ -410,12 +413,13 @@ function SessoesUfcdDialog({
                 <th className="px-3 py-2 text-left">Horário</th>
                 <th className="px-3 py-2 text-left">Formador</th>
                 <th className="px-3 py-2 text-right">Horas</th>
+                <th className="px-3 py-2"></th>
               </tr>
             </thead>
             <tbody className="divide-y">
-              {sessoes.isLoading && <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">A carregar…</td></tr>}
+              {sessoes.isLoading && <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">A carregar…</td></tr>}
               {!sessoes.isLoading && (sessoes.data ?? []).length === 0 && (
-                <tr><td colSpan={4} className="px-3 py-6 text-center text-muted-foreground">Sem sessões lançadas.</td></tr>
+                <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">Sem sessões lançadas.</td></tr>
               )}
               {(sessoes.data ?? []).map((s: any) => (
                 <tr key={s.id} className="hover:bg-muted/30">
@@ -430,6 +434,9 @@ function SessoesUfcdDialog({
                     ) : <span className="text-muted-foreground">—</span>}
                   </td>
                   <td className="px-3 py-1.5 text-right">{fmtHoras(horasSessao(s))}</td>
+                  <td className="px-3 py-1.5 text-right">
+                    <Button size="sm" variant="ghost" onClick={() => setEditSess(s)}>Editar</Button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -438,6 +445,7 @@ function SessoesUfcdDialog({
                 <tr>
                   <td colSpan={3} className="px-3 py-2 text-right">Total</td>
                   <td className="px-3 py-2 text-right">{fmtHoras(total)}</td>
+                  <td></td>
                 </tr>
               </tfoot>
             )}
@@ -446,6 +454,18 @@ function SessoesUfcdDialog({
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Fechar</Button>
         </DialogFooter>
+        <SubstituirFormadorDialog
+          sessao={editSess}
+          cursoId={cursoId}
+          onClose={() => setEditSess(null)}
+          onSaved={() => {
+            qc.invalidateQueries({ queryKey: ["sessoes-ufcd", info?.cursoUfcdId] });
+            qc.invalidateQueries({ queryKey: ["sessoes", cursoId] });
+            qc.invalidateQueries({ queryKey: ["sessoes-todas", cursoId] });
+            qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
+            qc.invalidateQueries({ queryKey: ["curso-carga", cursoId] });
+          }}
+        />
       </DialogContent>
     </Dialog>
   );

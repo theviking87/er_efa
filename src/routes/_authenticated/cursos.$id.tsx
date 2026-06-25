@@ -1067,11 +1067,11 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       // FALTA MANHÃ → caixa no topo, antes das sessões
       if (showWarn && warnLabel === "FALTA MANHÃ") {
         drawWarn(cursorY);
-        cursorY += warnTh + 1.5;
+        cursorY += warnTh + 3.5;
       }
 
       // Sessões (limite inferior reservado se houver caixa em baixo)
-      const sessLimit = (showWarn && warnLabel === "FALTA TARDE") ? y + cellH - warnTh - 2 : y + cellH - 1;
+      const sessLimit = (showWarn && warnLabel === "FALTA TARDE") ? y + cellH - warnTh - 3.5 : y + cellH - 1;
       doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(0, 0, 0);
       sessDoDia.forEach((s: any) => {
         if (cursorY > sessLimit - 1) return;

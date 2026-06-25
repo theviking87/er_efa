@@ -709,17 +709,20 @@ function CronogramaGeral() {
                   const tardeSlots = slots.filter((s: any) => (s.hora_inicio ?? "") >= "13:00");
                   const dow = weekdayFromIso(cell.iso);
                   const isUtil = dow !== 0 && dow !== 6;
-                  const semSessao = !!cursoFiltro && isUtil && !diasComSessao.has(cell.iso);
+                  const sc = sessoesCoverByDay.get(cell.iso) ?? { manha: false, tarde: false };
+                  const diaIncompleto = !!cursoFiltro && isUtil && !(sc.manha && sc.tarde);
+                  const semSessaoLabel = !sc.manha && !sc.tarde ? "sem sessão" : !sc.manha ? "sem sessão (manhã)" : "sem sessão (tarde)";
                   return (
                     <div className="flex flex-col gap-1 h-full min-h-[120px]">
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-xs text-muted-foreground">{cell.d}</span>
-                        {semSessao && (
+                        {diaIncompleto && (
                           <span
                             className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-100 text-amber-800 border border-amber-300"
-                            title="Sem sessão atribuída para o curso filtrado"
-                          >sem sessão</span>
+                            title="Dia sem cobertura completa de sessões para o curso filtrado"
+                          >{semSessaoLabel}</span>
                         )}
+
                       </div>
                       {fullSlots.length > 0 && <div className="space-y-1">{fullSlots.map(renderSlot)}</div>}
                       {manhaSlots.length > 0 && <div className="space-y-1">{manhaSlots.map(renderSlot)}</div>}

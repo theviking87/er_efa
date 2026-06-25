@@ -24,6 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
 import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
@@ -1002,25 +1003,6 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         doc.text(t, x + 1.5, cursorY); cursorY += 3 * t.length;
       }
 
-      // Missing session warning
-      if (isUtil && !feriado && !feriasMotivo) {
-        let coverManha = false, coverTarde = false;
-        for (const s of sessDoDia) {
-          if ((s.hora_inicio ?? "") < "13:00") coverManha = true;
-          if ((s.hora_fim ?? "") > "13:00") coverTarde = true;
-        }
-        if (!(coverManha && coverTarde)) {
-          const label = !coverManha && !coverTarde ? "SEM SESSÃO" : !coverManha ? "Falta manhã" : "Falta tarde";
-          doc.setFillColor(254, 226, 226);
-          doc.setDrawColor(220, 38, 38);
-          const tw = doc.getTextWidth(label) + 3;
-          doc.rect(x + cellW - tw - 1.5, y + 1.5, tw, 3.5, "FD");
-          doc.setFont("helvetica", "bold"); doc.setFontSize(6); doc.setTextColor(153, 27, 27);
-          doc.text(label, x + cellW - tw / 2 - 1.5, y + 4, { align: "center" });
-          doc.setDrawColor(180);
-        }
-      }
-
       // Sessions
       doc.setFont("helvetica", "normal"); doc.setFontSize(7); doc.setTextColor(0, 0, 0);
       sessDoDia.forEach((s: any) => {
@@ -1036,6 +1018,30 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           doc.text(ln, x + 1.5, cursorY); cursorY += 2.8;
         });
       });
+
+      // Missing session warning — centered, large, visible
+      if (isUtil && !feriado && !feriasMotivo) {
+        let coverManha = false, coverTarde = false;
+        for (const s of sessDoDia) {
+          if ((s.hora_inicio ?? "") < "13:00") coverManha = true;
+          if ((s.hora_fim ?? "") > "13:00") coverTarde = true;
+        }
+        if (!(coverManha && coverTarde)) {
+          const label = !coverManha && !coverTarde ? "SEM SESSÃO" : !coverManha ? "FALTA MANHÃ" : "FALTA TARDE";
+          doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+          const tw = doc.getTextWidth(label) + 4;
+          const th = 5.5;
+          const bx = x + (cellW - tw) / 2;
+          const by = y + (cellH - th) / 2 + 1;
+          doc.setFillColor(254, 226, 226);
+          doc.setDrawColor(220, 38, 38);
+          doc.setLineWidth(0.4);
+          doc.rect(bx, by - th + 1.5, tw, th, "FD");
+          doc.setTextColor(153, 27, 27);
+          doc.text(label, x + cellW / 2, by + 1.5, { align: "center" });
+          doc.setDrawColor(180); doc.setLineWidth(0.2);
+        }
+      }
     });
 
     // Footer
@@ -1044,8 +1050,41 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const sem = (analise.incompletos ?? []).length;
     doc.text(`Dias úteis sem sessão (no mês com sessões): ${sem}`, pageW - margin, pageH - 4, { align: "right" });
 
+    // PÁGINA 2 — Gestão de horas (mesmo conteúdo que printFooter)
+    doc.addPage("a4", "landscape");
+    doc.setFillColor(37, 99, 235);
+    doc.rect(0, 0, pageW, 14, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(12);
+    doc.text(`${cursoCodigo} — ${cursoNome}`, margin, 9);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(9);
+    doc.text(`Gestão de horas · ${MONTH_NAMES[mes.mes]} ${mes.ano}`, pageW - margin, 9, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+
+    autoTable(doc, {
+      startY: 20,
+      margin: { left: margin, right: margin },
+      head: [["Formador", "UFCD", "Totais", "Realizadas", "Em falta"]],
+      body: printFooter.length === 0
+        ? [[{ content: "Sem atribuições neste mês.", colSpan: 5, styles: { halign: "center", textColor: 120 } } as any]]
+        : printFooter.map(r => [
+            r.formador,
+            r.ufcd,
+            fmtHoras(r.horas_totais),
+            fmtHoras(r.realizadas),
+            fmtHoras(r.em_falta),
+          ]),
+      styles: { font: "helvetica", fontSize: 9, cellPadding: 2 },
+      headStyles: { fillColor: [37, 99, 235], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right", fontStyle: "bold" } },
+    });
+
+    doc.setFontSize(7); doc.setTextColor(100);
+    doc.text(`Gerado em ${new Date().toLocaleString("pt-PT")}`, margin, pageH - 4);
+
     doc.save(`Calendario_${cursoCodigo}_${mes.ano}-${String(mes.mes+1).padStart(2,"0")}.pdf`);
   }
+
 
 
 

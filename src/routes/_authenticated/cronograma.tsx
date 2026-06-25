@@ -325,11 +325,13 @@ function CronogramaGeral() {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
+      const feriasSet = feriasByDay.get(cell.iso);
       const cov = coverageByDay.get(cell.iso) ?? new Map<string, { manha: boolean; tarde: boolean }>();
       const semNada: { id: string; codigo: string; cor: string }[] = [];
       const semManha: { id: string; codigo: string; cor: string }[] = [];
       const semTarde: { id: string; codigo: string; cor: string }[] = [];
       for (const c of cursos) {
+        if (feriasSet?.has(c.id)) continue; // dia de férias do curso — não conta como falta
         const v = cov.get(c.id) ?? { manha: false, tarde: false };
         const entry = { id: c.id, codigo: c.codigo, cor: c.cor };
         if (!v.manha && !v.tarde) semNada.push(entry);

@@ -843,7 +843,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       }
     });
     return { conflitos, incompletos, totalDias: byDay.size };
-  }, [todasSessoes.data]);
+  }, [todasSessoes.data, feriasDias]);
 
   const sessoesByDay = useMemo(() => {
     const m = new Map<string, any[]>();

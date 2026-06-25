@@ -1471,7 +1471,7 @@ function SubstituirFormadorDialog({ sessao, cursoId, onClose, onSaved }: { sessa
     const choque = (conflitos ?? []).find((s: any) => s.id !== sessao.id && !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
     if (choque) {
       setSaving(false);
-      const outroCurso = (choque as any).curso_id !== sessao.curso_id;
+      const outroCurso = (choque as any).curso_id !== cursoId;
       const c = (choque as any).curso;
       return toast.error("Conflito de horário", {
         description: outroCurso

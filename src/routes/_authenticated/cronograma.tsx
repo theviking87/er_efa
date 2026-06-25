@@ -440,6 +440,7 @@ function CronogramaGeral() {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
+      if (feriasByDay.get(cell.iso)?.has(cursoFiltro)) continue; // dia de férias do curso
       let cobreManha = false;
       let cobreTarde = false;
       for (const d of dispData as any[]) {

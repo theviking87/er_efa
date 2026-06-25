@@ -75,6 +75,7 @@ function CronogramaGeral() {
       .on("postgres_changes", { event: "*", schema: "public", table: "curso_ufcd_formadores" }, () => qc.invalidateQueries({ queryKey: ["cursos-ativos-mes"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "formador_disponibilidades" }, () => { qc.invalidateQueries({ queryKey: ["disp-geral"] }); })
       .on("postgres_changes", { event: "*", schema: "public", table: "sessoes" }, () => { qc.invalidateQueries({ queryKey: ["sessoes-geral"] }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "curso_ferias" }, () => { qc.invalidateQueries({ queryKey: ["curso-ferias-all"] }); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
   }, [qc]);

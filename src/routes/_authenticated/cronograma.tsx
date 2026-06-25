@@ -1012,6 +1012,8 @@ function CreateDispDialog({
   const [cursoId, setCursoId] = useState<string>("");
   const [notas, setNotas] = useState("");
   const [periodo, setPeriodo] = useState<"manha" | "tarde" | "dia" | "custom">("custom");
+  const [dataEdit, setDataEdit] = useState<string>("");
+
   const [saving, setSaving] = useState(false);
 
   function aplicarPeriodo(p: "manha" | "tarde" | "dia" | "custom") {
@@ -1030,6 +1032,7 @@ function CreateDispDialog({
       setCursoId(editing.curso_id ?? "");
       setNotas(editing.notas ?? "");
       setPeriodo("custom");
+      setDataEdit(editing.data ?? data ?? "");
     } else if (data) {
       setFormadorId(defaultFormadorId ?? "");
       setTipo("disponivel");
@@ -1038,8 +1041,10 @@ function CreateDispDialog({
       setCursoId("");
       setNotas("");
       setPeriodo("custom");
+      setDataEdit(data);
     }
   }, [data, editing?.id]);
+
 
 
 
@@ -1067,7 +1072,7 @@ function CreateDispDialog({
   });
 
   async function criar() {
-    if (!data) return;
+    if (!dataEdit) return toast.error("Escolhe a data");
     if (!formadorId) return toast.error("Escolhe o formador");
     const hi = horaInicio;
     const hf = horaFim;
@@ -1078,7 +1083,7 @@ function CreateDispDialog({
     setSaving(true);
     const payload = {
       formador_id: formadorId,
-      data,
+      data: dataEdit,
       hora_inicio: hi,
       hora_fim: hf,
       tipo,
@@ -1088,6 +1093,7 @@ function CreateDispDialog({
     const { error } = isEdit
       ? await supabase.from("formador_disponibilidades" as any).update(payload as never).eq("id", editing!.id)
       : await supabase.from("formador_disponibilidades" as any).insert(payload as never);
+
 
     setSaving(false);
     if (error) return toast.error(error.message);
@@ -1106,9 +1112,11 @@ function CreateDispDialog({
         </DialogHeader>
         {data && (
           <div className="space-y-3">
-            <div className="text-sm bg-muted/40 rounded-md px-3 py-2">
-              <span className="text-muted-foreground">Data:</span> <span className="font-medium">{fmtDate(data)}</span>
+            <div className="space-y-1.5">
+              <Label>Data *</Label>
+              <Input type="date" value={dataEdit} onChange={e => setDataEdit(e.target.value)} />
             </div>
+
 
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">

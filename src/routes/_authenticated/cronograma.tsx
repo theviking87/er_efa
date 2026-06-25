@@ -854,8 +854,8 @@ function CronogramaGeral() {
       <FeriasDialog
         open={feriasOpen}
         onClose={() => setFeriasOpen(false)}
-        formadores={(formadores.data ?? []) as any[]}
-        defaultFormadorId={formadorFiltro || null}
+        cursos={(cursosTodos.data ?? []) as any[]}
+        defaultCursoId={cursoFiltro || null}
       />
 
       <CreateDispDialog

@@ -998,18 +998,43 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         <div className="grid grid-cols-7 auto-rows-[minmax(110px,auto)]">
           {grid.map((cell, i) => {
             const feriado = cell ? feriadoNome(cell.iso) : null;
+            const feriasMotivo = cell ? feriasDias.get(cell.iso) : null;
+            const dow = cell ? weekdayFromIso(cell.iso) : 0;
+            const isUtil = cell ? dow !== 0 && dow !== 6 : false;
+            const sessDoDia = cell ? (sessoesByDay.get(cell.iso) ?? []) : [];
+            let coverManha = false, coverTarde = false;
+            for (const s of sessDoDia) {
+              if ((s.hora_inicio ?? "") < "13:00") coverManha = true;
+              if ((s.hora_fim ?? "") > "13:00") coverTarde = true;
+            }
+            const semSessao = cell && isUtil && !feriado && !feriasMotivo && !(coverManha && coverTarde);
+            const semSessaoLabel = !coverManha && !coverTarde ? "sem sessão" : !coverManha ? "sem sessão (manhã)" : "sem sessão (tarde)";
             return (
-            <div key={i} className={`border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[110px] ${feriado ? "bg-muted/60" : "bg-card"}`}>
+            <div key={i} className={`border-t border-l border-border first:border-l-0 [&:nth-child(7n+1)]:border-l-0 p-1.5 min-h-[110px] ${feriasMotivo ? "bg-sky-50" : feriado ? "bg-muted/60" : "bg-card"}`}>
               {cell && (
                 <>
-                  <button onClick={() => { setDialogData(cell.iso); setDialogOpen(true); }} className="text-xs text-muted-foreground hover:text-foreground w-full text-left mb-1">
-                    {cell.d}
-                  </button>
+                  <div className="flex items-center justify-between gap-1 mb-1">
+                    <button onClick={() => { setDialogData(cell.iso); setDialogOpen(true); }} className="text-xs text-muted-foreground hover:text-foreground text-left">
+                      {cell.d}
+                    </button>
+                    {feriasMotivo && (
+                      <span
+                        className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-sky-100 text-sky-800 border border-sky-300 inline-flex items-center gap-0.5"
+                        title={feriasMotivo}
+                      ><Palmtree className="size-2.5" /> Férias</span>
+                    )}
+                    {semSessao && (
+                      <span
+                        className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-amber-100 text-amber-800 border border-amber-300"
+                        title="Dia útil sem sessão atribuída"
+                      >{semSessaoLabel}</span>
+                    )}
+                  </div>
                   {feriado && (
                     <div className="text-[10px] text-muted-foreground italic leading-tight mb-1 truncate" title={feriado}>{feriado}</div>
                   )}
                   <div className="space-y-1">
-                    {(sessoesByDay.get(cell.iso) ?? []).map((s: any) => (
+                    {sessDoDia.map((s: any) => (
                       <SessaoChip key={s.id} sessao={s}
                         onPresencas={() => setPresencasSessao({ ...s, curso_id: cursoId })}
                         onSubstituir={() => setSubstituirSessao(s)}

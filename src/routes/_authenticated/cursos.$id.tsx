@@ -1209,9 +1209,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                           <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
                             <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
                             {" "}
-                            {s.formador_id
-                              ? <>{s.formador?.nome} ({s.curso_ufcd?.ufcd?.codigo})</>
-                              : <span className="font-bold" style={{ color: "#dc2626" }}>em falta</span>}
+                            {s.formador_id && s.formador?.nome
+                              ? <>{s.formador.nome} ({s.curso_ufcd?.ufcd?.codigo})</>
+                              : <span className="font-bold text-red-600">em falta</span>}
                           </div>
                         ));
                       })}

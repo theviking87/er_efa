@@ -4,15 +4,17 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { GraduationCap } from "lucide-react";
+import { ensureFixedUser } from "@/lib/bootstrap-user.functions";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
   head: () => ({ meta: [{ title: "Entrar — Gestão Pedagógica" }] }),
   component: AuthPage,
 });
+
+const USERNAME_DOMAIN = "app.local";
 
 function AuthPage() {
   const navigate = useNavigate();
@@ -49,16 +51,9 @@ function AuthPage() {
           </div>
           <div>
             <h2 className="text-2xl font-semibold tracking-tight">Aceder ao sistema</h2>
-            <p className="text-sm text-muted-foreground mt-1">Inicie sessão ou crie uma conta de utilizador.</p>
+            <p className="text-sm text-muted-foreground mt-1">Inicie sessão com o nome de utilizador e palavra-passe.</p>
           </div>
-          <Tabs defaultValue="signin">
-            <TabsList className="grid grid-cols-2 w-full">
-              <TabsTrigger value="signin">Entrar</TabsTrigger>
-              <TabsTrigger value="signup">Registar</TabsTrigger>
-            </TabsList>
-            <TabsContent value="signin"><SignInForm /></TabsContent>
-            <TabsContent value="signup"><SignUpForm /></TabsContent>
-          </Tabs>
+          <SignInForm />
           <p className="text-xs text-muted-foreground text-center">
             <Link to="/" className="hover:underline">Voltar ao início</Link>
           </p>
@@ -70,26 +65,33 @@ function AuthPage() {
 
 function SignInForm() {
   const navigate = useNavigate();
-  const [email, setEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
-
-  function getSignInMessage(message: string) {
-    if (message.toLowerCase().includes("email not confirmed")) {
-      return "Esta conta ainda não está ativa. Crie uma nova conta ou aguarde a confirmação do email.";
-    }
-    if (message.toLowerCase().includes("invalid login credentials")) {
-      return "Email ou palavra-passe incorretos.";
-    }
-    return message;
-  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    const email = `${username.trim().toLowerCase()}@${USERNAME_DOMAIN}`;
+
+    let { error } = await supabase.auth.signInWithPassword({ email, password });
+
+    // If the fixed user doesn't exist yet, bootstrap it and retry once.
+    if (error && /invalid login credentials/i.test(error.message)) {
+      try {
+        await ensureFixedUser();
+        const retry = await supabase.auth.signInWithPassword({ email, password });
+        error = retry.error;
+      } catch {
+        // ignore — fall through to error toast below
+      }
+    }
+
     setLoading(false);
-    if (error) { toast.error("Não foi possível entrar", { description: getSignInMessage(error.message) }); return; }
+    if (error) {
+      toast.error("Não foi possível entrar", { description: "Utilizador ou palavra-passe incorretos." });
+      return;
+    }
     toast.success("Sessão iniciada");
     navigate({ to: "/dashboard", replace: true });
   }
@@ -97,65 +99,23 @@ function SignInForm() {
   return (
     <form onSubmit={onSubmit} className="space-y-4">
       <div className="space-y-2">
-        <Label htmlFor="signin-email">Email</Label>
-        <Input id="signin-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
+        <Label htmlFor="signin-username">Nome de utilizador</Label>
+        <Input
+          id="signin-username"
+          type="text"
+          required
+          value={username}
+          onChange={e => setUsername(e.target.value)}
+          autoComplete="username"
+          autoCapitalize="none"
+          spellCheck={false}
+        />
       </div>
       <div className="space-y-2">
         <Label htmlFor="signin-password">Palavra-passe</Label>
         <Input id="signin-password" type="password" required value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" />
       </div>
       <Button type="submit" className="w-full" disabled={loading}>{loading ? "A entrar…" : "Entrar"}</Button>
-    </form>
-  );
-}
-
-function SignUpForm() {
-  const navigate = useNavigate();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [loading, setLoading] = useState(false);
-
-  function getSignUpMessage(message: string) {
-    if (message.toLowerCase().includes("weak") || message.toLowerCase().includes("pwned")) {
-      return "Escolha uma palavra-passe única e mais forte, com letras, números e símbolos.";
-    }
-    if (message.toLowerCase().includes("security purposes")) {
-      return "Aguarde alguns segundos antes de tentar novamente.";
-    }
-    return message;
-  }
-
-  async function onSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setLoading(true);
-    const { data, error } = await supabase.auth.signUp({
-      email, password,
-      options: { emailRedirectTo: `${window.location.origin}/dashboard` },
-    });
-    setLoading(false);
-    if (error) { toast.error("Não foi possível registar", { description: getSignUpMessage(error.message) }); return; }
-    if (data.session) {
-      toast.success("Conta criada", { description: "Sessão iniciada." });
-      navigate({ to: "/dashboard", replace: true });
-      return;
-    }
-    toast.success("Conta criada", { description: "Pode iniciar sessão com os dados que acabou de definir." });
-  }
-
-  return (
-    <form onSubmit={onSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="signup-email">Email</Label>
-        <Input id="signup-email" type="email" required value={email} onChange={e => setEmail(e.target.value)} autoComplete="email" />
-      </div>
-      <div className="space-y-2">
-        <Label htmlFor="signup-password">Palavra-passe</Label>
-        <Input id="signup-password" type="password" required minLength={8} value={password} onChange={e => setPassword(e.target.value)} autoComplete="new-password" />
-        <p className="text-xs text-muted-foreground">
-          Mínimo 8 caracteres. Use uma combinação de letras, números e símbolos. Não pode constar em listas públicas de palavras-passe comprometidas.
-        </p>
-      </div>
-      <Button type="submit" className="w-full" disabled={loading}>{loading ? "A criar…" : "Criar conta"}</Button>
     </form>
   );
 }

@@ -512,6 +512,15 @@ function CronogramaGeral() {
             >
               <CalendarPlus className="size-4 mr-1" />Lançar disponibilidade
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setFeriasOpen(true)}
+              title="Lançar período de férias / inatividade do formador"
+            >
+              <Palmtree className="size-4 mr-1" />Lançar férias
+            </Button>
+
 
           </div>
           <div className="flex items-center gap-3 flex-wrap">

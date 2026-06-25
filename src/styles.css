@@ -172,6 +172,7 @@
   body * { visibility: hidden !important; }
   #cronograma-print, #cronograma-print * { visibility: visible !important; }
   #cronograma-print { position: absolute; inset: 0; padding: 0; margin: 0; color: black !important; width: 285mm; }
+  #cronograma-print, #cronograma-print * { box-sizing: border-box; }
 
   /* Página 1: cronograma forçado a caber numa única folha A4 landscape */
   #cronograma-print > .cronograma-page {
@@ -179,8 +180,8 @@
     break-after: page;
     page-break-inside: avoid;
     break-inside: avoid;
-    height: 198mm;
-    max-height: 198mm;
+    height: 188mm;
+    max-height: 188mm;
     overflow: hidden;
     display: flex;
     flex-direction: column;
@@ -211,8 +212,9 @@
     break-after: avoid;
     page-break-inside: avoid;
     break-inside: avoid;
-    height: 198mm;
-    max-height: 198mm;
+    height: 188mm;
+    max-height: 188mm;
+    margin: 0 !important;
     overflow: hidden;
     font-size: 8px !important;
     line-height: 1.1 !important;

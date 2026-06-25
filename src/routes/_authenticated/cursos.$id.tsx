@@ -946,6 +946,25 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     return rows;
   }, [resumoMes, cargaCurso.data]);
 
+  const formadoresPorCursoUfcd = useMemo(() => {
+    const m = new Map<string, Set<string>>();
+    (cargaCurso.data ?? []).forEach((u: any) => {
+      m.set(
+        u.id,
+        new Set((u.formadores ?? []).map((ff: any) => ff.formador?.id).filter(Boolean)),
+      );
+    });
+    return m;
+  }, [cargaCurso.data]);
+
+  function sessaoSemFormadorAtribuido(s: any) {
+    const nome = String(s.formador?.nome ?? "").trim().toLowerCase();
+    const nomesEmFalta = new Set(["", "em falta", "falta", "sem formador", "por atribuir", "a definir", "não atribuído", "nao atribuido"]);
+    const cursoUfcdId = s.curso_ufcd?.id ?? s.curso_ufcd_id;
+    const formadoresAtribuidos = cursoUfcdId ? formadoresPorCursoUfcd.get(cursoUfcdId) : undefined;
+    return !s.formador_id || nomesEmFalta.has(nome) || formadoresAtribuidos?.size === 0;
+  }
+
   // Build calendar grid (Mon first)
   const grid = useMemo(() => {
     const first = new Date(mes.ano, mes.mes, 1);
@@ -1205,11 +1224,12 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                           linhas.push({ from: fmt(cur), to: fmt(nxt) });
                           cur = nxt;
                         }
+                        const semFormador = sessaoSemFormadorAtribuido(s);
                         return linhas.map((l, idx) => (
-                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${s.formador?.cor || "#888"}`, paddingLeft: "3px" }}>
+                          <div key={s.id + "-" + idx} className="leading-tight" style={{ borderLeft: `2px solid ${semFormador ? "#dc2626" : (s.formador?.cor || "#888")}`, paddingLeft: "3px" }}>
                             <span className="tabular-nums font-semibold">{l.from}-{l.to}</span>
                             {" "}
-                            {s.formador_id && s.formador?.nome
+                            {!semFormador
                               ? <>{s.formador.nome} ({s.curso_ufcd?.ufcd?.codigo})</>
                               : <span className="font-bold text-red-600">em falta</span>}
                           </div>

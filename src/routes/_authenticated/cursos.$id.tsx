@@ -774,6 +774,31 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     },
   });
 
+  // Períodos de férias do curso
+  const feriasCurso = useQuery({
+    queryKey: ["curso-ferias", cursoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("curso_ferias" as any)
+        .select("id, data_inicio, data_fim, motivo")
+        .eq("curso_id", cursoId);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const feriasDias = useMemo(() => {
+    const m = new Map<string, string>();
+    (feriasCurso.data ?? []).forEach((f: any) => {
+      const di = new Date(f.data_inicio + "T00:00:00");
+      const df = new Date(f.data_fim + "T00:00:00");
+      for (let d = new Date(di); d <= df; d.setDate(d.getDate() + 1)) {
+        const iso = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+        m.set(iso, f.motivo || "Férias");
+      }
+    });
+    return m;
+  }, [feriasCurso.data]);
+
   const analise = useMemo(() => {
     const byDay = new Map<string, any[]>();
     (todasSessoes.data ?? []).forEach((s: any) => {

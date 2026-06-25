@@ -769,8 +769,26 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryKey: ["sessoes-todas", cursoId],
     queryFn: async () => {
       const { data, error } = await supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
         .eq("curso_id", cursoId).order("data").order("hora_inicio");
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  // Sessões de OUTROS cursos para detectar conflitos do mesmo formador
+  const sessoesOutrosCursos = useQuery({
+    queryKey: ["sessoes-outros-cursos", cursoId, (todasSessoes.data ?? []).length],
+    enabled: (todasSessoes.data ?? []).length > 0,
+    queryFn: async () => {
+      const formIds = Array.from(new Set((todasSessoes.data ?? []).map((s: any) => s.formador_id).filter(Boolean)));
+      const datas = Array.from(new Set((todasSessoes.data ?? []).map((s: any) => s.data)));
+      if (formIds.length === 0 || datas.length === 0) return [];
+      const { data, error } = await supabase.from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, formador_id, curso_id, formador:formadores(id,nome,abreviatura), curso:cursos(codigo, nome), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+        .neq("curso_id", cursoId)
+        .in("formador_id", formIds as string[])
+        .in("data", datas);
       if (error) throw error;
       return data ?? [];
     },
@@ -807,11 +825,19 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       const arr = byDay.get(s.data) ?? []; arr.push(s); byDay.set(s.data, arr);
     });
     const conflitos: { data: string; sessoes: any[] }[] = [];
+    const conflitosOutroCurso: { data: string; sessao: any; outra: any }[] = [];
     const incompletos: { data: string; horas: number; falta: string }[] = [];
     const toMin = (t: string) => { const [h, m] = String(t).slice(0, 5).split(":").map(Number); return h * 60 + m; };
     const MANHA_INI = 9 * 60, MANHA_FIM = 13 * 60;
     const TARDE_INI = 14 * 60, TARDE_FIM = 17 * 60;
     const isoOf = (d: Date) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+
+    // Índice de sessões de outros cursos por dia+formador
+    const outrasByKey = new Map<string, any[]>();
+    (sessoesOutrosCursos.data ?? []).forEach((s: any) => {
+      const k = `${s.data}|${s.formador_id}`;
+      const arr = outrasByKey.get(k) ?? []; arr.push(s); outrasByKey.set(k, arr);
+    });
 
     // Construir conjunto de dias a analisar: todos os dias úteis dos meses que têm sessões
     const mesesComSessao = new Set<string>();
@@ -832,7 +858,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       if (feriasDias.has(data)) return;
       if (feriadoNome(data)) return;
       const sess = byDay.get(data) ?? [];
-      // Conflitos
+      // Conflitos internos
       const conf: any[] = [];
       for (let i = 0; i < sess.length; i++) {
         for (let j = i + 1; j < sess.length; j++) {
@@ -844,6 +870,18 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         }
       }
       if (conf.length) conflitos.push({ data, sessoes: conf });
+
+      // Conflitos cruzados — mesmo formador noutro curso
+      sess.forEach((s: any) => {
+        if (!s.formador_id) return;
+        const outras = outrasByKey.get(`${data}|${s.formador_id}`) ?? [];
+        outras.forEach((o: any) => {
+          if (toMin(s.hora_inicio) < toMin(o.hora_fim) && toMin(o.hora_inicio) < toMin(s.hora_fim)) {
+            conflitosOutroCurso.push({ data, sessao: s, outra: o });
+          }
+        });
+      });
+
       const cobre = (ini: number, fim: number) => {
         const ivs = sess.map((s: any) => [Math.max(ini, toMin(s.hora_inicio)), Math.min(fim, toMin(s.hora_fim))] as [number, number])
           .filter(([a, b]) => b > a).sort((a, b) => a[0] - b[0]);
@@ -862,8 +900,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         incompletos.push({ data, horas: totalH, falta });
       }
     });
-    return { conflitos, incompletos, totalDias: byDay.size };
-  }, [todasSessoes.data, feriasDias]);
+    return { conflitos, conflitosOutroCurso, incompletos, totalDias: byDay.size };
+  }, [todasSessoes.data, sessoesOutrosCursos.data, feriasDias]);
 
 
   const sessoesByDay = useMemo(() => {
@@ -1032,13 +1070,24 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           const tw = doc.getTextWidth(label) + 4;
           const th = 5.5;
           const bx = x + (cellW - tw) / 2;
-          const by = y + (cellH - th) / 2 + 1;
+          // Posição vertical conforme o período em falta
+          let by: number;
+          if (!coverManha && coverTarde) {
+            // Falta manhã → caixa em cima (logo após o número do dia)
+            by = y + 10;
+          } else if (coverManha && !coverTarde) {
+            // Falta tarde → caixa em baixo
+            by = y + cellH - th - 1.5;
+          } else {
+            // Dia todo → meio
+            by = y + (cellH - th) / 2;
+          }
           doc.setFillColor(254, 226, 226);
           doc.setDrawColor(220, 38, 38);
           doc.setLineWidth(0.4);
-          doc.rect(bx, by - th + 1.5, tw, th, "FD");
+          doc.rect(bx, by, tw, th, "FD");
           doc.setTextColor(153, 27, 27);
-          doc.text(label, x + cellW / 2, by + 1.5, { align: "center" });
+          doc.text(label, x + cellW / 2, by + th - 1.5, { align: "center" });
           doc.setDrawColor(180); doc.setLineWidth(0.2);
         }
       }
@@ -1099,9 +1148,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setAnaliseOpen(true)}>
             <AlertTriangle className="size-4" /> Análise
-            {(analise.conflitos.length + analise.incompletos.length) > 0 && (
+            {(analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length) > 0 && (
               <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
-                {analise.conflitos.length + analise.incompletos.length}
+                {analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length}
               </Badge>
             )}
           </Button>
@@ -1119,7 +1168,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           </DialogHeader>
           <div className="space-y-5 text-sm">
             <div className="text-xs text-muted-foreground">
-              {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) · {analise.incompletos.length} dia(s) incompleto(s)
+              {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) interno(s) · {analise.conflitosOutroCurso.length} conflito(s) noutro curso · {analise.incompletos.length} dia(s) incompleto(s)
             </div>
 
             <div>
@@ -1145,6 +1194,30 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                 </div>
               )}
             </div>
+
+            <div>
+              <div className="font-medium mb-2 flex items-center gap-2">
+                <AlertTriangle className="size-4 text-destructive" /> Formador noutro curso à mesma hora
+              </div>
+              {analise.conflitosOutroCurso.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Sem conflitos cruzados.</div>
+              ) : (
+                <div className="space-y-2">
+                  {analise.conflitosOutroCurso.map((c, idx) => (
+                    <div key={idx} className="border rounded-md p-2">
+                      <div className="font-medium text-xs mb-1">{fmtDate(c.data)} · {formadorLabel(c.sessao.formador)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Este curso: {String(c.sessao.hora_inicio).slice(0,5)}–{String(c.sessao.hora_fim).slice(0,5)} · {c.sessao.curso_ufcd?.ufcd?.codigo ?? "—"}
+                      </div>
+                      <div className="text-xs text-destructive">
+                        Outro curso ({c.outra.curso?.codigo ?? ""} {c.outra.curso?.nome ?? ""}): {String(c.outra.hora_inicio).slice(0,5)}–{String(c.outra.hora_fim).slice(0,5)} · {c.outra.curso_ufcd?.ufcd?.codigo ?? "—"}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
 
             <div>
               <div className="font-medium mb-2 flex items-center gap-2">

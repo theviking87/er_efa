@@ -216,18 +216,26 @@ function DocumentosTab({ formadorId, items, onChange }: { formadorId: string; it
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    const path = `${formadorId}/${Date.now()}_${file.name}`;
-    const up = await supabase.storage.from("formador-documentos").upload(path, file);
-    if (up.error) { toast.error(up.error.message); setUploading(false); return; }
-    const { error } = await supabase.from("formador_documentos").insert({
-      formador_id: formadorId, tipo, nome: file.name, storage_path: path, validade: validade || null,
-    });
-    setUploading(false);
-    e.target.value = "";
-    if (error) return toast.error(error.message);
-    toast.success("Documento carregado");
-    setValidade("");
-    onChange();
+    try {
+      // Sanitize filename: strip accents, replace invalid chars with "_"
+      const safeName = file.name
+        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+        .replace(/[^a-zA-Z0-9._-]+/g, "_")
+        .replace(/_+/g, "_");
+      const path = `${formadorId}/${Date.now()}_${safeName}`;
+      const up = await supabase.storage.from("formador-documentos").upload(path, file, { upsert: false });
+      if (up.error) { toast.error("Erro ao carregar ficheiro", { description: up.error.message }); return; }
+      const { error } = await supabase.from("formador_documentos").insert({
+        formador_id: formadorId, tipo, nome: file.name, storage_path: path, validade: validade || null,
+      });
+      if (error) { toast.error("Erro a guardar registo", { description: error.message }); return; }
+      toast.success("Documento carregado");
+      setValidade("");
+      onChange();
+    } finally {
+      setUploading(false);
+      e.target.value = "";
+    }
   }
 
   async function download(d: any) {

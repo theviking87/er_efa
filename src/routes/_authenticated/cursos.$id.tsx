@@ -899,9 +899,11 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       }
     });
 
-    // Formadores com UFCD atribuída (ativa) mas sem qualquer sessão atribuída
+    // Formadores com UFCD em curso (já iniciada e não concluída) mas sem sessão atribuída
     const sessByCufFormador = new Set<string>();
+    const cufsComSessao = new Set<string>();
     (todasSessoes.data ?? []).forEach((s: any) => {
+      if (s.curso_ufcd_id) cufsComSessao.add(s.curso_ufcd_id);
       if (s.formador_id && s.curso_ufcd_id) sessByCufFormador.add(`${s.curso_ufcd_id}|${s.formador_id}`);
     });
     const formadoresSemSessao: { ufcdCodigo: string; ufcdDesignacao: string; formadorNome: string; cursoUfcdId: string; formadorId: string }[] = [];

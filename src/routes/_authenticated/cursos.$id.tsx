@@ -746,7 +746,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryFn: async () => {
       const [cu, allSess] = await Promise.all([
         supabase.from("curso_ufcds")
-          .select("id, horas_totais, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,abreviatura,cor))")
+          .select("id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,abreviatura,cor))")
           .eq("curso_id", cursoId),
         supabase.from("sessoes").select("curso_ufcd_id, formador_id, horas").eq("curso_id", cursoId),
       ]);

@@ -960,6 +960,21 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     const cu = (opcoes.data ?? []).find((x: any) => x.id === cursoUfcdId) as any;
     if (!cu) return toast.error("UFCD inválida");
 
+    // Conflito com sessão já agendada noutro curso à mesma hora
+    const hiFull = horaInicio.length === 5 ? horaInicio + ":00" : horaInicio;
+    const hfFull = horaFim.length === 5 ? horaFim + ":00" : horaFim;
+    const { data: sess } = await supabase
+      .from("sessoes")
+      .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
+      .eq("formador_id", slot.formador_id)
+      .eq("data", slot.data);
+    const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
+    if (choque) {
+      return toast.error("Formador já tem sessão neste horário", {
+        description: `${choque.curso?.codigo ?? ""} ${choque.curso?.nome ?? ""} (${String(choque.hora_inicio).slice(0,5)}–${String(choque.hora_fim).slice(0,5)}).`,
+      });
+    }
+
     setSaving(true);
     const horas = diffHoras(horaInicio, horaFim);
     const { error } = await supabase.from("sessoes").insert({
@@ -1145,6 +1160,22 @@ function CreateDispDialog({
 
     if (!hi || !hf || hf <= hi) return toast.error("Horário inválido");
 
+    // Conflito com sessão já agendada (qualquer curso) à mesma hora
+    if (tipo === "disponivel") {
+      const { data: sess } = await supabase
+        .from("sessoes")
+        .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
+        .eq("formador_id", formadorId)
+        .eq("data", dataEdit);
+      const hiFull = hi.length === 5 ? hi + ":00" : hi;
+      const hfFull = hf.length === 5 ? hf + ":00" : hf;
+      const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
+      if (choque) {
+        return toast.error("Formador já tem sessão neste horário", {
+          description: `${choque.curso?.codigo ?? ""} ${choque.curso?.nome ?? ""} (${String(choque.hora_inicio).slice(0,5)}–${String(choque.hora_fim).slice(0,5)}).`,
+        });
+      }
+    }
 
     setSaving(true);
     const payload = {

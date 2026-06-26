@@ -1157,8 +1157,10 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
             const sessDoDia = cell ? (sessoesByDay.get(cell.iso) ?? []) : [];
             let coverManha = false, coverTarde = false;
             for (const s of sessDoDia) {
-              if ((s.hora_inicio ?? "") < "13:00") coverManha = true;
-              if ((s.hora_fim ?? "") > "13:00") coverTarde = true;
+              const hi = (s.hora_inicio ?? "").slice(0, 5);
+              const hf = (s.hora_fim ?? "").slice(0, 5);
+              if (hi < "13:00") coverManha = true;
+              if (hf > "13:00") coverTarde = true;
             }
             const semSessao = cell && isUtil && !feriado && !feriasMotivo && !(coverManha && coverTarde);
             const semSessaoLabel = !coverManha && !coverTarde ? "sem sessão" : !coverManha ? "sem sessão (manhã)" : "sem sessão (tarde)";

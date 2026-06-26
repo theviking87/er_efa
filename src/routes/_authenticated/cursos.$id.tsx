@@ -1163,6 +1163,23 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                 </div>
               )}
             </div>
+
+            <div>
+              <div className="font-medium mb-2 flex items-center gap-2">
+                <AlertTriangle className="size-4 text-destructive" /> Formadores com UFCD ativa sem sessão atribuída
+              </div>
+              {analise.formadoresSemSessao.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Todos os formadores atribuídos têm sessões.</div>
+              ) : (
+                <div className="space-y-1">
+                  {analise.formadoresSemSessao.map((f, idx) => (
+                    <div key={idx} className="flex items-center justify-between border rounded-md px-2 py-1.5 text-xs">
+                      <span><span className="font-medium">{f.formadorNome}</span> <span className="text-muted-foreground">— {f.ufcdCodigo} {f.ufcdDesignacao}</span></span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </DialogContent>
       </Dialog>

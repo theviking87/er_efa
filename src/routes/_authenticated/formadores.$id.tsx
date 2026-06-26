@@ -327,6 +327,21 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
       });
       return;
     }
+    // Conflito com sessão já agendada noutro curso à mesma hora
+    if (form.tipo === "disponivel") {
+      const { data: sess } = await supabase
+        .from("sessoes")
+        .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
+        .eq("formador_id", formadorId)
+        .eq("data", form.data);
+      const choque = ((sess ?? []) as any[]).find((s) => !(hf <= s.hora_inicio || hi >= s.hora_fim));
+      if (choque) {
+        toast.error("Formador já tem sessão neste horário", {
+          description: `${choque.curso?.codigo ?? ""} ${choque.curso?.nome ?? ""} (${String(choque.hora_inicio).slice(0,5)}–${String(choque.hora_fim).slice(0,5)}).`,
+        });
+        return;
+      }
+    }
     const payload = {
       formador_id: formadorId,
       data: form.data,

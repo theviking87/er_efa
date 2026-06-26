@@ -898,8 +898,32 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         incompletos.push({ data, horas: totalH, falta });
       }
     });
-    return { conflitos, conflitosOutroCurso, incompletos, totalDias: byDay.size };
-  }, [todasSessoes.data, sessoesOutrosCursos.data, feriasDias]);
+
+    // Formadores com UFCD atribuída (ativa) mas sem qualquer sessão atribuída
+    const sessByCufFormador = new Set<string>();
+    (todasSessoes.data ?? []).forEach((s: any) => {
+      if (s.formador_id && s.curso_ufcd_id) sessByCufFormador.add(`${s.curso_ufcd_id}|${s.formador_id}`);
+    });
+    const formadoresSemSessao: { ufcdCodigo: string; ufcdDesignacao: string; formadorNome: string; cursoUfcdId: string; formadorId: string }[] = [];
+    (cargaCurso.data ?? []).forEach((u: any) => {
+      if (u.concluida) return;
+      (u.formadores ?? []).forEach((f: any) => {
+        const fid = f.formador?.id;
+        if (!fid) return;
+        if (!sessByCufFormador.has(`${u.id}|${fid}`)) {
+          formadoresSemSessao.push({
+            ufcdCodigo: u.ufcd?.codigo ?? "—",
+            ufcdDesignacao: u.ufcd?.designacao ?? "",
+            formadorNome: formadorLabel(f.formador),
+            cursoUfcdId: u.id,
+            formadorId: fid,
+          });
+        }
+      });
+    });
+
+    return { conflitos, conflitosOutroCurso, incompletos, formadoresSemSessao, totalDias: byDay.size };
+  }, [todasSessoes.data, sessoesOutrosCursos.data, feriasDias, cargaCurso.data]);
 
 
   const sessoesByDay = useMemo(() => {

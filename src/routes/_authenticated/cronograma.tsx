@@ -392,8 +392,8 @@ function CronogramaGeral() {
     const m = new Map<string, { manha: boolean; tarde: boolean }>();
     (sessoes.data ?? []).forEach((x: any) => {
       if (cursoFiltro && x.curso_id !== cursoFiltro) return;
-      const hi = x.hora_inicio ?? "";
-      const hf = x.hora_fim ?? "";
+      const hi = (x.hora_inicio ?? "").slice(0, 5);
+      const hf = (x.hora_fim ?? "").slice(0, 5);
       const cur = m.get(x.data) ?? { manha: false, tarde: false };
       if (hi < "13:00") cur.manha = true;
       if (hf > "13:00") cur.tarde = true;

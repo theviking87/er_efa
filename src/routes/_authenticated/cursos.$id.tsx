@@ -1095,7 +1095,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           </DialogHeader>
           <div className="space-y-5 text-sm">
             <div className="text-xs text-muted-foreground">
-              {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) interno(s) · {analise.conflitosOutroCurso.length} conflito(s) noutro curso · {analise.incompletos.length} dia(s) incompleto(s)
+              {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) interno(s) · {analise.conflitosOutroCurso.length} conflito(s) noutro curso · {analise.incompletos.length} dia(s) incompleto(s) · {analise.formadoresSemSessao.length} formador(es) sem sessão
             </div>
 
             <div>

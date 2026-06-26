@@ -746,7 +746,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryFn: async () => {
       const [cu, allSess] = await Promise.all([
         supabase.from("curso_ufcds")
-          .select("id, horas_totais, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,abreviatura,cor))")
+          .select("id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,abreviatura,cor))")
           .eq("curso_id", cursoId),
         supabase.from("sessoes").select("curso_ufcd_id, formador_id, horas").eq("curso_id", cursoId),
       ]);
@@ -767,7 +767,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     queryKey: ["sessoes-todas", cursoId],
     queryFn: async () => {
       const { data, error } = await supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+        .select("id, data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
         .eq("curso_id", cursoId).order("data").order("hora_inicio");
       if (error) throw error;
       return data ?? [];
@@ -898,8 +898,32 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         incompletos.push({ data, horas: totalH, falta });
       }
     });
-    return { conflitos, conflitosOutroCurso, incompletos, totalDias: byDay.size };
-  }, [todasSessoes.data, sessoesOutrosCursos.data, feriasDias]);
+
+    // Formadores com UFCD atribuída (ativa) mas sem qualquer sessão atribuída
+    const sessByCufFormador = new Set<string>();
+    (todasSessoes.data ?? []).forEach((s: any) => {
+      if (s.formador_id && s.curso_ufcd_id) sessByCufFormador.add(`${s.curso_ufcd_id}|${s.formador_id}`);
+    });
+    const formadoresSemSessao: { ufcdCodigo: string; ufcdDesignacao: string; formadorNome: string; cursoUfcdId: string; formadorId: string }[] = [];
+    (cargaCurso.data ?? []).forEach((u: any) => {
+      if (u.concluida) return;
+      (u.formadores ?? []).forEach((f: any) => {
+        const fid = f.formador?.id;
+        if (!fid) return;
+        if (!sessByCufFormador.has(`${u.id}|${fid}`)) {
+          formadoresSemSessao.push({
+            ufcdCodigo: u.ufcd?.codigo ?? "—",
+            ufcdDesignacao: u.ufcd?.designacao ?? "",
+            formadorNome: formadorLabel(f.formador),
+            cursoUfcdId: u.id,
+            formadorId: fid,
+          });
+        }
+      });
+    });
+
+    return { conflitos, conflitosOutroCurso, incompletos, formadoresSemSessao, totalDias: byDay.size };
+  }, [todasSessoes.data, sessoesOutrosCursos.data, feriasDias, cargaCurso.data]);
 
 
   const sessoesByDay = useMemo(() => {
@@ -1051,9 +1075,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setAnaliseOpen(true)}>
             <AlertTriangle className="size-4" /> Análise
-            {(analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length) > 0 && (
+            {(analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length + analise.formadoresSemSessao.length) > 0 && (
               <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
-                {analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length}
+                {analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length + analise.formadoresSemSessao.length}
               </Badge>
             )}
           </Button>
@@ -1071,7 +1095,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           </DialogHeader>
           <div className="space-y-5 text-sm">
             <div className="text-xs text-muted-foreground">
-              {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) interno(s) · {analise.conflitosOutroCurso.length} conflito(s) noutro curso · {analise.incompletos.length} dia(s) incompleto(s)
+              {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) interno(s) · {analise.conflitosOutroCurso.length} conflito(s) noutro curso · {analise.incompletos.length} dia(s) incompleto(s) · {analise.formadoresSemSessao.length} formador(es) sem sessão
             </div>
 
             <div>
@@ -1134,6 +1158,23 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                     <div key={d.data} className="flex items-center justify-between border rounded-md px-2 py-1.5 text-xs">
                       <span className="font-medium">{fmtDate(d.data)}</span>
                       <span className="text-muted-foreground">Falta: {d.falta} · {fmtHoras(d.horas)} ocupadas</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div>
+              <div className="font-medium mb-2 flex items-center gap-2">
+                <AlertTriangle className="size-4 text-destructive" /> Formadores com UFCD ativa sem sessão atribuída
+              </div>
+              {analise.formadoresSemSessao.length === 0 ? (
+                <div className="flex items-center gap-2 text-muted-foreground text-xs"><CheckCircle2 className="size-4 text-green-600" /> Todos os formadores atribuídos têm sessões.</div>
+              ) : (
+                <div className="space-y-1">
+                  {analise.formadoresSemSessao.map((f, idx) => (
+                    <div key={idx} className="flex items-center justify-between border rounded-md px-2 py-1.5 text-xs">
+                      <span><span className="font-medium">{f.formadorNome}</span> <span className="text-muted-foreground">— {f.ufcdCodigo} {f.ufcdDesignacao}</span></span>
                     </div>
                   ))}
                 </div>

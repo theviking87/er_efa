@@ -909,6 +909,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const formadoresSemSessao: { ufcdCodigo: string; ufcdDesignacao: string; formadorNome: string; cursoUfcdId: string; formadorId: string }[] = [];
     (cargaCurso.data ?? []).forEach((u: any) => {
       if (u.concluida) return;
+      if (!cufsComSessao.has(u.id)) return; // só UFCDs em curso
       (u.formadores ?? []).forEach((f: any) => {
         const fid = f.formador?.id;
         if (!fid) return;

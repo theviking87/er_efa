@@ -77,7 +77,8 @@ class BucketHandle {
       const rel = this.rel(path);
       const buf = a ? await a.docs.read(rel) : await browserRead(rel);
       if (!buf) return { data: null, error: { message: "File not found" } };
-      return { data: new Blob([buf]), error: null };
+      const blob = new Blob([new Uint8Array(buf as any)]);
+      return { data: blob, error: null };
     } catch (err: any) { return { data: null, error: { message: String(err?.message ?? err) } }; }
   }
 
@@ -87,7 +88,7 @@ class BucketHandle {
       const rel = this.rel(path);
       const buf = a ? await a.docs.read(rel) : await browserRead(rel);
       if (!buf) return { data: null, error: { message: "File not found" } };
-      const url = URL.createObjectURL(new Blob([buf]));
+      const url = URL.createObjectURL(new Blob([new Uint8Array(buf as any)]));
       return { data: { signedUrl: url }, error: null };
     } catch (err: any) { return { data: null, error: { message: String(err?.message ?? err) } }; }
   }

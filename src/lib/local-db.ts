@@ -173,16 +173,28 @@ async function resetPartialSchemaIfNeeded(db: LocalDb, appliedCount: number) {
     return;
   }
 
-  // If migrations were marked as applied by a broken build, but core tables are
-  // missing, rerun everything. Do not reset merely because a newer optional
+  // If migrations were marked as applied by a broken build, but essential tables
+  // are missing, rerun everything. Do not reset merely because a newer optional
   // table is missing; those are patched/applied below to avoid deleting data.
+  const essentialTables = [
+    "formadores",
+    "formandos",
+    "cursos",
+    "ufcds",
+    "curso_ufcds",
+    "curso_formandos",
+    "curso_ufcd_formadores",
+    "formador_disponibilidades",
+    "sessoes",
+  ];
+  const essentialSql = essentialTables.map((t) => `'${t}'`).join(",");
   const core = await db.query<{ table_name: string }>(`
     SELECT table_name
       FROM information_schema.tables
      WHERE table_schema = 'public'
-       AND table_name IN ('formadores','formandos','cursos','ufcds','sessoes')
+       AND table_name IN (${essentialSql})
   `);
-  if (appliedCount > 0 && core.rows.length < 5) {
+  if (appliedCount > 0 && core.rows.length < essentialTables.length) {
     console.warn("[local-db] detected broken offline schema with applied migrations; resetting before migrations");
     await db.exec(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`);
     await db.exec(`

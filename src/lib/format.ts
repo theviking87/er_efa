@@ -7,8 +7,13 @@ export function localDateIso(date = new Date()) {
   return dateOnlyIso(date.getFullYear(), date.getMonth(), date.getDate());
 }
 
-export function parseDateOnly(dateStr?: string | null): Date | null {
+export function parseDateOnly(dateStr?: string | Date | null): Date | null {
   if (!dateStr) return null;
+  if (dateStr instanceof Date) {
+    if (isNaN(dateStr.getTime())) return null;
+    return new Date(Date.UTC(dateStr.getUTCFullYear(), dateStr.getUTCMonth(), dateStr.getUTCDate()));
+  }
+  if (typeof dateStr !== "string") return null;
   const iso = dateStr.match(/^(\d{4})-(\d{2})-(\d{2})$/);
   if (!iso) return null;
   const result = new Date(Date.UTC(+iso[1], +iso[2] - 1, +iso[3]));
@@ -27,19 +32,19 @@ export function weekdayFromIso(dateStr: string) {
   return parseDateOnly(dateStr)?.getUTCDay() ?? 0;
 }
 
-export const fmtDate = (d?: string | null) => {
+export const fmtDate = (d?: string | Date | null) => {
   if (!d) return "—";
   const dateOnly = parseDateOnly(d);
   if (dateOnly) return `${String(dateOnly.getUTCDate()).padStart(2, "0")}/${String(dateOnly.getUTCMonth() + 1).padStart(2, "0")}/${dateOnly.getUTCFullYear()}`;
   const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
+  if (isNaN(dt.getTime())) return String(d);
   return dt.toLocaleDateString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric" });
 };
 
-export const fmtDateTime = (d?: string | null) => {
+export const fmtDateTime = (d?: string | Date | null) => {
   if (!d) return "—";
   const dt = new Date(d);
-  if (isNaN(dt.getTime())) return d;
+  if (isNaN(dt.getTime())) return String(d);
   return dt.toLocaleString("pt-PT", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" });
 };
 

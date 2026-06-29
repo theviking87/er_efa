@@ -2,14 +2,6 @@
 
 :root {
   color-scheme: light;
-  --bg: #f6f7f9;
-  --fg: #0f172a;
-  --muted: #64748b;
-  --card: #ffffff;
-  --border: #e2e8f0;
-  --primary: #0f172a;
-  --primary-fg: #ffffff;
-  --accent: #2563eb;
 }
 
 * { box-sizing: border-box; }
@@ -17,11 +9,11 @@ html, body, #root { height: 100%; }
 body {
   margin: 0;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background: var(--bg);
-  color: var(--fg);
+  background: #f6f7f9;
+  color: #0f172a;
 }
 
-@utility btn {
+.btn {
   display: inline-flex;
   align-items: center;
   gap: 0.5rem;
@@ -33,28 +25,21 @@ body {
   cursor: pointer;
   transition: all 0.15s;
 }
-@utility btn-primary {
-  background: var(--primary);
-  color: var(--primary-fg);
-}
-@utility btn-primary:hover { opacity: 0.9; }
-@utility btn-outline {
-  background: transparent;
-  border-color: var(--border);
-  color: var(--fg);
-}
-@utility btn-outline:hover { background: var(--bg); }
-@utility card {
-  background: var(--card);
-  border: 1px solid var(--border);
+.btn-primary { background: #0f172a; color: #fff; }
+.btn-primary:hover { opacity: 0.9; }
+.btn-outline { background: transparent; border-color: #e2e8f0; color: #0f172a; }
+.btn-outline:hover { background: #f6f7f9; }
+.card {
+  background: #fff;
+  border: 1px solid #e2e8f0;
   border-radius: 0.75rem;
   padding: 1.25rem;
 }
-@utility input {
+.input {
   width: 100%;
   padding: 0.5rem 0.75rem;
-  border: 1px solid var(--border);
+  border: 1px solid #e2e8f0;
   border-radius: 0.5rem;
-  background: var(--card);
+  background: #fff;
   font-size: 0.875rem;
 }

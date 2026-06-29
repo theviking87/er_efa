@@ -1457,3 +1457,64 @@ function FeriasDialog({ open, onClose, cursos, defaultCursoId }: {
     </Dialog>
   );
 }
+
+function ObservacoesPanel({ mes, cursos, obs, onSaved }: {
+  mes: string;
+  cursos: { id: string; codigo: string; nome: string }[];
+  obs: any[];
+  onSaved: () => void;
+}) {
+  if (cursos.length === 0) return null;
+  return (
+    <div className={"grid gap-3 " + (cursos.length > 1 ? "md:grid-cols-2" : "grid-cols-1")}>
+      {cursos.map(c => {
+        const existing = obs.find((o: any) => o.curso_id === c.id);
+        return (
+          <ObservacaoCard key={c.id} curso={c} mes={mes} initial={existing?.texto ?? ""} onSaved={onSaved} />
+        );
+      })}
+    </div>
+  );
+}
+
+function ObservacaoCard({ curso, mes, initial, onSaved }: {
+  curso: { id: string; codigo: string; nome: string };
+  mes: string;
+  initial: string;
+  onSaved: () => void;
+}) {
+  const [valor, setValor] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setValor(initial); }, [initial, curso.id, mes]);
+
+  const guardar = async () => {
+    if (valor === initial) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("cronograma_observacoes" as any)
+      .upsert({ curso_id: curso.id, mes, texto: valor }, { onConflict: "curso_id,mes" });
+    setSaving(false);
+    if (error) { toast.error("Erro ao guardar observação"); return; }
+    toast.success("Observação guardada");
+    onSaved();
+  };
+
+  return (
+    <div className="border rounded-md bg-card p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium truncate">
+          <span className="text-muted-foreground">{curso.codigo}</span> — {curso.nome}
+        </div>
+        {saving && <span className="text-[10px] text-muted-foreground">a guardar…</span>}
+      </div>
+      <Textarea
+        value={valor}
+        onChange={e => setValor(e.target.value)}
+        onBlur={guardar}
+        placeholder="Observações deste mês (ex.: formador X disponível o mês todo)…"
+        rows={3}
+        className="text-sm resize-y"
+      />
+    </div>
+  );
+}

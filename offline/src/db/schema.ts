@@ -146,6 +146,7 @@ export function normalizeImportedSchema(): void {
   if (tableExists("curso_formandos")) {
     ensureColumns("curso_formandos", ["curso_id", "formando_id"]);
   }
+  ensureColumns("formando_pra", ["formando_id", "curso_id", "ufcd_id", "ficheiro", "nota"]);
   scheduleFlush();
 }
 

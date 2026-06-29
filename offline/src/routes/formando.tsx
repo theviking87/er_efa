@@ -3,7 +3,13 @@ import { Link, useParams } from "react-router-dom";
 import { all, exec, one } from "../db/sqljs";
 import { ensureColumns } from "../db/schema";
 import { uid } from "../lib/format";
-import { saveBlobToDocs, blobUrlFromDocs, deleteFromDocs } from "../db/persistence";
+import { writeFileAt, readFileAt, deleteFileAt } from "../db/persistence";
+
+async function saveBlobToDocs(path: string, file: Blob) { await writeFileAt(`docs/${path}`, file); }
+async function blobUrlFromDocs(path: string): Promise<string | null> {
+  const f = await readFileAt(`docs/${path}`); return f ? URL.createObjectURL(f) : null;
+}
+async function deleteFromDocs(path: string) { await deleteFileAt(`docs/${path}`); }
 
 type Formando = {
   id: string;

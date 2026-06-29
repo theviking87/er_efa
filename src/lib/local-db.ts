@@ -250,6 +250,29 @@ async function initSchema(db: LocalDb): Promise<void> {
        AND a.mes = b.mes;
     CREATE UNIQUE INDEX IF NOT EXISTS cronograma_observacoes_curso_mes_key
       ON public.cronograma_observacoes(curso_id, mes);
+
+    CREATE TABLE IF NOT EXISTS public.curso_ferias (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      curso_id uuid REFERENCES public.cursos(id) ON DELETE CASCADE,
+      data_inicio date,
+      data_fim date,
+      motivo text NOT NULL DEFAULT 'Férias',
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS curso_id uuid REFERENCES public.cursos(id) ON DELETE CASCADE;
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS data_inicio date;
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS data_fim date;
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS motivo text DEFAULT 'Férias';
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+    CREATE INDEX IF NOT EXISTS curso_ferias_curso_idx
+      ON public.curso_ferias(curso_id, data_inicio, data_fim);
+
+    ALTER TABLE public.formadores ADD COLUMN IF NOT EXISTS data_nascimento date;
+    ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS nota text;
+    ALTER TABLE public.formando_pra ALTER COLUMN nome DROP NOT NULL;
+    ALTER TABLE public.formando_pra ALTER COLUMN storage_path DROP NOT NULL;
   `);
   resetRelationshipCache();
 }

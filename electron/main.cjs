@@ -48,6 +48,12 @@ function createWindow() {
     );
   });
 
+  // Always open DevTools so we can see the real error if the UI fails to load.
+  // Press F12 to toggle, Ctrl+Shift+I as well.
+  if (process.env.LOVABLE_DEVTOOLS !== "0") {
+    win.webContents.openDevTools({ mode: "detach" });
+  }
+
   // Open external links in the system browser instead of a new Electron window.
   win.webContents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);

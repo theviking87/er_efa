@@ -2,7 +2,7 @@
 // The password is hashed and stored in localStorage; first run sets it.
 
 import { useEffect, useState } from "react";
-import { hasRoot, loadSavedRoot, pickRoot } from "./db/persistence";
+import { hasRoot, loadSavedRoot, pickRoot, IS_ELECTRON } from "./db/persistence";
 import {
   openDatabase,
   flushNow,
@@ -30,7 +30,7 @@ export function Gate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        if (!("showDirectoryPicker" in window)) {
+        if (!IS_ELECTRON && !("showDirectoryPicker" in window)) {
           setError(
             "Este browser não suporta a File System Access API. Usa o Chrome ou o Edge.",
           );

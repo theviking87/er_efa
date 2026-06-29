@@ -19,4 +19,10 @@ contextBridge.exposeInMainWorld("electronAPI", {
     backupDb: (arrayBuffer) => ipcRenderer.invoke("app:backupDb", arrayBuffer),
     restoreDb: () => ipcRenderer.invoke("app:restoreDb"),
   },
+
+  // Database file (silent)
+  db: {
+    read: () => ipcRenderer.invoke("db:read"),
+    write: (arrayBuffer) => ipcRenderer.invoke("db:write", arrayBuffer),
+  },
 });

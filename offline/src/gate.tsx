@@ -52,17 +52,27 @@ export function Gate({ children }: { children: React.ReactNode }) {
 
   async function openExisting() {
     setBusy("A abrir base de dados…");
-    const bytes = await readDatabaseBytes();
-    if (!bytes) {
-      await openDatabase(null);
-      ensureMinimalSchema();
+    try {
+      const bytes = await readDatabaseBytes();
+      if (!bytes) {
+        await openDatabase(null);
+        ensureMinimalSchema();
+        setBusy(null);
+        setStage("needImport");
+        return;
+      }
+      await openDatabase(bytes);
       setBusy(null);
-      setStage("needImport");
-      return;
+      setStage("password");
+    } catch (e) {
+      // Handle stale (e.g. drive letter changed) — force re-pick.
+      setBusy(null);
+      setError(
+        "Não consegui aceder à pasta guardada (a letra da pen pode ter mudado). Escolhe a pasta outra vez.",
+      );
+      setStage("pickFolder");
+      console.error(e);
     }
-    await openDatabase(bytes);
-    setBusy(null);
-    setStage("password");
   }
 
   async function onPickFolder() {

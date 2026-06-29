@@ -177,8 +177,11 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
     try {
       const counts = await getLocalDataSummary();
       const total = ["cursos", "formadores", "formandos", "ufcds", "sessoes"].reduce((acc, key) => acc + (counts[key] ?? 0), 0);
-      const importedBefore = window.localStorage.getItem(LOCAL_IMPORTED_KEY) === "1";
-      setEmpty(total === 0 && !importedBefore);
+      // Se uma versão anterior marcou a importação como feita mas a BD ficou
+      // vazia/parcial, não podemos esconder o ecrã de importação: isso deixava
+      // a app a abrir sem dados e sem pedir novamente o backup.
+      if (total === 0) window.localStorage.removeItem(LOCAL_IMPORTED_KEY);
+      setEmpty(total === 0);
     } catch (err: any) {
       setError(err?.message ?? String(err));
       setEmpty(true);
@@ -196,9 +199,16 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
     setSummary(null);
     try {
       const result = await importLocalBackupZip(file, setProgress);
+      const coreTotal = ["cursos", "formadores", "formandos", "ufcds", "sessoes"].reduce((acc, key) => acc + (result.tables[key] ?? 0), 0);
+      if (coreTotal === 0) {
+        window.localStorage.removeItem(LOCAL_IMPORTED_KEY);
+        throw new Error("O backup foi lido, mas não importou dados principais (cursos/formadores/formandos/UFCD/sessões). Confirma que escolheste o backup completo exportado pela aplicação online.");
+      }
       window.localStorage.setItem(LOCAL_IMPORTED_KEY, "1");
       setSummary(result);
       setEmpty(false);
+      queryClient.clear();
+      window.location.hash = "/dashboard";
     } catch (err: any) {
       setError(err?.message ?? String(err));
     } finally {

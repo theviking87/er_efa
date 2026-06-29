@@ -9,7 +9,9 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "offline:dev": "vite --config offline/vite.config.ts",
+    "offline:build": "vite build --config offline/vite.config.ts"
   },
   "dependencies": {
     "@fontsource/manrope": "^5.2.8",

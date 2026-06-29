@@ -21,7 +21,7 @@ export default function FormadorDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [tick, setTick] = useState(0);
-  const [tab, setTab] = useState<"dados" | "competencias" | "inatividades" | "documentos">("dados");
+  const [tab, setTab] = useState<"dados" | "competencias" | "disponibilidades" | "inatividades" | "documentos">("dados");
   const [editing, setEditing] = useState(false);
 
   const refresh = () => setTick((t) => t + 1);

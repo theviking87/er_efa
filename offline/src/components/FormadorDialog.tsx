@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
-import { exec, all } from "../db/sqljs";
+import { exec } from "../db/sqljs";
+import { ensureColumns } from "../db/schema";
 import { uid } from "../lib/format";
 
 const COLORS = [

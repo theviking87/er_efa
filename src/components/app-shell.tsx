@@ -17,6 +17,7 @@ const NAV = [
   { to: "/cursos", label: "Cursos", icon: BookOpen },
   { to: "/ufcds", label: "UFCD", icon: ListChecks },
   { to: "/relatorios", label: "Relatórios & SIGO", icon: FileBarChart2 },
+  { to: "/exportar", label: "Exportar / Backup", icon: Download },
   { to: "/perfil", label: "O meu perfil", icon: UserCog },
 ] as const;
 

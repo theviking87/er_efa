@@ -9,14 +9,21 @@
 //   .channel(name) / .removeChannel(ch) → see realtime-shim.ts
 //   .rpc(name, args) → throws (we don't use RPC offline yet)
 import { getLocalDb } from "@/lib/local-db";
-import { loadRelationships } from "./relationships";
+import { loadRelationships, type Relationship } from "./relationships";
 import { LocalQueryBuilder } from "./query-builder";
 import { localAuth } from "./auth-shim";
 import { localStorageApi } from "./storage-shim";
 import { localChannel, localRemoveChannel } from "./realtime-shim";
 
-// Kick off DB + relationships eagerly so the first query is fast.
-const relsPromise = getLocalDb().then(loadRelationships);
+// Keep auth instant. The login screen imports this file, so starting PGlite and
+// applying migrations at module load can make the fields look frozen on slower
+// Windows/USB drives. Initialise the local database only when data is queried.
+let relsPromise: Promise<Relationship[]> | null = null;
+
+function getRelationships() {
+  if (!relsPromise) relsPromise = getLocalDb().then(loadRelationships);
+  return relsPromise;
+}
 
 export const supabase = {
   from<T = any>(table: string) {
@@ -25,7 +32,7 @@ export const supabase = {
     return new LocalQueryBuilder<T>(
       undefined as unknown as any, // db is read inside execute() — we close over the promise
       table,
-      relsPromise
+      getRelationships()
     ).__attachDb(dbPromise);
   },
   auth: localAuth,

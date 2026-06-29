@@ -153,12 +153,12 @@ function InatividadesTab({ formadorId, onChange }: { formadorId: string; onChang
       [uid(), formadorId, form.data_inicio, form.data_fim, form.motivo || null],
     );
     setForm({ data_inicio: "", data_fim: "", motivo: "" });
-    onChange();
+    bump();
   }
   function del(id: string) {
     if (!confirm("Eliminar período?")) return;
     exec(`DELETE FROM formador_inatividades WHERE id=?`, [id]);
-    onChange();
+    bump();
   }
 
   return (
@@ -198,13 +198,8 @@ function InatividadesTab({ formadorId, onChange }: { formadorId: string; onChang
   );
 }
 
-// react-hooks parity hack: force re-memo on parent tick changes by reading
-// a tiny counter stored on the component via state in caller.
-function useTickRef() {
-  return 0;
-}
-
 function DocumentosTab({ formadorId, onChange }: { formadorId: string; onChange: () => void }) {
+  const [tick, setTick] = useState(0);
   const items = useMemo<Doc[]>(() => {
     try {
       return all<Doc>(
@@ -212,8 +207,8 @@ function DocumentosTab({ formadorId, onChange }: { formadorId: string; onChange:
         [formadorId],
       );
     } catch { return []; }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formadorId, useTickRef()]);
+  }, [formadorId, tick]);
+  const bump = () => { setTick((t) => t + 1); onChange(); };
 
   const [tipo, setTipo] = useState("CC");
   const [validade, setValidade] = useState("");

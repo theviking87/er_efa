@@ -25,10 +25,14 @@ export function isElectron(): boolean {
 function preprocess(sql: string): string {
   // Drop comments first to make the regex matching simpler.
   const noBlock = sql.replace(/\/\*[\s\S]*?\*\//g, "");
-  const stripped = noBlock
+  let stripped = noBlock
     .split(/\n/)
     .filter((line) => !/^\s*--/.test(line))
     .join("\n");
+
+  // Strip DO $$ ... END $$; blocks entirely — they are realtime/publication
+  // wiring that PGlite cannot run (and the semicolon-splitter would break them).
+  stripped = stripped.replace(/\bDO\s*\$\$[\s\S]*?\$\$\s*;?/gi, "");
 
   // Split on `;` that terminates a statement (newline or EOF after).
   const statements = stripped.split(/;\s*(?=\n|$)/);
@@ -42,6 +46,10 @@ function preprocess(sql: string): string {
     /^\s*alter\s+table[\s\S]+enable\s+row\s+level\s+security/i,
     /^\s*alter\s+table[\s\S]+disable\s+row\s+level\s+security/i,
     /^\s*alter\s+table[\s\S]+force\s+row\s+level\s+security/i,
+    /^\s*alter\s+table[\s\S]+replica\s+identity/i,
+    /^\s*alter\s+publication\b/i,
+    /^\s*create\s+publication\b/i,
+    /^\s*drop\s+publication\b/i,
     /^\s*insert\s+into\s+storage\./i,
     /^\s*create\s+(unique\s+)?index[\s\S]+on\s+storage\./i,
     /^\s*create\s+trigger[\s\S]+on\s+storage\./i,

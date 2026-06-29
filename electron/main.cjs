@@ -1,7 +1,20 @@
 // Electron main process — Formação ER (offline desktop)
-const { app, BrowserWindow, ipcMain, shell, dialog } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, dialog, protocol, net } = require("electron");
 const path = require("path");
 const fs = require("fs");
+const { pathToFileURL } = require("url");
+
+protocol.registerSchemesAsPrivileged([
+  {
+    scheme: "formacao-er",
+    privileges: {
+      standard: true,
+      secure: true,
+      supportFetchAPI: true,
+      stream: true,
+    },
+  },
+]);
 
 // User data folder. When LOVABLE_PORTABLE=1 (set by the .bat/.command launcher),
 // data lives next to the executable so the whole thing runs from a pen drive.
@@ -25,6 +38,38 @@ if (process.env.LOVABLE_PORTABLE === "1") {
   app.setPath("userData", portableDir);
 }
 
+function rendererDirs() {
+  return [
+    // Packaged as an external Electron resource. This avoids Windows/asar
+    // local-resource edge cases and is the preferred packaged path.
+    path.join(process.resourcesPath, "dist-electron"),
+    // Dev / fallback path when running `electron .` from the project root.
+    path.join(__dirname, "..", "dist-electron"),
+  ];
+}
+
+function resolveRendererFile(requestPath = "/index.electron.html") {
+  const cleanPath = decodeURIComponent(requestPath.split("?")[0]).replace(/^\/+/, "") || "index.electron.html";
+  const relativePath = cleanPath === "index.html" ? "index.electron.html" : cleanPath;
+
+  for (const dir of rendererDirs()) {
+    const full = path.resolve(dir, relativePath);
+    if (full.startsWith(path.resolve(dir)) && fs.existsSync(full) && fs.statSync(full).isFile()) {
+      return full;
+    }
+  }
+  return null;
+}
+
+function registerRendererProtocol() {
+  protocol.handle("formacao-er", (request) => {
+    const url = new URL(request.url);
+    const file = resolveRendererFile(url.pathname);
+    if (!file) return new Response("Not found", { status: 404 });
+    return net.fetch(pathToFileURL(file).toString());
+  });
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
@@ -38,33 +83,24 @@ function createWindow() {
     },
   });
 
-  const candidateFiles = [
-    // Packaged as normal app files, inside app.asar.
-    path.join(__dirname, "..", "dist-electron", "index.electron.html"),
-    path.join(__dirname, "..", "dist-electron", "index.html"),
-    // Packaged as an external Electron resource. This is the most reliable
-    // path on Windows because it avoids asar path edge-cases entirely.
-    path.join(process.resourcesPath, "dist-electron", "index.electron.html"),
-    path.join(process.resourcesPath, "dist-electron", "index.html"),
-  ];
-  const target = candidateFiles.find((file) => fs.existsSync(file));
+  const target = resolveRendererFile("/index.electron.html");
   if (!target) {
     dialog.showErrorBox(
       "Erro a carregar a aplicação",
-      `Não encontrei o ficheiro inicial da aplicação.\n\nProcurei em:\n${candidateFiles.join("\n")}`
+      `Não encontrei o ficheiro inicial da aplicação.\n\nProcurei em:\n${rendererDirs().join("\n")}`
     );
     return;
   }
-  win.loadFile(target).catch((err) => {
+  win.loadURL("formacao-er://app/index.electron.html").catch((err) => {
     dialog.showErrorBox(
       "Erro a carregar a aplicação",
-      `Não consegui carregar ${target}\n\n${err.message}`
+      `Não consegui carregar a aplicação offline.\n\nFicheiro: ${target}\n\n${err.message}`
     );
   });
 
-  // Always open DevTools so we can see the real error if the UI fails to load.
-  // Press F12 to toggle, Ctrl+Shift+I as well.
-  if (process.env.LOVABLE_DEVTOOLS !== "0") {
+  // Only open DevTools when explicitly requested. Leaving them open in the
+  // delivered app can steal focus and makes the app feel blocked.
+  if (process.env.LOVABLE_DEVTOOLS === "1") {
     win.webContents.openDevTools({ mode: "detach" });
   }
 
@@ -169,6 +205,7 @@ ipcMain.handle("app:restoreDb", async () => {
 app.whenReady().then(() => {
   userDataDir = resolveUserDataDir();
   console.log("[FormacaoER] userData:", userDataDir);
+  registerRendererProtocol();
   createWindow();
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow();

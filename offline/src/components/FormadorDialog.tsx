@@ -80,6 +80,7 @@ export function FormadorDialog({
       "morada","codigo_postal","localidade","habilitacoes","ccp","validade_ccp",
       "observacoes","cor","estado",
     ];
+    ensureColumns("formadores", cols as string[]);
     if (initial?.id) {
       const sets = cols.map((c) => `"${c}"=?`).join(", ");
       exec(`UPDATE formadores SET ${sets} WHERE id=?`, [
@@ -95,8 +96,6 @@ export function FormadorDialog({
         [id, ...cols.map((c) => form[c] ?? null)],
       );
     }
-    // ensure existing schema has all the columns we wrote
-    void all;
     onSaved();
   }
 

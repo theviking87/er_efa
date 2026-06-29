@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { all, exec, one } from "../db/sqljs";
+import { ensureColumns } from "../db/schema";
 import { fmtDate, uid, nowIso, ESTADO_FORMADOR_LABEL } from "../lib/format";
 import { FormadorDialog } from "../components/FormadorDialog";
 import { writeFileAt, readFileAt, deleteFileAt } from "../db/persistence";

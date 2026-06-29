@@ -7,7 +7,7 @@
 //     - if parent has FK → child.id   → MANY-TO-ONE (object result)
 //
 // We surface both via lookup by (parent, embedTarget).
-import type { PGlite } from "@electric-sql/pglite";
+import type { LocalDb } from "@/lib/local-db";
 
 export type Relationship = {
   parent: string;
@@ -20,7 +20,7 @@ export type Relationship = {
 
 let _cache: Relationship[] | null = null;
 
-export async function loadRelationships(db: PGlite): Promise<Relationship[]> {
+export async function loadRelationships(db: LocalDb): Promise<Relationship[]> {
   if (_cache) return _cache;
   const res = await db.query<{
     table_name: string;

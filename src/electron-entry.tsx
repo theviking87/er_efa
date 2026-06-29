@@ -1,6 +1,6 @@
 // Client-only entry point for the Electron desktop build.
 // No SSR, no TanStack Start. Uses the same routes/UI as the online app.
-import { StrictMode, useEffect, useMemo, useState, type FormEvent } from "react";
+import { StrictMode, useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider, createRouter, createHashHistory } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +11,7 @@ import "@fontsource/manrope/600.css";
 import "@fontsource/manrope/700.css";
 import "@fontsource/manrope/800.css";
 import { Toaster } from "@/components/ui/sonner";
+import { getLocalDataSummary, importLocalBackupZip, type LocalImportSummary } from "@/lib/local-import-backup";
 
 const LOCAL_SESSION_KEY = "formacao-er-local-session";
 const VALID_USER = "formacao";
@@ -160,11 +161,93 @@ function ElectronRouterApp() {
   return <RouterProvider router={router} />;
 }
 
+function OfflineDataGate({ children }: { children: ReactNode }) {
+  const [checking, setChecking] = useState(true);
+  const [empty, setEmpty] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [progress, setProgress] = useState("A verificar dados locais…");
+  const [summary, setSummary] = useState<LocalImportSummary | null>(null);
+  const [error, setError] = useState("");
+  const [continueEmpty, setContinueEmpty] = useState(false);
+
+  async function refreshSummary() {
+    setChecking(true);
+    setError("");
+    try {
+      const counts = await getLocalDataSummary();
+      const total = ["cursos", "formadores", "formandos", "ufcds", "sessoes"].reduce((acc, key) => acc + (counts[key] ?? 0), 0);
+      setEmpty(total === 0);
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+      setEmpty(true);
+    } finally {
+      setChecking(false);
+    }
+  }
+
+  useEffect(() => { void refreshSummary(); }, []);
+
+  async function handleFile(file: File | null) {
+    if (!file) return;
+    setImporting(true);
+    setError("");
+    setSummary(null);
+    try {
+      const result = await importLocalBackupZip(file, setProgress);
+      setSummary(result);
+      setEmpty(false);
+    } catch (err: any) {
+      setError(err?.message ?? String(err));
+    } finally {
+      setImporting(false);
+    }
+  }
+
+  if (checking) {
+    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">{progress}</div>;
+  }
+
+  if (empty && !continueEmpty) {
+    const totalImported = summary ? Object.values(summary.tables).reduce((a, b) => a + b, 0) : 0;
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center p-6">
+        <div className="w-full max-w-lg space-y-5 border rounded-lg p-6 bg-card shadow-sm">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-semibold tracking-tight">Importar dados</h1>
+            <p className="text-sm text-muted-foreground">A base de dados local está vazia. Seleciona o backup <strong>.zip</strong> exportado da versão online.</p>
+          </div>
+          <label className="block">
+            <span className="sr-only">Selecionar backup</span>
+            <input
+              type="file"
+              accept=".zip,application/zip"
+              disabled={importing}
+              onChange={(e) => void handleFile(e.currentTarget.files?.[0] ?? null)}
+              className="block w-full text-sm file:mr-4 file:rounded-md file:border-0 file:bg-primary file:px-4 file:py-2 file:text-sm file:font-medium file:text-primary-foreground hover:file:opacity-90 disabled:opacity-60"
+            />
+          </label>
+          <div className="min-h-6 text-sm text-muted-foreground">{importing ? progress : summary ? `${totalImported} registos importados · ${summary.files} documentos copiados` : ""}</div>
+          {summary?.warnings.length ? <p className="text-xs text-amber-700">Alguns documentos não foram copiados: {summary.warnings.slice(0, 3).join("; ")}</p> : null}
+          {error ? <pre className="text-xs whitespace-pre-wrap rounded-md bg-destructive/10 text-destructive p-3">{error}</pre> : null}
+          <div className="flex gap-2 justify-between pt-2">
+            <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => setContinueEmpty(true)} disabled={importing}>Entrar vazio</button>
+            <button type="button" className="h-10 rounded-md border px-4 text-sm font-medium" onClick={refreshSummary} disabled={importing}>Verificar novamente</button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return <>{children}</>;
+}
+
 function ElectronApp() {
   const [signedIn, setSignedIn] = useState(() => Boolean(readLocalSession()));
   return signedIn ? (
     <QueryClientProvider client={queryClient}>
-      <ElectronRouterApp />
+      <OfflineDataGate>
+        <ElectronRouterApp />
+      </OfflineDataGate>
       <Toaster />
     </QueryClientProvider>
   ) : (

@@ -29,11 +29,11 @@ function createWindow() {
     },
   });
 
-  const indexHtml = path.join(__dirname, "..", "dist", "index.html");
+  const indexHtml = path.join(__dirname, "..", "offline", "dist", "index.html");
   win.loadFile(indexHtml).catch((err) => {
     dialog.showErrorBox(
       "Erro a carregar a aplicação",
-      `Não consegui carregar ${indexHtml}\n\n${err.message}\n\nFaz \"npm run build\" antes de empacotar.`
+      `Não consegui carregar ${indexHtml}\n\n${err.message}`
     );
   });
 

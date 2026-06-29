@@ -66,13 +66,19 @@ export function Gate({ children }: { children: React.ReactNode }) {
       setBusy(null);
       setStage("password");
     } catch (e) {
-      // Handle stale (e.g. drive letter changed) — force re-pick.
       setBusy(null);
-      setError(
-        "Não consegui aceder à pasta guardada (a letra da pen pode ter mudado). Escolhe a pasta outra vez.",
-      );
-      setStage("pickFolder");
-      console.error(e);
+      const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e);
+      console.error("openExisting falhou:", e);
+      if (IS_ELECTRON) {
+        // No folder picker in desktop mode — surface the real error.
+        setError(`Falha a abrir base de dados:\n${msg}`);
+        setStage("boot");
+      } else {
+        setError(
+          "Não consegui aceder à pasta guardada (a letra da pen pode ter mudado). Escolhe a pasta outra vez.\n\n" + msg,
+        );
+        setStage("pickFolder");
+      }
     }
   }
 

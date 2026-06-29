@@ -230,7 +230,7 @@ function DocumentosTab({ formadorId, onChange }: { formadorId: string; onChange:
         [uid(), formadorId, tipo, file.name, storagePath, validade || null, nowIso()],
       );
       setValidade("");
-      onChange();
+      bump();
     } catch (err) {
       alert("Erro ao carregar ficheiro: " + (err instanceof Error ? err.message : String(err)));
     } finally {
@@ -251,7 +251,7 @@ function DocumentosTab({ formadorId, onChange }: { formadorId: string; onChange:
     if (!confirm("Eliminar este documento?")) return;
     await deleteFileAt(`docs/formadores/${d.storage_path}`);
     exec(`DELETE FROM formador_documentos WHERE id=?`, [d.id]);
-    onChange();
+    bump();
   }
 
   return (

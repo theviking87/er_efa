@@ -14,6 +14,7 @@
     "offline:build": "vite build --config offline/vite.config.ts"
   },
   "dependencies": {
+    "@electric-sql/pglite": "^0.5.3",
     "@fontsource/manrope": "^5.2.8",
     "@hookform/resolvers": "^5.2.2",
     "@radix-ui/react-accordion": "^1.2.12",
@@ -76,6 +77,7 @@
     "zod": "^3.24.2"
   },
   "devDependencies": {
+    "@electron/packager": "^20.0.1",
     "@eslint/js": "^9.32.0",
     "@lovable.dev/vite-tanstack-config": "2.6.2",
     "@types/node": "^22.16.5",
@@ -83,6 +85,7 @@
     "@types/react-dom": "^19.2.0",
     "@types/sql.js": "^1.4.11",
     "@vitejs/plugin-react": "^5.2.0",
+    "electron": "^42.5.0",
     "eslint": "^9.32.0",
     "eslint-config-prettier": "^10.1.1",
     "eslint-plugin-prettier": "^5.2.6",

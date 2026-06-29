@@ -21,6 +21,7 @@ const TABELAS = [
   "curso_formandos",
   "curso_ufcd_formadores",
   "curso_ferias",
+  "cronograma_observacoes",
   "formador_ufcds",
   "formador_disponibilidades",
   "formador_inatividades",

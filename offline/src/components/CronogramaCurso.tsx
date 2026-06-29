@@ -65,9 +65,22 @@ export function CronogramaCurso({ cursoId }: { cursoId: string }) {
 
   const totalHoras = sessoes.reduce((s, r) => s + (Number(r.horas) || 0), 0);
 
+  // Resumo por UFCD: horas totais vs dadas (todas as sessões do curso, não só do mês)
+  const resumoUfcds = useMemo(() => {
+    try {
+      return all<{ codigo: string | null; nome: string | null; horas_total: number | null; horas_dadas: number | null; estado: string | null }>(
+        `SELECT u.codigo, u.nome, u.horas AS horas_total, cu.estado,
+                COALESCE((SELECT SUM(s.horas) FROM sessoes s WHERE s.curso_ufcd_id = cu.id), 0) AS horas_dadas
+         FROM curso_ufcds cu LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+         WHERE cu.curso_id = ?`,
+        [cursoId],
+      );
+    } catch { return []; }
+  }, [cursoId, tick]);
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between print:hidden">
         <div className="flex items-center gap-2">
           <button className="btn btn-outline" onClick={prevMonth}>‹</button>
           <div className="font-semibold w-44 text-center">
@@ -75,10 +88,48 @@ export function CronogramaCurso({ cursoId }: { cursoId: string }) {
           </div>
           <button className="btn btn-outline" onClick={nextMonth}>›</button>
         </div>
-        <div className="text-sm text-slate-600">
-          {sessoes.length} sessões · <strong>{totalHoras}h</strong>
+        <div className="flex items-center gap-3">
+          <div className="text-sm text-slate-600">
+            {sessoes.length} sessões · <strong>{totalHoras}h</strong>
+          </div>
+          <button className="btn btn-outline" onClick={() => window.print()}>Imprimir</button>
         </div>
       </div>
+
+      {resumoUfcds.length > 0 && (
+        <details className="bg-white border border-slate-200 rounded-lg print:hidden" open>
+          <summary className="cursor-pointer px-4 py-2 text-sm font-medium bg-slate-50 border-b border-slate-200">
+            Resumo de horas por UFCD
+          </summary>
+          <table className="w-full text-sm">
+            <thead className="text-xs uppercase tracking-wide text-slate-500">
+              <tr>
+                <th className="text-left font-medium px-4 py-2 w-24">Código</th>
+                <th className="text-left font-medium px-4 py-2">UFCD</th>
+                <th className="text-right font-medium px-4 py-2 w-20">Dadas</th>
+                <th className="text-right font-medium px-4 py-2 w-20">Total</th>
+                <th className="text-right font-medium px-4 py-2 w-20">Em falta</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100">
+              {resumoUfcds.map((r, i) => {
+                const total = Number(r.horas_total) || 0;
+                const dadas = Number(r.horas_dadas) || 0;
+                const falta = Math.max(0, total - dadas);
+                return (
+                  <tr key={i}>
+                    <td className="px-4 py-1.5 font-mono text-xs">{r.codigo ?? "—"}</td>
+                    <td className="px-4 py-1.5">{r.nome ?? "—"}</td>
+                    <td className="px-4 py-1.5 text-right">{dadas}h</td>
+                    <td className="px-4 py-1.5 text-right text-slate-500">{total}h</td>
+                    <td className={`px-4 py-1.5 text-right font-medium ${falta > 0 ? "text-rose-600" : "text-emerald-600"}`}>{falta}h</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </details>
+      )}
 
       <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
         <div className="grid grid-cols-7 bg-slate-50 text-xs uppercase tracking-wide text-slate-500 border-b border-slate-200">

@@ -165,6 +165,25 @@ function CronogramaGeral() {
     },
   });
 
+  const observacoes = useQuery({
+    queryKey: ["cronograma-observacoes", inicioMes],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cronograma_observacoes" as any)
+        .select("id, curso_id, mes, texto")
+        .eq("mes", inicioMes);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  useEffect(() => {
+    const ch = supabase
+      .channel("cron-obs-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cronograma_observacoes" }, () => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
+
   // Map dia ISO -> Set<curso_id> de cursos em férias
   const feriasByDay = useMemo(() => {
     const m = new Map<string, Set<string>>();

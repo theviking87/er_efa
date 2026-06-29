@@ -39,12 +39,19 @@ function tableName(table: string) {
   return `public.${quoteIdent(table)}`;
 }
 
+const ISO_DATE_ONLY = /^\d{4}-\d{2}-\d{2}$/;
+
 function normalizeValue(value: unknown) {
   if (value === undefined) return null;
   if (value === null) return null;
   if (typeof value === "boolean") return value;
   if (typeof value === "number") return Number.isFinite(value) ? value : null;
-  if (typeof value === "string") return value;
+  if (typeof value === "string") {
+    // O backup online guarda DATE como "YYYY-MM-DD". O PGlite deve receber
+    // exatamente esse valor, sem converter para timezone local/UTC.
+    if (ISO_DATE_ONLY.test(value)) return value;
+    return value;
+  }
   return JSON.stringify(value);
 }
 
@@ -71,6 +78,13 @@ async function ensureExtraColumns(
     await db.exec(`ALTER TABLE ${tableName(table)} ADD COLUMN ${quoteIdent(col)} text`);
     existing.add(col);
   }
+}
+
+async function existingTables(db: Awaited<ReturnType<typeof getLocalDb>>): Promise<Set<string>> {
+  const res = await db.query<{ table_name: string }>(
+    `SELECT table_name FROM information_schema.tables WHERE table_schema = 'public'`,
+  );
+  return new Set(res.rows.map((r) => r.table_name));
 }
 
 async function insertRows(
@@ -106,7 +120,8 @@ async function insertRows(
 }
 
 async function clearKnownTables(db: Awaited<ReturnType<typeof getLocalDb>>, tablesInBackup: string[]) {
-  const targets = TABLE_ORDER.filter((t) => tablesInBackup.includes(t));
+  const existing = await existingTables(db);
+  const targets = TABLE_ORDER.filter((t) => tablesInBackup.includes(t) && existing.has(t));
   if (!targets.length) return;
   await db.exec(`TRUNCATE ${targets.map(tableName).join(", ")} RESTART IDENTITY CASCADE`);
 }
@@ -161,6 +176,7 @@ export async function importLocalBackupZip(file: File, progress?: Progress): Pro
   const parsed = JSON.parse(await dataEntry.async("string")) as { tables?: Record<string, Record<string, unknown>[]> };
   const tables = parsed.tables ?? {};
   const tableNames = Object.keys(tables);
+  const existing = await existingTables(db);
 
   progress?.("A limpar dados antigos…");
   await clearKnownTables(db, tableNames);
@@ -169,6 +185,11 @@ export async function importLocalBackupZip(file: File, progress?: Progress): Pro
   for (const table of TABLE_ORDER) {
     const rows = tables[table];
     if (!rows) continue;
+    if (!existing.has(table)) {
+      summary.tables[table] = 0;
+      summary.warnings.push(`Tabela ${table} não existe na base local; foi ignorada.`);
+      continue;
+    }
     progress?.(`A importar ${table} (${rows.length})…`);
     summary.tables[table] = await insertRows(db, table, rows, progress);
     await yieldToUi();

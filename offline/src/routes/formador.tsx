@@ -133,6 +133,7 @@ function DadosTab({ f }: { f: Formador }) {
 }
 
 function InatividadesTab({ formadorId, onChange }: { formadorId: string; onChange: () => void }) {
+  const [tick, setTick] = useState(0);
   const items = useMemo<Inat[]>(() => {
     try {
       return all<Inat>(
@@ -140,10 +141,10 @@ function InatividadesTab({ formadorId, onChange }: { formadorId: string; onChang
         [formadorId],
       );
     } catch { return []; }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [formadorId, useTickRef()]);
+  }, [formadorId, tick]);
 
   const [form, setForm] = useState({ data_inicio: "", data_fim: "", motivo: "" });
+  const bump = () => { setTick((t) => t + 1); onChange(); };
 
   function add() {
     if (!form.data_inicio || !form.data_fim) { alert("Datas obrigatórias"); return; }

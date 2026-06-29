@@ -5,7 +5,7 @@
 // Returns a per-table count summary so the caller can show a confirmation.
 
 import JSZip from "jszip";
-import { createAndFillTable } from "./schema";
+import { createAndFillTable, normalizeImportedSchema } from "./schema";
 import { flushNow } from "./sqljs";
 import { writeFileAt } from "./persistence";
 

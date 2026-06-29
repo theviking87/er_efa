@@ -4,8 +4,9 @@ import { all, exec, one } from "../db/sqljs";
 import { ensureColumns } from "../db/schema";
 import { fmtDate, uid } from "../lib/format";
 import { CursoDialog, type CursoRow } from "../components/CursoDialog";
+import { CronogramaCurso } from "../components/CronogramaCurso";
 
-type Tab = "dados" | "ufcds" | "formandos";
+type Tab = "dados" | "ufcds" | "formandos" | "cronograma";
 
 export default function CursoDetail() {
   const { id = "" } = useParams();

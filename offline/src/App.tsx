@@ -1,15 +1,29 @@
-import { Routes, Route, Link, Navigate } from "react-router-dom";
+import { Routes, Route, Link, Navigate, useLocation } from "react-router-dom";
 import { Gate } from "./gate";
 import Dashboard from "./routes/dashboard";
+import FormadoresList from "./routes/formadores";
+import FormadorDetail from "./routes/formador";
 import { flushNow } from "./db/sqljs";
 import { forgetRoot } from "./db/persistence";
 
 function Shell({ children }: { children: React.ReactNode }) {
+  const loc = useLocation();
   async function changeFolder() {
     await flushNow();
     await forgetRoot();
     location.reload();
   }
+  const navItem = (to: string, label: string) => {
+    const active = to === "/" ? loc.pathname === "/" : loc.pathname.startsWith(to);
+    return (
+      <Link
+        to={to}
+        className={`block px-3 py-2 rounded-md ${active ? "bg-slate-800 text-white" : "hover:bg-slate-800"}`}
+      >
+        {label}
+      </Link>
+    );
+  };
   return (
     <div className="min-h-screen flex">
       <aside className="w-56 shrink-0 bg-slate-900 text-slate-100 flex flex-col">
@@ -17,7 +31,8 @@ function Shell({ children }: { children: React.ReactNode }) {
           Formação ER
         </div>
         <nav className="flex-1 p-2 space-y-1 text-sm">
-          <Link to="/" className="block px-3 py-2 rounded-md hover:bg-slate-800">Painel</Link>
+          {navItem("/", "Painel")}
+          {navItem("/formadores", "Formadores")}
         </nav>
         <div className="p-2 border-t border-slate-800 text-xs text-slate-400 space-y-1">
           <button className="w-full text-left px-3 py-1.5 rounded hover:bg-slate-800" onClick={() => flushNow()}>
@@ -39,9 +54,12 @@ export default function App() {
       <Shell>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/formadores" element={<FormadoresList />} />
+          <Route path="/formadores/:id" element={<FormadorDetail />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>
     </Gate>
   );
 }
+

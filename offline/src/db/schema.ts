@@ -95,3 +95,23 @@ export function ensureMinimalSchema(): void {
   }
   scheduleFlush();
 }
+
+/** Make sure the given columns exist on a table, adding any that are missing. */
+export function ensureColumns(table: string, cols: string[]): void {
+  const db = getDb();
+  db.run(`CREATE TABLE IF NOT EXISTS ${quote(table)} ("id" PRIMARY KEY)`);
+  const stmt = db.prepare(`PRAGMA table_info(${quote(table)})`);
+  const existing = new Set<string>();
+  try {
+    while (stmt.step()) {
+      const row = stmt.getAsObject() as { name: string };
+      existing.add(row.name);
+    }
+  } finally {
+    stmt.free();
+  }
+  for (const c of cols) {
+    if (!existing.has(c)) db.run(`ALTER TABLE ${quote(table)} ADD COLUMN ${quote(c)}`);
+  }
+  scheduleFlush();
+}

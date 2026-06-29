@@ -5,7 +5,7 @@
 // Returns a per-table count summary so the caller can show a confirmation.
 
 import JSZip from "jszip";
-import { createAndFillTable } from "./schema";
+import { createAndFillTable, normalizeImportedSchema } from "./schema";
 import { flushNow } from "./sqljs";
 import { writeFileAt } from "./persistence";
 
@@ -63,6 +63,8 @@ export async function importBackupZip(file: File, onProgress?: (msg: string) => 
     }
   }
 
+  onProgress?.("A normalizar schema…");
+  normalizeImportedSchema();
   onProgress?.("A gravar database.db…");
   await flushNow();
   return summary;

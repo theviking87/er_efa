@@ -115,3 +115,28 @@ export function ensureColumns(table: string, cols: string[]): void {
   }
   scheduleFlush();
 }
+
+/**
+ * The online export uses the canonical column names (ufcds.designacao,
+ * ufcds.horas_referencia, no cursos.local). The offline UI reads aliases
+ * (nome, horas, local). Mirror the canonical columns into the aliases so
+ * existing queries keep working without rewriting every screen.
+ */
+export function normalizeImportedSchema(): void {
+  const db = getDb();
+  if (tableExists("ufcds")) {
+    ensureColumns("ufcds", ["nome", "horas", "designacao", "horas_referencia"]);
+    db.run(`UPDATE ufcds SET nome = COALESCE(NULLIF(nome,''), designacao) WHERE designacao IS NOT NULL`);
+    db.run(`UPDATE ufcds SET designacao = COALESCE(NULLIF(designacao,''), nome) WHERE nome IS NOT NULL`);
+    db.run(`UPDATE ufcds SET horas = COALESCE(horas, horas_referencia)`);
+    db.run(`UPDATE ufcds SET horas_referencia = COALESCE(horas_referencia, horas)`);
+  }
+  if (tableExists("cursos")) {
+    ensureColumns("cursos", ["local", "horario", "tipologia", "observacoes"]);
+  }
+  if (tableExists("formandos")) {
+    ensureColumns("formandos", ["nome", "nif", "email"]);
+  }
+  scheduleFlush();
+}
+

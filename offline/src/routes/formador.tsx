@@ -227,6 +227,7 @@ function DocumentosTab({ formadorId, onChange }: { formadorId: string; onChange:
         .replace(/_+/g, "_");
       const storagePath = `${formadorId}/${Date.now()}_${safeName}`;
       await writeFileAt(`docs/formadores/${storagePath}`, file);
+      ensureColumns("formador_documentos", ["formador_id","tipo","nome","storage_path","validade","created_at"]);
       exec(
         `INSERT INTO formador_documentos (id, formador_id, tipo, nome, storage_path, validade, created_at) VALUES (?,?,?,?,?,?,?)`,
         [uid(), formadorId, tipo, file.name, storagePath, validade || null, nowIso()],

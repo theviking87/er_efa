@@ -16,6 +16,15 @@ function resolveUserDataDir() {
 
 let userDataDir;
 
+// IMPORTANT: in portable mode, redirect Electron's userData dir BEFORE app
+// is ready. That way the renderer's IndexedDB (which PGlite uses to persist
+// the database) lives on the pen drive instead of %APPDATA%.
+if (process.env.LOVABLE_PORTABLE === "1") {
+  const portableDir = path.join(path.dirname(process.execPath), "FormacaoER-data");
+  if (!fs.existsSync(portableDir)) fs.mkdirSync(portableDir, { recursive: true });
+  app.setPath("userData", portableDir);
+}
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1400,
@@ -29,11 +38,13 @@ function createWindow() {
     },
   });
 
-  const indexHtml = path.join(__dirname, "..", "offline", "dist", "index.html");
-  win.loadFile(indexHtml).catch((err) => {
+  const indexHtml = path.join(__dirname, "..", "dist-electron", "index.electron.html");
+  const fallback = path.join(__dirname, "..", "dist-electron", "index.html");
+  const target = fs.existsSync(indexHtml) ? indexHtml : fallback;
+  win.loadFile(target).catch((err) => {
     dialog.showErrorBox(
       "Erro a carregar a aplicação",
-      `Não consegui carregar ${indexHtml}\n\n${err.message}`
+      `Não consegui carregar ${target}\n\n${err.message}`
     );
   });
 

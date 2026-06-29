@@ -141,6 +141,8 @@ export class LocalQueryBuilder<T = any> implements PromiseLike<Result<T>> {
         localChannelEmit(this.table, this._mode.toUpperCase() as any, rows[0] ?? null);
       }
 
+      rows = rows.map(normalizeRowForClient);
+
       if (this._single || this._maybeSingle) {
         if (rows.length === 0) {
           if (this._maybeSingle) return { data: null, error: null, count: 0 };
@@ -381,6 +383,28 @@ function literal(v: unknown): string {
   if (typeof v === "number") return String(v);
   if (typeof v === "boolean") return v ? "TRUE" : "FALSE";
   return `'${String(v).replace(/'/g, "''")}'`;
+}
+
+function normalizeRowForClient<T>(value: T): T {
+  if (value instanceof Date) {
+    const isDateOnly =
+      value.getUTCHours() === 0 &&
+      value.getUTCMinutes() === 0 &&
+      value.getUTCSeconds() === 0 &&
+      value.getUTCMilliseconds() === 0;
+    return (isDateOnly
+      ? `${value.getUTCFullYear()}-${String(value.getUTCMonth() + 1).padStart(2, "0")}-${String(value.getUTCDate()).padStart(2, "0")}`
+      : value.toISOString()) as T;
+  }
+  if (Array.isArray(value)) return value.map(normalizeRowForClient) as T;
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [key, child] of Object.entries(value as Record<string, unknown>)) {
+      out[key] = normalizeRowForClient(child);
+    }
+    return out as T;
+  }
+  return value;
 }
 
 function orPart(s: string): string {

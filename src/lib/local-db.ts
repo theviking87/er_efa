@@ -173,16 +173,28 @@ async function resetPartialSchemaIfNeeded(db: LocalDb, appliedCount: number) {
     return;
   }
 
-  // If migrations were marked as applied by a broken build, but core tables are
-  // missing, rerun everything. Do not reset merely because a newer optional
+  // If migrations were marked as applied by a broken build, but essential tables
+  // are missing, rerun everything. Do not reset merely because a newer optional
   // table is missing; those are patched/applied below to avoid deleting data.
+  const essentialTables = [
+    "formadores",
+    "formandos",
+    "cursos",
+    "ufcds",
+    "curso_ufcds",
+    "curso_formandos",
+    "curso_ufcd_formadores",
+    "formador_disponibilidades",
+    "sessoes",
+  ];
+  const essentialSql = essentialTables.map((t) => `'${t}'`).join(",");
   const core = await db.query<{ table_name: string }>(`
     SELECT table_name
       FROM information_schema.tables
      WHERE table_schema = 'public'
-       AND table_name IN ('formadores','formandos','cursos','ufcds','sessoes')
+       AND table_name IN (${essentialSql})
   `);
-  if (appliedCount > 0 && core.rows.length < 5) {
+  if (appliedCount > 0 && core.rows.length < essentialTables.length) {
     console.warn("[local-db] detected broken offline schema with applied migrations; resetting before migrations");
     await db.exec(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`);
     await db.exec(`
@@ -250,6 +262,43 @@ async function initSchema(db: LocalDb): Promise<void> {
        AND a.mes = b.mes;
     CREATE UNIQUE INDEX IF NOT EXISTS cronograma_observacoes_curso_mes_key
       ON public.cronograma_observacoes(curso_id, mes);
+
+    CREATE TABLE IF NOT EXISTS public.curso_ferias (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      curso_id uuid REFERENCES public.cursos(id) ON DELETE CASCADE,
+      data_inicio date,
+      data_fim date,
+      motivo text NOT NULL DEFAULT 'Férias',
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now()
+    );
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS curso_id uuid REFERENCES public.cursos(id) ON DELETE CASCADE;
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS data_inicio date;
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS data_fim date;
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS motivo text DEFAULT 'Férias';
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+    ALTER TABLE public.curso_ferias ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+    CREATE INDEX IF NOT EXISTS curso_ferias_curso_idx
+      ON public.curso_ferias(curso_id, data_inicio, data_fim);
+
+    ALTER TABLE public.formadores ADD COLUMN IF NOT EXISTS data_nascimento date;
+
+    CREATE TABLE IF NOT EXISTS public.formando_pra (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      curso_formando_id uuid REFERENCES public.curso_formandos(id) ON DELETE CASCADE,
+      curso_ufcd_id uuid REFERENCES public.curso_ufcds(id) ON DELETE CASCADE,
+      nome text,
+      storage_path text,
+      nota text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE(curso_formando_id, curso_ufcd_id)
+    );
+    ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS nome text;
+    ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS storage_path text;
+    ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS nota text;
+    ALTER TABLE public.formando_pra ALTER COLUMN nome DROP NOT NULL;
+    ALTER TABLE public.formando_pra ALTER COLUMN storage_path DROP NOT NULL;
   `);
   resetRelationshipCache();
 }

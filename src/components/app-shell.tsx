@@ -9,6 +9,8 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 
+const LOCAL_FORCE_IMPORT_KEY = "formacao-er-force-import";
+
 const NAV = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
   { to: "/cronograma", label: "Cronograma", icon: CalendarDays },
@@ -95,6 +97,19 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
 
         <div className="p-3 border-t border-sidebar-border">
+          {typeof window !== "undefined" && Boolean((window as any).electronAPI?.isElectron) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2 text-white/70 hover:text-white hover:bg-white/10 mb-1"
+              onClick={() => {
+                window.localStorage.setItem(LOCAL_FORCE_IMPORT_KEY, "1");
+                window.location.reload();
+              }}
+            >
+              <Download className="size-4" /> Importar backup
+            </Button>
+          )}
           <Button
             variant="ghost"
             size="sm"

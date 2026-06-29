@@ -149,6 +149,7 @@ function InatividadesTab({ formadorId, onChange }: { formadorId: string; onChang
 
   function add() {
     if (!form.data_inicio || !form.data_fim) { alert("Datas obrigatórias"); return; }
+    ensureColumns("formador_inatividades", ["formador_id","data_inicio","data_fim","motivo"]);
     exec(
       `INSERT INTO formador_inatividades (id, formador_id, data_inicio, data_fim, motivo) VALUES (?,?,?,?,?)`,
       [uid(), formadorId, form.data_inicio, form.data_fim, form.motivo || null],

@@ -29,7 +29,7 @@ function write(s: LocalSession | null) {
 export const localAuth = {
   async signInWithPassword({ email, password }: { email: string; password: string }) {
     // Accept either `formacao` or `formacao@local` as username.
-    const u = email.replace(/@local$/, "").trim().toLowerCase();
+    const u = email.replace(/@(app\.)?local$/, "").trim().toLowerCase();
     if (u !== VALID_USER.toLowerCase() || password !== VALID_PASS) {
       return { data: { user: null, session: null }, error: { message: "Credenciais inválidas", name: "AuthError" } };
     }

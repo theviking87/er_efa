@@ -11,12 +11,11 @@
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "offline:dev": "vite --config offline/vite.config.ts",
-    "offline:build": "vite build --config offline/vite.config.ts",
     "migrations:bundle": "node scripts/bundle-migrations.mjs",
+    "electron:build:spa": "npm run migrations:bundle && vite build --config vite.config.electron.ts",
     "electron:dev": "electron .",
-    "electron:build:win": "npm run migrations:bundle && vite build && electron-packager . FormacaoER --platform=win32 --arch=x64 --out=electron-release --overwrite --ignore=\"^/src\" --ignore=\"^/public\" --ignore=\"^/electron-release\" --ignore=\"^/supabase\" --ignore=\"^/offline\"",
-    "electron:build:mac": "npm run migrations:bundle && vite build && electron-packager . FormacaoER --platform=darwin --arch=x64 --out=electron-release --overwrite --ignore=\"^/src\" --ignore=\"^/public\" --ignore=\"^/electron-release\" --ignore=\"^/supabase\" --ignore=\"^/offline\""
+    "electron:build:win": "npm run electron:build:spa && electron-packager . FormacaoER --platform=win32 --arch=x64 --out=electron-release --overwrite --ignore=\"^/src\" --ignore=\"^/public\" --ignore=\"^/electron-release\" --ignore=\"^/supabase\" --ignore=\"^/offline\" --ignore=\"^/dist\\b\"",
+    "electron:build:mac": "npm run electron:build:spa && electron-packager . FormacaoER --platform=darwin --arch=x64 --out=electron-release --overwrite --ignore=\"^/src\" --ignore=\"^/public\" --ignore=\"^/electron-release\" --ignore=\"^/supabase\" --ignore=\"^/offline\" --ignore=\"^/dist\\b\""
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.3",

@@ -1,0 +1,1 @@
+import{a as e}from"./client-DcMTKWr-.js";import{t}from"./app-shell-DZ2r8Pko.js";import{V as n}from"./index.electron-BWFuEn-5.js";var r=e(),i=()=>(0,r.jsx)(t,{children:(0,r.jsx)(n,{})});export{i as component};

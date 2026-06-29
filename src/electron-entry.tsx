@@ -14,6 +14,7 @@ import { Toaster } from "@/components/ui/sonner";
 import { getLocalDataSummary, importLocalBackupZip, type LocalImportSummary } from "@/lib/local-import-backup";
 
 const LOCAL_SESSION_KEY = "formacao-er-local-session";
+const LOCAL_IMPORTED_KEY = "formacao-er-local-imported";
 const VALID_USER = "formacao";
 const VALID_PASS = "ER2026";
 
@@ -176,7 +177,8 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
     try {
       const counts = await getLocalDataSummary();
       const total = ["cursos", "formadores", "formandos", "ufcds", "sessoes"].reduce((acc, key) => acc + (counts[key] ?? 0), 0);
-      setEmpty(total === 0);
+      const importedBefore = window.localStorage.getItem(LOCAL_IMPORTED_KEY) === "1";
+      setEmpty(total === 0 && !importedBefore);
     } catch (err: any) {
       setError(err?.message ?? String(err));
       setEmpty(true);
@@ -194,6 +196,7 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
     setSummary(null);
     try {
       const result = await importLocalBackupZip(file, setProgress);
+      window.localStorage.setItem(LOCAL_IMPORTED_KEY, "1");
       setSummary(result);
       setEmpty(false);
     } catch (err: any) {
@@ -214,7 +217,7 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
         <div className="w-full max-w-lg space-y-5 border rounded-lg p-6 bg-card shadow-sm">
           <div className="space-y-1">
             <h1 className="text-2xl font-semibold tracking-tight">Importar dados</h1>
-            <p className="text-sm text-muted-foreground">A base de dados local está vazia. Seleciona o backup <strong>.zip</strong> exportado da versão online.</p>
+            <p className="text-sm text-muted-foreground">Antes de usar a versão offline, seleciona o backup <strong>.zip</strong> exportado da versão online.</p>
           </div>
           <label className="block">
             <span className="sr-only">Selecionar backup</span>

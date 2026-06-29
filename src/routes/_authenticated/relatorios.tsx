@@ -9,8 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSpreadsheet, FileText } from "lucide-react";
-import { exportSigoCurso, exportRelatorioFormadores, exportRelatorioCursos, exportRelatorioFaltas } from "@/lib/exports";
-import { exportSigoCursoPdf, exportRelatorioFormadoresPdf, exportRelatorioCursosPdf, exportRelatorioFaltasPdf } from "@/lib/pdf-exports";
 import { toast } from "sonner";
 import { localDateIso } from "@/lib/format";
 
@@ -77,10 +75,10 @@ function RelatoriosPage() {
               </Select>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Button disabled={!cursoId || busy === "sigo"} onClick={() => run("sigo", () => exportSigoCurso(cursoId))}>
+              <Button disabled={!cursoId || busy === "sigo"} onClick={() => run("sigo", async () => (await import("@/lib/exports")).exportSigoCurso(cursoId))}>
                 <FileSpreadsheet className="size-4" /> {busy === "sigo" ? "A exportar…" : "Excel"}
               </Button>
-              <Button variant="outline" disabled={!cursoId || busy === "sigo-pdf"} onClick={() => run("sigo-pdf", () => exportSigoCursoPdf(cursoId))}>
+              <Button variant="outline" disabled={!cursoId || busy === "sigo-pdf"} onClick={() => run("sigo-pdf", async () => (await import("@/lib/pdf-exports")).exportSigoCursoPdf(cursoId))}>
                 <FileText className="size-4" /> {busy === "sigo-pdf" ? "A exportar…" : "PDF"}
               </Button>
             </div>
@@ -102,10 +100,10 @@ function RelatoriosPage() {
               <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={fim} onChange={e => setFim(e.target.value)} /></div>
             </div>
             <div className="grid grid-cols-2 gap-2">
-              <Button disabled={!inicio || !fim || busy === "form"} onClick={() => run("form", () => exportRelatorioFormadores(inicio, fim))}>
+              <Button disabled={!inicio || !fim || busy === "form"} onClick={() => run("form", async () => (await import("@/lib/exports")).exportRelatorioFormadores(inicio, fim))}>
                 <FileSpreadsheet className="size-4" /> {busy === "form" ? "A exportar…" : "Excel"}
               </Button>
-              <Button variant="outline" disabled={!inicio || !fim || busy === "form-pdf"} onClick={() => run("form-pdf", () => exportRelatorioFormadoresPdf(inicio, fim))}>
+              <Button variant="outline" disabled={!inicio || !fim || busy === "form-pdf"} onClick={() => run("form-pdf", async () => (await import("@/lib/pdf-exports")).exportRelatorioFormadoresPdf(inicio, fim))}>
                 <FileText className="size-4" /> {busy === "form-pdf" ? "A exportar…" : "PDF"}
               </Button>
             </div>
@@ -123,10 +121,10 @@ function RelatoriosPage() {
               Tabela com todos os cursos: UFCD atribuídas/concluídas, horas previstas, realizadas, em falta e % de execução.
             </p>
             <div className="flex gap-2">
-              <Button disabled={busy === "cursos"} onClick={() => run("cursos", () => exportRelatorioCursos())}>
+              <Button disabled={busy === "cursos"} onClick={() => run("cursos", async () => (await import("@/lib/exports")).exportRelatorioCursos())}>
                 <FileSpreadsheet className="size-4" /> {busy === "cursos" ? "A exportar…" : "Excel"}
               </Button>
-              <Button variant="outline" disabled={busy === "cursos-pdf"} onClick={() => run("cursos-pdf", () => exportRelatorioCursosPdf())}>
+              <Button variant="outline" disabled={busy === "cursos-pdf"} onClick={() => run("cursos-pdf", async () => (await import("@/lib/pdf-exports")).exportRelatorioCursosPdf())}>
                 <FileText className="size-4" /> {busy === "cursos-pdf" ? "A exportar…" : "PDF"}
               </Button>
             </div>
@@ -144,10 +142,10 @@ function RelatoriosPage() {
               Faltas de todos os formandos no intervalo selecionado acima. Inclui folha de <strong>Resumo</strong> (por formando/curso) e <strong>Detalhe</strong> (cada falta com sessão, UFCD e observações).
             </p>
             <div className="flex gap-2">
-              <Button disabled={!inicio || !fim || busy === "faltas"} onClick={() => run("faltas", () => exportRelatorioFaltas(inicio, fim))}>
+              <Button disabled={!inicio || !fim || busy === "faltas"} onClick={() => run("faltas", async () => (await import("@/lib/exports")).exportRelatorioFaltas(inicio, fim))}>
                 <FileSpreadsheet className="size-4" /> {busy === "faltas" ? "A exportar…" : "Excel"}
               </Button>
-              <Button variant="outline" disabled={!inicio || !fim || busy === "faltas-pdf"} onClick={() => run("faltas-pdf", () => exportRelatorioFaltasPdf(inicio, fim))}>
+              <Button variant="outline" disabled={!inicio || !fim || busy === "faltas-pdf"} onClick={() => run("faltas-pdf", async () => (await import("@/lib/pdf-exports")).exportRelatorioFaltasPdf(inicio, fim))}>
                 <FileText className="size-4" /> {busy === "faltas-pdf" ? "A exportar…" : "PDF"}
               </Button>
             </div>

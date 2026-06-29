@@ -1,20 +1,36 @@
-// File System Access API wrapper.
+// File System Access API wrapper (browser) + Electron IPC bridge (desktop).
 //
-// The user picks a directory once (typically the pen drive folder). We persist
-// the handle in IndexedDB so subsequent sessions can re-open the same folder
-// without re-prompting. Inside that folder we read/write database.db and a
-// docs/ subtree for attachments.
+// In Electron, window.electronAPI is exposed by preload.cjs and we use it for
+// silent disk access. In a normal browser, we fall back to the File System
+// Access API where the user picks a folder on the pen drive.
 
 import { idbGet, idbSet, idbDel } from "./idb";
 
 type AnyHandle = FileSystemDirectoryHandle;
+type ElectronAPI = {
+  isElectron: true;
+  docs: {
+    write: (rel: string, buf: ArrayBuffer) => Promise<unknown>;
+    read: (rel: string) => Promise<Uint8Array | ArrayBuffer | null>;
+    remove: (rel: string) => Promise<unknown>;
+    list: (rel: string) => Promise<{ name: string; size: number }[]>;
+  };
+  db: {
+    read: () => Promise<Uint8Array | ArrayBuffer | null>;
+    write: (buf: ArrayBuffer) => Promise<unknown>;
+  };
+};
+const electron: ElectronAPI | undefined =
+  (typeof window !== "undefined" && (window as unknown as { electronAPI?: ElectronAPI }).electronAPI) || undefined;
+
+export const IS_ELECTRON = !!electron;
 
 const KEY_DIR = "rootDir";
 
 let rootDir: AnyHandle | null = null;
 
 export function hasRoot(): boolean {
-  return !!rootDir;
+  return IS_ELECTRON || !!rootDir;
 }
 
 export async function loadSavedRoot(): Promise<AnyHandle | null> {

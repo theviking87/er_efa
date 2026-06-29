@@ -3,6 +3,7 @@
   "private": true,
   "sideEffects": false,
   "type": "module",
+  "main": "electron/main.cjs",
   "scripts": {
     "dev": "vite dev",
     "build": "vite build",
@@ -11,7 +12,11 @@
     "lint": "eslint .",
     "format": "prettier --write .",
     "offline:dev": "vite --config offline/vite.config.ts",
-    "offline:build": "vite build --config offline/vite.config.ts"
+    "offline:build": "vite build --config offline/vite.config.ts",
+    "migrations:bundle": "node scripts/bundle-migrations.mjs",
+    "electron:dev": "electron .",
+    "electron:build:win": "npm run migrations:bundle && vite build && electron-packager . FormacaoER --platform=win32 --arch=x64 --out=electron-release --overwrite --ignore=\"^/src\" --ignore=\"^/public\" --ignore=\"^/electron-release\" --ignore=\"^/supabase\" --ignore=\"^/offline\"",
+    "electron:build:mac": "npm run migrations:bundle && vite build && electron-packager . FormacaoER --platform=darwin --arch=x64 --out=electron-release --overwrite --ignore=\"^/src\" --ignore=\"^/public\" --ignore=\"^/electron-release\" --ignore=\"^/supabase\" --ignore=\"^/offline\""
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.3",

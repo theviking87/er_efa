@@ -1,0 +1,1 @@
+import{a as e}from"./supabase-shim-CIdBwWm3.js";import{t}from"./app-shell-D2cJ5Lqr.js";import{V as n}from"./index.electron-1sNgnjSr.js";var r=e(),i=()=>(0,r.jsx)(t,{children:(0,r.jsx)(n,{})});export{i as component};

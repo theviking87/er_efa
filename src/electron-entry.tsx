@@ -32,12 +32,25 @@ declare module "@tanstack/react-router" {
   }
 }
 
-const root = createRoot(document.getElementById("root")!);
-root.render(
-  <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-      <Toaster />
-    </QueryClientProvider>
-  </StrictMode>,
-);
+function showFatal(msg: string) {
+  const el = document.getElementById("root");
+  if (el) {
+    el.innerHTML = `<div style="padding:24px;font-family:system-ui;color:#b91c1c;white-space:pre-wrap"><h2 style="margin:0 0 12px">Erro ao iniciar</h2><pre style="font-size:12px;background:#fff1f2;padding:12px;border-radius:8px;overflow:auto">${msg.replace(/</g, "&lt;")}</pre><p style="font-size:12px;color:#475569">Pressiona F12 para abrir as ferramentas de programador.</p></div>`;
+  }
+}
+window.addEventListener("error", (e) => showFatal(`${e.message}\n${e.error?.stack ?? ""}`));
+window.addEventListener("unhandledrejection", (e) => showFatal(`Unhandled promise:\n${(e.reason && (e.reason.stack || e.reason.message)) || String(e.reason)}`));
+
+try {
+  const root = createRoot(document.getElementById("root")!);
+  root.render(
+    <StrictMode>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+        <Toaster />
+      </QueryClientProvider>
+    </StrictMode>,
+  );
+} catch (err: any) {
+  showFatal(err?.stack ?? String(err));
+}

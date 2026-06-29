@@ -8,7 +8,7 @@ import {
   flushNow,
   count as countRows,
 } from "./db/sqljs";
-import { ensureMinimalSchema, KNOWN_TABLES } from "./db/schema";
+import { ensureMinimalSchema, KNOWN_TABLES, normalizeImportedSchema } from "./db/schema";
 import { readDatabaseBytes } from "./db/persistence";
 import { importBackupZip, type ImportSummary } from "./db/import-zip";
 

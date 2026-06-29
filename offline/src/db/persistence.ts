@@ -23,6 +23,18 @@ export async function loadSavedRoot(): Promise<AnyHandle | null> {
   // Ask for permission again if needed.
   const perm = await ensurePermission(saved);
   if (!perm) return null;
+  // Validate the handle is still usable. If the pen drive was plugged into
+  // a different USB port (Windows assigned a new drive letter) or into a
+  // different PC, the stored handle may be stale — fall through to the
+  // folder picker instead of crashing silently.
+  try {
+    // @ts-expect-error - async iterator on FileSystemDirectoryHandle
+    const it = saved.values();
+    await it.next();
+  } catch {
+    await idbDel(KEY_DIR);
+    return null;
+  }
   rootDir = saved;
   return saved;
 }

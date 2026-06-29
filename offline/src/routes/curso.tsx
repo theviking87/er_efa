@@ -4,8 +4,9 @@ import { all, exec, one } from "../db/sqljs";
 import { ensureColumns } from "../db/schema";
 import { fmtDate, uid } from "../lib/format";
 import { CursoDialog, type CursoRow } from "../components/CursoDialog";
+import { CronogramaCurso } from "../components/CronogramaCurso";
 
-type Tab = "dados" | "ufcds" | "formandos";
+type Tab = "dados" | "ufcds" | "formandos" | "cronograma";
 
 export default function CursoDetail() {
   const { id = "" } = useParams();
@@ -46,7 +47,7 @@ export default function CursoDetail() {
 
       <div className="border-b border-slate-200 mb-6">
         <nav className="flex gap-4 text-sm">
-          {(["dados", "ufcds", "formandos"] as Tab[]).map((t) => (
+          {(["dados", "ufcds", "formandos", "cronograma"] as Tab[]).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -54,7 +55,7 @@ export default function CursoDetail() {
                 tab === t ? "border-slate-900 font-medium" : "border-transparent text-slate-500 hover:text-slate-900"
               }`}
             >
-              {t === "dados" ? "Dados" : t === "ufcds" ? "UFCDs" : "Formandos"}
+              {t === "dados" ? "Dados" : t === "ufcds" ? "UFCDs" : t === "formandos" ? "Formandos" : "Cronograma"}
             </button>
           ))}
         </nav>
@@ -63,6 +64,7 @@ export default function CursoDetail() {
       {tab === "dados" && <DadosTab curso={curso} />}
       {tab === "ufcds" && <UfcdsTab cursoId={id} />}
       {tab === "formandos" && <FormandosTab cursoId={id} />}
+      {tab === "cronograma" && <CronogramaCurso cursoId={id} />}
 
       <CursoDialog
         open={edit}

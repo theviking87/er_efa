@@ -115,3 +115,15 @@ export async function readFileAt(relativePath: string): Promise<File | null> {
     return null;
   }
 }
+
+export async function deleteFileAt(relativePath: string): Promise<void> {
+  try {
+    const parts = relativePath.split("/").filter(Boolean);
+    const filename = parts.pop()!;
+    let dir = requireRoot();
+    for (const p of parts) dir = await dir.getDirectoryHandle(p);
+    await dir.removeEntry(filename);
+  } catch {
+    /* ignore */
+  }
+}

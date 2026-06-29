@@ -38,9 +38,23 @@ function createWindow() {
     },
   });
 
-  const indexHtml = path.join(__dirname, "..", "dist-electron", "index.electron.html");
-  const fallback = path.join(__dirname, "..", "dist-electron", "index.html");
-  const target = fs.existsSync(indexHtml) ? indexHtml : fallback;
+  const candidateFiles = [
+    // Packaged as normal app files, inside app.asar.
+    path.join(__dirname, "..", "dist-electron", "index.electron.html"),
+    path.join(__dirname, "..", "dist-electron", "index.html"),
+    // Packaged as an external Electron resource. This is the most reliable
+    // path on Windows because it avoids asar path edge-cases entirely.
+    path.join(process.resourcesPath, "dist-electron", "index.electron.html"),
+    path.join(process.resourcesPath, "dist-electron", "index.html"),
+  ];
+  const target = candidateFiles.find((file) => fs.existsSync(file));
+  if (!target) {
+    dialog.showErrorBox(
+      "Erro a carregar a aplicação",
+      `Não encontrei o ficheiro inicial da aplicação.\n\nProcurei em:\n${candidateFiles.join("\n")}`
+    );
+    return;
+  }
   win.loadFile(target).catch((err) => {
     dialog.showErrorBox(
       "Erro a carregar a aplicação",

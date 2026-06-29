@@ -1,72 +1,85 @@
+# Fase 2 — App offline portátil
 
-# App offline portátil (pen drive)
+Decisões confirmadas:
+- Pasta `/offline/` no mesmo projeto, build próprio (Vite+React independente).
+- Importação inicial a partir do `backup-formacao-*.zip` exportado na Fase 1.
+- Sem IA / sem importação de referencial PDF na offline.
+- Pass simples na abertura. PDFs em pastas. Lançador `.bat`.
 
-## Abordagem recomendada
-
-**Single Page Application estática + SQLite no browser (sql.js WASM)**, com a base de dados guardada como ficheiro `.db` na própria pen.
-
-Porquê esta e não as alternativas:
-
-- **HTML + IndexedDB** → funciona, mas os dados ficam fechados dentro do browser de cada PC. Mudas de PC, perdes acesso. Mau para pen drive.
-- **Electron portátil** → cria um `.exe` de ~200 MB só para Windows, e não corre em Mac/Linux. Demasiado pesado.
-- **SPA + SQLite (sql.js)** → uma pasta na pen com `index.html` + `app.js` + `database.db`. Abres o `index.html` em qualquer browser moderno (Chrome/Edge/Firefox), em qualquer PC, sem instalar nada. Os dados ficam no ficheiro `.db` da pen — levas a pen, levas tudo. Tamanho total: ~3–5 MB.
-
-## O que se mantém vs. muda
-
-| Funcionalidade | Estado |
-|---|---|
-| Formadores, Formandos, Cursos, UFCDs, Cronograma, Sessões, Disponibilidades, PRA, Férias, Análises, Impressões | Mantém-se igual (mesma UI React) |
-| Login com user/pass | Removido — a pen é o "login". Opcional: pass simples local. |
-| Lovable Cloud / Supabase | Removido |
-| Upload de documentos do formador / PRA | Os ficheiros ficam numa pasta `/docs/` ao lado do `.db` na pen |
-| **Importar referencial PDF (IA)** | Mantém-se, mas só funciona quando há internet. Detecta automaticamente e desativa o botão se estiver offline. |
-
-## Migração dos dados atuais
-
-1. Antes de cortar o backend, gero uma página "Exportar tudo" que descarrega um `database.db` já pronto com todos os teus dados (formadores, cursos, sessões, PRA, etc.) + um `.zip` com os ficheiros do storage.
-2. Copias os dois para a pen.
-3. Abres `index.html` — está tudo lá.
-
-## Como vai funcionar na pen
+## Estrutura final na pen
 
 ```text
-pen/
-├── FormacaoER/
-│   ├── index.html           ← duplo-clique para abrir
-│   ├── assets/              ← JS + CSS + sql.js WASM
-│   ├── database.db          ← os teus dados (SQLite)
-│   └── docs/                ← PDFs, anexos
+FormacaoER/
+├── Abrir Formação.bat       ← duplo clique
+├── index.html
+├── assets/                  ← JS + CSS + sql-wasm.wasm bundlados
+├── database.db              ← SQLite (criado no 1.º arranque)
+└── docs/
+    ├── formadores/<id>/...
+    └── cursos/<id>/formandos/<id>/...
 ```
 
-- Abrir: duplo clique em `index.html`.
-- Guardar alterações: a app escreve no `database.db` via [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API) (suportada em Chrome/Edge — pede uma vez "Permitir gravar nesta pasta?" e fica memorizado).
-- Backup: copiar a pasta inteira. Já tens versionamento.
+## Estrutura no repositório
 
-## Detalhes técnicos
+```text
+offline/
+├── package.json             ← Vite+React próprio, sem TanStack Start, sem Supabase
+├── vite.config.ts           ← build → offline/dist, base: "./" (file://)
+├── index.html
+├── src/
+│   ├── main.tsx
+│   ├── App.tsx              ← roteamento com react-router (hash router → file://)
+│   ├── db/
+│   │   ├── sqljs.ts         ← bootstrap sql.js, schema, migrations
+│   │   ├── persistence.ts   ← FSA: handle da pasta, save/load database.db
+│   │   ├── repo.ts          ← API tipada (substitui `supabase.from`)
+│   │   └── import-zip.ts    ← lê backup-formacao-*.zip e popula a BD + /docs
+│   ├── routes/              ← portados 1:1 a partir de src/routes/_authenticated/
+│   ├── components/          ← portados
+│   ├── lib/                 ← format/feriados/utils reaproveitados
+│   └── gate.tsx             ← ecrã inicial: escolher pasta → unlock → app
+└── public/
+    └── Abrir Formação.bat
+```
 
-- **Stack**: Vite + React + Dexie-style wrapper sobre `sql.js` (SQLite compilado para WASM). Mantém o teu código React quase intacto — só substituo a camada de acesso a dados (`supabase.from(...)` → `db.query(...)`).
-- **Build**: `vite build` produz uma pasta estática que copias para a pen. Sem servidor.
-- **Browsers suportados**: Chrome 86+, Edge 86+, Opera. Firefox/Safari funcionam mas com fallback (descarregam `.db` modificado em vez de gravar diretamente).
-- **IA (PDFs)**: o botão "Importar referencial" só ativa se `navigator.onLine === true`. Chama diretamente a API Gemini (chave guardada localmente, encriptada com pass) — sem servidor intermediário.
+## Como vai funcionar
 
-## Plano de execução (faseado)
+1. Utilizador faz duplo clique no `.bat` → abre Chrome em modo app no `index.html`.
+2. 1.º arranque: pede pass → escolher pasta da pen (FSA `showDirectoryPicker`).
+3. Se não existir `database.db`, pede o `backup-formacao-*.zip` → cria `database.db` + popula `docs/`.
+4. Trabalho normal: todas as escritas vão para sql.js em memória + flush automático para `database.db` no disco (debounced 1–2s).
+5. Próximos arranques: pass → carrega a BD do mesmo handle (memorizado em IndexedDB).
 
-1. **Fase 1 — Exportação** (sem mexer na app atual)
-   Adicionar página de export que gera `database.db` + zip com storage. Garante que tens backup completo antes de migrar.
+## Camada de dados
 
-2. **Fase 2 — Nova app offline** (projeto novo)
-   Criar a versão portátil em paralelo. Camada de dados em SQLite/sql.js, mesmas telas e funcionalidades.
+`db/repo.ts` expõe funções por entidade (`listFormadores`, `upsertFormador`, `listSessoesByCurso`, etc.) com a mesma forma de retorno que o código atual já consome. Cada rota só troca os imports de `@/integrations/supabase/client` por `@/db/repo`. Schema SQLite replica as tabelas Supabase atuais (sem RLS — não aplicável).
 
-3. **Fase 3 — Migração**
-   Importar o `database.db` exportado, validar que está tudo (cursos, sessões, PRAs).
+## Ficheiros (PDFs)
 
-4. **Fase 4 — Aposentar versão online**
-   Quando confirmares que a offline está OK, podes deixar a online morrer ou mantê-la como backup só de leitura.
+- Upload: gravado em `docs/<scope>/<id>/<nome-sanitizado>.ext` via FSA, e o caminho relativo guardado na BD.
+- Leitura: abre `File` a partir do `FileSystemFileHandle` e mostra com `URL.createObjectURL`.
 
-## Confirmações que preciso
+## .bat launcher
 
-Antes de começar pela Fase 1:
+```bat
+@echo off
+start "" chrome --app="file://%~dp0index.html"
+```
 
-1. Confirmas o formato pen drive + `index.html`? (alternativa: gero também um `.bat` "Abrir Formação" que abre no Chrome em modo app)
-2. Queres pass simples na abertura, ou totalmente sem login?
-3. Os PDFs (documentos do formador, PRAs dos formandos) — manter na pen em `/docs/` é OK, ou preferes embebidos no próprio `.db` (mais pesado mas 1 ficheiro só)?
+Fallback se Chrome não estiver em PATH: tenta `msedge`. Documento no README.
+
+## Fora do âmbito
+
+- IA / importação de referencial PDF.
+- Auth (sem login Supabase; pass local só).
+- Sincronização bidirecional online ↔ offline (a app online fica como leitura/backup, conforme Fase 4).
+
+## Plano de turnos
+
+1. **Este turno** — scaffold completo: `offline/` com package.json, vite config, sql.js bootstrap, schema, FSA persistence, importador de zip, gate (pass + escolher pasta), `.bat`, README. App arranca, importa o zip, mostra um dashboard mínimo a confirmar contagens. **Sem rotas portadas ainda.**
+2. **Turno seguinte** — portar Formadores, Formandos, UFCDs, Cursos (CRUD).
+3. **Turno seguinte** — portar Cronograma geral + cronograma do curso + sessões + disponibilidades.
+4. **Turno seguinte** — PRA, férias, análise, impressões, relatórios.
+5. **Validação final** — testar a partir de uma pen real, comparar com a online.
+
+Confirma para arrancar com o turno 1 (scaffold).

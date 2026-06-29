@@ -92,6 +92,15 @@ export function Gate({ children }: { children: React.ReactNode }) {
     }
   }
 
+  if (stage === "boot" && error) {
+    return (
+      <Centered>
+        <h1 className="text-xl font-semibold mb-2">Formação ER</h1>
+        <pre className="text-xs text-red-600 whitespace-pre-wrap max-w-2xl mb-4">{error}</pre>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>Tentar novamente</button>
+      </Centered>
+    );
+  }
   if (stage === "boot" || busy) {
     return <Centered><p className="text-sm text-slate-500">{busy ?? "A carregar…"}</p></Centered>;
   }

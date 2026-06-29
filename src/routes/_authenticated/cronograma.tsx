@@ -677,7 +677,7 @@ function CronogramaGeral() {
           mes={inicioMes}
           cursos={(cursoFiltro
             ? (cursosTodos.data ?? []).filter((c: any) => c.id === cursoFiltro)
-            : (cursosAtivos.data ?? [])) as any[]}
+            : (cursosTodos.data ?? [])) as any[]}
           obs={observacoes.data ?? []}
           onSaved={() => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] })}
         />

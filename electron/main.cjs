@@ -16,10 +16,16 @@ protocol.registerSchemesAsPrivileged([
   },
 ]);
 
-// User data folder. When LOVABLE_PORTABLE=1 (set by the .bat/.command launcher),
-// data lives next to the executable so the whole thing runs from a pen drive.
+// User data folder. In the packaged app this must live next to the executable
+// even if the user opens FormacaoER.exe directly instead of the .bat; otherwise
+// Windows stores an empty database in %APPDATA% and the pen-drive version looks
+// like it "lost" the import.
+function isPortableMode() {
+  return process.env.LOVABLE_PORTABLE === "1" || (app.isPackaged && process.env.LOVABLE_PORTABLE !== "0");
+}
+
 function resolveUserDataDir() {
-  if (process.env.LOVABLE_PORTABLE === "1") {
+  if (isPortableMode()) {
     const portableDir = path.join(path.dirname(process.execPath), "FormacaoER-data");
     if (!fs.existsSync(portableDir)) fs.mkdirSync(portableDir, { recursive: true });
     return portableDir;
@@ -32,7 +38,7 @@ let userDataDir;
 // IMPORTANT: in portable mode, redirect Electron's userData dir BEFORE app
 // is ready. That way the renderer's IndexedDB (which PGlite uses to persist
 // the database) lives on the pen drive instead of %APPDATA%.
-if (process.env.LOVABLE_PORTABLE === "1") {
+if (isPortableMode()) {
   const portableDir = path.join(path.dirname(process.execPath), "FormacaoER-data");
   if (!fs.existsSync(portableDir)) fs.mkdirSync(portableDir, { recursive: true });
   app.setPath("userData", portableDir);

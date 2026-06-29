@@ -88,8 +88,20 @@ ipcMain.handle("docs:openFolder", async () => {
   shell.openPath(baseDir);
 });
 
-// ─── IPC: database file (PGlite persists in IndexedDB, but we also expose
-//     a "backup/restore .sqlite/.tar" hook for the user). ───────────────────
+// ─── IPC: database file (silent read/write of database.db on disk) ─────────
+function dbPath() {
+  return path.join(userDataDir, "database.db");
+}
+ipcMain.handle("db:read", async () => {
+  const p = dbPath();
+  if (!fs.existsSync(p)) return null;
+  return fs.readFileSync(p);
+});
+ipcMain.handle("db:write", async (_evt, buffer) => {
+  fs.writeFileSync(dbPath(), Buffer.from(buffer));
+  return { ok: true };
+});
+
 ipcMain.handle("app:userDataDir", async () => userDataDir);
 
 ipcMain.handle("app:backupDb", async (_evt, buffer) => {

@@ -1,1 +1,0 @@
-function e(e){return e}function t(e){let t={middleware:()=>t,inputValidator:()=>t,handler:e=>e};return t}function n(){let e={server:()=>e,client:()=>e};return e}export{t as n,e as r,n as t};

@@ -1,1 +1,0 @@
-import{r as e}from"./chunk-BHe-jwch.js";import{a as t,d as n,n as r,t as i}from"./client-DcMTKWr-.js";var a=e(n()),o=t();function s(){let e=r();return(0,a.useEffect)(()=>{let t=!1;return i.auth.getSession().then(({data:n})=>{t||e({to:n.session?`/dashboard`:`/auth`,replace:!0})}),()=>{t=!0}},[e]),(0,o.jsx)(`div`,{className:`min-h-screen bg-background`})}export{s as component};

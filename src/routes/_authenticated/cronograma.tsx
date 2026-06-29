@@ -639,6 +639,15 @@ function CronogramaGeral() {
 
         </div>
 
+        <ObservacoesPanel
+          mes={inicioMes}
+          cursos={(cursoFiltro
+            ? (cursosTodos.data ?? []).filter((c: any) => c.id === cursoFiltro)
+            : (cursosAtivos.data ?? [])) as any[]}
+          obs={observacoes.data ?? []}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] })}
+        />
+
         <div className="border rounded-md overflow-hidden bg-card">
           <div className="grid grid-cols-7 bg-muted/40 text-xs uppercase text-muted-foreground">
             {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}

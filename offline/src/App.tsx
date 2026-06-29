@@ -3,6 +3,9 @@ import { Gate } from "./gate";
 import Dashboard from "./routes/dashboard";
 import FormadoresList from "./routes/formadores";
 import FormadorDetail from "./routes/formador";
+import CursosList from "./routes/cursos";
+import CursoDetail from "./routes/curso";
+import UfcdsList from "./routes/ufcds";
 import { flushNow } from "./db/sqljs";
 import { forgetRoot } from "./db/persistence";
 
@@ -32,7 +35,9 @@ function Shell({ children }: { children: React.ReactNode }) {
         </div>
         <nav className="flex-1 p-2 space-y-1 text-sm">
           {navItem("/", "Painel")}
+          {navItem("/cursos", "Cursos")}
           {navItem("/formadores", "Formadores")}
+          {navItem("/ufcds", "UFCDs")}
         </nav>
         <div className="p-2 border-t border-slate-800 text-xs text-slate-400 space-y-1">
           <button className="w-full text-left px-3 py-1.5 rounded hover:bg-slate-800" onClick={() => flushNow()}>
@@ -54,12 +59,16 @@ export default function App() {
       <Shell>
         <Routes>
           <Route path="/" element={<Dashboard />} />
+          <Route path="/cursos" element={<CursosList />} />
+          <Route path="/cursos/:id" element={<CursoDetail />} />
           <Route path="/formadores" element={<FormadoresList />} />
           <Route path="/formadores/:id" element={<FormadorDetail />} />
+          <Route path="/ufcds" element={<UfcdsList />} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Shell>
     </Gate>
   );
 }
+
 

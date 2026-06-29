@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { Link } from "react-router-dom";
 import { all } from "../db/sqljs";
 import { ESTADO_FORMADOR_LABEL } from "../lib/format";
@@ -123,5 +123,3 @@ export default function FormadoresList() {
   );
 }
 
-// keep effect import used (no-op to silence TS unused if needed)
-void useEffect;

@@ -14,6 +14,41 @@ export type Database = {
   }
   public: {
     Tables: {
+      cronograma_observacoes: {
+        Row: {
+          created_at: string
+          curso_id: string
+          id: string
+          mes: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          curso_id: string
+          id?: string
+          mes: string
+          texto?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          curso_id?: string
+          id?: string
+          mes?: string
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cronograma_observacoes_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curso_ferias: {
         Row: {
           created_at: string

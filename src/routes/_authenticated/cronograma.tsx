@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
 
 import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning, Palmtree } from "lucide-react";
 import jsPDF from "jspdf";
@@ -163,6 +164,25 @@ function CronogramaGeral() {
       return (data ?? []) as any[];
     },
   });
+
+  const observacoes = useQuery({
+    queryKey: ["cronograma-observacoes", inicioMes],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("cronograma_observacoes" as any)
+        .select("id, curso_id, mes, texto")
+        .eq("mes", inicioMes);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  useEffect(() => {
+    const ch = supabase
+      .channel("cron-obs-rt")
+      .on("postgres_changes", { event: "*", schema: "public", table: "cronograma_observacoes" }, () => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] }))
+      .subscribe();
+    return () => { supabase.removeChannel(ch); };
+  }, [qc]);
 
   // Map dia ISO -> Set<curso_id> de cursos em férias
   const feriasByDay = useMemo(() => {
@@ -618,6 +638,15 @@ function CronogramaGeral() {
           )}
 
         </div>
+
+        <ObservacoesPanel
+          mes={inicioMes}
+          cursos={(cursoFiltro
+            ? (cursosTodos.data ?? []).filter((c: any) => c.id === cursoFiltro)
+            : (cursosAtivos.data ?? [])) as any[]}
+          obs={observacoes.data ?? []}
+          onSaved={() => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] })}
+        />
 
         <div className="border rounded-md overflow-hidden bg-card">
           <div className="grid grid-cols-7 bg-muted/40 text-xs uppercase text-muted-foreground">
@@ -1426,5 +1455,66 @@ function FeriasDialog({ open, onClose, cursos, defaultCursoId }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  );
+}
+
+function ObservacoesPanel({ mes, cursos, obs, onSaved }: {
+  mes: string;
+  cursos: { id: string; codigo: string; nome: string }[];
+  obs: any[];
+  onSaved: () => void;
+}) {
+  if (cursos.length === 0) return null;
+  return (
+    <div className={"grid gap-3 " + (cursos.length > 1 ? "md:grid-cols-2" : "grid-cols-1")}>
+      {cursos.map(c => {
+        const existing = obs.find((o: any) => o.curso_id === c.id);
+        return (
+          <ObservacaoCard key={c.id} curso={c} mes={mes} initial={existing?.texto ?? ""} onSaved={onSaved} />
+        );
+      })}
+    </div>
+  );
+}
+
+function ObservacaoCard({ curso, mes, initial, onSaved }: {
+  curso: { id: string; codigo: string; nome: string };
+  mes: string;
+  initial: string;
+  onSaved: () => void;
+}) {
+  const [valor, setValor] = useState(initial);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { setValor(initial); }, [initial, curso.id, mes]);
+
+  const guardar = async () => {
+    if (valor === initial) return;
+    setSaving(true);
+    const { error } = await supabase
+      .from("cronograma_observacoes" as any)
+      .upsert({ curso_id: curso.id, mes, texto: valor }, { onConflict: "curso_id,mes" });
+    setSaving(false);
+    if (error) { toast.error("Erro ao guardar observação"); return; }
+    toast.success("Observação guardada");
+    onSaved();
+  };
+
+  return (
+    <div className="border rounded-md bg-card p-3 space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <div className="text-sm font-medium truncate">
+          <span className="text-muted-foreground">{curso.codigo}</span> — {curso.nome}
+        </div>
+        {saving && <span className="text-[10px] text-muted-foreground">a guardar…</span>}
+      </div>
+      <Textarea
+        value={valor}
+        onChange={e => setValor(e.target.value)}
+        onBlur={guardar}
+        placeholder="Observações deste mês (ex.: formador X disponível o mês todo)…"
+        rows={3}
+        className="text-sm resize-y"
+      />
+    </div>
   );
 }

@@ -96,18 +96,52 @@ function CronogramaGeral() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("cursos")
-        .select("id, codigo, nome, data_inicio, data_fim, estado, curso_ufcds(curso_ufcd_formadores(formador_id))")
+        .select("id, codigo, nome, data_inicio, data_fim, estado")
         .eq("estado", "ativo")
         .lte("data_inicio", fimMes)
         .or(`data_fim.gte.${inicioMes},data_fim.is.null`);
       if (error) throw error;
-      return (data ?? []).map((c: any) => ({
+      const cursos = data ?? [];
+      const cursoIds = cursos.map((c: any) => c.id).filter(Boolean);
+      if (cursoIds.length === 0) return [];
+
+      // Evitar nested embeds pesados no PGlite/Electron: em pens USB isso
+      // bloqueava a UI ao mudar de separador. Duas consultas simples são muito
+      // mais leves e dão a mesma lista de formadores por curso.
+      const { data: cursoUfcds, error: cuError } = await supabase
+        .from("curso_ufcds")
+        .select("id, curso_id")
+        .in("curso_id", cursoIds);
+      if (cuError) throw cuError;
+      const cuRows = cursoUfcds ?? [];
+      const cuIds = cuRows.map((cu: any) => cu.id).filter(Boolean);
+
+      const formadoresByCu = new Map<string, string[]>();
+      if (cuIds.length > 0) {
+        const { data: formRows, error: formError } = await supabase
+          .from("curso_ufcd_formadores" as any)
+          .select("curso_ufcd_id, formador_id")
+          .in("curso_ufcd_id", cuIds);
+        if (formError) throw formError;
+        (formRows ?? []).forEach((r: any) => {
+          const arr = formadoresByCu.get(r.curso_ufcd_id) ?? [];
+          if (r.formador_id) arr.push(r.formador_id);
+          formadoresByCu.set(r.curso_ufcd_id, arr);
+        });
+      }
+
+      const formadoresByCurso = new Map<string, Set<string>>();
+      cuRows.forEach((cu: any) => {
+        const set = formadoresByCurso.get(cu.curso_id) ?? new Set<string>();
+        (formadoresByCu.get(cu.id) ?? []).forEach((fid) => set.add(fid));
+        formadoresByCurso.set(cu.curso_id, set);
+      });
+
+      return cursos.map((c: any) => ({
         id: c.id,
         codigo: c.codigo,
         nome: c.nome,
-        formadores: Array.from(new Set(
-          (c.curso_ufcds ?? []).flatMap((cu: any) => (cu.curso_ufcd_formadores ?? []).map((f: any) => f.formador_id))
-        )) as string[],
+        formadores: Array.from(formadoresByCurso.get(c.id) ?? new Set<string>()),
       }));
     },
   });

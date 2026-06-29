@@ -137,6 +137,15 @@ export function normalizeImportedSchema(): void {
   if (tableExists("formandos")) {
     ensureColumns("formandos", ["nome", "nif", "email"]);
   }
+  if (tableExists("curso_ufcds")) {
+    ensureColumns("curso_ufcds", ["curso_id", "ufcd_id", "estado", "concluida", "ordem"]);
+    // Map the online `concluida` boolean to the offline `estado` text.
+    db.run(`UPDATE curso_ufcds SET estado = COALESCE(NULLIF(estado,''),
+      CASE WHEN concluida IN (1,'1','true') THEN 'concluida' ELSE 'por_iniciar' END)`);
+  }
+  if (tableExists("curso_formandos")) {
+    ensureColumns("curso_formandos", ["curso_id", "formando_id"]);
+  }
   scheduleFlush();
 }
 

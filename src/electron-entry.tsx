@@ -1,6 +1,6 @@
 // Client-only entry point for the Electron desktop build.
 // No SSR, no TanStack Start. Uses the same routes/UI as the online app.
-import { StrictMode, useEffect, useMemo, useState } from "react";
+import { StrictMode, useEffect, useMemo, useState, type FormEvent } from "react";
 import { createRoot } from "react-dom/client";
 import { RouterProvider, createRouter, createHashHistory } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -62,7 +62,7 @@ function OfflineLogin({ onLogin }: { onLogin: () => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
 
-  function submit(e: React.FormEvent) {
+  function submit(e: FormEvent) {
     e.preventDefault();
     const user = username.trim().toLowerCase();
     if (user !== VALID_USER || password !== VALID_PASS) {

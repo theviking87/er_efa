@@ -11,7 +11,7 @@
 //
 // All public methods return `this` (or a Promise on terminal ops). Awaiting
 // the builder triggers `execute()` and yields `{ data, error, count }`.
-import type { PGlite } from "@electric-sql/pglite";
+import type { LocalDb } from "@/lib/local-db";
 import { parseSelect, type SelectNode, type Embed } from "./select-parser";
 import { loadRelationships, type Relationship, findRelationship } from "./relationships";
 import { localChannelEmit } from "./realtime-shim";
@@ -39,7 +39,7 @@ export class LocalQueryBuilder<T = any> implements PromiseLike<Result<T>> {
   private _returnRow = true;
   private _countMode: "exact" | "planned" | "estimated" | null = null;
 
-  constructor(private db: PGlite, private table: string, private relsPromise: Promise<Relationship[]>) {}
+  constructor(private db: LocalDb, private table: string, private relsPromise: Promise<Relationship[]>) {}
 
   // ─── builder methods ────────────────────────────────────────────────
   select(cols = "*", opts?: { count?: "exact" | "planned" | "estimated"; head?: boolean }) {

@@ -9,7 +9,7 @@ import { PGliteWorker } from "@electric-sql/pglite/worker";
 import { MIGRATIONS } from "./local-migrations.generated";
 import { resetRelationshipCache } from "@/integrations/local/relationships";
 
-type LocalDb = Pick<PGlite, "query" | "exec" | "close"> & Record<string, any>;
+export type LocalDb = Pick<PGlite, "query" | "exec" | "close"> & Record<string, any>;
 
 let _db: LocalDb | null = null;
 let _ready: Promise<LocalDb> | null = null;

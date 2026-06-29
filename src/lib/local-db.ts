@@ -270,6 +270,18 @@ async function initSchema(db: LocalDb): Promise<void> {
       ON public.curso_ferias(curso_id, data_inicio, data_fim);
 
     ALTER TABLE public.formadores ADD COLUMN IF NOT EXISTS data_nascimento date;
+
+    CREATE TABLE IF NOT EXISTS public.formando_pra (
+      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+      curso_formando_id uuid REFERENCES public.curso_formandos(id) ON DELETE CASCADE,
+      curso_ufcd_id uuid REFERENCES public.curso_ufcds(id) ON DELETE CASCADE,
+      nome text,
+      storage_path text,
+      nota text,
+      created_at timestamptz NOT NULL DEFAULT now(),
+      updated_at timestamptz NOT NULL DEFAULT now(),
+      UNIQUE(curso_formando_id, curso_ufcd_id)
+    );
     ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS nota text;
     ALTER TABLE public.formando_pra ALTER COLUMN nome DROP NOT NULL;
     ALTER TABLE public.formando_pra ALTER COLUMN storage_path DROP NOT NULL;

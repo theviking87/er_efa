@@ -1,42 +1,72 @@
-## O que vou construir
 
-### 1. Gestão de presenças / faltas por sessão
-- Na página do curso, em cada sessão do cronograma adicionar botão **"Presenças"**.
-- Abre diálogo com lista de formandos inscritos nesse curso (ativos), com 3 estados por formando: **Presente / Falta justificada / Falta injustificada** + campo de observações.
-- Guarda em `formando_faltas` (tabela já existente) com `sessao_id`, `formando_id`, `tipo`, `horas` (= horas da sessão), `data`, `motivo`.
-- Indicador visual na sessão (badge) quando já tem presenças marcadas.
+# App offline portátil (pen drive)
 
-### 2. Dashboard com KPIs
-Substituir o dashboard atual por cartões com:
-- Cursos a decorrer (hoje entre `data_inicio` e `data_fim`)
-- Formadores ativos no mês
-- Horas lecionadas no mês (soma de `sessoes.horas`)
-- UFCDs em curso (não concluídas com sessões marcadas)
-- Próximas sessões (7 dias) — lista compacta
-- Top 5 formadores por horas no mês
+## Abordagem recomendada
 
-### 3. Relatório mensal de horas por formador
-Nova rota `/relatorios` com:
-- Seletor mês/ano
-- Tabela por formador: nome, abreviatura, horas no mês, n.º sessões, cursos envolvidos, UFCDs lecionadas
-- Detalhe expandível: lista de sessões do mês (data, horas, curso, UFCD)
-- Totais no rodapé
-- **Exportação Excel** (.xlsx) com 2 folhas: Resumo + Detalhe
-- **Impressão** com layout limpo (uma folha A4)
+**Single Page Application estática + SQLite no browser (sql.js WASM)**, com a base de dados guardada como ficheiro `.db` na própria pen.
 
-### 4. Link de navegação
-Adicionar "Relatórios" no menu lateral.
+Porquê esta e não as alternativas:
+
+- **HTML + IndexedDB** → funciona, mas os dados ficam fechados dentro do browser de cada PC. Mudas de PC, perdes acesso. Mau para pen drive.
+- **Electron portátil** → cria um `.exe` de ~200 MB só para Windows, e não corre em Mac/Linux. Demasiado pesado.
+- **SPA + SQLite (sql.js)** → uma pasta na pen com `index.html` + `app.js` + `database.db`. Abres o `index.html` em qualquer browser moderno (Chrome/Edge/Firefox), em qualquer PC, sem instalar nada. Os dados ficam no ficheiro `.db` da pen — levas a pen, levas tudo. Tamanho total: ~3–5 MB.
+
+## O que se mantém vs. muda
+
+| Funcionalidade | Estado |
+|---|---|
+| Formadores, Formandos, Cursos, UFCDs, Cronograma, Sessões, Disponibilidades, PRA, Férias, Análises, Impressões | Mantém-se igual (mesma UI React) |
+| Login com user/pass | Removido — a pen é o "login". Opcional: pass simples local. |
+| Lovable Cloud / Supabase | Removido |
+| Upload de documentos do formador / PRA | Os ficheiros ficam numa pasta `/docs/` ao lado do `.db` na pen |
+| **Importar referencial PDF (IA)** | Mantém-se, mas só funciona quando há internet. Detecta automaticamente e desativa o botão se estiver offline. |
+
+## Migração dos dados atuais
+
+1. Antes de cortar o backend, gero uma página "Exportar tudo" que descarrega um `database.db` já pronto com todos os teus dados (formadores, cursos, sessões, PRA, etc.) + um `.zip` com os ficheiros do storage.
+2. Copias os dois para a pen.
+3. Abres `index.html` — está tudo lá.
+
+## Como vai funcionar na pen
+
+```text
+pen/
+├── FormacaoER/
+│   ├── index.html           ← duplo-clique para abrir
+│   ├── assets/              ← JS + CSS + sql.js WASM
+│   ├── database.db          ← os teus dados (SQLite)
+│   └── docs/                ← PDFs, anexos
+```
+
+- Abrir: duplo clique em `index.html`.
+- Guardar alterações: a app escreve no `database.db` via [File System Access API](https://developer.mozilla.org/en-US/docs/Web/API/File_System_Access_API) (suportada em Chrome/Edge — pede uma vez "Permitir gravar nesta pasta?" e fica memorizado).
+- Backup: copiar a pasta inteira. Já tens versionamento.
 
 ## Detalhes técnicos
 
-- Tabela `formando_faltas` já existe — só precisa de leitura/escrita; sem migração.
-- Exportação Excel via `xlsx` (SheetJS) no cliente (browser), sem servidor.
-- Queries Supabase com joins existentes (`sessoes` → `formador`, `curso`, `curso_ufcd`).
-- Componentes shadcn reutilizados: Dialog, Table, Card, Tabs, Select.
-- Sem alterações de schema (a não ser que detete algo em falta nas presenças).
+- **Stack**: Vite + React + Dexie-style wrapper sobre `sql.js` (SQLite compilado para WASM). Mantém o teu código React quase intacto — só substituo a camada de acesso a dados (`supabase.from(...)` → `db.query(...)`).
+- **Build**: `vite build` produz uma pasta estática que copias para a pen. Sem servidor.
+- **Browsers suportados**: Chrome 86+, Edge 86+, Opera. Firefox/Safari funcionam mas com fallback (descarregam `.db` modificado em vez de gravar diretamente).
+- **IA (PDFs)**: o botão "Importar referencial" só ativa se `navigator.onLine === true`. Chama diretamente a API Gemini (chave guardada localmente, encriptada com pass) — sem servidor intermediário.
 
-## Ordem de implementação
-1. Dialog de presenças + integração no cronograma do curso
-2. Dashboard com KPIs
-3. Página de relatórios + exportação Excel + impressão
-4. Item de menu
+## Plano de execução (faseado)
+
+1. **Fase 1 — Exportação** (sem mexer na app atual)
+   Adicionar página de export que gera `database.db` + zip com storage. Garante que tens backup completo antes de migrar.
+
+2. **Fase 2 — Nova app offline** (projeto novo)
+   Criar a versão portátil em paralelo. Camada de dados em SQLite/sql.js, mesmas telas e funcionalidades.
+
+3. **Fase 3 — Migração**
+   Importar o `database.db` exportado, validar que está tudo (cursos, sessões, PRAs).
+
+4. **Fase 4 — Aposentar versão online**
+   Quando confirmares que a offline está OK, podes deixar a online morrer ou mantê-la como backup só de leitura.
+
+## Confirmações que preciso
+
+Antes de começar pela Fase 1:
+
+1. Confirmas o formato pen drive + `index.html`? (alternativa: gero também um `.bat` "Abrir Formação" que abre no Chrome em modo app)
+2. Queres pass simples na abertura, ou totalmente sem login?
+3. Os PDFs (documentos do formador, PRAs dos formandos) — manter na pen em `/docs/` é OK, ou preferes embebidos no próprio `.db` (mais pesado mas 1 ficheiro só)?

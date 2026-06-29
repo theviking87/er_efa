@@ -76,6 +76,7 @@ export default function FormadorDetail() {
         {[
           ["dados", "Dados"],
           ["competencias", "Competências"],
+          ["disponibilidades", "Disponibilidades"],
           ["inatividades", "Inatividades"],
           ["documentos", "Documentos"],
         ].map(([k, label]) => (
@@ -92,6 +93,7 @@ export default function FormadorDetail() {
       <div className="mt-4">
         {tab === "dados" && <DadosTab f={f} />}
         {tab === "competencias" && <CompetenciasTab formadorId={id} onChange={refresh} />}
+        {tab === "disponibilidades" && <DisponibilidadesTab formadorId={id} onChange={refresh} />}
         {tab === "inatividades" && <InatividadesTab formadorId={id} onChange={refresh} />}
         {tab === "documentos" && <DocumentosTab formadorId={id} onChange={refresh} />}
       </div>

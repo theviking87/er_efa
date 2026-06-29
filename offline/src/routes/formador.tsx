@@ -21,7 +21,7 @@ export default function FormadorDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [tick, setTick] = useState(0);
-  const [tab, setTab] = useState<"dados" | "inatividades" | "documentos">("dados");
+  const [tab, setTab] = useState<"dados" | "competencias" | "inatividades" | "documentos">("dados");
   const [editing, setEditing] = useState(false);
 
   const refresh = () => setTick((t) => t + 1);
@@ -75,6 +75,7 @@ export default function FormadorDetail() {
       <div className="mt-6 border-b border-slate-200 flex gap-1">
         {[
           ["dados", "Dados"],
+          ["competencias", "Competências"],
           ["inatividades", "Inatividades"],
           ["documentos", "Documentos"],
         ].map(([k, label]) => (
@@ -90,6 +91,7 @@ export default function FormadorDetail() {
 
       <div className="mt-4">
         {tab === "dados" && <DadosTab f={f} />}
+        {tab === "competencias" && <CompetenciasTab formadorId={id} onChange={refresh} />}
         {tab === "inatividades" && <InatividadesTab formadorId={id} onChange={refresh} />}
         {tab === "documentos" && <DocumentosTab formadorId={id} onChange={refresh} />}
       </div>
@@ -129,6 +131,155 @@ function DadosTab({ f }: { f: Formador }) {
       <Field label="CCP" value={f.ccp} />
       <Field label="Validade CCP" value={fmtDate(f.validade_ccp)} />
       <div className="sm:col-span-2"><Field label="Observações" value={f.observacoes} /></div>
+    </div>
+  );
+}
+
+function compareCodigo(a: { codigo?: string | null }, b: { codigo?: string | null }) {
+  const ac = (a.codigo ?? "").toString();
+  const bc = (b.codigo ?? "").toString();
+  const aL = /^[A-Za-z]/.test(ac);
+  const bL = /^[A-Za-z]/.test(bc);
+  if (aL !== bL) return aL ? -1 : 1;
+  return ac.localeCompare(bc, "pt", { numeric: true });
+}
+
+function CompetenciasTab({ formadorId, onChange }: { formadorId: string; onChange: () => void }) {
+  const [tick, setTick] = useState(0);
+  const [pickerOpen, setPickerOpen] = useState(false);
+
+  const rows = useMemo(() => {
+    try {
+      ensureColumns("formador_ufcds", ["formador_id", "ufcd_id"]);
+      const linked = all<{ id: string; ufcd_id: string; codigo?: string | null; nome?: string | null; horas?: number | null }>(
+        `SELECT fu.id, fu.ufcd_id, u.codigo, u.nome, u.horas
+         FROM formador_ufcds fu LEFT JOIN ufcds u ON u.id = fu.ufcd_id
+         WHERE fu.formador_id = ?`,
+        [formadorId],
+      );
+      // Horas lecionadas por UFCD (somatório das sessões deste formador)
+      const horas = all<{ ufcd_id: string; horas: number }>(
+        `SELECT cu.ufcd_id AS ufcd_id, COALESCE(SUM(s.horas), 0) AS horas
+         FROM sessoes s JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+         WHERE s.formador_id = ?
+         GROUP BY cu.ufcd_id`,
+        [formadorId],
+      );
+      const horasMap = new Map(horas.map((h) => [h.ufcd_id, Number(h.horas) || 0]));
+      return linked.map((r) => ({ ...r, lecionadas: horasMap.get(r.ufcd_id) ?? 0 })).sort(compareCodigo);
+    } catch { return []; }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [formadorId, tick]);
+
+  function remover(id: string) {
+    if (!confirm("Remover competência?")) return;
+    exec(`DELETE FROM formador_ufcds WHERE id=?`, [id]);
+    setTick((t) => t + 1); onChange();
+  }
+
+  return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-slate-600">{rows.length} UFCD(s) com competência</div>
+        <button className="btn btn-primary" onClick={() => setPickerOpen(true)}>+ Adicionar UFCD</button>
+      </div>
+      <div className="bg-white border border-slate-200 rounded-lg overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
+            <tr>
+              <th className="text-left font-medium px-4 py-2 w-24">Código</th>
+              <th className="text-left font-medium px-4 py-2">UFCD</th>
+              <th className="text-left font-medium px-4 py-2 w-20">Horas</th>
+              <th className="text-left font-medium px-4 py-2 w-28">Lecionadas</th>
+              <th />
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-slate-100">
+            {rows.length === 0 && <tr><td colSpan={5} className="px-4 py-8 text-center text-slate-500">Sem competências.</td></tr>}
+            {rows.map((r) => (
+              <tr key={r.id}>
+                <td className="px-4 py-2 font-mono text-xs">{r.codigo ?? "—"}</td>
+                <td className="px-4 py-2">{r.nome ?? "—"}</td>
+                <td className="px-4 py-2 text-slate-500">{r.horas ?? "—"}</td>
+                <td className="px-4 py-2 text-slate-500">{r.lecionadas}h</td>
+                <td className="px-4 py-2 text-right">
+                  <button className="text-xs text-red-500 hover:text-red-700" onClick={() => remover(r.id)}>Remover</button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      {pickerOpen && (
+        <UfcdCompetenciaPicker
+          formadorId={formadorId}
+          alreadyIds={new Set(rows.map((r) => r.ufcd_id))}
+          onClose={() => setPickerOpen(false)}
+          onSaved={() => { setPickerOpen(false); setTick((t) => t + 1); onChange(); }}
+        />
+      )}
+    </div>
+  );
+}
+
+function UfcdCompetenciaPicker({ formadorId, alreadyIds, onClose, onSaved }: {
+  formadorId: string; alreadyIds: Set<string>; onClose: () => void; onSaved: () => void;
+}) {
+  const [q, setQ] = useState("");
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const ufcds = useMemo(() => {
+    try { return all<{ id: string; codigo?: string | null; nome?: string | null }>(`SELECT id, codigo, nome FROM ufcds`); }
+    catch { return []; }
+  }, []);
+  const list = ufcds.filter((u) => !alreadyIds.has(u.id)).filter((u) => {
+    if (!q) return true;
+    const s = q.toLowerCase();
+    return (u.codigo ?? "").toString().toLowerCase().includes(s) || (u.nome ?? "").toLowerCase().includes(s);
+  }).sort(compareCodigo);
+
+  function toggle(id: string) {
+    setSelected((s) => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
+  }
+  function save() {
+    if (!selected.size) return;
+    ensureColumns("formador_ufcds", ["formador_id", "ufcd_id"]);
+    for (const uId of selected) {
+      exec(`INSERT INTO formador_ufcds (id, formador_id, ufcd_id) VALUES (?, ?, ?)`, [uid(), formadorId, uId]);
+    }
+    onSaved();
+  }
+
+  return (
+    <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-lg shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+        <div className="px-6 py-4 border-b border-slate-200 flex items-center justify-between">
+          <h2 className="font-semibold">Adicionar UFCDs</h2>
+          <button className="text-slate-400 hover:text-slate-700" onClick={onClose}>✕</button>
+        </div>
+        <div className="p-4 border-b border-slate-100">
+          <input className="input" placeholder="Pesquisar…" value={q} onChange={(e) => setQ(e.target.value)} autoFocus />
+        </div>
+        <div className="flex-1 overflow-auto">
+          <ul className="divide-y divide-slate-100">
+            {list.map((u) => (
+              <li key={u.id}>
+                <label className="flex items-center gap-3 px-4 py-2 hover:bg-slate-50 cursor-pointer">
+                  <input type="checkbox" checked={selected.has(u.id)} onChange={() => toggle(u.id)} />
+                  <span className="font-mono text-xs w-20 text-slate-500">{u.codigo ?? "—"}</span>
+                  <span className="flex-1 text-sm">{u.nome ?? "—"}</span>
+                </label>
+              </li>
+            ))}
+          </ul>
+        </div>
+        <div className="px-6 py-3 border-t border-slate-200 flex justify-between">
+          <span className="text-xs text-slate-500">{selected.size} selecionada(s)</span>
+          <div className="flex gap-2">
+            <button className="btn btn-outline" onClick={onClose}>Cancelar</button>
+            <button className="btn btn-primary" onClick={save} disabled={!selected.size}>Adicionar</button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

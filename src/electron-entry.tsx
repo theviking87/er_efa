@@ -15,6 +15,7 @@ import { getLocalDataSummary, importLocalBackupZip, type LocalImportSummary } fr
 
 const LOCAL_SESSION_KEY = "formacao-er-local-session";
 const LOCAL_IMPORTED_KEY = "formacao-er-local-imported";
+const LOCAL_FORCE_IMPORT_KEY = "formacao-er-force-import";
 const VALID_USER = "formacao";
 const VALID_PASS = "ER2026";
 
@@ -179,11 +180,12 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
       // UFCDs podem existir como catálogo vazio/base; só contam como sistema
       // carregado se houver dados reais de trabalho.
       const total = ["cursos", "formadores", "formandos", "sessoes"].reduce((acc, key) => acc + (counts[key] ?? 0), 0);
+      const forceImport = window.localStorage.getItem(LOCAL_FORCE_IMPORT_KEY) === "1";
       // Se uma versão anterior marcou a importação como feita mas a BD ficou
       // vazia/parcial, não podemos esconder o ecrã de importação: isso deixava
       // a app a abrir sem dados e sem pedir novamente o backup.
       if (total === 0) window.localStorage.removeItem(LOCAL_IMPORTED_KEY);
-      setEmpty(total === 0);
+      setEmpty(forceImport || total === 0);
     } catch (err: any) {
       setError(err?.message ?? String(err));
       setEmpty(true);
@@ -207,6 +209,7 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
         throw new Error("O backup foi lido, mas não importou dados principais (cursos/formadores/formandos/sessões). Confirma que escolheste o backup completo exportado pela aplicação online.");
       }
       window.localStorage.setItem(LOCAL_IMPORTED_KEY, "1");
+      window.localStorage.removeItem(LOCAL_FORCE_IMPORT_KEY);
       setSummary(result);
       setEmpty(false);
       queryClient.clear();
@@ -245,7 +248,7 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
           {summary?.warnings.length ? <p className="text-xs text-amber-700">Alguns documentos não foram copiados: {summary.warnings.slice(0, 3).join("; ")}</p> : null}
           {error ? <pre className="text-xs whitespace-pre-wrap rounded-md bg-destructive/10 text-destructive p-3">{error}</pre> : null}
           <div className="flex gap-2 justify-between pt-2">
-            <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => setContinueEmpty(true)} disabled={importing}>Entrar vazio</button>
+            <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => { window.localStorage.removeItem(LOCAL_FORCE_IMPORT_KEY); setContinueEmpty(true); }} disabled={importing}>Entrar vazio</button>
             <button type="button" className="h-10 rounded-md border px-4 text-sm font-medium" onClick={refreshSummary} disabled={importing}>Verificar novamente</button>
           </div>
         </div>

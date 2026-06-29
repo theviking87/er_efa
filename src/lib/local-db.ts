@@ -294,6 +294,8 @@ async function initSchema(db: LocalDb): Promise<void> {
       updated_at timestamptz NOT NULL DEFAULT now(),
       UNIQUE(curso_formando_id, curso_ufcd_id)
     );
+    ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS nome text;
+    ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS storage_path text;
     ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS nota text;
     ALTER TABLE public.formando_pra ALTER COLUMN nome DROP NOT NULL;
     ALTER TABLE public.formando_pra ALTER COLUMN storage_path DROP NOT NULL;

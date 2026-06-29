@@ -2,7 +2,7 @@
 // The password is hashed and stored in localStorage; first run sets it.
 
 import { useEffect, useState } from "react";
-import { hasRoot, loadSavedRoot, pickRoot } from "./db/persistence";
+import { hasRoot, loadSavedRoot, pickRoot, IS_ELECTRON } from "./db/persistence";
 import {
   openDatabase,
   flushNow,

@@ -62,6 +62,7 @@ export function Gate({ children }: { children: React.ReactNode }) {
         return;
       }
       await openDatabase(bytes);
+      normalizeImportedSchema();
       setBusy(null);
       setStage("password");
     } catch (e) {

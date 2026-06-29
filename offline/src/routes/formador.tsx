@@ -21,7 +21,7 @@ export default function FormadorDetail() {
   const { id = "" } = useParams();
   const navigate = useNavigate();
   const [tick, setTick] = useState(0);
-  const [tab, setTab] = useState<"dados" | "competencias" | "inatividades" | "documentos">("dados");
+  const [tab, setTab] = useState<"dados" | "competencias" | "disponibilidades" | "inatividades" | "documentos">("dados");
   const [editing, setEditing] = useState(false);
 
   const refresh = () => setTick((t) => t + 1);
@@ -76,6 +76,7 @@ export default function FormadorDetail() {
         {[
           ["dados", "Dados"],
           ["competencias", "Competências"],
+          ["disponibilidades", "Disponibilidades"],
           ["inatividades", "Inatividades"],
           ["documentos", "Documentos"],
         ].map(([k, label]) => (
@@ -92,6 +93,7 @@ export default function FormadorDetail() {
       <div className="mt-4">
         {tab === "dados" && <DadosTab f={f} />}
         {tab === "competencias" && <CompetenciasTab formadorId={id} onChange={refresh} />}
+        {tab === "disponibilidades" && <DisponibilidadesTab formadorId={id} onChange={refresh} />}
         {tab === "inatividades" && <InatividadesTab formadorId={id} onChange={refresh} />}
         {tab === "documentos" && <DocumentosTab formadorId={id} onChange={refresh} />}
       </div>
@@ -444,6 +446,119 @@ function DocumentosTab({ formadorId, onChange }: { formadorId: string; onChange:
                 <button className="btn btn-outline" onClick={() => open(d)}>Abrir</button>
                 <button className="text-xs text-red-600 hover:underline" onClick={() => del(d)}>Eliminar</button>
               </div>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+type Disp = {
+  id: string;
+  data: string;
+  hora_inicio: string;
+  hora_fim: string;
+  curso_id?: string | null;
+  curso_nome?: string | null;
+};
+
+function DisponibilidadesTab({ formadorId, onChange }: { formadorId: string; onChange: () => void }) {
+  const [tick, setTick] = useState(0);
+  const [form, setForm] = useState({ data: "", hora_inicio: "09:00", hora_fim: "13:00", curso_id: "" });
+
+  const cursos = useMemo(() => {
+    try { return all<{ id: string; nome: string }>(`SELECT id, nome FROM cursos ORDER BY nome COLLATE NOCASE`); }
+    catch { return []; }
+  }, []);
+
+  const items = useMemo<Disp[]>(() => {
+    try {
+      ensureColumns("formador_disponibilidades", ["formador_id","data","hora_inicio","hora_fim","curso_id"]);
+      return all<Disp>(
+        `SELECT d.id, d.data, d.hora_inicio, d.hora_fim, d.curso_id, c.nome AS curso_nome
+         FROM formador_disponibilidades d LEFT JOIN cursos c ON c.id = d.curso_id
+         WHERE d.formador_id=? ORDER BY d.data DESC, d.hora_inicio`,
+        [formadorId],
+      );
+    } catch { return []; }
+  }, [formadorId, tick]);
+
+  const bump = () => { setTick((t) => t + 1); onChange(); };
+
+  function preset(i: string, f: string) {
+    setForm((s) => ({ ...s, hora_inicio: i, hora_fim: f }));
+  }
+
+  function add() {
+    if (!form.data || !form.hora_inicio || !form.hora_fim) { alert("Preencha data e horário."); return; }
+    if (form.hora_fim <= form.hora_inicio) { alert("Horário inválido."); return; }
+    const dup = one<{ n: number }>(
+      `SELECT COUNT(*) AS n FROM formador_disponibilidades
+       WHERE formador_id=? AND data=? AND hora_inicio=? AND hora_fim=?
+         AND COALESCE(curso_id,'')=COALESCE(?, '')`,
+      [formadorId, form.data, form.hora_inicio, form.hora_fim, form.curso_id || null],
+    );
+    if ((dup?.n ?? 0) > 0) { alert("Essa disponibilidade já existe."); return; }
+    ensureColumns("formador_disponibilidades", ["formador_id","data","hora_inicio","hora_fim","curso_id"]);
+    exec(
+      `INSERT INTO formador_disponibilidades (id, formador_id, data, hora_inicio, hora_fim, curso_id)
+       VALUES (?,?,?,?,?,?)`,
+      [uid(), formadorId, form.data, form.hora_inicio, form.hora_fim, form.curso_id || null],
+    );
+    setForm({ data: "", hora_inicio: "09:00", hora_fim: "13:00", curso_id: "" });
+    bump();
+  }
+
+  function del(id: string) {
+    if (!confirm("Eliminar disponibilidade?")) return;
+    exec(`DELETE FROM formador_disponibilidades WHERE id=?`, [id]);
+    bump();
+  }
+
+  return (
+    <div className="card space-y-4">
+      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_1fr_1.5fr_auto] gap-3 items-end">
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Data</label>
+          <input type="date" className="input" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Início</label>
+          <input type="time" className="input" value={form.hora_inicio} onChange={(e) => setForm({ ...form, hora_inicio: e.target.value })} />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Fim</label>
+          <input type="time" className="input" value={form.hora_fim} onChange={(e) => setForm({ ...form, hora_fim: e.target.value })} />
+        </div>
+        <div>
+          <label className="block text-xs text-slate-500 mb-1">Curso (opcional)</label>
+          <select className="input" value={form.curso_id} onChange={(e) => setForm({ ...form, curso_id: e.target.value })}>
+            <option value="">— Todos —</option>
+            {cursos.map((c) => <option key={c.id} value={c.id}>{c.nome}</option>)}
+          </select>
+        </div>
+        <button className="btn btn-primary" onClick={add}>Adicionar</button>
+      </div>
+      <div className="flex gap-2 flex-wrap">
+        <button className="btn btn-outline text-xs" onClick={() => preset("09:00","13:00")}>Manhã (09:00–13:00)</button>
+        <button className="btn btn-outline text-xs" onClick={() => preset("14:00","17:00")}>Tarde (14:00–17:00)</button>
+        <button className="btn btn-outline text-xs" onClick={() => preset("09:00","17:00")}>Dia todo (09:00–17:00)</button>
+      </div>
+
+      {items.length === 0 ? (
+        <div className="text-sm text-slate-500 text-center py-8">Sem disponibilidades registadas.</div>
+      ) : (
+        <div className="border border-slate-200 rounded-md divide-y divide-slate-100">
+          {items.map((d) => (
+            <div key={d.id} className="px-4 py-2.5 flex items-center justify-between text-sm">
+              <div>
+                <span className="font-medium">{fmtDate(d.data)}</span>
+                <span className="text-slate-500"> · {d.hora_inicio.slice(0,5)}–{d.hora_fim.slice(0,5)}</span>
+                {d.curso_nome && <span className="text-slate-500"> · {d.curso_nome}</span>}
+                {!d.curso_id && <span className="text-slate-400 italic"> · todos os cursos</span>}
+              </div>
+              <button className="text-xs text-red-600 hover:underline" onClick={() => del(d.id)}>Eliminar</button>
             </div>
           ))}
         </div>

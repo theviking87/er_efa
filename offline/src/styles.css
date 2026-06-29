@@ -43,3 +43,10 @@ body {
   background: #fff;
   font-size: 0.875rem;
 }
+
+@media print {
+  @page { size: A4 landscape; margin: 8mm; }
+  body { background: #fff; }
+  aside, nav, .print\:hidden { display: none !important; }
+  main { overflow: visible !important; }
+}

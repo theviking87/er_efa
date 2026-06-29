@@ -30,7 +30,7 @@ export function Gate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     (async () => {
       try {
-        if (!("showDirectoryPicker" in window)) {
+        if (!IS_ELECTRON && !("showDirectoryPicker" in window)) {
           setError(
             "Este browser não suporta a File System Access API. Usa o Chrome ou o Edge.",
           );

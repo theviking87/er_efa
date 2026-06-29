@@ -1,0 +1,1 @@
+import{s as e}from"./local-db-B4wca12J.js";import{t}from"./app-shell-CeXvtUYH.js";import{C as n}from"./index.electron-43yopzk1.js";var r=e(),i=()=>(0,r.jsx)(t,{children:(0,r.jsx)(n,{})});export{i as component};

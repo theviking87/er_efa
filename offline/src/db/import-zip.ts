@@ -63,6 +63,8 @@ export async function importBackupZip(file: File, onProgress?: (msg: string) => 
     }
   }
 
+  onProgress?.("A normalizar schema…");
+  normalizeImportedSchema();
   onProgress?.("A gravar database.db…");
   await flushNow();
   return summary;

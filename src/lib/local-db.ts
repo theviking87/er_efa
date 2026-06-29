@@ -148,7 +148,6 @@ function splitSqlStatements(sql: string): string[] {
 }
 
 async function resetPartialSchemaIfNeeded(db: LocalDb, appliedCount: number) {
-  if (appliedCount > 0) return;
   const tableList = APP_TABLES.map((t) => `'${t.replace(/'/g, "''")}'`).join(",");
   const res = await db.query<{ count: string | number }>(
     `SELECT COUNT(*) AS count
@@ -156,16 +155,44 @@ async function resetPartialSchemaIfNeeded(db: LocalDb, appliedCount: number) {
       WHERE table_schema = 'public'
         AND table_name IN (${tableList})`,
   );
-  if (Number(res.rows[0]?.count ?? 0) === 0) return;
+  const existingCount = Number(res.rows[0]?.count ?? 0);
 
-  console.warn("[local-db] detected partial offline schema; resetting before migrations");
-  await db.exec(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`);
-  await db.exec(`
-    CREATE TABLE IF NOT EXISTS _local_migrations (
-      name text PRIMARY KEY,
-      applied_at timestamptz NOT NULL DEFAULT now()
-    );
+  // First ZIPs could fail midway through a migration but still leave public
+  // objects behind. If no migration is recorded, any app table means the schema
+  // is partial and must be recreated before we continue.
+  if (appliedCount === 0 && existingCount === 0) return;
+  if (appliedCount === 0 && existingCount > 0) {
+    console.warn("[local-db] detected partial offline schema; resetting before migrations");
+    await db.exec(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`);
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS _local_migrations (
+        name text PRIMARY KEY,
+        applied_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    return;
+  }
+
+  // If migrations were marked as applied by a broken build, but core tables are
+  // missing, rerun everything. Do not reset merely because a newer optional
+  // table is missing; those are patched/applied below to avoid deleting data.
+  const core = await db.query<{ table_name: string }>(`
+    SELECT table_name
+      FROM information_schema.tables
+     WHERE table_schema = 'public'
+       AND table_name IN ('formadores','formandos','cursos','ufcds','sessoes')
   `);
+  if (appliedCount > 0 && core.rows.length < 5) {
+    console.warn("[local-db] detected broken offline schema with applied migrations; resetting before migrations");
+    await db.exec(`DROP SCHEMA IF EXISTS public CASCADE; CREATE SCHEMA public;`);
+    await db.exec(`
+      CREATE TABLE IF NOT EXISTS _local_migrations (
+        name text PRIMARY KEY,
+        applied_at timestamptz NOT NULL DEFAULT now()
+      );
+    `);
+    return;
+  }
 }
 
 async function initSchema(db: LocalDb): Promise<void> {

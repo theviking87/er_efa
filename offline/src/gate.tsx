@@ -66,13 +66,19 @@ export function Gate({ children }: { children: React.ReactNode }) {
       setBusy(null);
       setStage("password");
     } catch (e) {
-      // Handle stale (e.g. drive letter changed) — force re-pick.
       setBusy(null);
-      setError(
-        "Não consegui aceder à pasta guardada (a letra da pen pode ter mudado). Escolhe a pasta outra vez.",
-      );
-      setStage("pickFolder");
-      console.error(e);
+      const msg = e instanceof Error ? `${e.message}\n${e.stack ?? ""}` : String(e);
+      console.error("openExisting falhou:", e);
+      if (IS_ELECTRON) {
+        // No folder picker in desktop mode — surface the real error.
+        setError(`Falha a abrir base de dados:\n${msg}`);
+        setStage("boot");
+      } else {
+        setError(
+          "Não consegui aceder à pasta guardada (a letra da pen pode ter mudado). Escolhe a pasta outra vez.\n\n" + msg,
+        );
+        setStage("pickFolder");
+      }
     }
   }
 
@@ -86,6 +92,15 @@ export function Gate({ children }: { children: React.ReactNode }) {
     }
   }
 
+  if (stage === "boot" && error) {
+    return (
+      <Centered>
+        <h1 className="text-xl font-semibold mb-2">Formação ER</h1>
+        <pre className="text-xs text-red-600 whitespace-pre-wrap max-w-2xl mb-4">{error}</pre>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>Tentar novamente</button>
+      </Centered>
+    );
+  }
   if (stage === "boot" || busy) {
     return <Centered><p className="text-sm text-slate-500">{busy ?? "A carregar…"}</p></Centered>;
   }

@@ -24,5 +24,6 @@ contextBridge.exposeInMainWorld("electronAPI", {
   db: {
     read: () => ipcRenderer.invoke("db:read"),
     write: (arrayBuffer) => ipcRenderer.invoke("db:write", arrayBuffer),
+    wasm: () => ipcRenderer.invoke("db:wasm"),
   },
 });

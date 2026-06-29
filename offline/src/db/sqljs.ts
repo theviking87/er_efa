@@ -9,7 +9,21 @@ let SQL: SqlJsStatic | null = null;
 let DB: Database | null = null;
 
 export async function getSql(): Promise<SqlJsStatic> {
-  if (!SQL) SQL = await initSqlJs({ locateFile: () => wasmUrl });
+  if (SQL) return SQL;
+  const electron = (window as unknown as { electronAPI?: { db?: { wasm?: () => Promise<Uint8Array | ArrayBuffer | null> } } }).electronAPI;
+  if (electron?.db?.wasm) {
+    try {
+      const raw = await electron.db.wasm();
+      if (raw) {
+        const bytes = raw instanceof Uint8Array ? raw : new Uint8Array(raw);
+        SQL = await initSqlJs({ wasmBinary: bytes });
+        return SQL;
+      }
+    } catch (e) {
+      console.warn("electron wasm read failed, falling back to fetch", e);
+    }
+  }
+  SQL = await initSqlJs({ locateFile: () => wasmUrl });
   return SQL;
 }
 

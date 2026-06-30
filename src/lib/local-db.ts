@@ -14,6 +14,18 @@ export type LocalDb = Pick<PGlite, "query" | "exec" | "close"> & Record<string, 
 let _db: LocalDb | null = null;
 let _ready: Promise<LocalDb> | null = null;
 
+const LOCAL_DATA_DIR = "idb://formacao-er-db";
+
+function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} demorou demasiado a responder`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
 const APP_TABLES = [
   "ufcds",
   "formadores",
@@ -305,16 +317,27 @@ async function initSchema(db: LocalDb): Promise<void> {
 
 async function createLocalDb(): Promise<LocalDb> {
   if (isElectron() && typeof Worker !== "undefined") {
+    let worker: Worker | null = null;
     try {
-      const worker = new Worker(new URL("./pglite.worker.ts", import.meta.url), { type: "module", name: "formacao-er-db" });
-      // OPFS is worker-only and avoids IndexedDB's full-database flush after
-      // writes. On slower USB drives that flush was the main source of freezes.
-      return await PGliteWorker.create(worker, { meta: { filesystem: "opfs-ahp" } } as any) as LocalDb;
+      worker = new Worker(new URL("./pglite.worker.ts", import.meta.url), { type: "module", name: "formacao-er-db" });
+      // Keep the database in one browser storage area instead of OPFS. OPFS/AHP
+      // creates many visible profile files on Windows and, in some portable
+      // environments, never answers the first worker handshake.
+      return await withTimeout(
+        PGliteWorker.create(worker, { dataDir: LOCAL_DATA_DIR, relaxedDurability: true } as any) as Promise<LocalDb>,
+        12000,
+        "A base de dados local",
+      );
     } catch (err) {
+      try { worker?.terminate(); } catch {}
       console.warn("[local-db] PGlite worker unavailable, falling back to renderer DB", err);
     }
   }
-  return new PGlite("idb://formacao-er-db") as LocalDb;
+  return await withTimeout(
+    PGlite.create(LOCAL_DATA_DIR, { relaxedDurability: true } as any) as Promise<LocalDb>,
+    12000,
+    "A base de dados local",
+  );
 }
 
 export async function getLocalDb(): Promise<LocalDb> {
@@ -325,7 +348,10 @@ export async function getLocalDb(): Promise<LocalDb> {
     await initSchema(db);
     _db = db;
     return db;
-  })();
+  })().catch((err) => {
+    _ready = null;
+    throw err;
+  });
   return _ready;
 }
 

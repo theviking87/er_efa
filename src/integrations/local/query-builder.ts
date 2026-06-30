@@ -409,6 +409,58 @@ function buildSelectSQL(opts: {
   return { sql, params };
 }
 
+function splitEmbedFilters(filters: Filter[], aliasToEmbed: Map<string, Embed>): { outerFilters: Filter[]; embedFilters: Record<string, Filter[]> } {
+  const outerFilters: Filter[] = [];
+  const embedFilters: Record<string, Filter[]> = {};
+  for (const f of filters) {
+    if (f.op !== "or" && typeof (f as any).col === "string" && (f as any).col.includes(".")) {
+      const dotIdx = (f as any).col.indexOf(".");
+      const head = (f as any).col.slice(0, dotIdx);
+      const tail = (f as any).col.slice(dotIdx + 1);
+      if (aliasToEmbed.has(head)) {
+        (embedFilters[head] ??= []).push({ ...(f as any), col: tail });
+        continue;
+      }
+    }
+    outerFilters.push(f);
+  }
+  return { outerFilters, embedFilters };
+}
+
+function mergeColumns(nodes: SelectNode[], extraCols: string[]): SelectNode[] {
+  if (nodes.some((n) => n.kind === "column" && n.name === "*")) return [...nodes];
+  const out = [...nodes];
+  const existing = new Set(out.filter((n) => n.kind === "column").map((n: any) => n.name));
+  for (const col of extraCols) {
+    if (!existing.has(col)) {
+      out.push({ kind: "column", name: col });
+      existing.add(col);
+    }
+  }
+  return out;
+}
+
+function serializeSelectNodes(nodes: SelectNode[]): string {
+  return nodes.map((n) => {
+    if (n.kind === "column") return n.name;
+    const head = `${n.alias === n.table ? "" : `${n.alias}:`}${n.table}${n.inner ? "!inner" : ""}`;
+    return `${head}(${serializeSelectNodes(n.children)})`;
+  }).join(", ");
+}
+
+function uniqueValues(values: unknown[]): unknown[] {
+  const out: unknown[] = [];
+  const seen = new Set<string>();
+  for (const v of values) {
+    if (v === null || v === undefined || v === "") continue;
+    const key = String(v);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
+}
+
 /** Build the projection list. Embeds turn into correlated subqueries.
  *  Returns extra WHERE EXISTS clauses for `!inner` embeds (and embeds with filters). */
 function buildProjection(

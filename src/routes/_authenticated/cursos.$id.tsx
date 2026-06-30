@@ -2117,9 +2117,15 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const totaisPorFormando = useQuery({
     queryKey: ["faltas-totais", cursoId],
     queryFn: async () => {
+      const { data: cfs, error: cfError } = await supabase.from("curso_formandos")
+        .select("id")
+        .eq("curso_id", cursoId);
+      if (cfError) throw cfError;
+      const ids = (cfs ?? []).map((r: any) => r.id).filter(Boolean);
+      if (ids.length === 0) return new Map<string, { just: number; injust: number }>();
       const { data, error } = await supabase.from("formando_faltas")
-        .select("curso_formando_id, horas, tipo, curso_formando:curso_formandos!inner(curso_id)")
-        .eq("curso_formando.curso_id", cursoId);
+        .select("curso_formando_id, horas, tipo")
+        .in("curso_formando_id", ids);
       if (error) throw error;
       const map = new Map<string, { just: number; injust: number }>();
       (data ?? []).forEach((f: any) => {

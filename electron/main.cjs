@@ -337,21 +337,19 @@ Snapshot movido para: ${brokenPath}`);
 }
 
 function isBeginSql(sql) {
-  return /^\s*(begin|start\s+transaction)/i.test(String(sql));
+  return /^\s*(begin|start\s+transaction)\b/i.test(String(sql));
 }
 function isCommitSql(sql) {
-  return /^\s*(commit|end)/i.test(String(sql));
+  return /^\s*(commit|end)\b/i.test(String(sql));
 }
 function isRollbackSql(sql) {
-  return /^\s*rollback/i.test(String(sql));
+  return /^\s*rollback\b/i.test(String(sql));
 }
 function isMutatingSql(sql) {
-  const s = String(sql).replace(/^\s*(?:--[^
-]*
-\s*)*/g, "").trim().toLowerCase();
+  const s = String(sql).replace(/^\s*(?:--[^\n]*\n\s*)*/g, "").trim().toLowerCase();
   if (!s) return false;
-  if (/^(select|show|explain)/.test(s)) return false;
-  return /^(insert|update|delete|create|alter|drop|truncate|reindex|vacuum|analyze|comment|grant|revoke|set)/.test(s);
+  if (/^(select|show|explain)\b/.test(s)) return false;
+  return /^(insert|update|delete|create|alter|drop|truncate|reindex|vacuum|analyze|comment|grant|revoke|set)\b/.test(s);
 }
 
 async function persistLocalDbNow(reason = "manual") {

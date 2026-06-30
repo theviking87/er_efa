@@ -342,8 +342,7 @@ function buildEmbedSubquery(
   return { expr, existsExpr };
 }
 
-function buildWhere(filters: Filter[], params: unknown[], tableAlias?: string): string {
-  if (filters.length === 0) return "";
+function buildFilterClauses(filters: Filter[], params: unknown[], tableAlias?: string): string[] {
   const parts: string[] = [];
   for (const f of filters) {
     if (f.op === "or") { parts.push(f.expr); continue; }
@@ -363,6 +362,12 @@ function buildWhere(filters: Filter[], params: unknown[], tableAlias?: string): 
     const opMap: Record<string, string> = { eq: "=", neq: "<>", gt: ">", gte: ">=", lt: "<", lte: "<=", like: "LIKE", ilike: "ILIKE" };
     parts.push(`${refCol(f.col, tableAlias)} ${opMap[f.op]} $${params.length}`);
   }
+  return parts;
+}
+
+function buildWhere(filters: Filter[], params: unknown[], tableAlias?: string): string {
+  if (filters.length === 0) return "";
+  const parts = buildFilterClauses(filters, params, tableAlias);
   return "WHERE " + parts.join(" AND ");
 }
 

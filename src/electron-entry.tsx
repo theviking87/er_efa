@@ -38,6 +38,12 @@ function showFatal(msg: string) {
 window.addEventListener("error", (e) => showFatal(`${e.message}\n${e.error?.stack ?? ""}`));
 window.addEventListener("unhandledrejection", (e) => showFatal(`Unhandled promise:\n${(e.reason && (e.reason.stack || e.reason.message)) || String(e.reason)}`));
 
+function readableError(err: unknown): string {
+  if (err instanceof Error) return `${err.message}${err.stack ? `\n${err.stack}` : ""}`;
+  if (typeof err === "string") return err;
+  try { return JSON.stringify(err, null, 2); } catch { return String(err); }
+}
+
 function readLocalSession(): LocalSession | null {
   try {
     const raw = window.localStorage.getItem(LOCAL_SESSION_KEY);
@@ -190,7 +196,7 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
       if (total === 0) window.localStorage.removeItem(LOCAL_IMPORTED_KEY);
       setEmpty(forceImport || total === 0);
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(readableError(err));
       setEmpty(true);
     } finally {
       window.clearTimeout(slowTimer);
@@ -219,7 +225,7 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
       queryClient.clear();
       window.location.hash = "/dashboard";
     } catch (err: any) {
-      setError(err?.message ?? String(err));
+      setError(readableError(err));
     } finally {
       setImporting(false);
     }
@@ -270,7 +276,7 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
           </label>
           <div className="min-h-6 text-sm text-muted-foreground">{importing ? progress : summary ? `${totalImported} registos importados · ${summary.files} documentos copiados` : ""}</div>
           {summary?.warnings.length ? <p className="text-xs text-amber-700">Alguns documentos não foram copiados: {summary.warnings.slice(0, 3).join("; ")}</p> : null}
-          {error ? <pre className="text-xs whitespace-pre-wrap rounded-md bg-destructive/10 text-destructive p-3">{error}</pre> : null}
+          {error ? <pre className="max-h-56 overflow-auto text-xs whitespace-pre-wrap rounded-md bg-destructive/10 text-destructive p-3">{error}</pre> : null}
           <div className="flex gap-2 justify-between pt-2">
             <button type="button" className="text-sm text-muted-foreground hover:underline" onClick={() => { window.localStorage.removeItem(LOCAL_FORCE_IMPORT_KEY); setContinueEmpty(true); }} disabled={importing}>Entrar vazio</button>
             <button type="button" className="h-10 rounded-md border px-4 text-sm font-medium" onClick={refreshSummary} disabled={importing}>Verificar novamente</button>

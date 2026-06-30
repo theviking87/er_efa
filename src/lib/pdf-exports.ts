@@ -2,6 +2,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { TIPOLOGIA_LABEL, ESTADO_CURSO_LABEL, fmtDate } from "@/lib/format";
+import { localRows, yieldToBrowser } from "@/lib/offline-sql";
 
 const BRAND = [37, 99, 235] as [number, number, number]; // azul
 const MUTED = [100, 116, 139] as [number, number, number];
@@ -16,9 +17,17 @@ function uniqueIds(values: Array<string | null | undefined>) {
 
 async function rowsById(table: string, columns: string, ids: string[]) {
   if (!ids.length) return new Map<string, any>();
+  const placeholders = ids.map((_, i) => `$${i + 1}`).join(",");
+  const offline = await localRows<any>(`SELECT ${columns} FROM ${table} WHERE id IN (${placeholders})`, ids);
+  if (offline) return new Map(offline.map((r: any) => [r.id, r]));
   const { data, error } = await (supabase as any).from(table).select(columns).in("id", ids);
   if (error) throw error;
   return new Map((data ?? []).map((r: any) => [r.id, r]));
+}
+
+async function savePdf(doc: jsPDF, filename: string) {
+  await yieldToBrowser();
+  doc.save(filename);
 }
 
 function newDoc(orientation: "portrait" | "landscape" = "portrait") {
@@ -84,25 +93,65 @@ function infoBlock(doc: jsPDF, startY: number, items: [string, string][]) {
 
 // ============= 1. SIGO por curso =============
 export async function exportSigoCursoPdf(cursoId: string) {
-  const [curso, cursoUfcds, sessoes] = await Promise.all([
-    supabase.from("cursos").select("*").eq("id", cursoId).maybeSingle(),
-    supabase.from("curso_ufcds")
-      .select("id, horas_totais, concluida, ordem, ufcd_id")
-      .eq("curso_id", cursoId).order("ordem"),
-    supabase.from("sessoes")
-      .select("data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id")
-      .eq("curso_id", cursoId).order("data").order("hora_inicio"),
-  ]);
-  if (!curso.data) throw new Error("Curso não encontrado");
-  if (cursoUfcds.error) throw cursoUfcds.error;
-  if (sessoes.error) throw sessoes.error;
-  const c = curso.data as any;
-  const cufs = cursoUfcds.data ?? [];
-  const sess = sessoes.data ?? [];
-  const [ufcdById, formadorById] = await Promise.all([
-    rowsById("ufcds", "id, codigo, designacao", uniqueIds(cufs.map((u: any) => u.ufcd_id))),
-    rowsById("formadores", "id, nome", uniqueIds(sess.map((s: any) => s.formador_id))),
-  ]);
+  const offline = await localRows<any>(`
+    SELECT 'curso' AS kind, c.id, c.codigo, c.nome, c.tipologia, c.estado, c.data_inicio, c.data_fim,
+           NULL::uuid AS ufcd_id, NULL::text AS ufcd_codigo, NULL::text AS ufcd_designacao,
+           NULL::numeric AS horas_totais, NULL::boolean AS concluida, NULL::integer AS ordem,
+           NULL::date AS data, NULL::time AS hora_inicio, NULL::time AS hora_fim, NULL::numeric AS horas,
+           NULL::uuid AS formador_id, NULL::text AS formador_nome, NULL::uuid AS curso_ufcd_id
+      FROM cursos c WHERE c.id = $1
+    UNION ALL
+    SELECT 'ufcd' AS kind, cu.id, NULL, NULL, NULL, NULL, NULL, NULL,
+           cu.ufcd_id, u.codigo, u.designacao, cu.horas_totais, cu.concluida, cu.ordem,
+           NULL, NULL, NULL, NULL, NULL, NULL, cu.id
+      FROM curso_ufcds cu LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+     WHERE cu.curso_id = $1
+    UNION ALL
+    SELECT 'sessao' AS kind, s.id, NULL, NULL, NULL, NULL, NULL, NULL,
+           cu.ufcd_id, u.codigo, u.designacao, NULL, NULL, NULL,
+           s.data, s.hora_inicio, s.hora_fim, s.horas, s.formador_id, f.nome, s.curso_ufcd_id
+      FROM sessoes s
+      LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+      LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+      LEFT JOIN formadores f ON f.id = s.formador_id
+     WHERE s.curso_id = $1
+     ORDER BY kind, data, hora_inicio
+  `, [cursoId]);
+
+  let c: any;
+  let cufs: any[];
+  let sess: any[];
+  let ufcdById: Map<string, any>;
+  let formadorById: Map<string, any>;
+  if (offline) {
+    const cursoRow = offline.find((r: any) => r.kind === "curso");
+    if (!cursoRow) throw new Error("Curso não encontrado");
+    c = cursoRow;
+    cufs = offline.filter((r: any) => r.kind === "ufcd").map((r: any) => ({ id: r.id, ufcd_id: r.ufcd_id, horas_totais: Number(r.horas_totais ?? 0), concluida: r.concluida, ordem: r.ordem }));
+    sess = offline.filter((r: any) => r.kind === "sessao").map((r: any) => ({ ...r, horas: Number(r.horas ?? 0) }));
+    ufcdById = new Map(offline.filter((r: any) => r.ufcd_id).map((r: any) => [r.ufcd_id, { id: r.ufcd_id, codigo: r.ufcd_codigo, designacao: r.ufcd_designacao }]));
+    formadorById = new Map(offline.filter((r: any) => r.formador_id).map((r: any) => [r.formador_id, { id: r.formador_id, nome: r.formador_nome }]));
+  } else {
+    const [curso, cursoUfcds, sessoes] = await Promise.all([
+      supabase.from("cursos").select("*").eq("id", cursoId).maybeSingle(),
+      supabase.from("curso_ufcds")
+        .select("id, horas_totais, concluida, ordem, ufcd_id")
+        .eq("curso_id", cursoId).order("ordem"),
+      supabase.from("sessoes")
+        .select("data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id")
+        .eq("curso_id", cursoId).order("data").order("hora_inicio"),
+    ]);
+    if (!curso.data) throw new Error("Curso não encontrado");
+    if (cursoUfcds.error) throw cursoUfcds.error;
+    if (sessoes.error) throw sessoes.error;
+    c = curso.data as any;
+    cufs = cursoUfcds.data ?? [];
+    sess = sessoes.data ?? [];
+    [ufcdById, formadorById] = await Promise.all([
+      rowsById("ufcds", "id, codigo, designacao", uniqueIds(cufs.map((u: any) => u.ufcd_id))),
+      rowsById("formadores", "id, nome", uniqueIds(sess.map((s: any) => s.formador_id))),
+    ]);
+  }
   const cufById = new Map(cufs.map((u: any) => [u.id, u]));
 
   const horasPorCuf = new Map<string, number>();
@@ -168,24 +217,49 @@ export async function exportSigoCursoPdf(cursoId: string) {
   });
 
   footer(doc);
-  doc.save(`SIGO_${sanitize(c.codigo)}_${sanitize(c.nome).slice(0, 40)}.pdf`);
+  await savePdf(doc, `SIGO_${sanitize(c.codigo)}_${sanitize(c.nome).slice(0, 40)}.pdf`);
 }
 
 // ============= 2. Horas por formador =============
 export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) {
-  const { data, error } = await supabase.from("sessoes")
-    .select("data, horas, formador_id, curso_id, curso_ufcd_id")
-    .gte("data", inicio).lte("data", fim)
-    .order("data");
-  if (error) throw error;
-
-  const rows = data ?? [];
-  const [formadorById, cursoById, cufById] = await Promise.all([
-    rowsById("formadores", "id, nome, nif", uniqueIds(rows.map((s: any) => s.formador_id))),
-    rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
-    rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(rows.map((s: any) => s.curso_ufcd_id))),
-  ]);
-  const ufcdById = await rowsById("ufcds", "id, codigo", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
+  const offline = await localRows<any>(`
+    SELECT s.data, s.horas, s.formador_id, s.curso_id, s.curso_ufcd_id,
+           f.nome AS formador_nome, f.nif AS formador_nif,
+           c.codigo AS curso_codigo,
+           cu.ufcd_id, u.codigo AS ufcd_codigo
+      FROM sessoes s
+      LEFT JOIN formadores f ON f.id = s.formador_id
+      LEFT JOIN cursos c ON c.id = s.curso_id
+      LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+      LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+     WHERE s.data >= $1 AND s.data <= $2
+     ORDER BY s.data ASC
+  `, [inicio, fim]);
+  let rows: any[];
+  let formadorById: Map<string, any>;
+  let cursoById: Map<string, any>;
+  let cufById: Map<string, any>;
+  let ufcdById: Map<string, any>;
+  if (offline) {
+    rows = offline;
+    formadorById = new Map(rows.filter((s: any) => s.formador_id).map((s: any) => [s.formador_id, { id: s.formador_id, nome: s.formador_nome, nif: s.formador_nif }]));
+    cursoById = new Map(rows.filter((s: any) => s.curso_id).map((s: any) => [s.curso_id, { id: s.curso_id, codigo: s.curso_codigo }]));
+    cufById = new Map(rows.filter((s: any) => s.curso_ufcd_id).map((s: any) => [s.curso_ufcd_id, { id: s.curso_ufcd_id, ufcd_id: s.ufcd_id }]));
+    ufcdById = new Map(rows.filter((s: any) => s.ufcd_id).map((s: any) => [s.ufcd_id, { id: s.ufcd_id, codigo: s.ufcd_codigo }]));
+  } else {
+    const { data, error } = await supabase.from("sessoes")
+      .select("data, horas, formador_id, curso_id, curso_ufcd_id")
+      .gte("data", inicio).lte("data", fim)
+      .order("data");
+    if (error) throw error;
+    rows = data ?? [];
+    [formadorById, cursoById, cufById] = await Promise.all([
+      rowsById("formadores", "id, nome, nif", uniqueIds(rows.map((s: any) => s.formador_id))),
+      rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
+      rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(rows.map((s: any) => s.curso_ufcd_id))),
+    ]);
+    ufcdById = await rowsById("ufcds", "id, codigo", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
+  }
 
   const agg = new Map<string, { formador: string; nif: string; horas: number; sessoes: number }>();
   rows.forEach((s: any) => {
@@ -244,27 +318,54 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
   });
 
   footer(doc);
-  doc.save(`Relatorio_Formadores_${inicio}_${fim}.pdf`);
+  await savePdf(doc, `Relatorio_Formadores_${inicio}_${fim}.pdf`);
 }
 
 // ============= 3. Execução de cursos =============
 export async function exportRelatorioCursosPdf() {
-  const [cursos, ufcds, sessoes] = await Promise.all([
-    supabase.from("cursos").select("id, codigo, nome, tipologia, estado, data_inicio, data_fim"),
-    supabase.from("curso_ufcds").select("id, curso_id, horas_totais, concluida"),
-    supabase.from("sessoes").select("curso_id, horas"),
-  ]);
+  const offline = await localRows<any>(`
+    SELECT c.id, c.codigo, c.nome, c.tipologia, c.estado, c.data_inicio, c.data_fim,
+           COUNT(cu.id) AS n_ufcds,
+           SUM(CASE WHEN cu.concluida THEN 1 ELSE 0 END) AS concluidas,
+           SUM(COALESCE(cu.horas_totais, 0)) AS previstas,
+           COALESCE(h.realizadas, 0) AS realizadas
+      FROM cursos c
+      LEFT JOIN curso_ufcds cu ON cu.curso_id = c.id
+      LEFT JOIN (
+        SELECT curso_id, SUM(COALESCE(horas, 0)) AS realizadas
+          FROM sessoes
+         GROUP BY curso_id
+      ) h ON h.curso_id = c.id
+     GROUP BY c.id, c.codigo, c.nome, c.tipologia, c.estado, c.data_inicio, c.data_fim, h.realizadas
+     ORDER BY c.codigo ASC
+  `);
 
-  const horasPorCurso = new Map<string, number>();
-  (sessoes.data ?? []).forEach((s: any) => {
-    horasPorCurso.set(s.curso_id, (horasPorCurso.get(s.curso_id) ?? 0) + Number(s.horas));
-  });
-  const totais = new Map<string, { total: number; concluidas: number; n: number }>();
-  (ufcds.data ?? []).forEach((u: any) => {
-    const cur = totais.get(u.curso_id) ?? { total: 0, concluidas: 0, n: 0 };
-    cur.total += Number(u.horas_totais); cur.n += 1; if (u.concluida) cur.concluidas += 1;
-    totais.set(u.curso_id, cur);
-  });
+  let cursosRows: any[];
+  let horasPorCurso = new Map<string, number>();
+  let totais = new Map<string, { total: number; concluidas: number; n: number }>();
+  if (offline) {
+    cursosRows = offline;
+    offline.forEach((c: any) => {
+      horasPorCurso.set(c.id, Number(c.realizadas ?? 0));
+      totais.set(c.id, { total: Number(c.previstas ?? 0), concluidas: Number(c.concluidas ?? 0), n: Number(c.n_ufcds ?? 0) });
+    });
+  } else {
+    const [cursos, ufcds, sessoes] = await Promise.all([
+      supabase.from("cursos").select("id, codigo, nome, tipologia, estado, data_inicio, data_fim"),
+      supabase.from("curso_ufcds").select("id, curso_id, horas_totais, concluida"),
+      supabase.from("sessoes").select("curso_id, horas"),
+    ]);
+
+    cursosRows = cursos.data ?? [];
+    (sessoes.data ?? []).forEach((s: any) => {
+      horasPorCurso.set(s.curso_id, (horasPorCurso.get(s.curso_id) ?? 0) + Number(s.horas));
+    });
+    (ufcds.data ?? []).forEach((u: any) => {
+      const cur = totais.get(u.curso_id) ?? { total: 0, concluidas: 0, n: 0 };
+      cur.total += Number(u.horas_totais); cur.n += 1; if (u.concluida) cur.concluidas += 1;
+      totais.set(u.curso_id, cur);
+    });
+  }
 
   const doc = newDoc("landscape");
   header(doc, "Execução de cursos", `Atualizado em ${new Date().toLocaleDateString("pt-PT")}`);
@@ -273,7 +374,7 @@ export async function exportRelatorioCursosPdf() {
     ...tableTheme,
     startY: 24,
     head: [["Código", "Curso", "Tipologia", "Estado", "Início", "Fim", "UFCD", "Concl.", "Previstas", "Dadas", "Faltam", "%"]],
-    body: (cursos.data ?? []).map((c: any) => {
+    body: cursosRows.map((c: any) => {
       const t = totais.get(c.id) ?? { total: 0, concluidas: 0, n: 0 };
       const r = horasPorCurso.get(c.id) ?? 0;
       const pct = t.total > 0 ? Math.round((r / t.total) * 1000) / 10 : 0;
@@ -291,11 +392,75 @@ export async function exportRelatorioCursosPdf() {
   });
 
   footer(doc);
-  doc.save(`Execucao_Cursos_${new Date().toISOString().slice(0, 10)}.pdf`);
+  await savePdf(doc, `Execucao_Cursos_${new Date().toISOString().slice(0, 10)}.pdf`);
 }
 
 // ============= 4. Faltas dos formandos =============
 export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
+  const offline = await localRows<any>(`
+    SELECT ff.data, ff.horas, ff.tipo, ff.observacoes, ff.curso_formando_id, ff.sessao_id,
+           c.codigo AS curso_codigo, c.nome AS curso_nome,
+           fo.nome AS formando_nome, fo.nif AS formando_nif,
+           u.codigo AS ufcd_codigo,
+           s.hora_inicio, s.hora_fim,
+           cf.id AS cf_id, cf.curso_id
+      FROM formando_faltas ff
+      LEFT JOIN curso_formandos cf ON cf.id = ff.curso_formando_id
+      LEFT JOIN cursos c ON c.id = cf.curso_id
+      LEFT JOIN formandos fo ON fo.id = cf.formando_id
+      LEFT JOIN sessoes s ON s.id = ff.sessao_id
+      LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+      LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+     WHERE ff.data >= $1 AND ff.data <= $2
+     ORDER BY ff.data ASC
+  `, [inicio, fim]);
+  if (offline) {
+    const m = new Map<string, { curso: string; formando: string; nif: string; just: number; injust: number }>();
+    offline.forEach((f: any) => {
+      const key = `${f.cf_id ?? ""}|${f.curso_id ?? ""}`;
+      const cur = m.get(key) ?? {
+        curso: `${f.curso_codigo ?? ""} — ${f.curso_nome ?? ""}`,
+        formando: f.formando_nome ?? "",
+        nif: f.formando_nif ?? "",
+        just: 0, injust: 0,
+      };
+      if (f.tipo === "justificada") cur.just += Number(f.horas);
+      else cur.injust += Number(f.horas);
+      m.set(key, cur);
+    });
+    const resumo = Array.from(m.values()).sort((a, b) => a.curso.localeCompare(b.curso) || a.formando.localeCompare(b.formando));
+    const totJ = resumo.reduce((a, r) => a + r.just, 0);
+    const totI = resumo.reduce((a, r) => a + r.injust, 0);
+
+    const doc = newDoc("portrait");
+    header(doc, "Faltas dos formandos", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
+    let y = infoBlock(doc, 26, [["Registos", String(offline.length)], ["Horas justificadas", `${totJ}h`], ["Horas injustificadas", `${totI}h`]]);
+    y += 3;
+    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+    doc.text("Resumo por formando", 14, y);
+    autoTable(doc, {
+      ...tableTheme,
+      startY: y + 2,
+      head: [["Curso", "Formando", "NIF", "Just.", "Injust.", "Total"]],
+      body: resumo.map(r => [r.curso, r.formando, r.nif, `${r.just}h`, `${r.injust}h`, `${r.just + r.injust}h`]),
+      columnStyles: { 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right", fontStyle: "bold" } },
+      foot: [["", "", "Total", `${totJ}h`, `${totI}h`, `${totJ + totI}h`]],
+      footStyles: { fillColor: [241, 245, 249], textColor: 0, fontStyle: "bold" },
+    });
+    doc.addPage();
+    header(doc, "Faltas — detalhe", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
+    autoTable(doc, {
+      ...tableTheme,
+      startY: 26,
+      head: [["Data", "Formando", "Curso", "UFCD", "Hora", "Horas", "Tipo", "Observações"]],
+      body: offline.map((f: any) => [fmtDate(f.data), f.formando_nome ?? "", f.curso_codigo ?? "", f.ufcd_codigo ?? "", `${String(f.hora_inicio ?? "").slice(0, 5)}–${String(f.hora_fim ?? "").slice(0, 5)}`, `${f.horas}h`, f.tipo === "justificada" ? "Just." : "Injust.", f.observacoes ?? ""]),
+      columnStyles: { 5: { halign: "right" }, 6: { halign: "center" } },
+    });
+    footer(doc);
+    await savePdf(doc, `Relatorio_Faltas_${inicio}_${fim}.pdf`);
+    return;
+  }
+
   const { data: faltas, error } = await supabase
     .from("formando_faltas")
     .select("data, horas, tipo, observacoes, curso_formando_id, sessao_id")
@@ -385,5 +550,5 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
   });
 
   footer(doc);
-  doc.save(`Relatorio_Faltas_${inicio}_${fim}.pdf`);
+  await savePdf(doc, `Relatorio_Faltas_${inicio}_${fim}.pdf`);
 }

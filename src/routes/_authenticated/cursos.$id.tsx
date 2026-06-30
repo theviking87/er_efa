@@ -2096,11 +2096,19 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
     queryKey: ["curso-formandos-faltas", cursoId],
     queryFn: async () => {
       const { data, error } = await supabase.from("curso_formandos")
-        .select("id, formando:formandos(id, nome)")
+        .select("id, formando_id")
         .eq("curso_id", cursoId)
         .in("estado", ["inscrito", "em_formacao"]);
       if (error) throw error;
-      return (data ?? []).sort((a: any, b: any) => a.formando.nome.localeCompare(b.formando.nome));
+      const ids = Array.from(new Set((data ?? []).map((r: any) => r.formando_id).filter(Boolean)));
+      const formandos = ids.length
+        ? await supabase.from("formandos").select("id, nome").in("id", ids)
+        : { data: [], error: null };
+      if (formandos.error) throw formandos.error;
+      const formandoById = new Map((formandos.data ?? []).map((f: any) => [f.id, f]));
+      return (data ?? [])
+        .map((r: any) => ({ ...r, formando: formandoById.get(r.formando_id) ?? { id: r.formando_id, nome: "" } }))
+        .sort((a: any, b: any) => a.formando.nome.localeCompare(b.formando.nome));
     },
   });
 
@@ -2108,11 +2116,26 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
     queryKey: ["sessoes-faltas", cursoId],
     queryFn: async () => {
       const { data, error } = await supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao))")
+        .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id")
         .eq("curso_id", cursoId)
         .order("data", { ascending: false });
       if (error) throw error;
-      return data ?? [];
+      const cufIds = Array.from(new Set((data ?? []).map((s: any) => s.curso_ufcd_id).filter(Boolean)));
+      const cufs = cufIds.length
+        ? await supabase.from("curso_ufcds").select("id, ufcd_id").in("id", cufIds)
+        : { data: [], error: null };
+      if (cufs.error) throw cufs.error;
+      const ufcdIds = Array.from(new Set((cufs.data ?? []).map((u: any) => u.ufcd_id).filter(Boolean)));
+      const ufcds = ufcdIds.length
+        ? await supabase.from("ufcds").select("id, codigo, designacao").in("id", ufcdIds)
+        : { data: [], error: null };
+      if (ufcds.error) throw ufcds.error;
+      const cufById = new Map((cufs.data ?? []).map((u: any) => [u.id, u]));
+      const ufcdById = new Map((ufcds.data ?? []).map((u: any) => [u.id, u]));
+      return (data ?? []).map((s: any) => {
+        const cuf: any = cufById.get(s.curso_ufcd_id);
+        return { ...s, curso_ufcd: { ufcd: cuf ? ufcdById.get(cuf.ufcd_id) : null } };
+      });
     },
   });
 

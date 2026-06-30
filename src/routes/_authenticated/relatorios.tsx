@@ -11,6 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { localDateIso } from "@/lib/format";
+import { yieldToBrowser } from "@/lib/offline-sql";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios e SIGO — Gestão Pedagógica" }] }),
@@ -37,6 +38,7 @@ function RelatoriosPage() {
   async function run(key: string, fn: () => Promise<void>) {
     try {
       setBusy(key);
+      await yieldToBrowser();
       await fn();
       toast.success("Exportação concluída");
     } catch (e: any) {

@@ -23,6 +23,7 @@ import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
+import { localRows, yieldToBrowser } from "@/lib/offline-sql";
 
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
@@ -729,6 +730,22 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
 }
 
 // ---------------- CRONOGRAMA TAB ----------------
+type AnaliseCronograma = {
+  conflitos: { data: string; sessoes: any[] }[];
+  conflitosOutroCurso: { data: string; sessao: any; outra: any }[];
+  incompletos: { data: string; horas: number; falta: string }[];
+  formadoresSemSessao: { ufcdCodigo: string; ufcdDesignacao: string; formadorNome: string; cursoUfcdId: string; formadorId: string }[];
+  totalDias: number;
+};
+
+const EMPTY_ANALISE: AnaliseCronograma = {
+  conflitos: [],
+  conflitosOutroCurso: [],
+  incompletos: [],
+  formadoresSemSessao: [],
+  totalDias: 0,
+};
+
 function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; cursoNome: string; cursoCodigo: string }) {
   const qc = useQueryClient();
   const [mes, setMes] = useState(() => { const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() }; });
@@ -738,6 +755,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const [substituirSessao, setSubstituirSessao] = useState<any | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [analiseOpen, setAnaliseOpen] = useState(false);
+  const [analiseBusy, setAnaliseBusy] = useState(false);
+  const [analise, setAnalise] = useState<AnaliseCronograma>(EMPTY_ANALISE);
 
   const inicioMes = dateOnlyIso(mes.ano, mes.mes, 1);
   const fimMes = dateOnlyIso(mes.ano, mes.mes + 1, 0);
@@ -745,6 +764,24 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const sessoes = useQuery({
     queryKey: ["sessoes", cursoId, inicioMes, fimMes],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.horas, s.formador_id, s.curso_ufcd_id,
+               f.id AS formador_id_join, f.nome AS formador_nome, f.abreviatura AS formador_abreviatura, f.cor AS formador_cor,
+               cu.id AS cuf_id, u.codigo AS ufcd_codigo, u.designacao AS ufcd_designacao
+          FROM sessoes s
+          LEFT JOIN formadores f ON f.id = s.formador_id
+          LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+          LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+         WHERE s.curso_id = $1 AND s.data >= $2 AND s.data <= $3
+         ORDER BY s.data ASC, s.hora_inicio ASC
+      `, [cursoId, inicioMes, fimMes]);
+      if (offline) {
+        return offline.map((s: any) => ({
+          ...s,
+          formador: s.formador_id_join ? { id: s.formador_id_join, nome: s.formador_nome, abreviatura: s.formador_abreviatura, cor: s.formador_cor } : null,
+          curso_ufcd: { id: s.cuf_id ?? s.curso_ufcd_id, ufcd: { codigo: s.ufcd_codigo, designacao: s.ufcd_designacao } },
+        }));
+      }
       const { data, error } = await supabase.from("sessoes")
         .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura,cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .eq("curso_id", cursoId).gte("data", inicioMes).lte("data", fimMes)
@@ -758,6 +795,41 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const cargaCurso = useQuery({
     queryKey: ["curso-carga", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT cu.id, cu.horas_totais, cu.concluida,
+               u.codigo AS ufcd_codigo, u.designacao AS ufcd_designacao,
+               COALESCE(h.realizadas, 0) AS horas_realizadas,
+               f.id AS formador_id, f.nome AS formador_nome, f.abreviatura AS formador_abreviatura, f.cor AS formador_cor
+          FROM curso_ufcds cu
+          LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+          LEFT JOIN (
+            SELECT curso_ufcd_id, SUM(COALESCE(horas, 0)) AS realizadas
+              FROM sessoes
+             WHERE curso_id = $1
+             GROUP BY curso_ufcd_id
+          ) h ON h.curso_ufcd_id = cu.id
+          LEFT JOIN curso_ufcd_formadores cuf ON cuf.curso_ufcd_id = cu.id
+          LEFT JOIN formadores f ON f.id = cuf.formador_id
+         WHERE cu.curso_id = $1
+         ORDER BY u.codigo ASC
+      `, [cursoId]);
+      if (offline) {
+        const byId = new Map<string, any>();
+        offline.forEach((r: any) => {
+          const cur = byId.get(r.id) ?? {
+            id: r.id,
+            horas_totais: Number(r.horas_totais ?? 0),
+            concluida: Boolean(r.concluida),
+            ufcd: { codigo: r.ufcd_codigo, designacao: r.ufcd_designacao },
+            formadores: [],
+            horas_realizadas: Number(r.horas_realizadas ?? 0),
+            horas_em_falta: Math.max(0, Number(r.horas_totais ?? 0) - Number(r.horas_realizadas ?? 0)),
+          };
+          if (r.formador_id) cur.formadores.push({ formador: { id: r.formador_id, nome: r.formador_nome, abreviatura: r.formador_abreviatura, cor: r.formador_cor } });
+          byId.set(r.id, cur);
+        });
+        return Array.from(byId.values());
+      }
       const [cu, allSess] = await Promise.all([
         supabase.from("curso_ufcds")
           .select("id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,abreviatura,cor))")
@@ -779,7 +851,26 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   // Todas as sessões do curso para análise global
   const todasSessoes = useQuery({
     queryKey: ["sessoes-todas", cursoId],
+    enabled: false,
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.horas, s.formador_id, s.curso_ufcd_id,
+               f.id AS formador_id_join, f.nome AS formador_nome, f.abreviatura AS formador_abreviatura,
+               u.codigo AS ufcd_codigo
+          FROM sessoes s
+          LEFT JOIN formadores f ON f.id = s.formador_id
+          LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+          LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+         WHERE s.curso_id = $1
+         ORDER BY s.data ASC, s.hora_inicio ASC
+      `, [cursoId]);
+      if (offline) {
+        return offline.map((s: any) => ({
+          ...s,
+          formador: s.formador_id_join ? { id: s.formador_id_join, nome: s.formador_nome, abreviatura: s.formador_abreviatura } : null,
+          curso_ufcd: { ufcd: { codigo: s.ufcd_codigo } },
+        }));
+      }
       const { data, error } = await supabase.from("sessoes")
         .select("id, data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
         .eq("curso_id", cursoId).order("data").order("hora_inicio");
@@ -788,23 +879,44 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     },
   });
 
-  // Sessões de OUTROS cursos para detectar conflitos do mesmo formador
-  const sessoesOutrosCursos = useQuery({
-    queryKey: ["sessoes-outros-cursos", cursoId, (todasSessoes.data ?? []).length],
-    enabled: (todasSessoes.data ?? []).length > 0,
-    queryFn: async () => {
-      const formIds = Array.from(new Set((todasSessoes.data ?? []).map((s: any) => s.formador_id).filter(Boolean)));
-      const datas = Array.from(new Set((todasSessoes.data ?? []).map((s: any) => s.data)));
-      if (formIds.length === 0 || datas.length === 0) return [];
-      const { data, error } = await supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, formador_id, curso_id, formador:formadores(id,nome,abreviatura), curso:cursos(codigo, nome), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
-        .neq("curso_id", cursoId)
-        .in("formador_id", formIds as string[])
-        .in("data", datas);
-      if (error) throw error;
-      return data ?? [];
-    },
-  });
+  async function carregarSessoesOutrosCursos(base: any[]) {
+    const formIds = Array.from(new Set(base.map((s: any) => s.formador_id).filter(Boolean)));
+    const datas = Array.from(new Set(base.map((s: any) => s.data).filter(Boolean)));
+    if (formIds.length === 0 || datas.length === 0) return [];
+
+    const formPlaceholders = formIds.map((_, i) => `$${i + 2}`).join(",");
+    const dataPlaceholders = datas.map((_, i) => `$${i + 2 + formIds.length}`).join(",");
+    const offline = await localRows<any>(`
+      SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.formador_id, s.curso_id,
+             f.id AS formador_id_join, f.nome AS formador_nome, f.abreviatura AS formador_abreviatura,
+             c.codigo AS curso_codigo, c.nome AS curso_nome,
+             u.codigo AS ufcd_codigo
+        FROM sessoes s
+        LEFT JOIN formadores f ON f.id = s.formador_id
+        LEFT JOIN cursos c ON c.id = s.curso_id
+        LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+        LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+       WHERE s.curso_id <> $1
+         AND s.formador_id IN (${formPlaceholders})
+         AND s.data IN (${dataPlaceholders})
+    `, [cursoId, ...formIds, ...datas]);
+    if (offline) {
+      return offline.map((s: any) => ({
+        ...s,
+        formador: s.formador_id_join ? { id: s.formador_id_join, nome: s.formador_nome, abreviatura: s.formador_abreviatura } : null,
+        curso: { codigo: s.curso_codigo, nome: s.curso_nome },
+        curso_ufcd: { ufcd: { codigo: s.ufcd_codigo } },
+      }));
+    }
+
+    const { data, error } = await supabase.from("sessoes")
+      .select("id, data, hora_inicio, hora_fim, formador_id, curso_id, formador:formadores(id,nome,abreviatura), curso:cursos(codigo, nome), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+      .neq("curso_id", cursoId)
+      .in("formador_id", formIds as string[])
+      .in("data", datas);
+    if (error) throw error;
+    return data ?? [];
+  }
 
   // Períodos de férias do curso
   const feriasCurso = useQuery({
@@ -831,9 +943,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     return m;
   }, [feriasCurso.data]);
 
-  const analise = useMemo(() => {
+  async function calcularAnalise(baseSessoes: any[], outrasSessoes: any[], carga: any[]): Promise<AnaliseCronograma> {
     const byDay = new Map<string, any[]>();
-    (todasSessoes.data ?? []).forEach((s: any) => {
+    baseSessoes.forEach((s: any) => {
       const arr = byDay.get(s.data) ?? []; arr.push(s); byDay.set(s.data, arr);
     });
     const conflitos: { data: string; sessoes: any[] }[] = [];
@@ -846,7 +958,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
     // Índice de sessões de outros cursos por dia+formador
     const outrasByKey = new Map<string, any[]>();
-    (sessoesOutrosCursos.data ?? []).forEach((s: any) => {
+    outrasSessoes.forEach((s: any) => {
       const k = `${s.data}|${s.formador_id}`;
       const arr = outrasByKey.get(k) ?? []; arr.push(s); outrasByKey.set(k, arr);
     });
@@ -866,9 +978,12 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
       }
     });
 
-    Array.from(diasAnalise).sort().forEach(data => {
-      if (feriasDias.has(data)) return;
-      if (feriadoNome(data)) return;
+    const dias = Array.from(diasAnalise).sort();
+    for (let idx = 0; idx < dias.length; idx++) {
+      if (idx % 40 === 0) await yieldToBrowser();
+      const data = dias[idx]!;
+      if (feriasDias.has(data)) continue;
+      if (feriadoNome(data)) continue;
       const sess = byDay.get(data) ?? [];
       // Conflitos internos
       const conf: any[] = [];
@@ -911,17 +1026,17 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         const falta = !manhaOk && !tardeOk ? "Dia inteiro (sem sessões)" : !manhaOk ? "Manhã (09:00–13:00)" : "Tarde (14:00–17:00)";
         incompletos.push({ data, horas: totalH, falta });
       }
-    });
+    }
 
     // Formadores com UFCD em curso (já iniciada e não concluída) mas sem sessão atribuída
     const sessByCufFormador = new Set<string>();
     const cufsComSessao = new Set<string>();
-    (todasSessoes.data ?? []).forEach((s: any) => {
+    baseSessoes.forEach((s: any) => {
       if (s.curso_ufcd_id) cufsComSessao.add(s.curso_ufcd_id);
       if (s.formador_id && s.curso_ufcd_id) sessByCufFormador.add(`${s.curso_ufcd_id}|${s.formador_id}`);
     });
     const formadoresSemSessao: { ufcdCodigo: string; ufcdDesignacao: string; formadorNome: string; cursoUfcdId: string; formadorId: string }[] = [];
-    (cargaCurso.data ?? []).forEach((u: any) => {
+    carga.forEach((u: any) => {
       if (u.concluida) return;
       if (!cufsComSessao.has(u.id)) return; // só UFCDs em curso
       (u.formadores ?? []).forEach((f: any) => {
@@ -940,7 +1055,25 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     });
 
     return { conflitos, conflitosOutroCurso, incompletos, formadoresSemSessao, totalDias: byDay.size };
-  }, [todasSessoes.data, sessoesOutrosCursos.data, feriasDias, cargaCurso.data]);
+  }
+
+  async function abrirAnalise() {
+    setAnaliseOpen(true);
+    setAnaliseBusy(true);
+    await yieldToBrowser();
+    try {
+      const base = todasSessoes.data ?? (await todasSessoes.refetch()).data ?? [];
+      const carga = cargaCurso.data ?? (await cargaCurso.refetch()).data ?? [];
+      const outras = await carregarSessoesOutrosCursos(base);
+      const resultado = await calcularAnalise(base, outras, carga);
+      setAnalise(resultado);
+    } catch (e: any) {
+      toast.error("Erro na análise", { description: e.message });
+      setAnalise(EMPTY_ANALISE);
+    } finally {
+      setAnaliseBusy(false);
+    }
+  }
 
 
   const sessoesByDay = useMemo(() => {
@@ -1090,9 +1223,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           <Button variant="outline" size="icon" onClick={next}><ChevronRight className="size-4" /></Button>
         </div>
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setAnaliseOpen(true)}>
-            <AlertTriangle className="size-4" /> Análise
-            {(analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length + analise.formadoresSemSessao.length) > 0 && (
+          <Button variant="outline" size="sm" onClick={abrirAnalise} disabled={analiseBusy}>
+            <AlertTriangle className="size-4" /> {analiseBusy ? "A analisar…" : "Análise Sessões em falta"}
+            {!analiseBusy && (analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length + analise.formadoresSemSessao.length) > 0 && (
               <Badge variant="destructive" className="ml-1 px-1.5 py-0 text-[10px]">
                 {analise.conflitos.length + analise.conflitosOutroCurso.length + analise.incompletos.length + analise.formadoresSemSessao.length}
               </Badge>
@@ -1111,6 +1244,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
             <DialogTitle>Análise do cronograma</DialogTitle>
           </DialogHeader>
           <div className="space-y-5 text-sm">
+            {analiseBusy && <div className="text-sm text-muted-foreground py-4">A analisar cronograma…</div>}
+            {!analiseBusy && <>
             <div className="text-xs text-muted-foreground">
               {analise.totalDias} dia(s) com sessões · {analise.conflitos.length} conflito(s) interno(s) · {analise.conflitosOutroCurso.length} conflito(s) noutro curso · {analise.incompletos.length} dia(s) incompleto(s) · {analise.formadoresSemSessao.length} formador(es) sem sessão
             </div>
@@ -1197,6 +1332,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
                 </div>
               )}
             </div>
+            </>}
           </div>
         </DialogContent>
       </Dialog>
@@ -2095,6 +2231,21 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const inscritos = useQuery({
     queryKey: ["curso-formandos-faltas", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT cf.id, cf.formando_id, f.id AS formando_id_join, f.nome AS formando_nome
+          FROM curso_formandos cf
+          LEFT JOIN formandos f ON f.id = cf.formando_id
+         WHERE cf.curso_id = $1
+           AND cf.estado IN ('inscrito', 'em_formacao')
+         ORDER BY f.nome ASC
+      `, [cursoId]);
+      if (offline) {
+        return offline.map((r: any) => ({
+          id: r.id,
+          formando_id: r.formando_id,
+          formando: { id: r.formando_id_join ?? r.formando_id, nome: r.formando_nome ?? "" },
+        }));
+      }
       const { data, error } = await supabase.from("curso_formandos")
         .select("id, formando_id")
         .eq("curso_id", cursoId)
@@ -2115,6 +2266,21 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const sessoes = useQuery({
     queryKey: ["sessoes-faltas", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.horas, s.curso_ufcd_id,
+               u.codigo AS ufcd_codigo, u.designacao AS ufcd_designacao
+          FROM sessoes s
+          LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+          LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+         WHERE s.curso_id = $1
+         ORDER BY s.data DESC, s.hora_inicio DESC
+      `, [cursoId]);
+      if (offline) {
+        return offline.map((s: any) => ({
+          ...s,
+          curso_ufcd: { ufcd: { codigo: s.ufcd_codigo, designacao: s.ufcd_designacao } },
+        }));
+      }
       const { data, error } = await supabase.from("sessoes")
         .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id")
         .eq("curso_id", cursoId)
@@ -2143,6 +2309,12 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
     queryKey: ["faltas", cursoId, sessaoId],
     enabled: !!sessaoId,
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT id, curso_formando_id, horas, tipo, observacoes
+          FROM formando_faltas
+         WHERE sessao_id = $1
+      `, [sessaoId]);
+      if (offline) return offline;
       const { data, error } = await supabase.from("formando_faltas")
         .select("id, curso_formando_id, horas, tipo, observacoes")
         .eq("sessao_id", sessaoId);
@@ -2154,6 +2326,18 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const totaisPorFormando = useQuery({
     queryKey: ["faltas-totais", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT ff.curso_formando_id,
+               SUM(CASE WHEN ff.tipo = 'justificada' THEN COALESCE(ff.horas, 0) ELSE 0 END) AS just,
+               SUM(CASE WHEN ff.tipo = 'justificada' THEN 0 ELSE COALESCE(ff.horas, 0) END) AS injust
+          FROM formando_faltas ff
+          JOIN curso_formandos cf ON cf.id = ff.curso_formando_id
+         WHERE cf.curso_id = $1
+         GROUP BY ff.curso_formando_id
+      `, [cursoId]);
+      if (offline) {
+        return new Map<string, { just: number; injust: number }>(offline.map((r: any) => [r.curso_formando_id, { just: Number(r.just ?? 0), injust: Number(r.injust ?? 0) }]));
+      }
       const { data: cfs, error: cfError } = await supabase.from("curso_formandos")
         .select("id")
         .eq("curso_id", cursoId);

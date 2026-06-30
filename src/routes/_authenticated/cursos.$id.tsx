@@ -503,13 +503,20 @@ function GerirFormadoresUfcdDialog({
     queryKey: ["form-horas-curso", cursoId],
     enabled: !!info,
     queryFn: async () => {
+      const { data: cufs } = await supabase
+        .from("curso_ufcds")
+        .select("id, horas_totais")
+        .eq("curso_id", cursoId);
+      const horasByCuf = new Map((cufs ?? []).map((u: any) => [u.id, Number(u.horas_totais ?? 0)]));
+      const ids = Array.from(horasByCuf.keys());
+      if (ids.length === 0) return new Map<string, number>();
       const { data } = await supabase
         .from("curso_ufcd_formadores")
-        .select("formador_id, curso_ufcd:curso_ufcds!inner(curso_id, horas_totais)")
-        .eq("curso_ufcd.curso_id", cursoId);
+        .select("formador_id, curso_ufcd_id")
+        .in("curso_ufcd_id", ids as string[]);
       const m = new Map<string, number>();
       ((data ?? []) as any[]).forEach((r) => {
-        m.set(r.formador_id, (m.get(r.formador_id) ?? 0) + Number(r.curso_ufcd?.horas_totais ?? 0));
+        m.set(r.formador_id, (m.get(r.formador_id) ?? 0) + (horasByCuf.get(r.curso_ufcd_id) ?? 0));
       });
       return m;
     },
@@ -604,13 +611,20 @@ function AtribuirUfcdDialog({ open, onOpenChange, cursoId, onSaved }: { open: bo
   const horasNoCurso = useQuery({
     queryKey: ["form-horas-curso", cursoId],
     queryFn: async () => {
+      const { data: cufs } = await supabase
+        .from("curso_ufcds")
+        .select("id, horas_totais")
+        .eq("curso_id", cursoId);
+      const horasByCuf = new Map((cufs ?? []).map((u: any) => [u.id, Number(u.horas_totais ?? 0)]));
+      const ids = Array.from(horasByCuf.keys());
+      if (ids.length === 0) return new Map<string, number>();
       const { data } = await supabase
         .from("curso_ufcd_formadores")
-        .select("formador_id, curso_ufcd:curso_ufcds!inner(curso_id, horas_totais)")
-        .eq("curso_ufcd.curso_id", cursoId);
+        .select("formador_id, curso_ufcd_id")
+        .in("curso_ufcd_id", ids as string[]);
       const m = new Map<string, number>();
       ((data ?? []) as any[]).forEach((r) => {
-        m.set(r.formador_id, (m.get(r.formador_id) ?? 0) + Number(r.curso_ufcd?.horas_totais ?? 0));
+        m.set(r.formador_id, (m.get(r.formador_id) ?? 0) + (horasByCuf.get(r.curso_ufcd_id) ?? 0));
       });
       return m;
     },

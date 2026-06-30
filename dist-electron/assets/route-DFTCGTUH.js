@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C66a7P2G.js";import{t}from"./app-shell-8HHvAyTC.js";import{R as n}from"./index.electron-CUi38Fme.js";var r=e(),i=()=>(0,r.jsx)(t,{children:(0,r.jsx)(n,{})});export{i as component};

@@ -764,6 +764,24 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const sessoes = useQuery({
     queryKey: ["sessoes", cursoId, inicioMes, fimMes],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.horas, s.formador_id, s.curso_ufcd_id,
+               f.id AS formador_id_join, f.nome AS formador_nome, f.abreviatura AS formador_abreviatura, f.cor AS formador_cor,
+               cu.id AS cuf_id, u.codigo AS ufcd_codigo, u.designacao AS ufcd_designacao
+          FROM sessoes s
+          LEFT JOIN formadores f ON f.id = s.formador_id
+          LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+          LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+         WHERE s.curso_id = $1 AND s.data >= $2 AND s.data <= $3
+         ORDER BY s.data ASC, s.hora_inicio ASC
+      `, [cursoId, inicioMes, fimMes]);
+      if (offline) {
+        return offline.map((s: any) => ({
+          ...s,
+          formador: s.formador_id_join ? { id: s.formador_id_join, nome: s.formador_nome, abreviatura: s.formador_abreviatura, cor: s.formador_cor } : null,
+          curso_ufcd: { id: s.cuf_id ?? s.curso_ufcd_id, ufcd: { codigo: s.ufcd_codigo, designacao: s.ufcd_designacao } },
+        }));
+      }
       const { data, error } = await supabase.from("sessoes")
         .select("id, data, hora_inicio, hora_fim, horas, formador_id, formador:formadores(id,nome,abreviatura,cor), curso_ufcd:curso_ufcds(id, ufcd:ufcds(codigo, designacao))")
         .eq("curso_id", cursoId).gte("data", inicioMes).lte("data", fimMes)
@@ -777,6 +795,41 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const cargaCurso = useQuery({
     queryKey: ["curso-carga", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT cu.id, cu.horas_totais, cu.concluida,
+               u.codigo AS ufcd_codigo, u.designacao AS ufcd_designacao,
+               COALESCE(h.realizadas, 0) AS horas_realizadas,
+               f.id AS formador_id, f.nome AS formador_nome, f.abreviatura AS formador_abreviatura, f.cor AS formador_cor
+          FROM curso_ufcds cu
+          LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+          LEFT JOIN (
+            SELECT curso_ufcd_id, SUM(COALESCE(horas, 0)) AS realizadas
+              FROM sessoes
+             WHERE curso_id = $1
+             GROUP BY curso_ufcd_id
+          ) h ON h.curso_ufcd_id = cu.id
+          LEFT JOIN curso_ufcd_formadores cuf ON cuf.curso_ufcd_id = cu.id
+          LEFT JOIN formadores f ON f.id = cuf.formador_id
+         WHERE cu.curso_id = $1
+         ORDER BY u.codigo ASC
+      `, [cursoId]);
+      if (offline) {
+        const byId = new Map<string, any>();
+        offline.forEach((r: any) => {
+          const cur = byId.get(r.id) ?? {
+            id: r.id,
+            horas_totais: Number(r.horas_totais ?? 0),
+            concluida: Boolean(r.concluida),
+            ufcd: { codigo: r.ufcd_codigo, designacao: r.ufcd_designacao },
+            formadores: [],
+            horas_realizadas: Number(r.horas_realizadas ?? 0),
+            horas_em_falta: Math.max(0, Number(r.horas_totais ?? 0) - Number(r.horas_realizadas ?? 0)),
+          };
+          if (r.formador_id) cur.formadores.push({ formador: { id: r.formador_id, nome: r.formador_nome, abreviatura: r.formador_abreviatura, cor: r.formador_cor } });
+          byId.set(r.id, cur);
+        });
+        return Array.from(byId.values());
+      }
       const [cu, allSess] = await Promise.all([
         supabase.from("curso_ufcds")
           .select("id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), formadores:curso_ufcd_formadores(formador:formadores(id,nome,abreviatura,cor))")
@@ -799,6 +852,24 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   const todasSessoes = useQuery({
     queryKey: ["sessoes-todas", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.horas, s.formador_id, s.curso_ufcd_id,
+               f.id AS formador_id_join, f.nome AS formador_nome, f.abreviatura AS formador_abreviatura,
+               u.codigo AS ufcd_codigo
+          FROM sessoes s
+          LEFT JOIN formadores f ON f.id = s.formador_id
+          LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+          LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+         WHERE s.curso_id = $1
+         ORDER BY s.data ASC, s.hora_inicio ASC
+      `, [cursoId]);
+      if (offline) {
+        return offline.map((s: any) => ({
+          ...s,
+          formador: s.formador_id_join ? { id: s.formador_id_join, nome: s.formador_nome, abreviatura: s.formador_abreviatura } : null,
+          curso_ufcd: { ufcd: { codigo: s.ufcd_codigo } },
+        }));
+      }
       const { data, error } = await supabase.from("sessoes")
         .select("id, data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id, formador:formadores(id,nome,abreviatura), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
         .eq("curso_id", cursoId).order("data").order("hora_inicio");

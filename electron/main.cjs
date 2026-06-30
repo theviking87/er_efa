@@ -104,11 +104,35 @@ function createWindow() {
     );
   });
 
-  // Only open DevTools when explicitly requested. Leaving them open in the
-  // delivered app can steal focus and makes the app feel blocked.
   if (process.env.LOVABLE_DEVTOOLS === "1") {
     win.webContents.openDevTools({ mode: "detach" });
   }
+
+  // Allow F12 / Ctrl+Shift+I to open DevTools so users can diagnose issues.
+  win.webContents.on("before-input-event", (event, input) => {
+    const isF12 = input.key === "F12";
+    const isCtrlShiftI = (input.control || input.meta) && input.shift && input.key.toLowerCase() === "i";
+    const isCtrlShiftJ = (input.control || input.meta) && input.shift && input.key.toLowerCase() === "j";
+    const isCtrlR = (input.control || input.meta) && !input.shift && input.key.toLowerCase() === "r";
+    if (isF12 || isCtrlShiftI || isCtrlShiftJ) {
+      win.webContents.toggleDevTools();
+      event.preventDefault();
+    } else if (isCtrlR) {
+      win.webContents.reload();
+      event.preventDefault();
+    }
+  });
+
+  // Surface unhandled renderer crashes instead of showing a silent white window.
+  win.webContents.on("render-process-gone", (_e, details) => {
+    dialog.showErrorBox(
+      "A aplicação bloqueou",
+      `O processo do interface terminou inesperadamente.\nMotivo: ${details.reason}\nCódigo: ${details.exitCode}\n\nPressiona F12 antes de repetir a ação para veres o erro na consola.`
+    );
+  });
+  win.webContents.on("unresponsive", () => {
+    console.warn("[FormacaoER] renderer unresponsive");
+  });
 
   // Open external links in the system browser instead of a new Electron window.
   win.webContents.setWindowOpenHandler(({ url }) => {

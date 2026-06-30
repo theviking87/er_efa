@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
+import { saveFileElectron } from "@/lib/electron-io";
 
 export const Route = createFileRoute("/_authenticated/exportar")({
   component: ExportarPage,
@@ -52,6 +53,26 @@ async function listAllFiles(bucket: string, prefix = ""): Promise<string[]> {
   return out;
 }
 
+async function fetchAllRows(table: string): Promise<unknown[]> {
+  const pageSize = 1000;
+  let from = 0;
+  const all: unknown[] = [];
+  while (true) {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const { data: rows, error } = await (supabase.from as any)(table)
+      .select("*")
+      .order("id", { ascending: true })
+      .range(from, from + pageSize - 1);
+    if (error) throw new Error(`${table}: ${error.message}`);
+    const batch = rows ?? [];
+    all.push(...batch);
+    if (batch.length < pageSize) break;
+    from += pageSize;
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+  return all;
+}
+
 function ExportarPage() {
   const [running, setRunning] = useState(false);
   const [steps, setSteps] = useState<Step[]>([]);
@@ -76,10 +97,7 @@ function ExportarPage() {
       update(0, { status: "running" });
       const data: Record<string, unknown[]> = {};
       for (const t of TABELAS) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        const { data: rows, error } = await (supabase.from as any)(t).select("*");
-        if (error) throw new Error(`${t}: ${error.message}`);
-        data[t] = rows ?? [];
+        data[t] = await fetchAllRows(t);
       }
       const total = Object.values(data).reduce((a, r) => a + r.length, 0);
       zip.file("data.json", JSON.stringify({
@@ -114,13 +132,17 @@ function ExportarPage() {
       const zipIdx = 1 + BUCKETS.length;
       update(zipIdx, { status: "running" });
       const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE", compressionOptions: { level: 6 } });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
-      a.href = url;
-      a.download = `backup-formacao-${stamp}.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
+      const filename = `backup-formacao-${stamp}.zip`;
+      const saved = await saveFileElectron(filename, await blob.arrayBuffer(), [{ name: "Backup ZIP", extensions: ["zip"] }]);
+      if (!saved) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = filename;
+        a.click();
+        URL.revokeObjectURL(url);
+      }
       update(zipIdx, { status: "done", detail: `${(blob.size / 1024 / 1024).toFixed(2)} MB` });
 
       toast.success("Exportação concluída");

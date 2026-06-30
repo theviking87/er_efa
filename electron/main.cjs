@@ -37,6 +37,8 @@ function resolveUserDataDir() {
 
 let userDataDir;
 let mainWindow;
+let localDbPromise = null;
+let localDbQueue = Promise.resolve();
 
 function writeDiagnosticLog(message, detail) {
   try {
@@ -47,6 +49,10 @@ function writeDiagnosticLog(message, detail) {
   } catch {
     // best effort only
   }
+}
+
+function serialiseError(err) {
+  return `${err && err.message ? err.message : String(err)}${err && err.stack ? `\n${err.stack}` : ""}`;
 }
 
 // IMPORTANT: in portable mode, redirect Electron's userData dir BEFORE app
@@ -252,6 +258,90 @@ ipcMain.handle("db:wasm", async () => {
     }
   }
   return null;
+});
+
+// ─── IPC: local PGlite database in the main process ─────────────────────────
+// The previous build opened PGlite inside the renderer worker using IndexedDB.
+// On Electron/Windows this can throw ErrnoError 44 and kill the UI. Keeping the
+// database in the main process with Node filesystem storage removes that crash
+// path and keeps all persistent files next to the portable executable.
+function localDbDir() {
+  const dir = path.join(userDataDir, "pglite-db");
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return dir;
+}
+
+async function getMainLocalDb() {
+  if (!localDbPromise) {
+    localDbPromise = (async () => {
+      const { PGlite } = require("@electric-sql/pglite");
+      const db = await PGlite.create(localDbDir(), { relaxedDurability: true });
+      writeDiagnosticLog("Base local aberta", localDbDir());
+      return db;
+    })().catch((err) => {
+      localDbPromise = null;
+      writeDiagnosticLog("Erro ao abrir base local", serialiseError(err));
+      throw err;
+    });
+  }
+  return localDbPromise;
+}
+
+function queueLocalDb(label, fn) {
+  const run = localDbQueue.catch(() => undefined).then(async () => {
+    const start = Date.now();
+    try {
+      return await fn();
+    } catch (err) {
+      writeDiagnosticLog(`Erro na base local: ${label}`, serialiseError(err));
+      throw err;
+    } finally {
+      const elapsed = Date.now() - start;
+      if (elapsed > 4000) writeDiagnosticLog(`Operação lenta na base local: ${label}`, `${elapsed}ms`);
+    }
+  });
+  localDbQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+ipcMain.handle("local-db:query", async (_evt, sql, params) => {
+  return queueLocalDb("query", async () => {
+    const db = await getMainLocalDb();
+    return await db.query(String(sql), Array.isArray(params) ? params : []);
+  });
+});
+
+ipcMain.handle("local-db:exec", async (_evt, sql) => {
+  return queueLocalDb("exec", async () => {
+    const db = await getMainLocalDb();
+    await db.exec(String(sql));
+    return { ok: true };
+  });
+});
+
+ipcMain.handle("local-db:close", async () => {
+  return queueLocalDb("close", async () => {
+    if (localDbPromise) {
+      const db = await localDbPromise;
+      await db.close();
+    }
+    localDbPromise = null;
+    return { ok: true };
+  });
+});
+
+ipcMain.handle("local-db:reset", async () => {
+  return queueLocalDb("reset", async () => {
+    if (localDbPromise) {
+      try { await (await localDbPromise).close(); } catch {}
+      localDbPromise = null;
+    }
+    const dir = localDbDir();
+    await fs.promises.rm(dir, { recursive: true, force: true });
+    await fs.promises.mkdir(dir, { recursive: true });
+    writeDiagnosticLog("Base local reiniciada", dir);
+    return { ok: true };
+  });
 });
 
 ipcMain.handle("app:userDataDir", async () => userDataDir);

@@ -186,21 +186,28 @@ export async function importLocalBackupZip(file: File, progress?: Progress): Pro
   const tableNames = Object.keys(tables);
   const existing = await existingTables(db);
 
-  progress?.("A limpar dados antigos…");
-  await clearKnownTables(db, tableNames);
-
   const summary: LocalImportSummary = { tables: {}, files: 0, warnings: [] };
-  for (const table of TABLE_ORDER) {
-    const rows = tables[table];
-    if (!rows) continue;
-    if (!existing.has(table)) {
-      summary.tables[table] = 0;
-      summary.warnings.push(`Tabela ${table} não existe na base local; foi ignorada.`);
-      continue;
+  progress?.("A limpar dados antigos…");
+  await db.exec("BEGIN");
+  try {
+    await clearKnownTables(db, tableNames);
+
+    for (const table of TABLE_ORDER) {
+      const rows = tables[table];
+      if (!rows) continue;
+      if (!existing.has(table)) {
+        summary.tables[table] = 0;
+        summary.warnings.push(`Tabela ${table} não existe na base local; foi ignorada.`);
+        continue;
+      }
+      progress?.(`A importar ${table} (${rows.length})…`);
+      summary.tables[table] = await insertRows(db, table, rows, progress);
+      await yieldToUi();
     }
-    progress?.(`A importar ${table} (${rows.length})…`);
-    summary.tables[table] = await insertRows(db, table, rows, progress);
-    await yieldToUi();
+    await db.exec("COMMIT");
+  } catch (err) {
+    try { await db.exec("ROLLBACK"); } catch {}
+    throw err;
   }
 
   progress?.("A copiar documentos…");

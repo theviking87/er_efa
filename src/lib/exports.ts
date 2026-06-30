@@ -237,19 +237,34 @@ export async function exportRelatorioCursos() {
 
 /** Relatório de faltas / assiduidade de um curso. */
 export async function exportFaltasCurso(cursoId: string) {
-  const [curso, inscritos, sessoes] = await Promise.all([
+  const [curso, inscritosRes, sessoesRes] = await Promise.all([
     supabase.from("cursos").select("codigo, nome").eq("id", cursoId).maybeSingle(),
     supabase.from("curso_formandos")
-      .select("id, estado, formando:formandos(id, nome, nif, email)")
+      .select("id, estado, formando_id")
       .eq("curso_id", cursoId),
     supabase.from("sessoes")
-      .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao))")
+      .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id")
       .eq("curso_id", cursoId).order("data").order("hora_inicio"),
   ]);
   if (!curso.data) throw new Error("Curso não encontrado");
+  if (inscritosRes.error) throw inscritosRes.error;
+  if (sessoesRes.error) throw sessoesRes.error;
   const c = curso.data as any;
+  const inscritosBase = inscritosRes.data ?? [];
+  const sessoesBase = sessoesRes.data ?? [];
 
-  const inscritoIds = (inscritos.data ?? []).map((i: any) => i.id).filter(Boolean);
+  const [formandoById, cufById] = await Promise.all([
+    rowsById("formandos", "id, nome, nif, email", uniqueIds(inscritosBase.map((i: any) => i.formando_id))),
+    rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(sessoesBase.map((s: any) => s.curso_ufcd_id))),
+  ]);
+  const ufcdById = await rowsById("ufcds", "id, codigo, designacao", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
+  const inscritos = inscritosBase.map((i: any) => ({ ...i, formando: formandoById.get(i.formando_id) }));
+  const sessoesCurso = sessoesBase.map((s: any) => {
+    const cuf = cufById.get(s.curso_ufcd_id);
+    return { ...s, curso_ufcd: { ufcd: cuf ? ufcdById.get(cuf.ufcd_id) : null } };
+  });
+
+  const inscritoIds = inscritos.map((i: any) => i.id).filter(Boolean);
   const faltasRes = inscritoIds.length
     ? await supabase.from("formando_faltas")
       .select("curso_formando_id, sessao_id, data, horas, tipo, observacoes")
@@ -258,7 +273,7 @@ export async function exportFaltasCurso(cursoId: string) {
   if (faltasRes.error) throw faltasRes.error;
   const faltasCurso = faltasRes.data ?? [];
 
-  const totalHoras = (sessoes.data ?? []).reduce((s, x: any) => s + Number(x.horas ?? 0), 0);
+  const totalHoras = sessoesCurso.reduce((s, x: any) => s + Number(x.horas ?? 0), 0);
 
   const totByCf = new Map<string, { just: number; injust: number }>();
   faltasCurso.forEach((f: any) => {
@@ -267,7 +282,7 @@ export async function exportFaltasCurso(cursoId: string) {
     else cur.injust += Number(f.horas);
     totByCf.set(f.curso_formando_id, cur);
   });
-  const resumoRows = (inscritos.data ?? []).map((i: any) => {
+  const resumoRows = inscritos.map((i: any) => {
     const t = totByCf.get(i.id) ?? { just: 0, injust: 0 };
     const total = t.just + t.injust;
     const ass = totalHoras > 0 ? Math.round(((totalHoras - total) / totalHoras) * 1000) / 10 : 100;
@@ -284,8 +299,8 @@ export async function exportFaltasCurso(cursoId: string) {
     };
   });
 
-  const cfById = new Map((inscritos.data ?? []).map((i: any) => [i.id, i.formando?.nome ?? ""]));
-  const sById = new Map((sessoes.data ?? []).map((s: any) => [s.id, s]));
+  const cfById = new Map(inscritos.map((i: any) => [i.id, i.formando?.nome ?? ""]));
+  const sById = new Map(sessoesCurso.map((s: any) => [s.id, s]));
   const detalheRows = faltasCurso.map((f: any) => {
     const s = sById.get(f.sessao_id) as any;
     return {
@@ -315,27 +330,33 @@ export async function exportRelatorioFaltas(inicio: string, fim: string) {
     .order("data");
   if (error) throw error;
 
-  const cfIds = Array.from(new Set((faltas ?? []).map((f: any) => f.curso_formando_id).filter(Boolean)));
-  const sessaoIds = Array.from(new Set((faltas ?? []).map((f: any) => f.sessao_id).filter(Boolean)));
+  const cfIds = uniqueIds((faltas ?? []).map((f: any) => f.curso_formando_id));
+  const sessaoIds = uniqueIds((faltas ?? []).map((f: any) => f.sessao_id));
   const [cfs, sessoes] = await Promise.all([
     cfIds.length
-      ? supabase.from("curso_formandos").select("id, curso_id, formando:formandos(nome, nif), curso:cursos(codigo, nome)").in("id", cfIds)
+      ? supabase.from("curso_formandos").select("id, curso_id, formando_id").in("id", cfIds)
       : Promise.resolve({ data: [], error: null }),
     sessaoIds.length
-      ? supabase.from("sessoes").select("id, hora_inicio, hora_fim, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao))").in("id", sessaoIds)
+      ? supabase.from("sessoes").select("id, hora_inicio, hora_fim, curso_ufcd_id").in("id", sessaoIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (cfs.error) throw cfs.error;
   if (sessoes.error) throw sessoes.error;
+  const [cursoById, formandoById, cufById] = await Promise.all([
+    rowsById("cursos", "id, codigo, nome", uniqueIds((cfs.data ?? []).map((r: any) => r.curso_id))),
+    rowsById("formandos", "id, nome, nif", uniqueIds((cfs.data ?? []).map((r: any) => r.formando_id))),
+    rowsById("curso_ufcds", "id, ufcd_id", uniqueIds((sessoes.data ?? []).map((r: any) => r.curso_ufcd_id))),
+  ]);
+  const ufcdById = await rowsById("ufcds", "id, codigo, designacao", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
   const cfById = new Map((cfs.data ?? []).map((r: any) => [r.id, r]));
   const sessaoById = new Map((sessoes.data ?? []).map((r: any) => [r.id, r]));
 
   const detalhe = (faltas ?? []).map((f: any) => ({
     Data: f.data,
-    Curso: `${cfById.get(f.curso_formando_id)?.curso?.codigo ?? ""} — ${cfById.get(f.curso_formando_id)?.curso?.nome ?? ""}`,
-    Formando: cfById.get(f.curso_formando_id)?.formando?.nome ?? "",
-    NIF: cfById.get(f.curso_formando_id)?.formando?.nif ?? "",
-    UFCD: sessaoById.get(f.sessao_id)?.curso_ufcd?.ufcd?.codigo ?? "",
+    Curso: `${cursoById.get(cfById.get(f.curso_formando_id)?.curso_id)?.codigo ?? ""} — ${cursoById.get(cfById.get(f.curso_formando_id)?.curso_id)?.nome ?? ""}`,
+    Formando: formandoById.get(cfById.get(f.curso_formando_id)?.formando_id)?.nome ?? "",
+    NIF: formandoById.get(cfById.get(f.curso_formando_id)?.formando_id)?.nif ?? "",
+    UFCD: ufcdById.get(cufById.get(sessaoById.get(f.sessao_id)?.curso_ufcd_id)?.ufcd_id)?.codigo ?? "",
     "Hora Início": sessaoById.get(f.sessao_id)?.hora_inicio?.slice(0, 5) ?? "",
     "Hora Fim": sessaoById.get(f.sessao_id)?.hora_fim?.slice(0, 5) ?? "",
     Horas: Number(f.horas),
@@ -349,9 +370,9 @@ export async function exportRelatorioFaltas(inicio: string, fim: string) {
     const cf = cfById.get(f.curso_formando_id);
     const key = (f.curso_formando_id ?? "") + "|" + (cf?.curso_id ?? "");
     const cur = m.get(key) ?? {
-      curso: `${cf?.curso?.codigo ?? ""} — ${cf?.curso?.nome ?? ""}`,
-      formando: cf?.formando?.nome ?? "",
-      nif: cf?.formando?.nif ?? "",
+      curso: `${cursoById.get(cf?.curso_id)?.codigo ?? ""} — ${cursoById.get(cf?.curso_id)?.nome ?? ""}`,
+      formando: formandoById.get(cf?.formando_id)?.nome ?? "",
+      nif: formandoById.get(cf?.formando_id)?.nif ?? "",
       just: 0, injust: 0,
     };
     if (f.tipo === "justificada") cur.just += Number(f.horas);

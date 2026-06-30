@@ -1,5 +1,5 @@
 // Electron main process — Formação ER (offline desktop)
-const { app, BrowserWindow, ipcMain, shell, dialog, protocol, net } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, dialog, protocol, net, globalShortcut, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const { pathToFileURL } = require("url");
@@ -34,6 +34,18 @@ function resolveUserDataDir() {
 }
 
 let userDataDir;
+let mainWindow;
+
+function writeDiagnosticLog(message, detail) {
+  try {
+    const dir = userDataDir || resolveUserDataDir();
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    const line = `[${new Date().toISOString()}] ${message}${detail ? `\n${detail}` : ""}\n`;
+    fs.appendFileSync(path.join(dir, "diagnostico.log"), line, "utf8");
+  } catch {
+    // best effort only
+  }
+}
 
 // IMPORTANT: in portable mode, redirect Electron's userData dir BEFORE app
 // is ready. That way the renderer's IndexedDB (which PGlite uses to persist
@@ -88,6 +100,7 @@ function createWindow() {
       nodeIntegration: false,
     },
   });
+  mainWindow = win;
 
   const target = resolveRendererFile("/index.electron.html");
   if (!target) {
@@ -104,9 +117,12 @@ function createWindow() {
     );
   });
 
-  if (process.env.LOVABLE_DEVTOOLS === "1") {
+  win.webContents.once("did-finish-load", () => {
+    // Keep DevTools open in the portable build. If the renderer freezes, the
+    // user still has the console available; F12 alone depends on the renderer
+    // being responsive enough to deliver input events.
     win.webContents.openDevTools({ mode: "detach" });
-  }
+  });
 
   // Allow F12 / Ctrl+Shift+I to open DevTools so users can diagnose issues.
   win.webContents.on("before-input-event", (event, input) => {
@@ -125,13 +141,23 @@ function createWindow() {
 
   // Surface unhandled renderer crashes instead of showing a silent white window.
   win.webContents.on("render-process-gone", (_e, details) => {
+    writeDiagnosticLog("Renderer terminou", `Motivo: ${details.reason}\nCódigo: ${details.exitCode}`);
     dialog.showErrorBox(
       "A aplicação bloqueou",
       `O processo do interface terminou inesperadamente.\nMotivo: ${details.reason}\nCódigo: ${details.exitCode}\n\nPressiona F12 antes de repetir a ação para veres o erro na consola.`
     );
   });
   win.webContents.on("unresponsive", () => {
+    writeDiagnosticLog("Renderer sem resposta", "A interface deixou de responder a eventos.");
     console.warn("[FormacaoER] renderer unresponsive");
+    dialog.showMessageBox(win, {
+      type: "warning",
+      title: "A aplicação deixou de responder",
+      message: "A interface ficou sem resposta.",
+      detail: `Guardei um registo em:\n${path.join(userDataDir, "diagnostico.log")}\n\nVou tentar abrir as ferramentas de diagnóstico. Se continuar bloqueada, fecha a janela e volta a abrir pelo AbrirFormacaoER.bat.`,
+      buttons: ["OK"],
+    }).catch(() => {});
+    try { win.webContents.openDevTools({ mode: "detach" }); } catch {}
   });
 
   // Open external links in the system browser instead of a new Electron window.
@@ -235,6 +261,11 @@ ipcMain.handle("app:restoreDb", async () => {
 app.whenReady().then(() => {
   userDataDir = resolveUserDataDir();
   console.log("[FormacaoER] userData:", userDataDir);
+  Menu.setApplicationMenu(null);
+  globalShortcut.register("F12", () => mainWindow?.webContents.openDevTools({ mode: "detach" }));
+  globalShortcut.register("CommandOrControl+Shift+I", () => mainWindow?.webContents.openDevTools({ mode: "detach" }));
+  globalShortcut.register("CommandOrControl+Shift+J", () => mainWindow?.webContents.openDevTools({ mode: "detach" }));
+  globalShortcut.register("CommandOrControl+R", () => mainWindow?.webContents.reloadIgnoringCache());
   registerRendererProtocol();
   createWindow();
   app.on("activate", () => {
@@ -244,4 +275,8 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("will-quit", () => {
+  globalShortcut.unregisterAll();
 });

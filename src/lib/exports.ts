@@ -182,7 +182,7 @@ export async function exportRelatorioCursos() {
 
 /** Relatório de faltas / assiduidade de um curso. */
 export async function exportFaltasCurso(cursoId: string) {
-  const [curso, inscritos, sessoes, faltas] = await Promise.all([
+  const [curso, inscritos, sessoes] = await Promise.all([
     supabase.from("cursos").select("codigo, nome").eq("id", cursoId).maybeSingle(),
     supabase.from("curso_formandos")
       .select("id, estado, formando:formandos(id, nome, nif, email)")
@@ -190,7 +190,6 @@ export async function exportFaltasCurso(cursoId: string) {
     supabase.from("sessoes")
       .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao))")
       .eq("curso_id", cursoId).order("data").order("hora_inicio"),
-    Promise.resolve({ data: [], error: null }),
   ]);
   if (!curso.data) throw new Error("Curso não encontrado");
   const c = curso.data as any;

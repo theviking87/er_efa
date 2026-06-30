@@ -10,6 +10,17 @@ function sanitize(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").trim();
 }
 
+function uniqueIds(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter(Boolean) as string[]));
+}
+
+async function rowsById(table: string, columns: string, ids: string[]) {
+  if (!ids.length) return new Map<string, any>();
+  const { data, error } = await (supabase as any).from(table).select(columns).in("id", ids);
+  if (error) throw error;
+  return new Map((data ?? []).map((r: any) => [r.id, r]));
+}
+
 function newDoc(orientation: "portrait" | "landscape" = "portrait") {
   return new jsPDF({ orientation, unit: "mm", format: "a4" });
 }

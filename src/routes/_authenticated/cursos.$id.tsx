@@ -812,6 +812,8 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const datas = Array.from(new Set(base.map((s: any) => s.data).filter(Boolean)));
     if (formIds.length === 0 || datas.length === 0) return [];
 
+    const formPlaceholders = formIds.map((_, i) => `$${i + 2}`).join(",");
+    const dataPlaceholders = datas.map((_, i) => `$${i + 2 + formIds.length}`).join(",");
     const offline = await localRows<any>(`
       SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.formador_id, s.curso_id,
              f.id AS formador_id_join, f.nome AS formador_nome, f.abreviatura AS formador_abreviatura,
@@ -823,9 +825,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
         LEFT JOIN ufcds u ON u.id = cu.ufcd_id
        WHERE s.curso_id <> $1
-         AND s.formador_id = ANY($2::uuid[])
-         AND s.data = ANY($3::date[])
-    `, [cursoId, formIds, datas]);
+         AND s.formador_id IN (${formPlaceholders})
+         AND s.data IN (${dataPlaceholders})
+    `, [cursoId, ...formIds, ...datas]);
     if (offline) {
       return offline.map((s: any) => ({
         ...s,

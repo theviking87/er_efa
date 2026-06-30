@@ -2232,6 +2232,7 @@ function InscreverFormandoDialog({ open, onOpenChange, cursoId, jaInscritos, onS
 function FaltasTab({ cursoId }: { cursoId: string }) {
   const qc = useQueryClient();
   const [sessaoId, setSessaoId] = useState<string>("");
+  const [exportingFaltas, setExportingFaltas] = useState(false);
 
   const inscritos = useQuery({
     queryKey: ["curso-formandos-faltas", cursoId],
@@ -2449,8 +2450,19 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
       <Card><CardContent className="p-6 space-y-3">
         <div className="flex items-center justify-between">
           <div className="text-sm font-medium">Resumo de assiduidade</div>
-          <Button variant="outline" size="sm" onClick={() => exportFaltasCurso(cursoId).then(() => toast.success("Exportado")).catch(e => toast.error(e.message))}>
-            <FileSpreadsheet className="size-4" /> Exportar faltas
+          <Button variant="outline" size="sm" disabled={exportingFaltas} onClick={async () => {
+            try {
+              setExportingFaltas(true);
+              await yieldToBrowser();
+              await exportFaltasCurso(cursoId);
+              toast.success("Exportado");
+            } catch (e: any) {
+              toast.error(e.message);
+            } finally {
+              setExportingFaltas(false);
+            }
+          }}>
+            <FileSpreadsheet className="size-4" /> {exportingFaltas ? "A exportar…" : "Exportar faltas"}
           </Button>
         </div>
         <div className="text-xs text-muted-foreground">Carga total do curso: {fmtHoras(totalHorasCurso)}</div>

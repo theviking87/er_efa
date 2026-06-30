@@ -16,9 +16,20 @@ export async function saveFileElectron(defaultName: string, bytes: ArrayBuffer |
 
 export function collectDocumentStyles() {
   if (typeof document === "undefined") return "";
-  return Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-    .map((el) => (el as HTMLElement).outerHTML)
-    .join("\n");
+  const chunks: string[] = [];
+  for (const sheet of Array.from(document.styleSheets)) {
+    try {
+      const rules = Array.from(sheet.cssRules ?? []).map((rule) => rule.cssText).join("\n");
+      if (rules) chunks.push(`<style>${rules}</style>`);
+    } catch {
+      const owner = sheet.ownerNode as HTMLElement | null;
+      if (owner) chunks.push(owner.outerHTML);
+    }
+  }
+  for (const style of Array.from(document.querySelectorAll("style"))) {
+    if (!chunks.includes(style.outerHTML)) chunks.push(style.outerHTML);
+  }
+  return chunks.join("\n");
 }
 
 export async function printHtmlElectron(payload: { title: string; html: string; landscape?: boolean }) {

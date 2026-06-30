@@ -23,6 +23,16 @@ type Filter =
 
 export type Result<T> = { data: T | null; error: { message: string; details?: string } | null; count: number | null };
 
+function withQueryTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} demorou demasiado. A operação foi interrompida para evitar bloquear a aplicação.`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
 export class LocalQueryBuilder<T = any> implements PromiseLike<Result<T>> {
   private _select = "*";
   private _filters: Filter[] = [];
@@ -108,6 +118,13 @@ export class LocalQueryBuilder<T = any> implements PromiseLike<Result<T>> {
 
   // ─── execute ────────────────────────────────────────────────────────
   async execute(): Promise<Result<T>> {
+    return withQueryTimeout(this.executeCore(), 30000, `Consulta em ${this.table}`).catch((err: any) => {
+      console.error(`[local-db] query timed out/failed on ${this.table}:`, err);
+      return { data: null, error: { message: String(err?.message ?? err) }, count: null };
+    });
+  }
+
+  private async executeCore(): Promise<Result<T>> {
     try {
       const rels = await this.relsPromise;
       let rows: any[] = [];

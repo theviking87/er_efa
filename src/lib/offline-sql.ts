@@ -11,3 +11,7 @@ export async function localRows<T = any>(sql: string, params: unknown[] = []): P
 export async function yieldToBrowser(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }
+
+export async function paintBeforeHeavyWork(): Promise<void> {
+  await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+}

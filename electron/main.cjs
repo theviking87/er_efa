@@ -195,20 +195,20 @@ function safeDocPath(relPath) {
 
 ipcMain.handle("docs:write", async (_evt, relPath, buffer) => {
   const full = safeDocPath(relPath);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, Buffer.from(buffer));
+  await fs.promises.mkdir(path.dirname(full), { recursive: true });
+  await fs.promises.writeFile(full, Buffer.from(buffer));
   return { ok: true };
 });
 
 ipcMain.handle("docs:read", async (_evt, relPath) => {
   const full = safeDocPath(relPath);
   if (!fs.existsSync(full)) return null;
-  return fs.readFileSync(full);
+  return await fs.promises.readFile(full);
 });
 
 ipcMain.handle("docs:remove", async (_evt, relPath) => {
   const full = safeDocPath(relPath);
-  if (fs.existsSync(full)) fs.unlinkSync(full);
+  if (fs.existsSync(full)) await fs.promises.unlink(full);
   return { ok: true };
 });
 
@@ -234,21 +234,24 @@ function dbPath() {
 ipcMain.handle("db:read", async () => {
   const p = dbPath();
   if (!fs.existsSync(p)) return null;
-  return fs.readFileSync(p);
+  return await fs.promises.readFile(p);
 });
 ipcMain.handle("db:write", async (_evt, buffer) => {
-  fs.writeFileSync(dbPath(), Buffer.from(buffer));
+  await fs.promises.writeFile(dbPath(), Buffer.from(buffer));
   return { ok: true };
 });
 ipcMain.handle("db:wasm", async () => {
-  const assetsDir = path.join(__dirname, "..", "offline", "dist", "assets");
-  try {
-    const file = fs.readdirSync(assetsDir).find((f) => f.startsWith("sql-wasm") && f.endsWith(".wasm"));
-    if (!file) return null;
-    return fs.readFileSync(path.join(assetsDir, file));
-  } catch {
-    return null;
+  for (const dir of rendererDirs()) {
+    const assetsDir = path.join(dir, "assets");
+    try {
+      if (!fs.existsSync(assetsDir)) continue;
+      const file = fs.readdirSync(assetsDir).find((f) => f.startsWith("sql-wasm") && f.endsWith(".wasm"));
+      if (file) return await fs.promises.readFile(path.join(assetsDir, file));
+    } catch {
+      // Try the next packaged/dev location.
+    }
   }
+  return null;
 });
 
 ipcMain.handle("app:userDataDir", async () => userDataDir);
@@ -260,7 +263,7 @@ ipcMain.handle("app:backupDb", async (_evt, buffer) => {
     filters: [{ name: "Backup", extensions: ["pgdata"] }],
   });
   if (result.canceled || !result.filePath) return { ok: false };
-  fs.writeFileSync(result.filePath, Buffer.from(buffer));
+  await fs.promises.writeFile(result.filePath, Buffer.from(buffer));
   return { ok: true, path: result.filePath };
 });
 
@@ -271,7 +274,52 @@ ipcMain.handle("app:restoreDb", async () => {
     properties: ["openFile"],
   });
   if (result.canceled || result.filePaths.length === 0) return null;
-  return fs.readFileSync(result.filePaths[0]);
+  return await fs.promises.readFile(result.filePaths[0]);
+});
+
+ipcMain.handle("file:save", async (_evt, defaultName, buffer, filters) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Guardar ficheiro",
+    defaultPath: defaultName || "ficheiro",
+    filters: Array.isArray(filters) && filters.length ? filters : [{ name: "Todos os ficheiros", extensions: ["*"] }],
+  });
+  if (result.canceled || !result.filePath) return { ok: false };
+  await fs.promises.writeFile(result.filePath, Buffer.from(buffer));
+  return { ok: true, path: result.filePath };
+});
+
+ipcMain.handle("print:html", async (_evt, payload) => {
+  const title = String(payload?.title || "Impressão");
+  const html = String(payload?.html || "");
+  const landscape = Boolean(payload?.landscape);
+  if (!html.trim()) return { ok: false, error: "Sem conteúdo para imprimir" };
+
+  return await new Promise((resolve) => {
+    const printWindow = new BrowserWindow({
+      width: landscape ? 1200 : 900,
+      height: landscape ? 820 : 1100,
+      show: false,
+      title,
+      autoHideMenuBar: true,
+      webPreferences: { contextIsolation: true, nodeIntegration: false },
+    });
+    let finished = false;
+    const finish = (result) => {
+      if (finished) return;
+      finished = true;
+      try { printWindow.close(); } catch {}
+      resolve(result);
+    };
+    printWindow.webContents.on("did-fail-load", (_event, _code, desc) => finish({ ok: false, error: desc }));
+    printWindow.webContents.once("did-finish-load", () => {
+      setTimeout(() => {
+        printWindow.webContents.print({ silent: false, printBackground: true, landscape }, (success, failureReason) => {
+          finish(success ? { ok: true } : { ok: false, error: failureReason || "Impressão cancelada" });
+        });
+      }, 250);
+    });
+    printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch((err) => finish({ ok: false, error: err.message }));
+  });
 });
 
 app.whenReady().then(() => {

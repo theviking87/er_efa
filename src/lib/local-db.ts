@@ -402,6 +402,21 @@ export async function getLocalDb(): Promise<LocalDb> {
   return _ready;
 }
 
+export async function resetLocalDbForRestore(): Promise<LocalDb> {
+  if (isElectron()) {
+    const api = (window as any).electronAPI?.localDb;
+    if (!api?.reset) throw new Error("A ponte para reiniciar a base local não está disponível.");
+    await api.reset();
+  } else if (_db) {
+    try { await _db.close(); } catch {}
+  }
+  _db = null;
+  _ready = null;
+  _dbQueue = Promise.resolve();
+  resetRelationshipCache();
+  return getLocalDb();
+}
+
 /** Convenience: run a single SQL with $1, $2… params. Returns rows. */
 export async function localQuery<T = any>(sql: string, params: unknown[] = []): Promise<T[]> {
   const db = await getLocalDb();

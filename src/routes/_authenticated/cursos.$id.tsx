@@ -23,7 +23,7 @@ import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
-import { localRows, yieldToBrowser } from "@/lib/offline-sql";
+import { localRows, paintBeforeHeavyWork, yieldToBrowser } from "@/lib/offline-sql";
 import { collectDocumentStyles, printHtmlWithFallback } from "@/lib/electron-io";
 
 
@@ -2453,7 +2453,7 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
           <Button variant="outline" size="sm" disabled={exportingFaltas} onClick={async () => {
             try {
               setExportingFaltas(true);
-              await yieldToBrowser();
+              await paintBeforeHeavyWork();
               await exportFaltasCurso(cursoId);
               toast.success("Exportado");
             } catch (e: any) {

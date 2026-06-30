@@ -195,20 +195,20 @@ function safeDocPath(relPath) {
 
 ipcMain.handle("docs:write", async (_evt, relPath, buffer) => {
   const full = safeDocPath(relPath);
-  fs.mkdirSync(path.dirname(full), { recursive: true });
-  fs.writeFileSync(full, Buffer.from(buffer));
+  await fs.promises.mkdir(path.dirname(full), { recursive: true });
+  await fs.promises.writeFile(full, Buffer.from(buffer));
   return { ok: true };
 });
 
 ipcMain.handle("docs:read", async (_evt, relPath) => {
   const full = safeDocPath(relPath);
   if (!fs.existsSync(full)) return null;
-  return fs.readFileSync(full);
+  return await fs.promises.readFile(full);
 });
 
 ipcMain.handle("docs:remove", async (_evt, relPath) => {
   const full = safeDocPath(relPath);
-  if (fs.existsSync(full)) fs.unlinkSync(full);
+  if (fs.existsSync(full)) await fs.promises.unlink(full);
   return { ok: true };
 });
 
@@ -234,10 +234,10 @@ function dbPath() {
 ipcMain.handle("db:read", async () => {
   const p = dbPath();
   if (!fs.existsSync(p)) return null;
-  return fs.readFileSync(p);
+  return await fs.promises.readFile(p);
 });
 ipcMain.handle("db:write", async (_evt, buffer) => {
-  fs.writeFileSync(dbPath(), Buffer.from(buffer));
+  await fs.promises.writeFile(dbPath(), Buffer.from(buffer));
   return { ok: true };
 });
 ipcMain.handle("db:wasm", async () => {
@@ -260,7 +260,7 @@ ipcMain.handle("app:backupDb", async (_evt, buffer) => {
     filters: [{ name: "Backup", extensions: ["pgdata"] }],
   });
   if (result.canceled || !result.filePath) return { ok: false };
-  fs.writeFileSync(result.filePath, Buffer.from(buffer));
+  await fs.promises.writeFile(result.filePath, Buffer.from(buffer));
   return { ok: true, path: result.filePath };
 });
 
@@ -271,7 +271,7 @@ ipcMain.handle("app:restoreDb", async () => {
     properties: ["openFile"],
   });
   if (result.canceled || result.filePaths.length === 0) return null;
-  return fs.readFileSync(result.filePaths[0]);
+  return await fs.promises.readFile(result.filePaths[0]);
 });
 
 ipcMain.handle("file:save", async (_evt, defaultName, buffer, filters) => {
@@ -281,7 +281,7 @@ ipcMain.handle("file:save", async (_evt, defaultName, buffer, filters) => {
     filters: Array.isArray(filters) && filters.length ? filters : [{ name: "Todos os ficheiros", extensions: ["*"] }],
   });
   if (result.canceled || !result.filePath) return { ok: false };
-  fs.writeFileSync(result.filePath, Buffer.from(buffer));
+  await fs.promises.writeFile(result.filePath, Buffer.from(buffer));
   return { ok: true, path: result.filePath };
 });
 

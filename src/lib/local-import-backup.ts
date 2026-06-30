@@ -1,5 +1,5 @@
 import JSZip from "jszip";
-import { getLocalDb } from "./local-db";
+import { getLocalDb, resetLocalDbForRestore } from "./local-db";
 import { resetRelationshipCache } from "@/integrations/local/relationships";
 
 type Progress = (message: string) => void;
@@ -198,13 +198,8 @@ export async function importLocalBackupZip(file: File, progress?: Progress): Pro
   // state. For a full backup restore the safest behaviour is to reset the local
   // DB first, recreate the schema, then import. Existing docs are overwritten
   // below from the backup storage/ folder.
-  const api = typeof window !== "undefined" ? (window as any).electronAPI : null;
-  if (api?.localDb?.reset) {
-    progress?.("A reiniciar a base local…");
-    await api.localDb.reset();
-  }
-
-  const db = await getLocalDb();
+  progress?.("A reiniciar a base local…");
+  const db = await resetLocalDbForRestore();
   const existing = await existingTables(db);
 
   const summary: LocalImportSummary = { tables: {}, files: 0, warnings: [] };

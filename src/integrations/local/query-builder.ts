@@ -23,6 +23,16 @@ type Filter =
 
 export type Result<T> = { data: T | null; error: { message: string; details?: string } | null; count: number | null };
 
+function withQueryTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${label} demorou demasiado. A operação foi interrompida para evitar bloquear a aplicação.`)), ms);
+  });
+  return Promise.race([promise, timeout]).finally(() => {
+    if (timer) clearTimeout(timer);
+  }) as Promise<T>;
+}
+
 export class LocalQueryBuilder<T = any> implements PromiseLike<Result<T>> {
   private _select = "*";
   private _filters: Filter[] = [];
@@ -108,6 +118,13 @@ export class LocalQueryBuilder<T = any> implements PromiseLike<Result<T>> {
 
   // ─── execute ────────────────────────────────────────────────────────
   async execute(): Promise<Result<T>> {
+    return withQueryTimeout(this.executeCore(), 30000, `Consulta em ${this.table}`).catch((err: any) => {
+      console.error(`[local-db] query timed out/failed on ${this.table}:`, err);
+      return { data: null, error: { message: String(err?.message ?? err) }, count: null };
+    });
+  }
+
+  private async executeCore(): Promise<Result<T>> {
     try {
       const rels = await this.relsPromise;
       let rows: any[] = [];
@@ -163,6 +180,9 @@ export class LocalQueryBuilder<T = any> implements PromiseLike<Result<T>> {
   // ─── SELECT ─────────────────────────────────────────────────────────
   private async runSelect(rels: Relationship[]): Promise<any[]> {
     const parsed = parseSelect(this._select);
+    if (parsed.nodes.some((n) => n.kind === "embed")) {
+      return this.runSelectHydrated(rels, parsed.nodes);
+    }
     const { sql, params } = buildSelectSQL({
       table: this.table,
       nodes: parsed.nodes,
@@ -175,6 +195,115 @@ export class LocalQueryBuilder<T = any> implements PromiseLike<Result<T>> {
     });
     const res = await this.db.query<any>(sql, params);
     return res.rows;
+  }
+
+  /**
+   * Offline-safe embed loader.
+   *
+   * The first local builds used Postgres JSON correlated subqueries to emulate
+   * Supabase embeds. That works for small tables, but on PGlite/IndexedDB it can
+   * become extremely slow with real backups (reports/faltas/cronogramas) and
+   * looks like a freeze without a useful browser error. Here we fetch the parent
+   * rows flat, then hydrate embeds with bulk `IN (...)` queries. It is a little
+   * more code, but it keeps every query simple and predictable on a pen drive.
+   */
+  private async runSelectHydrated(rels: Relationship[], nodes: SelectNode[]): Promise<any[]> {
+    const embeds = nodes.filter((n): n is Embed => n.kind === "embed");
+    const parentColumnNodes = nodes.filter((n) => n.kind === "column") as SelectNode[];
+    const requestedParentCols = new Set(parentColumnNodes.filter((n: any) => n.name !== "*").map((n: any) => n.name));
+    const parentHasStar = parentColumnNodes.some((n: any) => n.name === "*");
+
+    const aliasToEmbed = new Map<string, Embed>();
+    for (const e of embeds) aliasToEmbed.set(e.alias, e);
+    const { outerFilters, embedFilters } = splitEmbedFilters(this._filters, aliasToEmbed);
+
+    const internalParentCols = new Set<string>();
+    for (const embed of embeds) {
+      const rel = findRelationship(rels, this.table, embed.table);
+      if (!rel) throw new Error(`No relationship from ${this.table} → ${embed.table} (alias ${embed.alias})`);
+      if (rel.cardinality === "many") internalParentCols.add("id");
+      else internalParentCols.add(rel.fkColumn);
+    }
+
+    const baseNodes = mergeColumns(parentColumnNodes, [...internalParentCols]);
+    const { sql, params } = buildSelectSQL({
+      table: this.table,
+      nodes: baseNodes.length ? baseNodes : [{ kind: "column", name: "*" }],
+      filters: outerFilters,
+      order: this._order,
+      limit: this._limit,
+      rangeFrom: this._rangeFrom,
+      rangeTo: this._rangeTo,
+      rels,
+    });
+    const res = await this.db.query<any>(sql, params);
+    let rows = res.rows ?? [];
+
+    for (const embed of embeds) {
+      const rel = findRelationship(rels, this.table, embed.table);
+      if (!rel) throw new Error(`No relationship from ${this.table} → ${embed.table} (alias ${embed.alias})`);
+      const extra = embedFilters[embed.alias] ?? [];
+      const childHasStar = embed.children.some((n: any) => n.kind === "column" && n.name === "*");
+      const requestedChildCols = new Set(embed.children.filter((n: any) => n.kind === "column" && n.name !== "*").map((n: any) => n.name));
+
+      if (rel.cardinality === "many") {
+        const parentIds = uniqueValues(rows.map((r) => r.id));
+        if (parentIds.length === 0) {
+          rows.forEach((r) => { r[embed.alias] = []; });
+        } else {
+          const childNeeds = childHasStar || requestedChildCols.has(rel.fkColumn) ? [] : [rel.fkColumn];
+          const childSelect = serializeSelectNodes(mergeColumns(embed.children, childNeeds));
+          const childBuilder = new LocalQueryBuilder<any[]>(this.db, embed.table, Promise.resolve(rels)).select(childSelect).in(rel.fkColumn, parentIds);
+          childBuilder._filters.push(...extra);
+          const childRes = await childBuilder.execute();
+          if (childRes.error) throw new Error(childRes.error.message);
+          const children = (childRes.data ?? []) as any[];
+          const grouped = new Map<string, any[]>();
+          for (const child of children) {
+            const key = String(child[rel.fkColumn]);
+            if (!childHasStar && !requestedChildCols.has(rel.fkColumn)) delete child[rel.fkColumn];
+            const arr = grouped.get(key) ?? [];
+            arr.push(child);
+            grouped.set(key, arr);
+          }
+          rows.forEach((r) => { r[embed.alias] = grouped.get(String(r.id)) ?? []; });
+        }
+      } else {
+        const fkValues = uniqueValues(rows.map((r) => r[rel.fkColumn]));
+        if (fkValues.length === 0) {
+          rows.forEach((r) => { r[embed.alias] = null; });
+        } else {
+          const childNeeds = childHasStar || requestedChildCols.has("id") ? [] : ["id"];
+          const childSelect = serializeSelectNodes(mergeColumns(embed.children, childNeeds));
+          const childBuilder = new LocalQueryBuilder<any[]>(this.db, embed.table, Promise.resolve(rels)).select(childSelect).in("id", fkValues);
+          childBuilder._filters.push(...extra);
+          const childRes = await childBuilder.execute();
+          if (childRes.error) throw new Error(childRes.error.message);
+          const byId = new Map<string, any>();
+          for (const child of ((childRes.data ?? []) as any[])) {
+            const key = String(child.id);
+            if (!childHasStar && !requestedChildCols.has("id")) delete child.id;
+            byId.set(key, child);
+          }
+          rows.forEach((r) => { r[embed.alias] = byId.get(String(r[rel.fkColumn])) ?? null; });
+        }
+      }
+
+      // Preserve PostgREST !inner and filtered-embed behaviour: parent rows only
+      // remain when that relation has at least one matching row/object.
+      if (embed.inner || extra.length) {
+        rows = rows.filter((r) => Array.isArray(r[embed.alias]) ? r[embed.alias].length > 0 : Boolean(r[embed.alias]));
+      }
+    }
+
+    if (!parentHasStar) {
+      for (const r of rows) {
+        for (const c of internalParentCols) {
+          if (!requestedParentCols.has(c)) delete r[c];
+        }
+      }
+    }
+    return rows;
   }
 
   // ─── INSERT ─────────────────────────────────────────────────────────
@@ -278,6 +407,58 @@ function buildSelectSQL(opts: {
 
   const sql = `SELECT ${selectExpr} FROM ${quoteCol(opts.table)} ${alias} ${where}${extraInner}${orderBy}${pagination}`;
   return { sql, params };
+}
+
+function splitEmbedFilters(filters: Filter[], aliasToEmbed: Map<string, Embed>): { outerFilters: Filter[]; embedFilters: Record<string, Filter[]> } {
+  const outerFilters: Filter[] = [];
+  const embedFilters: Record<string, Filter[]> = {};
+  for (const f of filters) {
+    if (f.op !== "or" && typeof (f as any).col === "string" && (f as any).col.includes(".")) {
+      const dotIdx = (f as any).col.indexOf(".");
+      const head = (f as any).col.slice(0, dotIdx);
+      const tail = (f as any).col.slice(dotIdx + 1);
+      if (aliasToEmbed.has(head)) {
+        (embedFilters[head] ??= []).push({ ...(f as any), col: tail });
+        continue;
+      }
+    }
+    outerFilters.push(f);
+  }
+  return { outerFilters, embedFilters };
+}
+
+function mergeColumns(nodes: SelectNode[], extraCols: string[]): SelectNode[] {
+  if (nodes.some((n) => n.kind === "column" && n.name === "*")) return [...nodes];
+  const out = [...nodes];
+  const existing = new Set(out.filter((n) => n.kind === "column").map((n: any) => n.name));
+  for (const col of extraCols) {
+    if (!existing.has(col)) {
+      out.push({ kind: "column", name: col });
+      existing.add(col);
+    }
+  }
+  return out;
+}
+
+function serializeSelectNodes(nodes: SelectNode[]): string {
+  return nodes.map((n) => {
+    if (n.kind === "column") return n.name;
+    const head = `${n.alias === n.table ? "" : `${n.alias}:`}${n.table}${n.inner ? "!inner" : ""}`;
+    return `${head}(${serializeSelectNodes(n.children)})`;
+  }).join(", ");
+}
+
+function uniqueValues(values: unknown[]): unknown[] {
+  const out: unknown[] = [];
+  const seen = new Set<string>();
+  for (const v of values) {
+    if (v === null || v === undefined || v === "") continue;
+    const key = String(v);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(v);
+  }
+  return out;
 }
 
 /** Build the projection list. Embeds turn into correlated subqueries.

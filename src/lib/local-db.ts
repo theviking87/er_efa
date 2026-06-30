@@ -13,8 +13,50 @@ export type LocalDb = Pick<PGlite, "query" | "exec" | "close"> & Record<string, 
 
 let _db: LocalDb | null = null;
 let _ready: Promise<LocalDb> | null = null;
+let _dbQueue: Promise<void> = Promise.resolve();
 
 const LOCAL_DATA_DIR = "idb://formacao-er-db";
+
+function yieldToUi(): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+function queueOperation<T>(label: string, op: () => Promise<T>): Promise<T> {
+  const run = _dbQueue.catch(() => undefined).then(async () => {
+    const start = Date.now();
+    const slowTimer = setTimeout(() => {
+      console.warn(`[local-db] operação lenta: ${label} ainda a executar após 8s`);
+    }, 8000);
+    try {
+      return await withTimeout(op(), 30000, `Operação local (${label})`);
+    } finally {
+      clearTimeout(slowTimer);
+      const elapsed = Date.now() - start;
+      if (elapsed > 2500) console.warn(`[local-db] operação lenta concluída: ${label} (${elapsed}ms)`);
+      await yieldToUi();
+    }
+  });
+  _dbQueue = run.then(() => undefined, () => undefined);
+  return run;
+}
+
+function serialiseLocalDb(raw: LocalDb): LocalDb {
+  return new Proxy(raw, {
+    get(target, prop, receiver) {
+      if (prop === "query") {
+        return (sql: string, params?: unknown[]) => queueOperation("query", () => target.query(sql, params as any));
+      }
+      if (prop === "exec") {
+        return (sql: string) => queueOperation("exec", () => target.exec(sql));
+      }
+      if (prop === "close") {
+        return () => queueOperation("close", () => target.close());
+      }
+      const value = Reflect.get(target, prop, receiver);
+      return typeof value === "function" ? value.bind(target) : value;
+    },
+  }) as LocalDb;
+}
 
 function withTimeout<T>(promise: Promise<T>, ms: number, label: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | null = null;
@@ -311,33 +353,49 @@ async function initSchema(db: LocalDb): Promise<void> {
     ALTER TABLE public.formando_pra ADD COLUMN IF NOT EXISTS nota text;
     ALTER TABLE public.formando_pra ALTER COLUMN nome DROP NOT NULL;
     ALTER TABLE public.formando_pra ALTER COLUMN storage_path DROP NOT NULL;
+
+    CREATE INDEX IF NOT EXISTS idx_curso_ufcds_curso ON public.curso_ufcds(curso_id);
+    CREATE INDEX IF NOT EXISTS idx_curso_ufcds_ufcd ON public.curso_ufcds(ufcd_id);
+    CREATE INDEX IF NOT EXISTS idx_cuf_formadores_cuf ON public.curso_ufcd_formadores(curso_ufcd_id);
+    CREATE INDEX IF NOT EXISTS idx_cuf_formadores_formador ON public.curso_ufcd_formadores(formador_id);
+    CREATE INDEX IF NOT EXISTS idx_sessoes_data ON public.sessoes(data);
+    CREATE INDEX IF NOT EXISTS idx_sessoes_curso_ufcd ON public.sessoes(curso_ufcd_id);
+    CREATE INDEX IF NOT EXISTS idx_faltas_data ON public.formando_faltas(data);
+    CREATE INDEX IF NOT EXISTS idx_formando_pra_cf_cuf ON public.formando_pra(curso_formando_id, curso_ufcd_id);
   `);
+  await db.exec(`ANALYZE;`);
   resetRelationshipCache();
 }
 
 async function createLocalDb(): Promise<LocalDb> {
-  if (isElectron() && typeof Worker !== "undefined") {
+  if (isElectron()) {
+    if (typeof Worker === "undefined") {
+      throw new Error("A versão offline precisa do worker da base de dados ativo. Fecha e volta a abrir pelo AbrirFormacaoER.bat.");
+    }
     let worker: Worker | null = null;
     try {
       worker = new Worker(new URL("./pglite.worker.ts", import.meta.url), { type: "module", name: "formacao-er-db" });
       // Keep the database in one browser storage area instead of OPFS. OPFS/AHP
       // creates many visible profile files on Windows and, in some portable
       // environments, never answers the first worker handshake.
-      return await withTimeout(
+      const db = await withTimeout(
         PGliteWorker.create(worker, { dataDir: LOCAL_DATA_DIR, relaxedDurability: true } as any) as Promise<LocalDb>,
         12000,
         "A base de dados local",
       );
+      return serialiseLocalDb(db);
     } catch (err) {
       try { worker?.terminate(); } catch {}
-      console.warn("[local-db] PGlite worker unavailable, falling back to renderer DB", err);
+      console.error("[local-db] PGlite worker unavailable", err);
+      throw new Error("A base de dados local não iniciou no worker. Isto evita que a janela bloqueie. Fecha a aplicação e volta a abrir pelo AbrirFormacaoER.bat.");
     }
   }
-  return await withTimeout(
+  const db = await withTimeout(
     PGlite.create(LOCAL_DATA_DIR, { relaxedDurability: true } as any) as Promise<LocalDb>,
     12000,
     "A base de dados local",
   );
+  return serialiseLocalDb(db);
 }
 
 export async function getLocalDb(): Promise<LocalDb> {

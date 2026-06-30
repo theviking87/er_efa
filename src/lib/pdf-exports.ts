@@ -258,19 +258,35 @@ export async function exportRelatorioCursosPdf() {
 export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
   const { data: faltas, error } = await supabase
     .from("formando_faltas")
-    .select("data, horas, tipo, observacoes, curso_formando:curso_formandos!inner(id, curso_id, formando:formandos(nome, nif), curso:cursos(codigo, nome)), sessao:sessoes(hora_inicio, hora_fim, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo)))")
+    .select("data, horas, tipo, observacoes, curso_formando_id, sessao_id")
     .gte("data", inicio).lte("data", fim)
     .order("data");
   if (error) throw error;
 
   const lista = faltas ?? [];
+  const cfIds = Array.from(new Set(lista.map((f: any) => f.curso_formando_id).filter(Boolean)));
+  const sessaoIds = Array.from(new Set(lista.map((f: any) => f.sessao_id).filter(Boolean)));
+  const [cfs, sessoes] = await Promise.all([
+    cfIds.length
+      ? supabase.from("curso_formandos").select("id, curso_id, formando:formandos(nome, nif), curso:cursos(codigo, nome)").in("id", cfIds)
+      : Promise.resolve({ data: [], error: null }),
+    sessaoIds.length
+      ? supabase.from("sessoes").select("id, hora_inicio, hora_fim, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))").in("id", sessaoIds)
+      : Promise.resolve({ data: [], error: null }),
+  ]);
+  if (cfs.error) throw cfs.error;
+  if (sessoes.error) throw sessoes.error;
+  const cfById = new Map((cfs.data ?? []).map((r: any) => [r.id, r]));
+  const sessaoById = new Map((sessoes.data ?? []).map((r: any) => [r.id, r]));
+
   const m = new Map<string, { curso: string; formando: string; nif: string; just: number; injust: number }>();
   lista.forEach((f: any) => {
-    const key = (f.curso_formando?.id ?? "") + "|" + (f.curso_formando?.curso_id ?? "");
+    const cf = cfById.get(f.curso_formando_id);
+    const key = (f.curso_formando_id ?? "") + "|" + (cf?.curso_id ?? "");
     const cur = m.get(key) ?? {
-      curso: `${f.curso_formando?.curso?.codigo ?? ""} — ${f.curso_formando?.curso?.nome ?? ""}`,
-      formando: f.curso_formando?.formando?.nome ?? "",
-      nif: f.curso_formando?.formando?.nif ?? "",
+      curso: `${cf?.curso?.codigo ?? ""} — ${cf?.curso?.nome ?? ""}`,
+      formando: cf?.formando?.nome ?? "",
+      nif: cf?.formando?.nif ?? "",
       just: 0, injust: 0,
     };
     if (f.tipo === "justificada") cur.just += Number(f.horas);
@@ -311,10 +327,10 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
     head: [["Data", "Formando", "Curso", "UFCD", "Hora", "Horas", "Tipo", "Observações"]],
     body: lista.map((f: any) => [
       fmtDate(f.data),
-      f.curso_formando?.formando?.nome ?? "",
-      f.curso_formando?.curso?.codigo ?? "",
-      f.sessao?.curso_ufcd?.ufcd?.codigo ?? "",
-      `${f.sessao?.hora_inicio?.slice(0, 5) ?? ""}–${f.sessao?.hora_fim?.slice(0, 5) ?? ""}`,
+      cfById.get(f.curso_formando_id)?.formando?.nome ?? "",
+      cfById.get(f.curso_formando_id)?.curso?.codigo ?? "",
+      sessaoById.get(f.sessao_id)?.curso_ufcd?.ufcd?.codigo ?? "",
+      `${sessaoById.get(f.sessao_id)?.hora_inicio?.slice(0, 5) ?? ""}–${sessaoById.get(f.sessao_id)?.hora_fim?.slice(0, 5) ?? ""}`,
       `${f.horas}h`,
       f.tipo === "justificada" ? "Just." : "Injust.",
       f.observacoes ?? "",

@@ -52,7 +52,12 @@ function writeDiagnosticLog(message, detail) {
 }
 
 function serialiseError(err) {
-  return `${err && err.message ? err.message : String(err)}${err && err.stack ? `\n${err.stack}` : ""}`;
+  if (err instanceof Error) return `${err.message}${err.stack ? `\n${err.stack}` : ""}`;
+  try {
+    return typeof err === "string" ? err : JSON.stringify(err, null, 2);
+  } catch {
+    return String(err);
+  }
 }
 
 // IMPORTANT: in portable mode, redirect Electron's userData dir BEFORE app
@@ -293,8 +298,9 @@ function queueLocalDb(label, fn) {
     try {
       return await fn();
     } catch (err) {
-      writeDiagnosticLog(`Erro na base local: ${label}`, serialiseError(err));
-      throw err;
+      const detail = serialiseError(err);
+      writeDiagnosticLog(`Erro na base local: ${label}`, detail);
+      throw new Error(detail || `Erro na base local: ${label}`);
     } finally {
       const elapsed = Date.now() - start;
       if (elapsed > 4000) writeDiagnosticLog(`Operação lenta na base local: ${label}`, `${elapsed}ms`);

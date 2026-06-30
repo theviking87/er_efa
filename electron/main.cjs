@@ -26,7 +26,9 @@ function isPortableMode() {
 
 function resolveUserDataDir() {
   if (isPortableMode()) {
-    const portableDir = path.join(path.dirname(process.execPath), "FormacaoER-data");
+    const portableDir = process.env.LOVABLE_PORTABLE_DIR
+      ? path.resolve(process.env.LOVABLE_PORTABLE_DIR)
+      : path.join(path.dirname(process.execPath), "FormacaoER-data");
     if (!fs.existsSync(portableDir)) fs.mkdirSync(portableDir, { recursive: true });
     return portableDir;
   }
@@ -51,7 +53,9 @@ function writeDiagnosticLog(message, detail) {
 // is ready. That way the renderer's IndexedDB (which PGlite uses to persist
 // the database) lives on the pen drive instead of %APPDATA%.
 if (isPortableMode()) {
-  const portableDir = path.join(path.dirname(process.execPath), "FormacaoER-data");
+  const portableDir = process.env.LOVABLE_PORTABLE_DIR
+    ? path.resolve(process.env.LOVABLE_PORTABLE_DIR)
+    : path.join(path.dirname(process.execPath), "FormacaoER-data");
   if (!fs.existsSync(portableDir)) fs.mkdirSync(portableDir, { recursive: true });
   app.setPath("userData", portableDir);
 }

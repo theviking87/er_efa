@@ -851,6 +851,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   // Todas as sessões do curso para análise global
   const todasSessoes = useQuery({
     queryKey: ["sessoes-todas", cursoId],
+    enabled: false,
     queryFn: async () => {
       const offline = await localRows<any>(`
         SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.horas, s.formador_id, s.curso_ufcd_id,

@@ -10,6 +10,17 @@ function sanitize(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").trim();
 }
 
+function uniqueIds(values: Array<string | null | undefined>) {
+  return Array.from(new Set(values.filter(Boolean) as string[]));
+}
+
+async function rowsById(table: string, columns: string, ids: string[]) {
+  if (!ids.length) return new Map<string, any>();
+  const { data, error } = await (supabase as any).from(table).select(columns).in("id", ids);
+  if (error) throw error;
+  return new Map((data ?? []).map((r: any) => [r.id, r]));
+}
+
 /** Exporta um livro Excel com todas as sessões, UFCD e formadores de um curso (para SIGO). */
 export async function exportSigoCurso(cursoId: string) {
   const [curso, cursoUfcds, sessoes] = await Promise.all([

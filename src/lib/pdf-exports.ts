@@ -73,24 +73,32 @@ function infoBlock(doc: jsPDF, startY: number, items: [string, string][]) {
 
 // ============= 1. SIGO por curso =============
 export async function exportSigoCursoPdf(cursoId: string) {
-  const [curso, ufcds, sessoes] = await Promise.all([
+  const [curso, cursoUfcds, sessoes] = await Promise.all([
     supabase.from("cursos").select("*").eq("id", cursoId).maybeSingle(),
     supabase.from("curso_ufcds")
-      .select("id, horas_totais, concluida, ordem, ufcd:ufcds(codigo, designacao)")
+      .select("id, horas_totais, concluida, ordem, ufcd_id")
       .eq("curso_id", cursoId).order("ordem"),
     supabase.from("sessoes")
-      .select("data, hora_inicio, hora_fim, horas, formador:formadores(nome), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+      .select("data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id")
       .eq("curso_id", cursoId).order("data").order("hora_inicio"),
   ]);
   if (!curso.data) throw new Error("Curso não encontrado");
+  if (cursoUfcds.error) throw cursoUfcds.error;
+  if (sessoes.error) throw sessoes.error;
   const c = curso.data as any;
+  const cufs = cursoUfcds.data ?? [];
+  const sess = sessoes.data ?? [];
+  const [ufcdById, formadorById] = await Promise.all([
+    rowsById("ufcds", "id, codigo, designacao", uniqueIds(cufs.map((u: any) => u.ufcd_id))),
+    rowsById("formadores", "id, nome", uniqueIds(sess.map((s: any) => s.formador_id))),
+  ]);
+  const cufById = new Map(cufs.map((u: any) => [u.id, u]));
 
-  const horasPorCodigo = new Map<string, number>();
-  (sessoes.data ?? []).forEach((s: any) => {
-    const k = s.curso_ufcd?.ufcd?.codigo ?? "";
-    horasPorCodigo.set(k, (horasPorCodigo.get(k) ?? 0) + Number(s.horas));
+  const horasPorCuf = new Map<string, number>();
+  sess.forEach((s: any) => {
+    horasPorCuf.set(s.curso_ufcd_id, (horasPorCuf.get(s.curso_ufcd_id) ?? 0) + Number(s.horas));
   });
-  const totalHoras = (sessoes.data ?? []).reduce((a, s: any) => a + Number(s.horas), 0);
+  const totalHoras = sess.reduce((a: number, s: any) => a + Number(s.horas), 0);
 
   const doc = newDoc("portrait");
   header(doc, "Relatório SIGO — Curso", `${c.codigo} · ${c.nome}`);
@@ -100,7 +108,7 @@ export async function exportSigoCursoPdf(cursoId: string) {
     ["Estado", ESTADO_CURSO_LABEL[c.estado] ?? c.estado ?? ""],
     ["Data início", c.data_inicio ? fmtDate(c.data_inicio) : ""],
     ["Data fim", c.data_fim ? fmtDate(c.data_fim) : ""],
-    ["Total sessões", String((sessoes.data ?? []).length)],
+    ["Total sessões", String(sess.length)],
     ["Total horas realizadas", `${totalHoras}h`],
   ]);
 
@@ -111,11 +119,12 @@ export async function exportSigoCursoPdf(cursoId: string) {
     ...tableTheme,
     startY: y + 2,
     head: [["Código", "Designação", "Previstas", "Dadas", "Faltam", "Concluída"]],
-    body: (ufcds.data ?? []).map((u: any) => {
-      const r = horasPorCodigo.get(u.ufcd.codigo) ?? 0;
+    body: cufs.map((u: any) => {
+      const ufcd = ufcdById.get(u.ufcd_id);
+      const r = horasPorCuf.get(u.id) ?? 0;
       return [
-        u.ufcd.codigo,
-        u.ufcd.designacao,
+        ufcd?.codigo ?? "",
+        ufcd?.designacao ?? "",
         `${u.horas_totais}h`,
         `${r}h`,
         `${Math.max(0, u.horas_totais - r)}h`,
@@ -131,14 +140,19 @@ export async function exportSigoCursoPdf(cursoId: string) {
     ...tableTheme,
     startY: 26,
     head: [["Data", "Início", "Fim", "Horas", "UFCD", "Formador"]],
-    body: (sessoes.data ?? []).map((s: any) => [
-      fmtDate(s.data),
-      s.hora_inicio?.slice(0, 5) ?? "",
-      s.hora_fim?.slice(0, 5) ?? "",
-      `${s.horas}h`,
-      s.curso_ufcd?.ufcd?.codigo ?? "",
-      s.formador?.nome ?? "",
-    ]),
+    body: sess.map((s: any) => {
+      const cuf = cufById.get(s.curso_ufcd_id) as any;
+      const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
+      const formador = formadorById.get(s.formador_id);
+      return [
+        fmtDate(s.data),
+        s.hora_inicio?.slice(0, 5) ?? "",
+        s.hora_fim?.slice(0, 5) ?? "",
+        `${s.horas}h`,
+        ufcd?.codigo ?? "",
+        formador?.nome ?? "",
+      ];
+    }),
     columnStyles: { 3: { halign: "right" } },
   });
 
@@ -148,20 +162,29 @@ export async function exportSigoCursoPdf(cursoId: string) {
 
 // ============= 2. Horas por formador =============
 export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) {
-  const { data } = await supabase.from("sessoes")
-    .select("data, horas, formador:formadores(nome, nif), curso:cursos(nome, codigo), curso_ufcd:curso_ufcds(ufcd:ufcds(codigo))")
+  const { data, error } = await supabase.from("sessoes")
+    .select("data, horas, formador_id, curso_id, curso_ufcd_id")
     .gte("data", inicio).lte("data", fim)
     .order("data");
+  if (error) throw error;
 
   const rows = data ?? [];
+  const [formadorById, cursoById, cufById] = await Promise.all([
+    rowsById("formadores", "id, nome, nif", uniqueIds(rows.map((s: any) => s.formador_id))),
+    rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
+    rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(rows.map((s: any) => s.curso_ufcd_id))),
+  ]);
+  const ufcdById = await rowsById("ufcds", "id, codigo", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
+
   const agg = new Map<string, { formador: string; nif: string; horas: number; sessoes: number }>();
   rows.forEach((s: any) => {
-    const k = s.formador?.nome ?? "—";
-    const cur = agg.get(k) ?? { formador: k, nif: s.formador?.nif ?? "", horas: 0, sessoes: 0 };
+    const formador = formadorById.get(s.formador_id);
+    const k = formador?.id ?? "—";
+    const cur = agg.get(k) ?? { formador: formador?.nome ?? "—", nif: formador?.nif ?? "", horas: 0, sessoes: 0 };
     cur.horas += Number(s.horas); cur.sessoes += 1;
     agg.set(k, cur);
   });
-  const totalH = rows.reduce((a, s: any) => a + Number(s.horas), 0);
+  const totalH = rows.reduce((a: number, s: any) => a + Number(s.horas), 0);
 
   const doc = newDoc("portrait");
   header(doc, "Horas por formador", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
@@ -193,13 +216,19 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
     ...tableTheme,
     startY: 26,
     head: [["Data", "Formador", "Curso", "UFCD", "Horas"]],
-    body: rows.map((s: any) => [
-      fmtDate(s.data),
-      s.formador?.nome ?? "",
-      s.curso?.codigo ?? "",
-      s.curso_ufcd?.ufcd?.codigo ?? "",
-      `${s.horas}h`,
-    ]),
+    body: rows.map((s: any) => {
+      const formador = formadorById.get(s.formador_id);
+      const curso = cursoById.get(s.curso_id);
+      const cuf = cufById.get(s.curso_ufcd_id);
+      const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
+      return [
+        fmtDate(s.data),
+        formador?.nome ?? "",
+        curso?.codigo ?? "",
+        ufcd?.codigo ?? "",
+        `${s.horas}h`,
+      ];
+    }),
     columnStyles: { 4: { halign: "right" } },
   });
 

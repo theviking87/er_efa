@@ -39,6 +39,11 @@ let userDataDir;
 let mainWindow;
 let localDbPromise = null;
 let localDbQueue = Promise.resolve();
+let localDbDirty = false;
+let localDbPersistTimer = null;
+let localDbPersistPromise = null;
+let localDbTransactionDepth = 0;
+let quittingAfterPersist = false;
 
 function writeDiagnosticLog(message, detail) {
   try {
@@ -266,23 +271,62 @@ ipcMain.handle("db:wasm", async () => {
 });
 
 // ─── IPC: local PGlite database in the main process ─────────────────────────
-// The previous build opened PGlite inside the renderer worker using IndexedDB.
-// On Electron/Windows this can throw ErrnoError 44 and kill the UI. Keeping the
-// database in the main process with Node filesystem storage removes that crash
-// path and keeps all persistent files next to the portable executable.
-function localDbDir() {
-  const dir = path.join(userDataDir, "pglite-db");
-  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  return dir;
+// Critical stability rule: do NOT open PGlite directly on the pen-drive folder.
+// Some Windows/Electron builds fall back to Emscripten's virtual FS for plain
+// paths and crash with opaque `ErrnoError { errno: 28 }` (ENOSPC) during schema
+// creation/import. The database now runs in memory and is persisted as one
+// compressed snapshot (`pglite-data.tgz`) next to the executable. That avoids the
+// fragile NodeFS/IndexedDB paths while still keeping the app fully offline.
+function legacyLocalDbDir() {
+  return path.join(userDataDir, "pglite-db");
+}
+
+function localDbSnapshotPath() {
+  return path.join(userDataDir, "pglite-data.tgz");
+}
+
+async function fileExists(filePath) {
+  try {
+    await fs.promises.access(filePath, fs.constants.F_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+async function readLocalDbSnapshot() {
+  const snapshot = localDbSnapshotPath();
+  if (!(await fileExists(snapshot))) return null;
+  return await fs.promises.readFile(snapshot);
+}
+
+async function openFreshMemoryDb(PGlite) {
+  return await PGlite.create({ dataDir: "memory://", relaxedDurability: true });
 }
 
 async function getMainLocalDb() {
   if (!localDbPromise) {
     localDbPromise = (async () => {
       const { PGlite } = require("@electric-sql/pglite");
-      const db = await PGlite.create(localDbDir(), { relaxedDurability: true });
-      writeDiagnosticLog("Base local aberta", localDbDir());
-      return db;
+      const snapshot = await readLocalDbSnapshot();
+      if (!snapshot || snapshot.length === 0) {
+        const db = await openFreshMemoryDb(PGlite);
+        writeDiagnosticLog("Base local aberta em memória", `Sem snapshot: ${localDbSnapshotPath()}`);
+        return db;
+      }
+
+      try {
+        const blob = new Blob([snapshot], { type: "application/x-gzip" });
+        const db = await PGlite.create({ dataDir: "memory://", loadDataDir: blob, relaxedDurability: true });
+        writeDiagnosticLog("Base local carregada em memória", `${localDbSnapshotPath()} (${snapshot.length} bytes)`);
+        return db;
+      } catch (err) {
+        const brokenPath = `${localDbSnapshotPath()}.corrompido-${Date.now()}`;
+        try { await fs.promises.rename(localDbSnapshotPath(), brokenPath); } catch {}
+        writeDiagnosticLog("Snapshot local corrompido; criada base vazia", `${serialiseError(err)}
+Snapshot movido para: ${brokenPath}`);
+        return await openFreshMemoryDb(PGlite);
+      }
     })().catch((err) => {
       localDbPromise = null;
       writeDiagnosticLog("Erro ao abrir base local", serialiseError(err));
@@ -290,6 +334,63 @@ async function getMainLocalDb() {
     });
   }
   return localDbPromise;
+}
+
+function isBeginSql(sql) {
+  return /^\s*(begin|start\s+transaction)/i.test(String(sql));
+}
+function isCommitSql(sql) {
+  return /^\s*(commit|end)/i.test(String(sql));
+}
+function isRollbackSql(sql) {
+  return /^\s*rollback/i.test(String(sql));
+}
+function isMutatingSql(sql) {
+  const s = String(sql).replace(/^\s*(?:--[^
+]*
+\s*)*/g, "").trim().toLowerCase();
+  if (!s) return false;
+  if (/^(select|show|explain)/.test(s)) return false;
+  return /^(insert|update|delete|create|alter|drop|truncate|reindex|vacuum|analyze|comment|grant|revoke|set)/.test(s);
+}
+
+async function persistLocalDbNow(reason = "manual") {
+  if (!localDbPromise || !localDbDirty) return;
+  if (localDbPersistTimer) {
+    clearTimeout(localDbPersistTimer);
+    localDbPersistTimer = null;
+  }
+  if (localDbPersistPromise) return localDbPersistPromise;
+
+  localDbPersistPromise = (async () => {
+    const start = Date.now();
+    const db = await localDbPromise;
+    const blob = await db.dumpDataDir("gzip");
+    const buffer = Buffer.from(await blob.arrayBuffer());
+    const target = localDbSnapshotPath();
+    const tmp = `${target}.tmp`;
+    await fs.promises.mkdir(path.dirname(target), { recursive: true });
+    await fs.promises.writeFile(tmp, buffer);
+    await fs.promises.rename(tmp, target);
+    localDbDirty = false;
+    writeDiagnosticLog("Base local gravada", `${reason}: ${buffer.length} bytes em ${Date.now() - start}ms`);
+  })().catch((err) => {
+    writeDiagnosticLog("Erro ao gravar base local", serialiseError(err));
+  }).finally(() => {
+    localDbPersistPromise = null;
+  });
+
+  return localDbPersistPromise;
+}
+
+function markLocalDbDirty(reason) {
+  localDbDirty = true;
+  if (localDbTransactionDepth > 0) return;
+  if (localDbPersistTimer) clearTimeout(localDbPersistTimer);
+  localDbPersistTimer = setTimeout(() => {
+    localDbPersistTimer = null;
+    void persistLocalDbNow(reason);
+  }, 900);
 }
 
 function queueLocalDb(label, fn) {
@@ -312,21 +413,33 @@ function queueLocalDb(label, fn) {
 
 ipcMain.handle("local-db:query", async (_evt, sql, params) => {
   return queueLocalDb("query", async () => {
+    const sqlText = String(sql);
     const db = await getMainLocalDb();
-    return await db.query(String(sql), Array.isArray(params) ? params : []);
+    const result = await db.query(sqlText, Array.isArray(params) ? params : []);
+    if (isMutatingSql(sqlText)) markLocalDbDirty("query");
+    return result;
   });
 });
 
 ipcMain.handle("local-db:exec", async (_evt, sql) => {
   return queueLocalDb("exec", async () => {
+    const sqlText = String(sql);
     const db = await getMainLocalDb();
-    await db.exec(String(sql));
+    await db.exec(sqlText);
+
+    if (isBeginSql(sqlText)) localDbTransactionDepth++;
+    if (isMutatingSql(sqlText)) markLocalDbDirty("exec");
+    if (isCommitSql(sqlText) || isRollbackSql(sqlText)) {
+      localDbTransactionDepth = Math.max(0, localDbTransactionDepth - 1);
+      if (isCommitSql(sqlText)) markLocalDbDirty("commit");
+    }
     return { ok: true };
   });
 });
 
 ipcMain.handle("local-db:close", async () => {
   return queueLocalDb("close", async () => {
+    await persistLocalDbNow("close");
     if (localDbPromise) {
       const db = await localDbPromise;
       await db.close();
@@ -338,14 +451,19 @@ ipcMain.handle("local-db:close", async () => {
 
 ipcMain.handle("local-db:reset", async () => {
   return queueLocalDb("reset", async () => {
+    if (localDbPersistTimer) {
+      clearTimeout(localDbPersistTimer);
+      localDbPersistTimer = null;
+    }
     if (localDbPromise) {
       try { await (await localDbPromise).close(); } catch {}
       localDbPromise = null;
     }
-    const dir = localDbDir();
-    await fs.promises.rm(dir, { recursive: true, force: true });
-    await fs.promises.mkdir(dir, { recursive: true });
-    writeDiagnosticLog("Base local reiniciada", dir);
+    localDbDirty = false;
+    localDbTransactionDepth = 0;
+    await fs.promises.rm(localDbSnapshotPath(), { force: true });
+    await fs.promises.rm(legacyLocalDbDir(), { recursive: true, force: true });
+    writeDiagnosticLog("Base local reiniciada", localDbSnapshotPath());
     return { ok: true };
   });
 });
@@ -435,6 +553,15 @@ app.whenReady().then(() => {
 
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") app.quit();
+});
+
+app.on("before-quit", async (event) => {
+  if (quittingAfterPersist) return;
+  if (!localDbPromise || !localDbDirty) return;
+  event.preventDefault();
+  try { await persistLocalDbNow("before-quit"); } catch {}
+  quittingAfterPersist = true;
+  app.quit();
 });
 
 app.on("will-quit", () => {

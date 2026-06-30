@@ -242,9 +242,28 @@ function buildSelectSQL(opts: {
 }): { sql: string; params: unknown[] } {
   const params: unknown[] = [];
   const alias = "t0";
-  const { selectExpr, innerWhere } = buildProjection(opts.table, alias, opts.nodes, opts.rels, params);
 
-  const where = buildWhere(opts.filters, params, alias);
+  // Separate filters that target an embed alias (e.g. "curso_ufcd.curso_id").
+  const aliasToEmbed = new Map<string, Embed>();
+  for (const n of opts.nodes) if (n.kind === "embed") aliasToEmbed.set(n.alias, n);
+  const outerFilters: Filter[] = [];
+  const embedFilters: Record<string, Filter[]> = {};
+  for (const f of opts.filters) {
+    if (f.op !== "or" && typeof (f as any).col === "string" && (f as any).col.includes(".")) {
+      const dotIdx = (f as any).col.indexOf(".");
+      const head = (f as any).col.slice(0, dotIdx);
+      const tail = (f as any).col.slice(dotIdx + 1);
+      if (aliasToEmbed.has(head)) {
+        (embedFilters[head] ??= []).push({ ...(f as any), col: tail });
+        continue;
+      }
+    }
+    outerFilters.push(f);
+  }
+
+  const { selectExpr, innerWhere } = buildProjection(opts.table, alias, opts.nodes, opts.rels, params, embedFilters);
+
+  const where = buildWhere(outerFilters, params, alias);
   const extraInner = innerWhere.length ? (where ? ` AND ${innerWhere.join(" AND ")}` : ` WHERE ${innerWhere.join(" AND ")}`) : "";
   const orderBy = opts.order.length
     ? ` ORDER BY ${opts.order.map((o) => `${alias}.${quoteCol(o.col)} ${o.asc ? "ASC" : "DESC"}`).join(", ")}`
@@ -262,13 +281,14 @@ function buildSelectSQL(opts: {
 }
 
 /** Build the projection list. Embeds turn into correlated subqueries.
- *  Returns extra WHERE EXISTS clauses for `!inner` embeds. */
+ *  Returns extra WHERE EXISTS clauses for `!inner` embeds (and embeds with filters). */
 function buildProjection(
   table: string,
   alias: string,
   nodes: SelectNode[],
   rels: Relationship[],
-  params: unknown[]
+  params: unknown[],
+  embedFilters: Record<string, Filter[]> = {}
 ): { selectExpr: string; innerWhere: string[] } {
   const out: string[] = [];
   const innerWhere: string[] = [];
@@ -277,9 +297,10 @@ function buildProjection(
       if (n.name === "*") out.push(`${alias}.*`);
       else out.push(`${alias}.${quoteCol(n.name)} AS ${quoteCol(n.name)}`);
     } else {
-      const sub = buildEmbedSubquery(table, alias, n, rels, params);
+      const extra = embedFilters[n.alias] ?? [];
+      const sub = buildEmbedSubquery(table, alias, n, rels, params, extra);
       out.push(`${sub.expr} AS ${quoteCol(n.alias)}`);
-      if (n.inner) innerWhere.push(sub.existsExpr);
+      if (n.inner || extra.length) innerWhere.push(sub.existsExpr);
     }
   }
   return { selectExpr: out.join(", "), innerWhere };
@@ -290,7 +311,8 @@ function buildEmbedSubquery(
   parentAlias: string,
   embed: Embed,
   rels: Relationship[],
-  params: unknown[]
+  params: unknown[],
+  extraFilters: Filter[] = []
 ): { expr: string; existsExpr: string } {
   const rel = findRelationship(rels, parentTable, embed.table);
   if (!rel) {
@@ -305,8 +327,10 @@ function buildEmbedSubquery(
     joinCond = `${childAlias}.id = ${parentAlias}.${quoteCol(rel.fkColumn)}`;
   }
   const { selectExpr, innerWhere } = buildProjection(embed.table, childAlias, embed.children, rels, params);
+  const extraClauses = extraFilters.length ? buildFilterClauses(extraFilters, params, childAlias) : [];
+  const extraSql = extraClauses.length ? " AND " + extraClauses.join(" AND ") : "";
   const innerWhereSql = innerWhere.length ? ` AND ${innerWhere.join(" AND ")}` : "";
-  const subBody = `SELECT ${selectExpr} FROM ${quoteCol(embed.table)} ${childAlias} WHERE ${joinCond}${innerWhereSql}`;
+  const subBody = `SELECT ${selectExpr} FROM ${quoteCol(embed.table)} ${childAlias} WHERE ${joinCond}${innerWhereSql}${extraSql}`;
 
   let expr: string;
   if (rel.cardinality === "many") {
@@ -314,12 +338,11 @@ function buildEmbedSubquery(
   } else {
     expr = `(SELECT row_to_json(__e) FROM (${subBody} LIMIT 1) __e)`;
   }
-  const existsExpr = `EXISTS (SELECT 1 FROM ${quoteCol(embed.table)} ${childAlias} WHERE ${joinCond}${innerWhereSql})`;
+  const existsExpr = `EXISTS (SELECT 1 FROM ${quoteCol(embed.table)} ${childAlias} WHERE ${joinCond}${innerWhereSql}${extraSql})`;
   return { expr, existsExpr };
 }
 
-function buildWhere(filters: Filter[], params: unknown[], tableAlias?: string): string {
-  if (filters.length === 0) return "";
+function buildFilterClauses(filters: Filter[], params: unknown[], tableAlias?: string): string[] {
   const parts: string[] = [];
   for (const f of filters) {
     if (f.op === "or") { parts.push(f.expr); continue; }
@@ -339,6 +362,12 @@ function buildWhere(filters: Filter[], params: unknown[], tableAlias?: string): 
     const opMap: Record<string, string> = { eq: "=", neq: "<>", gt: ">", gte: ">=", lt: "<", lte: "<=", like: "LIKE", ilike: "ILIKE" };
     parts.push(`${refCol(f.col, tableAlias)} ${opMap[f.op]} $${params.length}`);
   }
+  return parts;
+}
+
+function buildWhere(filters: Filter[], params: unknown[], tableAlias?: string): string {
+  if (filters.length === 0) return "";
+  const parts = buildFilterClauses(filters, params, tableAlias);
   return "WHERE " + parts.join(" AND ");
 }
 

@@ -164,8 +164,20 @@ function createWindow() {
     try { win.webContents.openDevTools({ mode: "detach" }); } catch {}
   });
 
-  // Open external links in the system browser instead of a new Electron window.
+  // Allow about:blank / same-origin popups (used for printing). Open external
+  // http(s) links in the system browser instead.
   win.webContents.setWindowOpenHandler(({ url }) => {
+    if (!url || url === "about:blank" || url.startsWith("formacao-er://")) {
+      return {
+        action: "allow",
+        overrideBrowserWindowOptions: {
+          width: 1024,
+          height: 800,
+          autoHideMenuBar: true,
+          webPreferences: { contextIsolation: true, nodeIntegration: false },
+        },
+      };
+    }
     shell.openExternal(url);
     return { action: "deny" };
   });

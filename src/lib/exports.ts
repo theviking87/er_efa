@@ -5,6 +5,18 @@ import { localRows, yieldToBrowser } from "@/lib/offline-sql";
 
 async function downloadWorkbook(wb: XLSX.WorkBook, filename: string) {
   await yieldToBrowser();
+  if (import.meta.env.VITE_OFFLINE === "1") {
+    const blob = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const url = URL.createObjectURL(new Blob([blob], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    return;
+  }
   XLSX.writeFile(wb, filename);
 }
 

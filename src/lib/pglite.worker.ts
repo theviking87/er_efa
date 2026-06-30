@@ -8,7 +8,7 @@ import { worker } from "@electric-sql/pglite/worker";
 void worker({
   init: async (options) => {
     const opts = options as any;
-    if (opts.fs) return new PGlite({ ...opts, fs: new OpfsAhpFS("/formacao-er-db") });
+    if (opts.meta?.filesystem === "opfs-ahp") return new PGlite({ ...opts, meta: undefined, fs: new OpfsAhpFS("/formacao-er-db") });
     return new PGlite(opts);
   },
 });

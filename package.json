@@ -14,8 +14,8 @@
     "migrations:bundle": "node scripts/bundle-migrations.mjs",
     "electron:build:spa": "npm run migrations:bundle && vite build --config vite.config.electron.ts",
     "electron:dev": "electron .",
-    "electron:build:win": "npm run electron:build:spa && electron-packager . FormacaoER --platform=win32 --arch=x64 --out=electron-release --overwrite --extra-resource=dist-electron --ignore=\"^/src($|/)\" --ignore=\"^/public($|/)\" --ignore=\"^/electron-release($|/)\" --ignore=\"^/supabase($|/)\" --ignore=\"^/offline($|/)\" --ignore=\"^/dist($|/)\"",
-    "electron:build:mac": "npm run electron:build:spa && electron-packager . FormacaoER --platform=darwin --arch=x64 --out=electron-release --overwrite --extra-resource=dist-electron --ignore=\"^/src($|/)\" --ignore=\"^/public($|/)\" --ignore=\"^/electron-release($|/)\" --ignore=\"^/supabase($|/)\" --ignore=\"^/offline($|/)\" --ignore=\"^/dist($|/)\""
+    "electron:build:win": "npm run electron:build:spa && electron-packager . FormacaoER --platform=win32 --arch=x64 --out=electron-release --overwrite --asar --extra-resource=dist-electron --ignore=\"^/src($|/)\" --ignore=\"^/public($|/)\" --ignore=\"^/electron-release($|/)\" --ignore=\"^/supabase($|/)\" --ignore=\"^/offline($|/)\" --ignore=\"^/dist($|/)\" --ignore=\"^/dist-electron($|/)\"",
+    "electron:build:mac": "npm run electron:build:spa && electron-packager . FormacaoER --platform=darwin --arch=x64 --out=electron-release --overwrite --asar --extra-resource=dist-electron --ignore=\"^/src($|/)\" --ignore=\"^/public($|/)\" --ignore=\"^/electron-release($|/)\" --ignore=\"^/supabase($|/)\" --ignore=\"^/offline($|/)\" --ignore=\"^/dist($|/)\" --ignore=\"^/dist-electron($|/)\""
   },
   "dependencies": {
     "@electric-sql/pglite": "^0.5.3",

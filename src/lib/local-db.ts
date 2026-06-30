@@ -28,7 +28,7 @@ function queueOperation<T>(label: string, op: () => Promise<T>): Promise<T> {
       console.warn(`[local-db] operação lenta: ${label} ainda a executar após 8s`);
     }, 8000);
     try {
-      return await op();
+      return await withTimeout(op(), 30000, `Operação local (${label})`);
     } finally {
       clearTimeout(slowTimer);
       const elapsed = Date.now() - start;

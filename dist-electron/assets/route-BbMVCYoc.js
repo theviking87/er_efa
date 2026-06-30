@@ -1,1 +1,0 @@
-import{r as e}from"./useRouter-C66a7P2G.js";import{t}from"./app-shell-BoX9h-cz.js";import{O as n}from"./index.electron-Cou_OEni.js";var r=e(),i=()=>(0,r.jsx)(t,{children:(0,r.jsx)(n,{})});export{i as component};

@@ -307,7 +307,9 @@ async function createLocalDb(): Promise<LocalDb> {
   if (isElectron() && typeof Worker !== "undefined") {
     try {
       const worker = new Worker(new URL("./pglite.worker.ts", import.meta.url), { type: "module", name: "formacao-er-db" });
-      return await PGliteWorker.create(worker, { dataDir: "idb://formacao-er-db" } as any) as LocalDb;
+      // OPFS is worker-only and avoids IndexedDB's full-database flush after
+      // writes. On slower USB drives that flush was the main source of freezes.
+      return await PGliteWorker.create(worker, { meta: { filesystem: "opfs-ahp" } } as any) as LocalDb;
     } catch (err) {
       console.warn("[local-db] PGlite worker unavailable, falling back to renderer DB", err);
     }

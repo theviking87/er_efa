@@ -101,18 +101,26 @@ async function insertRows(
   if (!cols.length) return 0;
 
   const quotedCols = cols.map(quoteIdent).join(", ");
+  const maxParams = 800;
+  const batchSize = Math.max(1, Math.floor(maxParams / Math.max(1, cols.length)));
   let inserted = 0;
-  for (let i = 0; i < rows.length; i++) {
-    const row = rows[i];
-    const params = cols.map((col) => normalizeValue(row[col]));
-    const placeholders = params.map((_, idx) => `$${idx + 1}`).join(", ");
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const batch = rows.slice(i, i + batchSize);
+    const params: unknown[] = [];
+    const values = batch.map((row) => {
+      const placeholders = cols.map((col) => {
+        params.push(normalizeValue(row[col]));
+        return `$${params.length}`;
+      });
+      return `(${placeholders.join(", ")})`;
+    });
     await db.query(
-      `INSERT INTO ${tableName(table)} (${quotedCols}) VALUES (${placeholders}) ON CONFLICT DO NOTHING`,
+      `INSERT INTO ${tableName(table)} (${quotedCols}) VALUES ${values.join(", ")} ON CONFLICT DO NOTHING`,
       params,
     );
-    inserted++;
-    if (i > 0 && i % 100 === 0) {
-      progress?.(`A importar ${table}: ${i}/${rows.length}…`);
+    inserted += batch.length;
+    if (i > 0 && i % (batchSize * 5) === 0) {
+      progress?.(`A importar ${table}: ${Math.min(i + batch.length, rows.length)}/${rows.length}…`);
       await yieldToUi();
     }
   }

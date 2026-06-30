@@ -241,14 +241,17 @@ ipcMain.handle("db:write", async (_evt, buffer) => {
   return { ok: true };
 });
 ipcMain.handle("db:wasm", async () => {
-  const assetsDir = path.join(__dirname, "..", "offline", "dist", "assets");
-  try {
-    const file = fs.readdirSync(assetsDir).find((f) => f.startsWith("sql-wasm") && f.endsWith(".wasm"));
-    if (!file) return null;
-    return fs.readFileSync(path.join(assetsDir, file));
-  } catch {
-    return null;
+  for (const dir of rendererDirs()) {
+    const assetsDir = path.join(dir, "assets");
+    try {
+      if (!fs.existsSync(assetsDir)) continue;
+      const file = fs.readdirSync(assetsDir).find((f) => f.startsWith("sql-wasm") && f.endsWith(".wasm"));
+      if (file) return await fs.promises.readFile(path.join(assetsDir, file));
+    } catch {
+      // Try the next packaged/dev location.
+    }
   }
+  return null;
 });
 
 ipcMain.handle("app:userDataDir", async () => userDataDir);

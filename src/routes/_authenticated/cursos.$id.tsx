@@ -2159,6 +2159,21 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const inscritos = useQuery({
     queryKey: ["curso-formandos-faltas", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT cf.id, cf.formando_id, f.id AS formando_id_join, f.nome AS formando_nome
+          FROM curso_formandos cf
+          LEFT JOIN formandos f ON f.id = cf.formando_id
+         WHERE cf.curso_id = $1
+           AND cf.estado IN ('inscrito', 'em_formacao')
+         ORDER BY f.nome ASC
+      `, [cursoId]);
+      if (offline) {
+        return offline.map((r: any) => ({
+          id: r.id,
+          formando_id: r.formando_id,
+          formando: { id: r.formando_id_join ?? r.formando_id, nome: r.formando_nome ?? "" },
+        }));
+      }
       const { data, error } = await supabase.from("curso_formandos")
         .select("id, formando_id")
         .eq("curso_id", cursoId)
@@ -2179,6 +2194,21 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const sessoes = useQuery({
     queryKey: ["sessoes-faltas", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT s.id, s.data, s.hora_inicio, s.hora_fim, s.horas, s.curso_ufcd_id,
+               u.codigo AS ufcd_codigo, u.designacao AS ufcd_designacao
+          FROM sessoes s
+          LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
+          LEFT JOIN ufcds u ON u.id = cu.ufcd_id
+         WHERE s.curso_id = $1
+         ORDER BY s.data DESC, s.hora_inicio DESC
+      `, [cursoId]);
+      if (offline) {
+        return offline.map((s: any) => ({
+          ...s,
+          curso_ufcd: { ufcd: { codigo: s.ufcd_codigo, designacao: s.ufcd_designacao } },
+        }));
+      }
       const { data, error } = await supabase.from("sessoes")
         .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id")
         .eq("curso_id", cursoId)
@@ -2207,6 +2237,12 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
     queryKey: ["faltas", cursoId, sessaoId],
     enabled: !!sessaoId,
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT id, curso_formando_id, horas, tipo, observacoes
+          FROM formando_faltas
+         WHERE sessao_id = $1
+      `, [sessaoId]);
+      if (offline) return offline;
       const { data, error } = await supabase.from("formando_faltas")
         .select("id, curso_formando_id, horas, tipo, observacoes")
         .eq("sessao_id", sessaoId);
@@ -2218,6 +2254,18 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const totaisPorFormando = useQuery({
     queryKey: ["faltas-totais", cursoId],
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT ff.curso_formando_id,
+               SUM(CASE WHEN ff.tipo = 'justificada' THEN COALESCE(ff.horas, 0) ELSE 0 END) AS just,
+               SUM(CASE WHEN ff.tipo = 'justificada' THEN 0 ELSE COALESCE(ff.horas, 0) END) AS injust
+          FROM formando_faltas ff
+          JOIN curso_formandos cf ON cf.id = ff.curso_formando_id
+         WHERE cf.curso_id = $1
+         GROUP BY ff.curso_formando_id
+      `, [cursoId]);
+      if (offline) {
+        return new Map<string, { just: number; injust: number }>(offline.map((r: any) => [r.curso_formando_id, { just: Number(r.just ?? 0), injust: Number(r.injust ?? 0) }]));
+      }
       const { data: cfs, error: cfError } = await supabase.from("curso_formandos")
         .select("id")
         .eq("curso_id", cursoId);

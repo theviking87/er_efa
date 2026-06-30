@@ -387,7 +387,8 @@ function markLocalDbDirty(reason) {
   if (localDbPersistTimer) clearTimeout(localDbPersistTimer);
   localDbPersistTimer = setTimeout(() => {
     localDbPersistTimer = null;
-    void persistLocalDbNow(reason);
+    const persistRun = localDbQueue.catch(() => undefined).then(() => persistLocalDbNow(reason));
+    localDbQueue = persistRun.then(() => undefined, () => undefined);
   }, 900);
 }
 

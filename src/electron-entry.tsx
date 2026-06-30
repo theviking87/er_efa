@@ -171,10 +171,13 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
   const [summary, setSummary] = useState<LocalImportSummary | null>(null);
   const [error, setError] = useState("");
   const [continueEmpty, setContinueEmpty] = useState(false);
+  const [slowStart, setSlowStart] = useState(false);
 
   async function refreshSummary() {
     setChecking(true);
     setError("");
+    setSlowStart(false);
+    const slowTimer = window.setTimeout(() => setSlowStart(true), 8000);
     try {
       const counts = await getLocalDataSummary();
       // UFCDs podem existir como catálogo vazio/base; só contam como sistema
@@ -190,6 +193,7 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
       setError(err?.message ?? String(err));
       setEmpty(true);
     } finally {
+      window.clearTimeout(slowTimer);
       setChecking(false);
     }
   }
@@ -222,7 +226,27 @@ function OfflineDataGate({ children }: { children: ReactNode }) {
   }
 
   if (checking) {
-    return <div className="min-h-screen grid place-items-center text-sm text-muted-foreground">{progress}</div>;
+    return (
+      <div className="min-h-screen grid place-items-center text-sm text-muted-foreground p-6 text-center">
+        <div className="space-y-3">
+          <div>{progress}</div>
+          {slowStart ? (
+            <>
+              <p className="max-w-md text-xs leading-relaxed">
+                Está a demorar mais do que o normal. Podes entrar vazio para chegar à app e importar o backup depois.
+              </p>
+              <button
+                type="button"
+                className="h-9 rounded-md border px-3 text-xs font-medium text-foreground"
+                onClick={() => { window.localStorage.removeItem(LOCAL_FORCE_IMPORT_KEY); setChecking(false); setContinueEmpty(true); }}
+              >
+                Entrar vazio
+              </button>
+            </>
+          ) : null}
+        </div>
+      </div>
+    );
   }
 
   if (empty && !continueEmpty) {

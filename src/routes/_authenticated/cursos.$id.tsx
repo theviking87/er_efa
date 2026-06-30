@@ -907,9 +907,9 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
     const dias = Array.from(diasAnalise).sort();
     for (let idx = 0; idx < dias.length; idx++) {
       if (idx % 40 === 0) await yieldToBrowser();
-      const data = dias[idx];
-      if (feriasDias.has(data)) return;
-      if (feriadoNome(data)) return;
+      const data = dias[idx]!;
+      if (feriasDias.has(data)) continue;
+      if (feriadoNome(data)) continue;
       const sess = byDay.get(data) ?? [];
       // Conflitos internos
       const conf: any[] = [];

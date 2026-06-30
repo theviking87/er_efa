@@ -131,7 +131,17 @@ async function clearKnownTables(db: Awaited<ReturnType<typeof getLocalDb>>, tabl
   const existing = await existingTables(db);
   const targets = TABLE_ORDER.filter((t) => tablesInBackup.includes(t) && existing.has(t));
   if (!targets.length) return;
-  await db.exec(`TRUNCATE ${targets.map(tableName).join(", ")} RESTART IDENTITY CASCADE`);
+  // PGlite in the Electron main process can surface opaque IPC errors for
+  // TRUNCATE CASCADE on a previously broken portable DB. Deleting in reverse FK
+  // order is slower but deterministic and keeps the import error visible.
+  await db.exec(`SET session_replication_role = replica;`);
+  try {
+    for (const table of [...targets].reverse()) {
+      await db.exec(`DELETE FROM ${tableName(table)}`);
+    }
+  } finally {
+    await db.exec(`SET session_replication_role = origin;`);
+  }
 }
 
 async function copyStorage(zip: JSZip, progress?: Progress): Promise<{ files: number; warnings: string[] }> {
@@ -180,10 +190,21 @@ export async function importLocalBackupZip(file: File, progress?: Progress): Pro
   if (!dataEntry) throw new Error("Este .zip não tem data.json. Exporta novamente o backup completo da versão online.");
 
   progress?.("A preparar a base de dados local…");
-  const db = await getLocalDb();
   const parsed = JSON.parse(await dataEntry.async("string")) as { tables?: Record<string, Record<string, unknown>[]> };
   const tables = parsed.tables ?? {};
   const tableNames = Object.keys(tables);
+
+  // A failed v6 import could leave the local PGlite folder in a half-broken
+  // state. For a full backup restore the safest behaviour is to reset the local
+  // DB first, recreate the schema, then import. Existing docs are overwritten
+  // below from the backup storage/ folder.
+  const api = typeof window !== "undefined" ? (window as any).electronAPI : null;
+  if (api?.localDb?.reset) {
+    progress?.("A reiniciar a base local…");
+    await api.localDb.reset();
+  }
+
+  const db = await getLocalDb();
   const existing = await existingTables(db);
 
   const summary: LocalImportSummary = { tables: {}, files: 0, warnings: [] };

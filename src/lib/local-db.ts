@@ -1,15 +1,14 @@
-// Local PGlite database — offline replacement for Supabase Postgres.
-// Runs in the renderer (browser/Electron) with IndexedDB persistence.
-//
-// Status: foundation only. The shim that translates Supabase query-builder
-// calls into PGlite SQL lives in `src/integrations/local/postgrest-shim.ts`
-// (to be wired into `src/integrations/supabase/client.ts` once stable).
-import { PGlite } from "@electric-sql/pglite";
-import { PGliteWorker } from "@electric-sql/pglite/worker";
+// Local database — offline replacement for the cloud Postgres API.
+// In Electron, the actual PGlite engine runs in the main process through IPC.
+// This avoids renderer/IndexedDB worker crashes on portable Windows builds.
 import { MIGRATIONS } from "./local-migrations.generated";
 import { resetRelationshipCache } from "@/integrations/local/relationships";
 
-export type LocalDb = Pick<PGlite, "query" | "exec" | "close"> & Record<string, any>;
+export type LocalDb = {
+  query<T = any>(sql: string, params?: unknown[]): Promise<{ rows: T[]; fields?: any[]; affectedRows?: number }>;
+  exec(sql: string): Promise<unknown>;
+  close(): Promise<unknown>;
+} & Record<string, any>;
 
 let _db: LocalDb | null = null;
 let _ready: Promise<LocalDb> | null = null;
@@ -28,7 +27,7 @@ function queueOperation<T>(label: string, op: () => Promise<T>): Promise<T> {
       console.warn(`[local-db] operação lenta: ${label} ainda a executar após 8s`);
     }, 8000);
     try {
-      return await withTimeout(op(), 30000, `Operação local (${label})`);
+      return await withTimeout(op(), 180000, `Operação local (${label})`);
     } finally {
       clearTimeout(slowTimer);
       const elapsed = Date.now() - start;
@@ -369,27 +368,17 @@ async function initSchema(db: LocalDb): Promise<void> {
 
 async function createLocalDb(): Promise<LocalDb> {
   if (isElectron()) {
-    if (typeof Worker === "undefined") {
-      throw new Error("A versão offline precisa do worker da base de dados ativo. Fecha e volta a abrir pelo AbrirFormacaoER.bat.");
+    const api = (window as any).electronAPI?.localDb;
+    if (!api?.query || !api?.exec) {
+      throw new Error("A ponte da base de dados local não está disponível. Fecha a aplicação e volta a abrir pelo AbrirFormacaoER.bat.");
     }
-    let worker: Worker | null = null;
-    try {
-      worker = new Worker(new URL("./pglite.worker.ts", import.meta.url), { type: "module", name: "formacao-er-db" });
-      // Keep the database in one browser storage area instead of OPFS. OPFS/AHP
-      // creates many visible profile files on Windows and, in some portable
-      // environments, never answers the first worker handshake.
-      const db = await withTimeout(
-        PGliteWorker.create(worker, { dataDir: LOCAL_DATA_DIR, relaxedDurability: true } as any) as Promise<LocalDb>,
-        12000,
-        "A base de dados local",
-      );
-      return serialiseLocalDb(db);
-    } catch (err) {
-      try { worker?.terminate(); } catch {}
-      console.error("[local-db] PGlite worker unavailable", err);
-      throw new Error("A base de dados local não iniciou no worker. Isto evita que a janela bloqueie. Fecha a aplicação e volta a abrir pelo AbrirFormacaoER.bat.");
-    }
+    return serialiseLocalDb({
+      query: (sql: string, params?: unknown[]) => api.query(sql, params ?? []),
+      exec: (sql: string) => api.exec(sql),
+      close: () => api.close?.() ?? Promise.resolve(),
+    } as LocalDb);
   }
+  const { PGlite } = await import("@electric-sql/pglite");
   const db = await withTimeout(
     PGlite.create(LOCAL_DATA_DIR, { relaxedDurability: true } as any) as Promise<LocalDb>,
     12000,

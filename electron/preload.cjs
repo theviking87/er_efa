@@ -28,6 +28,15 @@ contextBridge.exposeInMainWorld("electronAPI", {
     html: (payload) => ipcRenderer.invoke("print:html", payload),
   },
 
+  // Local PostgreSQL engine runs in Electron's main process, not in the UI.
+  // This avoids renderer/IndexedDB worker crashes on portable Windows builds.
+  localDb: {
+    query: (sql, params) => ipcRenderer.invoke("local-db:query", sql, params),
+    exec: (sql) => ipcRenderer.invoke("local-db:exec", sql),
+    close: () => ipcRenderer.invoke("local-db:close"),
+    reset: () => ipcRenderer.invoke("local-db:reset"),
+  },
+
   // Database file (silent)
   db: {
     read: () => ipcRenderer.invoke("db:read"),

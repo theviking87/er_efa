@@ -24,6 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
 import { localRows, yieldToBrowser } from "@/lib/offline-sql";
+import { collectDocumentStyles, printHtmlWithFallback } from "@/lib/electron-io";
 
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
@@ -183,7 +184,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
     qc.invalidateQueries({ queryKey: ["curso-ufcds", cursoId] });
   }
 
-  function imprimirSemFormador() {
+  async function imprimirSemFormador() {
     const lista = (data.data ?? []).filter((u: any) => (u.formadores ?? []).length === 0);
     const html = `<!doctype html><html><head><meta charset="utf-8"><title>UFCD sem formador</title>
       <style>body{font-family:system-ui,sans-serif;padding:24px;color:#111}h1{font-size:16px;margin:0 0 4px}h2{font-size:12px;font-weight:normal;color:#555;margin:0 0 16px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px 8px;text-align:left}th{background:#eee}</style>
@@ -197,9 +198,12 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
       </tbody></table>
       <script>window.onload=()=>setTimeout(()=>window.print(),100)</script>
       </body></html>`;
-    const w = window.open("", "_blank");
-    if (!w) return toast.error("Bloqueado pelo navegador");
-    w.document.write(html); w.document.close();
+    try {
+      const ok = await printHtmlWithFallback({ title: "UFCD sem formador", html, landscape: false });
+      if (!ok) toast.error("Não foi possível abrir a impressão");
+    } catch (e: any) {
+      toast.error("Erro na impressão", { description: e.message });
+    }
   }
 
   return (
@@ -1180,15 +1184,11 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
   const totalMes = resumoMes.reduce((a, r) => a + r.horas, 0);
 
-  function imprimirCronograma() {
+  async function imprimirCronograma() {
     const node = document.getElementById("cronograma-print");
     if (!node) return window.print();
-    const styles = Array.from(document.querySelectorAll('link[rel="stylesheet"], style'))
-      .map((el) => el.outerHTML)
-      .join("\n");
-    const w = window.open("", "_blank");
-    if (!w) return toast.error("Bloqueado pelo navegador");
-    w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Cronograma ${cursoCodigo}</title>${styles}
+    const styles = collectDocumentStyles();
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Cronograma ${cursoCodigo}</title>${styles}
       <style>
         @page { size: A4 landscape; margin: 6mm; }
         html, body { margin: 0 !important; padding: 0 !important; background: white !important; }
@@ -1206,8 +1206,13 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         #cronograma-print > .horas-page table { page-break-inside: auto !important; break-inside: auto !important; }
         #cronograma-print > .horas-page tr { page-break-inside: avoid !important; break-inside: avoid !important; }
         .text-red-600 { color: #dc2626 !important; font-weight: 700 !important; }
-      </style></head><body><div id="cronograma-print"><div class="cronograma-page">${node.querySelector(".cronograma-page")?.innerHTML ?? ""}</div><div class="horas-page text-[10px]">${node.querySelector(".horas-page")?.innerHTML ?? ""}</div></div><script>window.onload=()=>setTimeout(()=>{window.focus();window.print();},250)<\/script></body></html>`);
-    w.document.close();
+      </style></head><body><div id="cronograma-print"><div class="cronograma-page">${node.querySelector(".cronograma-page")?.innerHTML ?? ""}</div><div class="horas-page text-[10px]">${node.querySelector(".horas-page")?.innerHTML ?? ""}</div></div><script>window.onload=()=>setTimeout(()=>{window.focus();window.print();},250)<\/script></body></html>`;
+    try {
+      const ok = await printHtmlWithFallback({ title: `Cronograma ${cursoCodigo}`, html, landscape: true });
+      if (!ok) toast.error("Não foi possível abrir a impressão");
+    } catch (e: any) {
+      toast.error("Erro na impressão", { description: e.message });
+    }
   }
 
 

@@ -274,6 +274,51 @@ ipcMain.handle("app:restoreDb", async () => {
   return fs.readFileSync(result.filePaths[0]);
 });
 
+ipcMain.handle("file:save", async (_evt, defaultName, buffer, filters) => {
+  const result = await dialog.showSaveDialog(mainWindow, {
+    title: "Guardar ficheiro",
+    defaultPath: defaultName || "ficheiro",
+    filters: Array.isArray(filters) && filters.length ? filters : [{ name: "Todos os ficheiros", extensions: ["*"] }],
+  });
+  if (result.canceled || !result.filePath) return { ok: false };
+  fs.writeFileSync(result.filePath, Buffer.from(buffer));
+  return { ok: true, path: result.filePath };
+});
+
+ipcMain.handle("print:html", async (_evt, payload) => {
+  const title = String(payload?.title || "Impressão");
+  const html = String(payload?.html || "");
+  const landscape = Boolean(payload?.landscape);
+  if (!html.trim()) return { ok: false, error: "Sem conteúdo para imprimir" };
+
+  return await new Promise((resolve) => {
+    const printWindow = new BrowserWindow({
+      width: landscape ? 1200 : 900,
+      height: landscape ? 820 : 1100,
+      show: false,
+      title,
+      autoHideMenuBar: true,
+      webPreferences: { contextIsolation: true, nodeIntegration: false },
+    });
+    let finished = false;
+    const finish = (result) => {
+      if (finished) return;
+      finished = true;
+      try { printWindow.close(); } catch {}
+      resolve(result);
+    };
+    printWindow.webContents.on("did-fail-load", (_event, _code, desc) => finish({ ok: false, error: desc }));
+    printWindow.webContents.once("did-finish-load", () => {
+      setTimeout(() => {
+        printWindow.webContents.print({ silent: false, printBackground: true, landscape }, (success, failureReason) => {
+          finish(success ? { ok: true } : { ok: false, error: failureReason || "Impressão cancelada" });
+        });
+      }, 250);
+    });
+    printWindow.loadURL(`data:text/html;charset=utf-8,${encodeURIComponent(html)}`).catch((err) => finish({ ok: false, error: err.message }));
+  });
+});
+
 app.whenReady().then(() => {
   userDataDir = resolveUserDataDir();
   console.log("[FormacaoER] userData:", userDataDir);

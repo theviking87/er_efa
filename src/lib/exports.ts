@@ -2,11 +2,14 @@ import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { MONTH_NAMES, TIPOLOGIA_LABEL, ESTADO_CURSO_LABEL } from "@/lib/format";
 import { localRows, yieldToBrowser } from "@/lib/offline-sql";
+import { saveFileElectron } from "@/lib/electron-io";
 
 async function downloadWorkbook(wb: XLSX.WorkBook, filename: string) {
   await yieldToBrowser();
   if (import.meta.env.VITE_OFFLINE === "1") {
     const blob = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    const saved = await saveFileElectron(filename, blob, [{ name: "Excel", extensions: ["xlsx"] }]);
+    if (saved) return;
     const url = URL.createObjectURL(new Blob([blob], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
     const a = document.createElement("a");
     a.href = url;

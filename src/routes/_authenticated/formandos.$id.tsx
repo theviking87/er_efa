@@ -93,6 +93,7 @@ function FormandoDetail() {
           <TabsTrigger value="dados">Dados</TabsTrigger>
           <TabsTrigger value="inscricoes">Inscrições</TabsTrigger>
           <TabsTrigger value="pra">PRA</TabsTrigger>
+          <TabsTrigger value="horas">Horas</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados">
@@ -141,6 +142,18 @@ function FormandoDetail() {
             ) : (
               q.data.inscricoes.map((i: any) => (
                 <PraCurso key={i.id} cursoFormandoId={i.id} curso={i.curso} />
+              ))
+            )}
+          </CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="horas">
+          <Card><CardContent className="p-6 space-y-6">
+            {q.data.inscricoes.length === 0 ? (
+              <div className="text-sm text-muted-foreground text-center py-8">Sem inscrições.</div>
+            ) : (
+              q.data.inscricoes.map((i: any) => (
+                <HorasCurso key={i.id} cursoFormandoId={i.id} curso={i.curso} />
               ))
             )}
           </CardContent></Card>

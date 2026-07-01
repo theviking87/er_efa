@@ -1098,16 +1098,22 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
   // Resumo do mês por formador
   const resumoMes = useMemo(() => {
-    const m = new Map<string, { id: string; nome: string; cor: string; horas: number; ufcds: Set<string> }>();
+    const m = new Map<string, { id: string; nome: string; cor: string; horas: number; ufcds: Set<string>; porUfcd: Map<string, number> }>();
     (sessoes.data ?? []).forEach((s: any) => {
       if (!s.formador) return;
-      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: formadorLabel(s.formador), cor: s.formador.cor, horas: 0, ufcds: new Set<string>() };
-      cur.horas += Number(s.horas);
-      if (s.curso_ufcd?.ufcd?.codigo) cur.ufcds.add(s.curso_ufcd.ufcd.codigo);
+      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: formadorLabel(s.formador), cor: s.formador.cor, horas: 0, ufcds: new Set<string>(), porUfcd: new Map<string, number>() };
+      const h = Number(s.horas) || 0;
+      cur.horas += h;
+      const cod = s.curso_ufcd?.ufcd?.codigo;
+      if (cod) {
+        cur.ufcds.add(cod);
+        cur.porUfcd.set(cod, (cur.porUfcd.get(cod) ?? 0) + h);
+      }
       m.set(s.formador.id, cur);
     });
     return Array.from(m.values()).sort((a, b) => b.horas - a.horas);
   }, [sessoes.data]);
+
 
   // Para a impressão: formadores do mês × UFCD em curso × horas em falta (já com o corrente mês contabilizado)
   const printFooter = useMemo(() => {
@@ -1426,16 +1432,36 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
           <div className="text-sm text-muted-foreground text-center py-6">Sem sessões neste mês.</div>
         ) : (
           <div className="grid sm:grid-cols-2 gap-2">
-            {resumoMes.map(r => (
-              <div key={r.id} className="flex items-center gap-2.5 text-sm border rounded-md px-3 py-2">
-                <span className="size-2.5 rounded-full shrink-0" style={{ background: r.cor }} />
-                <div className="flex-1 min-w-0">
-                  <div className="truncate font-medium">{r.nome}</div>
-                  <div className="text-xs text-muted-foreground truncate">{Array.from(r.ufcds).join(" · ") || "—"}</div>
+            {resumoMes.map(r => {
+              const linhas = Array.from(r.porUfcd.entries()).sort((a, b) => a[0].localeCompare(b[0]));
+              const multi = linhas.length > 1;
+              return (
+                <div key={r.id} className="flex items-start gap-2.5 text-sm border rounded-md px-3 py-2">
+                  <span className="size-2.5 rounded-full shrink-0 mt-1.5" style={{ background: r.cor }} />
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2">
+                      <div className="truncate font-medium flex-1">{r.nome}</div>
+                      <div className="text-sm tabular-nums font-medium">{fmtHoras(r.horas)}</div>
+                    </div>
+                    {linhas.length === 0 ? (
+                      <div className="text-xs text-muted-foreground">—</div>
+                    ) : multi ? (
+                      <div className="mt-1 space-y-0.5">
+                        {linhas.map(([cod, h]) => (
+                          <div key={cod} className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <span className="font-mono flex-1 truncate">{cod}</span>
+                            <span className="tabular-nums">{fmtHoras(h)}</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="text-xs text-muted-foreground truncate">{linhas[0][0]}</div>
+                    )}
+                  </div>
                 </div>
-                <div className="text-sm tabular-nums font-medium">{fmtHoras(r.horas)}</div>
-              </div>
-            ))}
+              );
+            })}
+
           </div>
         )}
       </div>

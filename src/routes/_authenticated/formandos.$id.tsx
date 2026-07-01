@@ -460,52 +460,59 @@ function HorasCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso
       )}
 
       <div className="rounded-md border overflow-hidden">
-        <div className="px-3 py-2 bg-muted/40 flex items-center justify-between text-sm">
-          <span className="font-medium">{monthLabel(mes)}</span>
-          <span className="text-xs text-muted-foreground">
-            {sessMes.length} sessões · Total {total}h · Realizadas {total - faltasH}h
-            {faltasH > 0 && ` · Faltas ${faltasH}h`}
-          </span>
-        </div>
-        {sessMes.length === 0 ? (
-          <div className="text-sm text-muted-foreground text-center py-6">Sem sessões nas UFCD atribuídas para este mês.</div>
-        ) : (
-          <table className="w-full text-sm">
-            <thead className="text-xs text-muted-foreground">
-              <tr className="border-b">
-                <th className="text-left px-3 py-1.5 font-medium w-24">Data</th>
-                <th className="text-left px-3 py-1.5 font-medium w-28">Horário</th>
-                <th className="text-left px-3 py-1.5 font-medium">UFCD</th>
-                <th className="text-right px-3 py-1.5 font-medium w-20">Horas</th>
-                <th className="text-left px-3 py-1.5 font-medium w-28">Presença</th>
-              </tr>
-            </thead>
-            <tbody>
-              {sessMes.map(s => {
-                const u = data.ufcds.find(x => x.id === s.curso_ufcd_id);
-                const f = data.faltaMap.get(s.id);
-                const h = Number(s.horas) || 0;
-                return (
-                  <tr key={s.id} className="border-t">
-                    <td className="px-3 py-1.5 tabular-nums">{fmtDate(s.data)}</td>
-                    <td className="px-3 py-1.5 tabular-nums">{s.hora_inicio?.slice(0,5)}–{s.hora_fim?.slice(0,5)}</td>
-                    <td className="px-3 py-1.5">
-                      <span className="font-mono text-xs text-muted-foreground mr-1.5">{u?.ufcd?.codigo}</span>
-                      {u?.ufcd?.designacao}
-                    </td>
-                    <td className="px-3 py-1.5 text-right tabular-nums">{f ? 0 : h}h{f && <span className="text-muted-foreground"> / {h}h</span>}</td>
-                    <td className="px-3 py-1.5">
-                      {!f ? <span className="text-green-600">Presente</span>
-                        : f.tipo === "justificada" ? <span className="text-amber-600">Falta just.</span>
-                        : <span className="text-red-600">Falta injust.</span>}
+        <div className="px-3 py-2 bg-muted/40 text-sm font-medium">{monthLabel(mes)}</div>
+        {(() => {
+          // Aggregate by UFCD
+          const byUfcd = new Map<string, { codigo: string; nome: string; horas: number; realizadas: number }>();
+          for (const s of sessMes) {
+            const u = data.ufcds.find(x => x.id === s.curso_ufcd_id);
+            const key = s.curso_ufcd_id;
+            const h = Number(s.horas) || 0;
+            const f = data.faltaMap.get(s.id);
+            const cur = byUfcd.get(key) ?? { codigo: u?.ufcd?.codigo ?? "", nome: u?.ufcd?.designacao ?? "", horas: 0, realizadas: 0 };
+            cur.horas += h;
+            cur.realizadas += f ? 0 : h;
+            byUfcd.set(key, cur);
+          }
+          const linhas = [...byUfcd.values()].sort((a, b) => compareUfcdCodigo(a.codigo, b.codigo));
+          if (linhas.length === 0) {
+            return <div className="text-sm text-muted-foreground text-center py-6">Sem sessões nas UFCD atribuídas para este mês.</div>;
+          }
+          return (
+            <table className="w-full text-sm">
+              <thead className="text-xs text-muted-foreground">
+                <tr className="border-b">
+                  <th className="text-left px-3 py-1.5 font-medium w-28">Código</th>
+                  <th className="text-left px-3 py-1.5 font-medium">UFCD</th>
+                  <th className="text-right px-3 py-1.5 font-medium w-24">Horas</th>
+                </tr>
+              </thead>
+              <tbody>
+                {linhas.map((r, i) => (
+                  <tr key={i} className="border-t">
+                    <td className="px-3 py-1.5 font-mono text-xs">{r.codigo}</td>
+                    <td className="px-3 py-1.5">{r.nome}</td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">
+                      {r.realizadas}h
+                      {r.realizadas !== r.horas && <span className="text-muted-foreground"> / {r.horas}h</span>}
                     </td>
                   </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="border-t bg-muted/30 font-medium">
+                  <td className="px-3 py-1.5" colSpan={2}>Total do mês</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums">
+                    {total - faltasH}h
+                    {faltasH > 0 && <span className="text-muted-foreground"> / {total}h</span>}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+          );
+        })()}
       </div>
+
     </div>
   );
 }

@@ -179,21 +179,27 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
   const q = useQuery({
     queryKey: ["pra-curso", cursoFormandoId],
     queryFn: async () => {
-      const [cu, pra] = await Promise.all([
+      const [cu, pra, atrib] = await Promise.all([
         supabase.from("curso_ufcds")
           .select("id, ufcd:ufcds(id, codigo, designacao)")
           .eq("curso_id", curso.id),
         supabase.from("formando_pra" as any)
           .select("id, curso_ufcd_id, nome, storage_path, nota")
           .eq("curso_formando_id", cursoFormandoId),
+        supabase.from("curso_formando_ufcds" as any)
+          .select("curso_ufcd_id")
+          .eq("curso_formando_id", cursoFormandoId),
       ]);
       const praMap = new Map<string, any>();
       ((pra.data ?? []) as any[]).forEach((p) => praMap.set(p.curso_ufcd_id, p));
+      const assigned = new Set<string>(((atrib.data ?? []) as any[]).map((p) => p.curso_ufcd_id));
       return (cu.data ?? [])
+        .filter((u: any) => assigned.has(u.id))
         .map((u: any) => ({ ...u, pra: praMap.get(u.id) ?? null }))
         .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
     },
   });
+
 
   async function upload(cursoUfcdId: string, file: File) {
     const path = `${cursoFormandoId}/${cursoUfcdId}/${Date.now()}_${file.name}`;

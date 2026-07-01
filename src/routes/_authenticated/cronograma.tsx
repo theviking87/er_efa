@@ -1,6 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -1499,12 +1499,12 @@ function ObservacoesPanel({ mes, cursos, obs, onSaved }: {
   onSaved: () => void;
 }) {
   if (cursos.length === 0) return null;
+  const obsByCurso = useMemo(() => new Map(obs.map((o: any) => [o.curso_id, o.texto ?? ""])), [obs]);
   return (
     <div className={"grid gap-3 " + (cursos.length > 1 ? "md:grid-cols-2" : "grid-cols-1")}>
       {cursos.map(c => {
-        const existing = obs.find((o: any) => o.curso_id === c.id);
         return (
-          <ObservacaoCard key={c.id} curso={c} mes={mes} initial={existing?.texto ?? ""} onSaved={onSaved} />
+          <ObservacaoCard key={c.id} curso={c} mes={mes} initial={obsByCurso.get(c.id) ?? ""} onSaved={onSaved} />
         );
       })}
     </div>
@@ -1517,11 +1517,12 @@ function ObservacaoCard({ curso, mes, initial, onSaved }: {
   initial: string;
   onSaved: () => void;
 }) {
-  const [valor, setValor] = useState(initial);
+  const ref = useRef<HTMLTextAreaElement | null>(null);
   const [saving, setSaving] = useState(false);
-  useEffect(() => { setValor(initial); }, [initial, curso.id, mes]);
+  useEffect(() => { if (ref.current && document.activeElement !== ref.current) ref.current.value = initial; }, [initial, curso.id, mes]);
 
   const guardar = async () => {
+    const valor = ref.current?.value ?? "";
     if (valor === initial) return;
     setSaving(true);
     const { error } = await supabase
@@ -1542,8 +1543,8 @@ function ObservacaoCard({ curso, mes, initial, onSaved }: {
         {saving && <span className="text-[10px] text-muted-foreground">a guardar…</span>}
       </div>
       <Textarea
-        value={valor}
-        onChange={e => setValor(e.target.value)}
+        ref={ref}
+        defaultValue={initial}
         onBlur={guardar}
         placeholder="Observações deste mês (ex.: formador X disponível o mês todo)…"
         rows={3}

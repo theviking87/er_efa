@@ -24,7 +24,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
 import { localRows, paintBeforeHeavyWork, yieldToBrowser } from "@/lib/offline-sql";
-import { collectDocumentStyles, printHtmlWithFallback } from "@/lib/electron-io";
+import { collectDocumentStyles, printHtmlWithFallback, runNativeExcelReport } from "@/lib/electron-io";
 
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
@@ -76,7 +76,14 @@ function CursoDetail() {
                 <Upload className="size-4" /> Importar cronograma
               </Link>
             </Button>
-            <Button variant="outline" onClick={() => exportSigoCurso(id).then(() => toast.success("Exportado")).catch(e => toast.error(e.message))}>
+            <Button variant="outline" onClick={async () => {
+              try {
+                await paintBeforeHeavyWork();
+                const native = await runNativeExcelReport("sigo-curso", { cursoId: id });
+                if (!native) await exportSigoCurso(id);
+                toast.success("Exportado");
+              } catch (e: any) { toast.error(e.message); }
+            }}>
               <FileSpreadsheet className="size-4" /> SIGO
             </Button>
             <AlertDialog>
@@ -2233,6 +2240,8 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const qc = useQueryClient();
   const [sessaoId, setSessaoId] = useState<string>("");
   const [exportingFaltas, setExportingFaltas] = useState(false);
+  const [savingFaltas, setSavingFaltas] = useState(false);
+  const [faltasDraft, setFaltasDraft] = useState<Record<string, { horas: number; tipo: "justificada" | "injustificada" }>>({});
 
   const inscritos = useQuery({
     queryKey: ["curso-formandos-faltas", cursoId],
@@ -2369,6 +2378,17 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const sessao = (sessoes.data ?? []).find((s: any) => s.id === sessaoId) as any;
   const faltasMap = new Map((faltas.data ?? []).map((f: any) => [f.curso_formando_id, f]));
 
+  useEffect(() => {
+    if (!sessaoId || !inscritos.data || !faltas.data) { setFaltasDraft({}); return; }
+    const map = new Map((faltas.data ?? []).map((f: any) => [f.curso_formando_id, f]));
+    const next: Record<string, { horas: number; tipo: "justificada" | "injustificada" }> = {};
+    for (const i of inscritos.data ?? []) {
+      const f = map.get(i.id) as any;
+      next[i.id] = { horas: Number(f?.horas ?? 0), tipo: (f?.tipo ?? "injustificada") as any };
+    }
+    setFaltasDraft(next);
+  }, [sessaoId, inscritos.data, faltas.data]);
+
   async function registar(cursoFormandoId: string, horas: number, tipo: "justificada" | "injustificada") {
     if (!sessao) return;
     const existing = faltasMap.get(cursoFormandoId) as any;
@@ -2395,24 +2415,64 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
     qc.invalidateQueries({ queryKey: ["faltas-totais", cursoId] });
   }
 
+  async function guardarFaltasEmLote() {
+    if (!sessao) return;
+    setSavingFaltas(true);
+    try {
+      const rows = (inscritos.data ?? [])
+        .map((i: any) => ({ curso_formando_id: i.id, horas: Number(faltasDraft[i.id]?.horas ?? 0), tipo: (faltasDraft[i.id]?.tipo ?? "injustificada") as "justificada" | "injustificada" }))
+        .filter((r: any) => r.horas > 0);
+
+      const offlineDelete = await localRows<any>(`DELETE FROM formando_faltas WHERE sessao_id = $1`, [sessao.id]);
+      if (offlineDelete) {
+        if (rows.length) {
+          const params: any[] = [];
+          const values = rows.map((r: any) => {
+            params.push(r.curso_formando_id, sessao.id, sessao.data, r.horas, r.tipo);
+            const n = params.length;
+            return `(gen_random_uuid(), $${n - 4}, $${n - 3}, $${n - 2}, $${n - 1}, $${n})`;
+          }).join(",");
+          await localRows<any>(`INSERT INTO formando_faltas (id, curso_formando_id, sessao_id, data, horas, tipo) VALUES ${values}`, params);
+        }
+      } else {
+        const del = await supabase.from("formando_faltas").delete().eq("sessao_id", sessao.id);
+        if (del.error) throw del.error;
+        if (rows.length) {
+          const ins = await supabase.from("formando_faltas").insert(rows.map((r: any) => ({ ...r, sessao_id: sessao.id, data: sessao.data })) as never);
+          if (ins.error) throw ins.error;
+        }
+      }
+      toast.success("Faltas guardadas");
+      qc.invalidateQueries({ queryKey: ["faltas", cursoId, sessaoId] });
+      qc.invalidateQueries({ queryKey: ["faltas-totais", cursoId] });
+    } catch (e: any) {
+      toast.error("Erro ao guardar faltas", { description: e.message });
+    } finally {
+      setSavingFaltas(false);
+    }
+  }
+
   return (
     <div className="space-y-4">
       <Card><CardContent className="p-6 space-y-4">
         <div className="flex items-end gap-3">
           <div className="flex-1 max-w-md">
             <Label className="text-xs">Sessão</Label>
-            <Select value={sessaoId} onValueChange={setSessaoId}>
-              <SelectTrigger><SelectValue placeholder="Escolher sessão para registar faltas" /></SelectTrigger>
-              <SelectContent>
+            <select
+              value={sessaoId}
+              onChange={(e) => setSessaoId(e.target.value)}
+              className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm"
+            >
+              <option value="">Escolher sessão para registar faltas</option>
                 {(sessoes.data ?? []).map((s: any) => (
-                  <SelectItem key={s.id} value={s.id}>
+                  <option key={s.id} value={s.id}>
                     {fmtDate(s.data)} · {s.hora_inicio.slice(0,5)}–{s.hora_fim.slice(0,5)} · {s.curso_ufcd?.ufcd?.codigo ?? "—"}
-                  </SelectItem>
+                  </option>
                 ))}
-              </SelectContent>
-            </Select>
+            </select>
           </div>
           {sessao && <div className="text-xs text-muted-foreground">Duração: {fmtHoras(sessao.horas)}</div>}
+          {sessao && <Button size="sm" disabled={savingFaltas} onClick={guardarFaltasEmLote}>{savingFaltas ? "A guardar…" : "Guardar faltas"}</Button>}
         </div>
 
         {sessao && (
@@ -2422,21 +2482,23 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
             </div>
             {(inscritos.data ?? []).map((i: any) => {
               const f = faltasMap.get(i.id) as any;
+              const d = faltasDraft[i.id] ?? { horas: Number(f?.horas ?? 0), tipo: (f?.tipo ?? "injustificada") as any };
               return (
                 <div key={i.id} className="grid grid-cols-[1fr_120px_160px] gap-3 px-4 py-2 items-center text-sm">
                   <div className="truncate">{i.formando.nome}</div>
                   <Input
                     type="number" min={0} step={0.5} max={sessao.horas}
-                    defaultValue={f?.horas ?? 0}
-                    onBlur={e => registar(i.id, Number(e.target.value), (f?.tipo ?? "injustificada") as any)}
+                    value={d.horas}
+                    onChange={e => setFaltasDraft(s => ({ ...s, [i.id]: { ...(s[i.id] ?? d), horas: Number(e.target.value) } }))}
                     className="h-8"
                   />
-                  <Select value={f?.tipo ?? "injustificada"} onValueChange={(v) => registar(i.id, Number(f?.horas ?? sessao.horas), v as any)}>
-                    <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {Object.entries(FALTA_TIPO_LABEL).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  <select
+                    value={d.tipo}
+                    onChange={(e) => setFaltasDraft(s => ({ ...s, [i.id]: { ...(s[i.id] ?? d), tipo: e.target.value as any } }))}
+                    className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+                  >
+                    {Object.entries(FALTA_TIPO_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+                  </select>
                 </div>
               );
             })}
@@ -2454,7 +2516,8 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
             try {
               setExportingFaltas(true);
               await paintBeforeHeavyWork();
-              await exportFaltasCurso(cursoId);
+              const native = await runNativeExcelReport("faltas-curso", { cursoId });
+              if (!native) await exportFaltasCurso(cursoId);
               toast.success("Exportado");
             } catch (e: any) {
               toast.error(e.message);

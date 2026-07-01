@@ -423,3 +423,8 @@ export async function localQuery<T = any>(sql: string, params: unknown[] = []): 
   const res = await db.query<T>(sql, params);
   return res.rows;
 }
+
+export async function localExec(sql: string): Promise<void> {
+  const db = await getLocalDb();
+  await db.exec(sql);
+}

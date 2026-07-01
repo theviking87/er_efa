@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fmtDate } from "@/lib/format";
+import { localRows } from "@/lib/offline-sql";
 
 type Estado = "presente" | "justificada" | "injustificada";
 
@@ -22,6 +23,15 @@ export function PresencasDialog({
     queryKey: ["presencas-inscritos", sessao?.curso_id],
     enabled: !!sessao && open,
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT cf.id, cf.estado, f.id AS formando_id, f.nome AS formando_nome
+          FROM curso_formandos cf
+          JOIN formandos f ON f.id = cf.formando_id
+         WHERE cf.curso_id = $1
+           AND cf.estado IN ('inscrito', 'em_formacao')
+         ORDER BY f.nome ASC
+      `, [sessao!.curso_id]);
+      if (offline) return offline.map((r: any) => ({ id: r.id, estado: r.estado, formando: { id: r.formando_id, nome: r.formando_nome } }));
       const { data, error } = await supabase
         .from("curso_formandos")
         .select("id, estado, formando:formandos(id, nome)")
@@ -36,6 +46,12 @@ export function PresencasDialog({
     queryKey: ["presencas-faltas", sessao?.id],
     enabled: !!sessao && open,
     queryFn: async () => {
+      const offline = await localRows<any>(`
+        SELECT id, curso_formando_id, tipo, horas, observacoes
+          FROM formando_faltas
+         WHERE sessao_id = $1
+      `, [sessao!.id]);
+      if (offline) return offline;
       const { data, error } = await supabase
         .from("formando_faltas")
         .select("id, curso_formando_id, tipo, horas, observacoes")
@@ -66,48 +82,40 @@ export function PresencasDialog({
     if (!sessao) return;
     setSaving(true);
     try {
-      const existentes = new Map((faltas.data ?? []).map((f: any) => [f.curso_formando_id, f]));
       const aInserir: any[] = [];
-      const aAtualizar: { id: string; tipo: Estado; observacoes: string }[] = [];
-      const aRemover: string[] = [];
 
       for (const i of inscritos.data ?? []) {
         const estado = estados[i.id] ?? "presente";
         const obsTxt = (obs[i.id] ?? "").trim();
-        const ex: any = existentes.get(i.id);
-        if (estado === "presente") {
-          if (ex) aRemover.push(ex.id);
-        } else {
-          if (ex) {
-            if (ex.tipo !== estado || (ex.observacoes ?? "") !== obsTxt) {
-              aAtualizar.push({ id: ex.id, tipo: estado, observacoes: obsTxt });
-            }
-          } else {
-            aInserir.push({
-              curso_formando_id: i.id,
-              sessao_id: sessao.id,
-              data: sessao.data,
-              horas: sessao.horas,
-              tipo: estado,
-              observacoes: obsTxt || null,
-            });
-          }
-        }
+        if (estado === "presente") continue;
+        aInserir.push({
+          curso_formando_id: i.id,
+          sessao_id: sessao.id,
+          data: sessao.data,
+          horas: sessao.horas,
+          tipo: estado,
+          observacoes: obsTxt || null,
+        });
       }
 
-      if (aRemover.length) {
-        const { error } = await supabase.from("formando_faltas").delete().in("id", aRemover);
-        if (error) throw error;
-      }
-      for (const u of aAtualizar) {
-        const { error } = await supabase.from("formando_faltas")
-          .update({ tipo: u.tipo, observacoes: u.observacoes || null } as never)
-          .eq("id", u.id);
-        if (error) throw error;
-      }
-      if (aInserir.length) {
-        const { error } = await supabase.from("formando_faltas").insert(aInserir as never);
-        if (error) throw error;
+      const offlineDelete = await localRows<any>(`DELETE FROM formando_faltas WHERE sessao_id = $1`, [sessao.id]);
+      if (offlineDelete) {
+        if (aInserir.length) {
+          const params: any[] = [];
+          const values = aInserir.map((r: any) => {
+            params.push(r.curso_formando_id, r.sessao_id, r.data, r.horas, r.tipo, r.observacoes);
+            const n = params.length;
+            return `(gen_random_uuid(), $${n - 5}, $${n - 4}, $${n - 3}, $${n - 2}, $${n - 1}, $${n})`;
+          }).join(",");
+          await localRows<any>(`INSERT INTO formando_faltas (id, curso_formando_id, sessao_id, data, horas, tipo, observacoes) VALUES ${values}`, params);
+        }
+      } else {
+        const del = await supabase.from("formando_faltas").delete().eq("sessao_id", sessao.id);
+        if (del.error) throw del.error;
+        if (aInserir.length) {
+          const { error } = await supabase.from("formando_faltas").insert(aInserir as never);
+          if (error) throw error;
+        }
       }
 
       toast.success("Presenças guardadas");

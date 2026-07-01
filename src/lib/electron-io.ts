@@ -48,3 +48,19 @@ export async function printHtmlWithFallback(payload: { title: string; html: stri
   w.document.close();
   return true;
 }
+
+export async function runNativeExcelReport(name: string, params: Record<string, unknown> = {}) {
+  const api = electronApi();
+  if (!api?.reports?.excel) return false;
+  const res = await api.reports.excel(name, params);
+  if (res && res.ok === false && res.error) throw new Error(res.error);
+  return Boolean(res?.ok);
+}
+
+export async function runNativePdfReport(name: string, params: Record<string, unknown> = {}) {
+  const api = electronApi();
+  if (!api?.reports?.pdf) return false;
+  const res = await api.reports.pdf(name, params);
+  if (res && res.ok === false && res.error) throw new Error(res.error);
+  return Boolean(res?.ok);
+}

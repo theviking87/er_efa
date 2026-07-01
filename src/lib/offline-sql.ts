@@ -8,6 +8,13 @@ export async function localRows<T = any>(sql: string, params: unknown[] = []): P
   return localQuery<T>(sql, params);
 }
 
+export async function localExecSql(sql: string): Promise<boolean> {
+  if (!isOfflineBuild()) return false;
+  const { localExec } = await import("@/lib/local-db");
+  await localExec(sql);
+  return true;
+}
+
 export async function yieldToBrowser(): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 0));
 }

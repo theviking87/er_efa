@@ -87,6 +87,42 @@ export type Database = {
           },
         ]
       }
+      curso_formando_ufcds: {
+        Row: {
+          created_at: string
+          curso_formando_id: string
+          curso_ufcd_id: string
+          id: string
+        }
+        Insert: {
+          created_at?: string
+          curso_formando_id: string
+          curso_ufcd_id: string
+          id?: string
+        }
+        Update: {
+          created_at?: string
+          curso_formando_id?: string
+          curso_ufcd_id?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "curso_formando_ufcds_curso_formando_id_fkey"
+            columns: ["curso_formando_id"]
+            isOneToOne: false
+            referencedRelation: "curso_formandos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "curso_formando_ufcds_curso_ufcd_id_fkey"
+            columns: ["curso_ufcd_id"]
+            isOneToOne: false
+            referencedRelation: "curso_ufcds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       curso_formandos: {
         Row: {
           created_at: string

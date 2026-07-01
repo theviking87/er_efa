@@ -1098,16 +1098,22 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
 
   // Resumo do mês por formador
   const resumoMes = useMemo(() => {
-    const m = new Map<string, { id: string; nome: string; cor: string; horas: number; ufcds: Set<string> }>();
+    const m = new Map<string, { id: string; nome: string; cor: string; horas: number; ufcds: Set<string>; porUfcd: Map<string, number> }>();
     (sessoes.data ?? []).forEach((s: any) => {
       if (!s.formador) return;
-      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: formadorLabel(s.formador), cor: s.formador.cor, horas: 0, ufcds: new Set<string>() };
-      cur.horas += Number(s.horas);
-      if (s.curso_ufcd?.ufcd?.codigo) cur.ufcds.add(s.curso_ufcd.ufcd.codigo);
+      const cur = m.get(s.formador.id) ?? { id: s.formador.id, nome: formadorLabel(s.formador), cor: s.formador.cor, horas: 0, ufcds: new Set<string>(), porUfcd: new Map<string, number>() };
+      const h = Number(s.horas) || 0;
+      cur.horas += h;
+      const cod = s.curso_ufcd?.ufcd?.codigo;
+      if (cod) {
+        cur.ufcds.add(cod);
+        cur.porUfcd.set(cod, (cur.porUfcd.get(cod) ?? 0) + h);
+      }
       m.set(s.formador.id, cur);
     });
     return Array.from(m.values()).sort((a, b) => b.horas - a.horas);
   }, [sessoes.data]);
+
 
   // Para a impressão: formadores do mês × UFCD em curso × horas em falta (já com o corrente mês contabilizado)
   const printFooter = useMemo(() => {

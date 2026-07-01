@@ -258,7 +258,8 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
         <div className="text-xs text-muted-foreground">{comDoc} / {ufcds.length} PRA carregados</div>
       </div>
       {ufcds.length === 0 ? (
-        <div className="text-xs text-muted-foreground italic">Sem UFCD atribuídas a este curso.</div>
+        <div className="text-xs text-muted-foreground italic">Sem UFCD atribuídas a este formando. Atribua-as no separador Horas.</div>
+
       ) : (
         <div className="space-y-1.5">
           {ufcds.map((u: any) => (

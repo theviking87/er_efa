@@ -4,6 +4,8 @@ const path = require("path");
 const fs = require("fs");
 const { pathToFileURL } = require("url");
 
+const APP_BUILD_VERSION = "FormacaoER-portatil-v8-memory-snapshot-2026-07-01";
+
 protocol.registerSchemesAsPrivileged([
   {
     scheme: "formacao-er",
@@ -538,6 +540,7 @@ ipcMain.handle("print:html", async (_evt, payload) => {
 app.whenReady().then(() => {
   userDataDir = resolveUserDataDir();
   console.log("[FormacaoER] userData:", userDataDir);
+  writeDiagnosticLog("Versão da aplicação", APP_BUILD_VERSION);
   Menu.setApplicationMenu(null);
   globalShortcut.register("F12", () => mainWindow?.webContents.openDevTools({ mode: "detach" }));
   globalShortcut.register("CommandOrControl+Shift+I", () => mainWindow?.webContents.openDevTools({ mode: "detach" }));

@@ -363,55 +363,62 @@ function monthLabel(k: string) {
 }
 
 function HorasCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: { id: string; nome: string; codigo: string } }) {
+  const qc = useQueryClient();
+  const [mes, setMes] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const [editUfcd, setEditUfcd] = useState(false);
+
   const q = useQuery({
     queryKey: ["horas-curso", cursoFormandoId],
     queryFn: async () => {
-      const [cu, pra, sess, faltas] = await Promise.all([
+      const [cu, atrib, sess, faltas] = await Promise.all([
         supabase.from("curso_ufcds").select("id, ufcd:ufcds(id, codigo, designacao)").eq("curso_id", curso.id),
-        supabase.from("formando_pra" as any).select("curso_ufcd_id").eq("curso_formando_id", cursoFormandoId),
-        supabase.from("sessoes").select("id, curso_ufcd_id, data, horas").eq("curso_id", curso.id),
+        supabase.from("curso_formando_ufcds" as any).select("curso_ufcd_id").eq("curso_formando_id", cursoFormandoId),
+        supabase.from("sessoes").select("id, curso_ufcd_id, data, hora_inicio, hora_fim, horas").eq("curso_id", curso.id),
         supabase.from("formando_faltas").select("sessao_id, horas, tipo").eq("curso_formando_id", cursoFormandoId),
       ]);
-      const ufcdMap = new Map<string, any>();
-      ((cu.data ?? []) as any[]).forEach(c => ufcdMap.set(c.id, c.ufcd));
-      const assigned = new Set<string>(((pra.data ?? []) as any[]).map(p => p.curso_ufcd_id));
+      const ufcds = ((cu.data ?? []) as any[])
+        .map(c => ({ id: c.id, ufcd: c.ufcd }))
+        .sort((a, b) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
+      const assigned = new Set<string>(((atrib.data ?? []) as any[]).map(p => p.curso_ufcd_id));
       const faltaMap = new Map<string, any>();
       ((faltas.data ?? []) as any[]).forEach(f => faltaMap.set(f.sessao_id, f));
-      const filtered = ((sess.data ?? []) as any[]).filter(s => assigned.has(s.curso_ufcd_id));
-      return { ufcdMap, assigned, sessions: filtered, faltaMap };
+      return { ufcds, assigned, sessions: (sess.data ?? []) as any[], faltaMap };
     },
   });
+
+  async function toggleUfcd(cursoUfcdId: string, on: boolean) {
+    if (on) {
+      const { error } = await supabase.from("curso_formando_ufcds" as any)
+        .insert({ curso_formando_id: cursoFormandoId, curso_ufcd_id: cursoUfcdId } as any);
+      if (error) return toast.error(error.message);
+    } else {
+      const { error } = await supabase.from("curso_formando_ufcds" as any).delete()
+        .eq("curso_formando_id", cursoFormandoId).eq("curso_ufcd_id", cursoUfcdId);
+      if (error) return toast.error(error.message);
+    }
+    qc.invalidateQueries({ queryKey: ["horas-curso", cursoFormandoId] });
+  }
 
   const data = q.data;
   if (!data) return <div className="text-sm text-muted-foreground">A carregar…</div>;
 
-  const totalAssigned = data.assigned.size;
+  const sessMes = data.sessions
+    .filter(s => data.assigned.has(s.curso_ufcd_id) && monthKey(s.data) === mes)
+    .sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
 
-  // group by month
-  const byMonth = new Map<string, { total: number; realizadas: number; faltasJ: number; faltasI: number; perUfcd: Map<string, { total: number; falta: number }> }>();
-  for (const s of data.sessions) {
-    const k = monthKey(s.data);
-    if (!byMonth.has(k)) byMonth.set(k, { total: 0, realizadas: 0, faltasJ: 0, faltasI: 0, perUfcd: new Map() });
-    const m = byMonth.get(k)!;
-    const h = Number(s.horas) || 0;
-    const f = data.faltaMap.get(s.id);
-    m.total += h;
-    if (!f) m.realizadas += h;
-    else if (f.tipo === "justificada") m.faltasJ += Number(f.horas) || h;
-    else m.faltasI += Number(f.horas) || h;
-    const key = s.curso_ufcd_id;
-    if (!m.perUfcd.has(key)) m.perUfcd.set(key, { total: 0, falta: 0 });
-    const u = m.perUfcd.get(key)!;
-    u.total += h;
-    if (f) u.falta += Number(f.horas) || h;
-  }
-
-  const months = Array.from(byMonth.keys()).sort();
-  const totGlobal = data.sessions.reduce((a, s) => a + (Number(s.horas) || 0), 0);
-  const totFaltas = data.sessions.reduce((a, s) => {
+  const total = sessMes.reduce((a, s) => a + (Number(s.horas) || 0), 0);
+  const faltasH = sessMes.reduce((a, s) => {
     const f = data.faltaMap.get(s.id);
     return a + (f ? (Number(f.horas) || Number(s.horas) || 0) : 0);
   }, 0);
+
+  // month options: current +/- 12
+  const opts: string[] = [];
+  const now = new Date();
+  for (let i = -18; i <= 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    opts.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
 
   return (
     <div className="space-y-3">
@@ -419,60 +426,86 @@ function HorasCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso
         <Link to="/cursos/$id" params={{ id: curso.id }} className="font-medium hover:underline">
           {curso.codigo} — {curso.nome}
         </Link>
-        <div className="text-xs text-muted-foreground">
-          {totalAssigned} UFCD atribuídas · Total {totGlobal}h · Realizadas {totGlobal - totFaltas}h · Faltas {totFaltas}h
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setEditUfcd(v => !v)}>
+            {editUfcd ? "Fechar" : "Gerir UFCD"} ({data.assigned.size}/{data.ufcds.length})
+          </Button>
+          <select
+            value={mes}
+            onChange={e => setMes(e.target.value)}
+            className="h-9 rounded-md border bg-background px-2 text-sm"
+          >
+            {opts.map(o => <option key={o} value={o}>{monthLabel(o)}</option>)}
+          </select>
         </div>
       </div>
 
-      {totalAssigned === 0 ? (
-        <div className="text-xs text-muted-foreground italic">Sem UFCD atribuídas ao formando (carregue um PRA ou nota no separador PRA para atribuir).</div>
-      ) : months.length === 0 ? (
-        <div className="text-xs text-muted-foreground italic">Sem sessões nas UFCD atribuídas.</div>
-      ) : (
-        <div className="space-y-4">
-          {months.map(k => {
-            const m = byMonth.get(k)!;
-            const rows = Array.from(m.perUfcd.entries())
-              .map(([id, v]) => ({ ufcd: data.ufcdMap.get(id), total: v.total, falta: v.falta }))
-              .sort((a, b) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
-            return (
-              <div key={k} className="rounded-md border overflow-hidden">
-                <div className="px-3 py-2 bg-muted/40 flex items-center justify-between text-sm">
-                  <span className="font-medium">{monthLabel(k)}</span>
-                  <span className="text-xs text-muted-foreground">
-                    Total {m.total}h · Realizadas {m.realizadas}h
-                    {m.faltasJ > 0 && ` · Just. ${m.faltasJ}h`}
-                    {m.faltasI > 0 && ` · Injust. ${m.faltasI}h`}
-                  </span>
-                </div>
-                <table className="w-full text-sm">
-                  <thead className="text-xs text-muted-foreground bg-background">
-                    <tr>
-                      <th className="text-left px-3 py-1.5 font-medium">UFCD</th>
-                      <th className="text-right px-3 py-1.5 font-medium w-24">Horas</th>
-                      <th className="text-right px-3 py-1.5 font-medium w-24">Faltas</th>
-                      <th className="text-right px-3 py-1.5 font-medium w-28">Realizadas</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {rows.map((r, idx) => (
-                      <tr key={idx} className="border-t">
-                        <td className="px-3 py-1.5">
-                          <span className="font-mono text-xs text-muted-foreground mr-2">{r.ufcd?.codigo}</span>
-                          {r.ufcd?.designacao}
-                        </td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{r.total}h</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{r.falta > 0 ? `${r.falta}h` : "—"}</td>
-                        <td className="px-3 py-1.5 text-right tabular-nums">{r.total - r.falta}h</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            );
-          })}
+      {editUfcd && (
+        <div className="rounded-md border p-3 space-y-1.5 bg-muted/30">
+          <div className="text-xs text-muted-foreground mb-1">Selecione as UFCD que este formando frequenta neste curso:</div>
+          {data.ufcds.length === 0 ? (
+            <div className="text-xs italic text-muted-foreground">O curso ainda não tem UFCD atribuídas.</div>
+          ) : data.ufcds.map(u => (
+            <label key={u.id} className="flex items-center gap-2 text-sm py-0.5 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={data.assigned.has(u.id)}
+                onChange={e => toggleUfcd(u.id, e.target.checked)}
+              />
+              <span className="font-mono text-xs text-muted-foreground">{u.ufcd?.codigo}</span>
+              <span>{u.ufcd?.designacao}</span>
+            </label>
+          ))}
         </div>
       )}
+
+      <div className="rounded-md border overflow-hidden">
+        <div className="px-3 py-2 bg-muted/40 flex items-center justify-between text-sm">
+          <span className="font-medium">{monthLabel(mes)}</span>
+          <span className="text-xs text-muted-foreground">
+            {sessMes.length} sessões · Total {total}h · Realizadas {total - faltasH}h
+            {faltasH > 0 && ` · Faltas ${faltasH}h`}
+          </span>
+        </div>
+        {sessMes.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-6">Sem sessões nas UFCD atribuídas para este mês.</div>
+        ) : (
+          <table className="w-full text-sm">
+            <thead className="text-xs text-muted-foreground">
+              <tr className="border-b">
+                <th className="text-left px-3 py-1.5 font-medium w-24">Data</th>
+                <th className="text-left px-3 py-1.5 font-medium w-28">Horário</th>
+                <th className="text-left px-3 py-1.5 font-medium">UFCD</th>
+                <th className="text-right px-3 py-1.5 font-medium w-20">Horas</th>
+                <th className="text-left px-3 py-1.5 font-medium w-28">Presença</th>
+              </tr>
+            </thead>
+            <tbody>
+              {sessMes.map(s => {
+                const u = data.ufcds.find(x => x.id === s.curso_ufcd_id);
+                const f = data.faltaMap.get(s.id);
+                const h = Number(s.horas) || 0;
+                return (
+                  <tr key={s.id} className="border-t">
+                    <td className="px-3 py-1.5 tabular-nums">{fmtDate(s.data)}</td>
+                    <td className="px-3 py-1.5 tabular-nums">{s.hora_inicio?.slice(0,5)}–{s.hora_fim?.slice(0,5)}</td>
+                    <td className="px-3 py-1.5">
+                      <span className="font-mono text-xs text-muted-foreground mr-1.5">{u?.ufcd?.codigo}</span>
+                      {u?.ufcd?.designacao}
+                    </td>
+                    <td className="px-3 py-1.5 text-right tabular-nums">{f ? 0 : h}h{f && <span className="text-muted-foreground"> / {h}h</span>}</td>
+                    <td className="px-3 py-1.5">
+                      {!f ? <span className="text-green-600">Presente</span>
+                        : f.tipo === "justificada" ? <span className="text-amber-600">Falta just.</span>
+                        : <span className="text-red-600">Falta injust.</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        )}
+      </div>
     </div>
   );
 }

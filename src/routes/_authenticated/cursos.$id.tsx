@@ -269,6 +269,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
             );
           })()}
           <Button variant="outline" size="sm" onClick={imprimirSemFormador}><FileText className="size-4" /> UFCD sem formador</Button>
+          <Button variant="outline" size="sm" onClick={imprimirComFormador}><FileText className="size-4" /> UFCD com formador</Button>
           <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
         </div>
       </div>

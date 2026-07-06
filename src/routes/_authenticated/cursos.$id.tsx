@@ -213,6 +213,32 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
     }
   }
 
+  async function imprimirComFormador() {
+    const lista = (data.data ?? []).filter((u: any) => (u.formadores ?? []).length > 0);
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>UFCD com formador</title>
+      <style>body{font-family:system-ui,sans-serif;padding:24px;color:#111}h1{font-size:16px;margin:0 0 4px}h2{font-size:12px;font-weight:normal;color:#555;margin:0 0 16px}table{width:100%;border-collapse:collapse;font-size:11px}th,td{border:1px solid #999;padding:6px 8px;text-align:left;vertical-align:top}th{background:#eee}.warn{background:#fff3cd}</style>
+      </head><body>
+      <h1>UFCD com formador atribuído</h1>
+      <h2>Total: ${lista.length} UFCD${lista.length === 1 ? "" : "s"}</h2>
+      <table><thead><tr><th style="width:90px">Código</th><th>Designação</th><th>Formador(es)</th><th style="width:70px;text-align:right">Horas</th></tr></thead>
+      <tbody>${lista.length === 0
+        ? '<tr><td colspan="4" style="text-align:center;color:#666">Nenhuma UFCD tem formador atribuído.</td></tr>'
+        : lista.map((u: any) => {
+            const nomes = (u.formadores ?? []).map((ff: any) => ff.formador?.nome ?? "").filter(Boolean).join(", ");
+            const multi = (u.formadores ?? []).length > 1 ? ' class="warn"' : "";
+            return `<tr${multi}><td>${u.ufcd?.codigo ?? ""}</td><td>${u.ufcd?.designacao ?? ""}</td><td>${nomes}${(u.formadores ?? []).length > 1 ? " ⚠" : ""}</td><td style="text-align:right">${u.horas_totais}h</td></tr>`;
+          }).join("")}
+      </tbody></table>
+      <script>window.onload=()=>setTimeout(()=>window.print(),100)</script>
+      </body></html>`;
+    try {
+      const ok = await printHtmlWithFallback({ title: "UFCD com formador", html, landscape: false });
+      if (!ok) toast.error("Não foi possível abrir a impressão");
+    } catch (e: any) {
+      toast.error("Erro na impressão", { description: e.message });
+    }
+  }
+
   return (
     <Card><CardContent className="p-6 space-y-4">
       <div className="flex justify-between items-center gap-2 flex-wrap">
@@ -243,6 +269,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
             );
           })()}
           <Button variant="outline" size="sm" onClick={imprimirSemFormador}><FileText className="size-4" /> UFCD sem formador</Button>
+          <Button variant="outline" size="sm" onClick={imprimirComFormador}><FileText className="size-4" /> UFCD com formador</Button>
           <Button size="sm" onClick={() => setOpen(true)}><Plus className="size-4" /> Atribuir UFCD</Button>
         </div>
       </div>
@@ -321,11 +348,44 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
                 excesso: Number(u.horas_realizadas) - Number(u.horas_totais),
               }));
             const semFormador = lista.filter((u: any) => (u.formadores ?? []).length === 0);
+            const comFormador = lista.filter((u: any) => (u.formadores ?? []).length > 0);
+            const multiFormador = lista.filter((u: any) => (u.formadores ?? []).length > 1);
             return (
               <div className="space-y-5 text-sm">
                 <div className="text-xs text-muted-foreground">
-                  {lista.length} UFCD · {excedidas.length} com horas excedidas · {semFormador.length} sem formador
+                  {lista.length} UFCD · {excedidas.length} com horas excedidas · {semFormador.length} sem formador · {comFormador.length} com formador
+                  {multiFormador.length > 0 && <> · <span className="text-destructive font-medium">{multiFormador.length} com múltiplos formadores</span></>}
                 </div>
+
+                {multiFormador.length > 0 && (
+                  <div>
+                    <div className="font-medium mb-2 flex items-center gap-2">
+                      <AlertTriangle className="size-4 text-destructive" /> UFCD com mais do que um formador atribuído
+                    </div>
+                    <div className="space-y-1.5">
+                      {multiFormador.map((u: any) => (
+                        <div key={u.id} className="border border-destructive/40 bg-destructive/5 rounded-md px-2.5 py-1.5 text-xs">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="font-mono text-muted-foreground mr-1.5">{u.ufcd.codigo}</span>
+                              <span className="font-medium">{u.ufcd.designacao}</span>
+                            </div>
+                            <span className="text-destructive font-semibold shrink-0">{u.formadores.length} formadores</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {u.formadores.map((ff: any) => (
+                              <span key={ff.formador.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-background border">
+                                <span className="size-1.5 rounded-full" style={{ background: ff.formador.cor }} />
+                                {ff.formador.nome}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <div className="font-medium mb-2 flex items-center gap-2">
                     <AlertTriangle className="size-4 text-destructive" /> UFCD com horas excedidas
@@ -364,6 +424,37 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
                             <span className="font-medium">{u.ufcd.designacao}</span>
                           </div>
                           <span className="text-muted-foreground tabular-nums shrink-0 ml-3">{u.horas_totais}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="font-medium mb-2 flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-green-600" /> UFCD com formador atribuído
+                  </div>
+                  {comFormador.length === 0 ? (
+                    <div className="text-muted-foreground text-xs">Ainda não há UFCD com formador atribuído.</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {comFormador.map((u: any) => (
+                        <div key={u.id} className="flex items-center justify-between gap-3 border rounded-md px-2.5 py-1.5 text-xs">
+                          <div className="min-w-0 flex-1">
+                            <div>
+                              <span className="font-mono text-muted-foreground mr-1.5">{u.ufcd.codigo}</span>
+                              <span className="font-medium">{u.ufcd.designacao}</span>
+                            </div>
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {u.formadores.map((ff: any) => (
+                                <span key={ff.formador.id} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">
+                                  <span className="size-1.5 rounded-full" style={{ background: ff.formador.cor }} />
+                                  {ff.formador.nome}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <span className="text-muted-foreground tabular-nums shrink-0">{u.horas_totais}h</span>
                         </div>
                       ))}
                     </div>

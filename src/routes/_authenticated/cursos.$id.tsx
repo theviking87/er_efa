@@ -348,11 +348,44 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
                 excesso: Number(u.horas_realizadas) - Number(u.horas_totais),
               }));
             const semFormador = lista.filter((u: any) => (u.formadores ?? []).length === 0);
+            const comFormador = lista.filter((u: any) => (u.formadores ?? []).length > 0);
+            const multiFormador = lista.filter((u: any) => (u.formadores ?? []).length > 1);
             return (
               <div className="space-y-5 text-sm">
                 <div className="text-xs text-muted-foreground">
-                  {lista.length} UFCD · {excedidas.length} com horas excedidas · {semFormador.length} sem formador
+                  {lista.length} UFCD · {excedidas.length} com horas excedidas · {semFormador.length} sem formador · {comFormador.length} com formador
+                  {multiFormador.length > 0 && <> · <span className="text-destructive font-medium">{multiFormador.length} com múltiplos formadores</span></>}
                 </div>
+
+                {multiFormador.length > 0 && (
+                  <div>
+                    <div className="font-medium mb-2 flex items-center gap-2">
+                      <AlertTriangle className="size-4 text-destructive" /> UFCD com mais do que um formador atribuído
+                    </div>
+                    <div className="space-y-1.5">
+                      {multiFormador.map((u: any) => (
+                        <div key={u.id} className="border border-destructive/40 bg-destructive/5 rounded-md px-2.5 py-1.5 text-xs">
+                          <div className="flex items-center justify-between gap-3">
+                            <div className="min-w-0">
+                              <span className="font-mono text-muted-foreground mr-1.5">{u.ufcd.codigo}</span>
+                              <span className="font-medium">{u.ufcd.designacao}</span>
+                            </div>
+                            <span className="text-destructive font-semibold shrink-0">{u.formadores.length} formadores</span>
+                          </div>
+                          <div className="mt-1 flex flex-wrap gap-1">
+                            {u.formadores.map((ff: any) => (
+                              <span key={ff.formador.id} className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full bg-background border">
+                                <span className="size-1.5 rounded-full" style={{ background: ff.formador.cor }} />
+                                {ff.formador.nome}
+                              </span>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 <div>
                   <div className="font-medium mb-2 flex items-center gap-2">
                     <AlertTriangle className="size-4 text-destructive" /> UFCD com horas excedidas
@@ -391,6 +424,37 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
                             <span className="font-medium">{u.ufcd.designacao}</span>
                           </div>
                           <span className="text-muted-foreground tabular-nums shrink-0 ml-3">{u.horas_totais}h</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div>
+                  <div className="font-medium mb-2 flex items-center gap-2">
+                    <CheckCircle2 className="size-4 text-green-600" /> UFCD com formador atribuído
+                  </div>
+                  {comFormador.length === 0 ? (
+                    <div className="text-muted-foreground text-xs">Ainda não há UFCD com formador atribuído.</div>
+                  ) : (
+                    <div className="space-y-1">
+                      {comFormador.map((u: any) => (
+                        <div key={u.id} className="flex items-center justify-between gap-3 border rounded-md px-2.5 py-1.5 text-xs">
+                          <div className="min-w-0 flex-1">
+                            <div>
+                              <span className="font-mono text-muted-foreground mr-1.5">{u.ufcd.codigo}</span>
+                              <span className="font-medium">{u.ufcd.designacao}</span>
+                            </div>
+                            <div className="mt-0.5 flex flex-wrap gap-1">
+                              {u.formadores.map((ff: any) => (
+                                <span key={ff.formador.id} className="inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full bg-muted">
+                                  <span className="size-1.5 rounded-full" style={{ background: ff.formador.cor }} />
+                                  {ff.formador.nome}
+                                </span>
+                              ))}
+                            </div>
+                          </div>
+                          <span className="text-muted-foreground tabular-nums shrink-0">{u.horas_totais}h</span>
                         </div>
                       ))}
                     </div>

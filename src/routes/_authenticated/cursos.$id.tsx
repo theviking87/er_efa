@@ -2229,7 +2229,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
 
           {formadorId && (
             <div className="space-y-1.5">
-              <Label>UFCD * <span className="text-xs text-muted-foreground font-normal">(apenas as deste formador com horas em falta)</span></Label>
+              <Label>UFCD * <span className="text-xs text-muted-foreground font-normal">{ignorarDisp ? "(todas as UFCD do curso)" : "(apenas as deste formador com horas em falta)"}</span></Label>
               <Select value={cufId} onValueChange={setCufId}>
                 <SelectTrigger><SelectValue placeholder={ufcdsDoFormador.length === 0 ? "Sem UFCD em falta para este formador" : "Escolher UFCD…"} /></SelectTrigger>
                 <SelectContent>

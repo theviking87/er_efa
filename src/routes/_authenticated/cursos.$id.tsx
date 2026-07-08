@@ -2159,7 +2159,24 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
             <span>Escolher formador e UFCD manualmente (ignorar disponibilidade)</span>
           </label>
 
-          {data && isRetroativo && (
+          {data && ignorarDisp && (
+            <div className="space-y-1.5">
+              <div className="rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                Modo manual — escolhe qualquer formador e qualquer UFCD do curso, sem validar disponibilidade.
+              </div>
+              <Label className="text-xs">Formador *</Label>
+              <Select value={formadorId} onValueChange={(v) => { setFormadorId(v); setCufId(""); }}>
+                <SelectTrigger><SelectValue placeholder="Escolher formador…" /></SelectTrigger>
+                <SelectContent>
+                  {(formadoresTodos.data ?? []).map((f: any) => (
+                    <SelectItem key={f.id} value={f.id}>{formadorLabel(f)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {data && !ignorarDisp && isRetroativo && (
             <div className="space-y-1.5">
               <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Lançamento retroativo (mês anterior ao atual) — não é exigida disponibilidade declarada. Escolhe o formador manualmente.
@@ -2176,7 +2193,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
             </div>
           )}
 
-          {data && !isRetroativo && (
+          {data && !ignorarDisp && !isRetroativo && (
             <div className="space-y-1.5">
               <Label className="text-xs">Formadores com disponibilidade neste dia</Label>
               <div className="border rounded-md max-h-56 overflow-y-auto divide-y bg-muted/30">

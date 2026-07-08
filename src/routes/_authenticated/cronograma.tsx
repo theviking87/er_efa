@@ -65,7 +65,6 @@ function CronogramaGeral() {
   const [createDate, setCreateDate] = useState<string | null>(null);
   const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
   const [feriasOpen, setFeriasOpen] = useState(false);
-  const [createSessaoDate, setCreateSessaoDate] = useState<string | null>(null);
 
 
 

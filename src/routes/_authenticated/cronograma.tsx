@@ -935,14 +935,6 @@ function CronogramaGeral() {
         editing={editDisp}
         onClose={() => setEditDisp(null)}
       />
-      <CreateSessaoDialog
-        data={createSessaoDate}
-        formadores={(formadores.data ?? []) as any[]}
-        cursos={(cursosTodos.data ?? []) as any[]}
-        defaultFormadorId={formadorFiltro || null}
-        defaultCursoId={cursoFiltro || null}
-        onClose={() => setCreateSessaoDate(null)}
-      />
     </PageContainer>
   );
 }

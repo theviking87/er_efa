@@ -2150,6 +2150,15 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
             <Input type="date" value={data} onChange={e => { setData(e.target.value); setFormadorId(""); setCufId(""); }} />
           </div>
 
+          <label className="flex items-center gap-2 text-xs rounded-md border px-3 py-2 bg-muted/30 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={ignorarDisp}
+              onChange={e => { setIgnorarDisp(e.target.checked); setFormadorId(""); setCufId(""); }}
+            />
+            <span>Escolher formador e UFCD manualmente (ignorar disponibilidade)</span>
+          </label>
+
           {data && isRetroativo && (
             <div className="space-y-1.5">
               <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">

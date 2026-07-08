@@ -606,14 +606,6 @@ function CronogramaGeral() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCreateSessaoDate(localDateIso())}
-              title="Criar sessão diretamente (sem depender de disponibilidade)"
-            >
-              <CalendarPlus className="size-4 mr-1" />Nova sessão
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={() => setFeriasOpen(true)}
               title="Lançar período de férias / inatividade do formador"
             >

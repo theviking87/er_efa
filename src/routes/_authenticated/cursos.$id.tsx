@@ -2124,7 +2124,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     if (error) return toast.error(error.message);
     toast.success("Sessão criada");
     onOpenChange(false);
-    setData(""); setCufId(""); setFormadorId(""); setHi("09:00"); setHf("13:00");
+    setData(""); setCufId(""); setFormadorId(""); setHi("09:00"); setHf("13:00"); setIgnorarDisp(false);
     onSaved();
   }
 
@@ -2140,7 +2140,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setData(""); setCufId(""); setFormadorId(""); } }}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setData(""); setCufId(""); setFormadorId(""); setIgnorarDisp(false); } }}>
 
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>Nova sessão</DialogTitle></DialogHeader>

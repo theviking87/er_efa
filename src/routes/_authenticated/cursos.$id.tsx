@@ -2092,7 +2092,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     const indisp = dispDoFormador.find((d: any) => d.tipo === "indisponivel" && !(hfN <= d.hora_inicio || hiN >= d.hora_fim));
     if (indisp) { setErro({ titulo: "Formador indisponível", descricao: "O formador marcou este período como indisponível." }); return; }
 
-    if (!isRetroativo) {
+    if (!isRetroativo && !ignorarDisp) {
       const disponiveis = dispDoFormador.filter((d: any) => d.tipo === "disponivel");
       if (disponiveis.length === 0) {
         setErro({ titulo: "Sem disponibilidade", descricao: "O formador não declarou disponibilidade para este dia." });

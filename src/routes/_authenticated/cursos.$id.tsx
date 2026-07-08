@@ -1987,6 +1987,12 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     },
   });
 
+  const formadoresTodos = useQuery({
+    queryKey: ["formadores-todos-sessao"],
+    enabled: open && ignorarDisp,
+    queryFn: async () => (await supabase.from("formadores").select("id, nome, abreviatura, cor").order("nome")).data ?? [],
+  });
+
   // UFCD em que o formador escolhido está atribuído neste curso E ainda tem horas em falta
   const ufcdsDoFormador = useMemo(() => {
     if (!formadorId) return [];

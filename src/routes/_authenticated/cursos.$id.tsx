@@ -252,10 +252,10 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
         })()}
         <div className="flex items-center gap-2">
           <Input
-            placeholder="Pesquisar UFCD…"
+            placeholder="Pesquisar UFCD ou formador…"
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="h-9 w-56"
+            className="h-9 w-64"
           />
           {(() => {
             const excedidas = (data.data ?? []).filter((u: any) => Number(u.horas_realizadas) > Number(u.horas_totais));
@@ -279,7 +279,12 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
         {(data.data ?? []).filter((u: any) => {
           const q = search.trim().toLowerCase();
           if (!q) return true;
-          return (u.ufcd?.codigo ?? "").toLowerCase().includes(q) || (u.ufcd?.designacao ?? "").toLowerCase().includes(q);
+          const matchUfcd = (u.ufcd?.codigo ?? "").toLowerCase().includes(q) || (u.ufcd?.designacao ?? "").toLowerCase().includes(q);
+          const matchFormador = (u.formadores ?? []).some((ff: any) =>
+            (ff.formador?.nome ?? "").toLowerCase().includes(q) ||
+            (ff.formador?.abreviatura ?? "").toLowerCase().includes(q)
+          );
+          return matchUfcd || matchFormador;
         }).map((u: any) => {
 
           const pct = u.horas_totais > 0 ? Math.min(100, (u.horas_realizadas / u.horas_totais) * 100) : 0;

@@ -1948,6 +1948,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   const [hf, setHf] = useState("13:00");
   const [cufId, setCufId] = useState("");
   const [formadorId, setFormadorId] = useState("");
+  const [ignorarDisp, setIgnorarDisp] = useState(false);
   const [erro, setErro] = useState<{ titulo: string; descricao?: string } | null>(null);
 
   // Aplicar defaultDate ao abrir

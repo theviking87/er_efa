@@ -65,7 +65,6 @@ function CronogramaGeral() {
   const [createDate, setCreateDate] = useState<string | null>(null);
   const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
   const [feriasOpen, setFeriasOpen] = useState(false);
-  const [createSessaoDate, setCreateSessaoDate] = useState<string | null>(null);
 
 
 
@@ -607,14 +606,6 @@ function CronogramaGeral() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setCreateSessaoDate(localDateIso())}
-              title="Criar sessão diretamente (sem depender de disponibilidade)"
-            >
-              <CalendarPlus className="size-4 mr-1" />Nova sessão
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
               onClick={() => setFeriasOpen(true)}
               title="Lançar período de férias / inatividade do formador"
             >
@@ -943,14 +934,6 @@ function CronogramaGeral() {
         defaultFormadorId={null}
         editing={editDisp}
         onClose={() => setEditDisp(null)}
-      />
-      <CreateSessaoDialog
-        data={createSessaoDate}
-        formadores={(formadores.data ?? []) as any[]}
-        cursos={(cursosTodos.data ?? []) as any[]}
-        defaultFormadorId={formadorFiltro || null}
-        defaultCursoId={cursoFiltro || null}
-        onClose={() => setCreateSessaoDate(null)}
       />
     </PageContainer>
   );
@@ -1571,161 +1554,3 @@ function ObservacaoCard({ curso, mes, initial, onSaved }: {
   );
 }
 
-function CreateSessaoDialog({
-  data,
-  formadores,
-  cursos,
-  defaultFormadorId,
-  defaultCursoId,
-  onClose,
-}: {
-  data: string | null;
-  formadores: { id: string; nome: string; cor?: string }[];
-  cursos: { id: string; codigo: string; nome: string }[];
-  defaultFormadorId: string | null;
-  defaultCursoId: string | null;
-  onClose: () => void;
-}) {
-  const qc = useQueryClient();
-  const [dataSel, setDataSel] = useState<string>("");
-  const [formadorId, setFormadorId] = useState<string>("");
-  const [cursoId, setCursoId] = useState<string>("");
-  const [cursoUfcdId, setCursoUfcdId] = useState<string>("");
-  const [horaInicio, setHoraInicio] = useState("09:00");
-  const [horaFim, setHoraFim] = useState("13:00");
-  const [observacoes, setObservacoes] = useState("");
-  const [saving, setSaving] = useState(false);
-
-  useMemo(() => {
-    if (data) {
-      setDataSel(data);
-      setFormadorId(defaultFormadorId ?? "");
-      setCursoId(defaultCursoId ?? "");
-      setCursoUfcdId("");
-      setHoraInicio("09:00");
-      setHoraFim("13:00");
-      setObservacoes("");
-    }
-  }, [data]);
-
-  const ufcds = useQuery({
-    queryKey: ["curso-ufcds-nova-sessao", cursoId],
-    enabled: !!cursoId,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("curso_ufcds")
-        .select("id, horas_totais, concluida, ufcd:ufcds(codigo, designacao)")
-        .eq("curso_id", cursoId);
-      if (error) throw error;
-      return (data ?? [])
-        .filter((cu: any) => cu.ufcd)
-        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
-    },
-  });
-
-  async function criar() {
-    if (!dataSel) return toast.error("Escolhe a data");
-    if (!formadorId) return toast.error("Escolhe o formador");
-    if (!cursoId) return toast.error("Escolhe o curso");
-    if (!cursoUfcdId) return toast.error("Escolhe a UFCD");
-    if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
-
-    // Aviso (não bloqueante) sobre choque de sessões do mesmo formador
-    const hiFull = horaInicio.length === 5 ? horaInicio + ":00" : horaInicio;
-    const hfFull = horaFim.length === 5 ? horaFim + ":00" : horaFim;
-    const { data: sess } = await supabase
-      .from("sessoes")
-      .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
-      .eq("formador_id", formadorId)
-      .eq("data", dataSel);
-    const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
-    if (choque) {
-      return toast.error("Formador já tem sessão neste horário", {
-        description: `${choque.curso?.codigo ?? ""} ${choque.curso?.nome ?? ""} (${String(choque.hora_inicio).slice(0,5)}–${String(choque.hora_fim).slice(0,5)}).`,
-      });
-    }
-
-    setSaving(true);
-    const horas = diffHoras(horaInicio, horaFim);
-    const { error } = await supabase.from("sessoes").insert({
-      curso_id: cursoId,
-      curso_ufcd_id: cursoUfcdId,
-      formador_id: formadorId,
-      data: dataSel,
-      hora_inicio: horaInicio,
-      hora_fim: horaFim,
-      horas,
-      observacoes: observacoes || null,
-    } as never);
-    setSaving(false);
-    if (error) return toast.error(error.message);
-    toast.success("Sessão criada");
-    qc.invalidateQueries({ queryKey: ["sessoes-geral"] });
-    qc.invalidateQueries({ queryKey: ["sessoes"] });
-    onClose();
-  }
-
-  const open = !!data;
-  return (
-    <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> Nova sessão</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-3">
-          <div className="text-xs text-muted-foreground">
-            Cria uma sessão diretamente, escolhendo formador e UFCD — sem depender de disponibilidade lançada.
-          </div>
-          <div className="space-y-1.5">
-            <Label>Data *</Label>
-            <Input type="date" value={dataSel} onChange={e => setDataSel(e.target.value)} />
-          </div>
-          <div className="space-y-1.5">
-            <Label>Formador *</Label>
-            <Select value={formadorId} onValueChange={setFormadorId}>
-              <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
-              <SelectContent>
-                {formadores.map((f) => (
-                  <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>Curso *</Label>
-            <Select value={cursoId} onValueChange={(v) => { setCursoId(v); setCursoUfcdId(""); }}>
-              <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
-              <SelectContent>
-                {cursos.map((c) => (
-                  <SelectItem key={c.id} value={c.id}>{c.codigo} — {c.nome}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-1.5">
-            <Label>UFCD *</Label>
-            <Select value={cursoUfcdId} onValueChange={setCursoUfcdId} disabled={!cursoId}>
-              <SelectTrigger><SelectValue placeholder={!cursoId ? "Escolhe primeiro o curso" : ((ufcds.data ?? []).length === 0 ? "Sem UFCDs neste curso" : "Escolher…")} /></SelectTrigger>
-              <SelectContent>
-                {(ufcds.data ?? []).map((cu: any) => (
-                  <SelectItem key={cu.id} value={cu.id}>
-                    {cu.ufcd?.codigo} — {cu.ufcd?.designacao}{cu.concluida ? " (concluída)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} /></div>
-            <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} /></div>
-          </div>
-          <div className="space-y-1.5"><Label>Observações</Label><Input value={observacoes} onChange={e => setObservacoes(e.target.value)} /></div>
-        </div>
-        <DialogFooter>
-          <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={criar} disabled={saving}>{saving ? "A criar…" : "Criar sessão"}</Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}

@@ -1948,6 +1948,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
   const [hf, setHf] = useState("13:00");
   const [cufId, setCufId] = useState("");
   const [formadorId, setFormadorId] = useState("");
+  const [ignorarDisp, setIgnorarDisp] = useState(false);
   const [erro, setErro] = useState<{ titulo: string; descricao?: string } | null>(null);
 
   // Aplicar defaultDate ao abrir
@@ -1986,16 +1987,28 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     },
   });
 
+  const formadoresTodos = useQuery({
+    queryKey: ["formadores-todos-sessao"],
+    enabled: open && ignorarDisp,
+    queryFn: async () => (await supabase.from("formadores").select("id, nome, abreviatura, cor").order("nome")).data ?? [],
+  });
+
   // UFCD em que o formador escolhido está atribuído neste curso E ainda tem horas em falta
   const ufcdsDoFormador = useMemo(() => {
     if (!formadorId) return [];
+    if (ignorarDisp) {
+      // Modo manual: mostrar TODAS as UFCD do curso (mesmo sem formador atribuído e sem horas em falta)
+      return (ufcds.data ?? [])
+        .slice()
+        .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
+    }
     return (ufcds.data ?? [])
       .filter((u: any) =>
         u.horas_em_falta > 0 &&
         (u.formadores ?? []).some((ff: any) => ff.formador?.id === formadorId)
       )
       .sort((a: any, b: any) => compareUfcdCodigo(a.ufcd?.codigo ?? "", b.ufcd?.codigo ?? ""));
-  }, [formadorId, ufcds.data]);
+  }, [formadorId, ufcds.data, ignorarDisp]);
 
   const cufSelecionada = useMemo(() => (ufcds.data ?? []).find((u: any) => u.id === cufId), [ufcds.data, cufId]);
 
@@ -2085,7 +2098,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     const indisp = dispDoFormador.find((d: any) => d.tipo === "indisponivel" && !(hfN <= d.hora_inicio || hiN >= d.hora_fim));
     if (indisp) { setErro({ titulo: "Formador indisponível", descricao: "O formador marcou este período como indisponível." }); return; }
 
-    if (!isRetroativo) {
+    if (!isRetroativo && !ignorarDisp) {
       const disponiveis = dispDoFormador.filter((d: any) => d.tipo === "disponivel");
       if (disponiveis.length === 0) {
         setErro({ titulo: "Sem disponibilidade", descricao: "O formador não declarou disponibilidade para este dia." });
@@ -2111,7 +2124,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     if (error) return toast.error(error.message);
     toast.success("Sessão criada");
     onOpenChange(false);
-    setData(""); setCufId(""); setFormadorId(""); setHi("09:00"); setHf("13:00");
+    setData(""); setCufId(""); setFormadorId(""); setHi("09:00"); setHf("13:00"); setIgnorarDisp(false);
     onSaved();
   }
 
@@ -2127,7 +2140,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
 
   return (
     <>
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setData(""); setCufId(""); setFormadorId(""); } }}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setData(""); setCufId(""); setFormadorId(""); setIgnorarDisp(false); } }}>
 
       <DialogContent className="max-w-xl">
         <DialogHeader><DialogTitle>Nova sessão</DialogTitle></DialogHeader>
@@ -2137,7 +2150,33 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
             <Input type="date" value={data} onChange={e => { setData(e.target.value); setFormadorId(""); setCufId(""); }} />
           </div>
 
-          {data && isRetroativo && (
+          <label className="flex items-center gap-2 text-xs rounded-md border px-3 py-2 bg-muted/30 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={ignorarDisp}
+              onChange={e => { setIgnorarDisp(e.target.checked); setFormadorId(""); setCufId(""); }}
+            />
+            <span>Escolher formador e UFCD manualmente (ignorar disponibilidade)</span>
+          </label>
+
+          {data && ignorarDisp && (
+            <div className="space-y-1.5">
+              <div className="rounded-md border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                Modo manual — escolhe qualquer formador e qualquer UFCD do curso, sem validar disponibilidade.
+              </div>
+              <Label className="text-xs">Formador *</Label>
+              <Select value={formadorId} onValueChange={(v) => { setFormadorId(v); setCufId(""); }}>
+                <SelectTrigger><SelectValue placeholder="Escolher formador…" /></SelectTrigger>
+                <SelectContent>
+                  {(formadoresTodos.data ?? []).map((f: any) => (
+                    <SelectItem key={f.id} value={f.id}>{formadorLabel(f)}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {data && !ignorarDisp && isRetroativo && (
             <div className="space-y-1.5">
               <div className="rounded-md border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
                 Lançamento retroativo (mês anterior ao atual) — não é exigida disponibilidade declarada. Escolhe o formador manualmente.
@@ -2154,7 +2193,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
             </div>
           )}
 
-          {data && !isRetroativo && (
+          {data && !ignorarDisp && !isRetroativo && (
             <div className="space-y-1.5">
               <Label className="text-xs">Formadores com disponibilidade neste dia</Label>
               <div className="border rounded-md max-h-56 overflow-y-auto divide-y bg-muted/30">
@@ -2190,7 +2229,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
 
           {formadorId && (
             <div className="space-y-1.5">
-              <Label>UFCD * <span className="text-xs text-muted-foreground font-normal">(apenas as deste formador com horas em falta)</span></Label>
+              <Label>UFCD * <span className="text-xs text-muted-foreground font-normal">{ignorarDisp ? "(todas as UFCD do curso)" : "(apenas as deste formador com horas em falta)"}</span></Label>
               <Select value={cufId} onValueChange={setCufId}>
                 <SelectTrigger><SelectValue placeholder={ufcdsDoFormador.length === 0 ? "Sem UFCD em falta para este formador" : "Escolher UFCD…"} /></SelectTrigger>
                 <SelectContent>

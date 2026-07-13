@@ -73,6 +73,9 @@ function CursoDetail() {
         description={`${c.codigo} · ${TIPOLOGIA_LABEL[c.tipologia]} · ${ESTADO_CURSO_LABEL[c.estado]}`}
         actions={
           <>
+            <Button variant="outline" onClick={() => setEditOpen(true)}>
+              <Pencil className="size-4" /> Editar
+            </Button>
             <Button variant="outline" asChild>
               <Link to="/cursos/$id/importar" params={{ id }}>
                 <Upload className="size-4" /> Importar cronograma

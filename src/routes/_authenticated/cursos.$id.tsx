@@ -37,6 +37,7 @@ function CursoDetail() {
   const { id } = Route.useParams();
   const navigate = useNavigate();
   const qc = useQueryClient();
+  const [editOpen, setEditOpen] = useState(false);
 
   const curso = useQuery({
     queryKey: ["curso", id],

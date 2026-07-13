@@ -138,7 +138,89 @@ function CursoDetail() {
           <FaltasTab cursoId={id} />
         </TabsContent>
       </Tabs>
+
+      <EditCursoDialog open={editOpen} onOpenChange={setEditOpen} curso={c} />
     </PageContainer>
+  );
+}
+
+function EditCursoDialog({ open, onOpenChange, curso }: { open: boolean; onOpenChange: (v: boolean) => void; curso: any }) {
+  const qc = useQueryClient();
+  const [form, setForm] = useState<any>(curso);
+  useEffect(() => { if (open) setForm(curso); }, [open, curso]);
+
+  const save = async () => {
+    if (!form.nome?.trim() || !form.codigo?.trim()) return toast.error("Nome e código são obrigatórios");
+    const { error } = await supabase.from("cursos").update({
+      nome: form.nome.trim(),
+      codigo: form.codigo.trim(),
+      tipologia: form.tipologia,
+      estado: form.estado,
+      data_inicio: form.data_inicio || null,
+      data_fim: form.data_fim || null,
+      observacoes: form.observacoes || null,
+    }).eq("id", curso.id);
+    if (error) return toast.error(error.message);
+    toast.success("Curso atualizado");
+    qc.invalidateQueries({ queryKey: ["curso", curso.id] });
+    qc.invalidateQueries({ queryKey: ["cursos"] });
+    onOpenChange(false);
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader><DialogTitle>Editar curso</DialogTitle></DialogHeader>
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div className="sm:col-span-2">
+            <Label>Nome</Label>
+            <Input value={form.nome ?? ""} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+          </div>
+          <div>
+            <Label>Código</Label>
+            <Input value={form.codigo ?? ""} onChange={(e) => setForm({ ...form, codigo: e.target.value })} />
+          </div>
+          <div>
+            <Label>Tipologia</Label>
+            <Select value={form.tipologia} onValueChange={(v) => setForm({ ...form, tipologia: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(TIPOLOGIA_LABEL).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Data de início</Label>
+            <Input type="date" value={form.data_inicio ?? ""} onChange={(e) => setForm({ ...form, data_inicio: e.target.value })} />
+          </div>
+          <div>
+            <Label>Data de fim</Label>
+            <Input type="date" value={form.data_fim ?? ""} onChange={(e) => setForm({ ...form, data_fim: e.target.value })} />
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Estado</Label>
+            <Select value={form.estado} onValueChange={(v) => setForm({ ...form, estado: v })}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {Object.entries(ESTADO_CURSO_LABEL).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Observações</Label>
+            <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={save}>Guardar</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
 

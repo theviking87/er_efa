@@ -197,7 +197,7 @@ function NotaHonorariosCard() {
           </div>
         )}
 
-        </div>
+
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">

@@ -733,33 +733,52 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   doc.text(`Data de emissão: ${fmtDate(dataEmissao)}`, w - 14, y, { align: "right" });
   y += 6;
 
-  // Tabela de sessões
-  const body = sess.map(s => {
-    const cuf = cufById.get(s.curso_ufcd_id);
-    const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
-    const curso = cursoById.get(s.curso_id);
-    return [
-      fmtDate(s.data),
-      curso ? `${curso.codigo}` : "",
-      ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : "",
-      `${(s.hora_inicio ?? "").slice(0,5)}–${(s.hora_fim ?? "").slice(0,5)}`,
-      `${Number(s.horas).toFixed(2)}h`,
-      fmtEUR(valorHora),
-      fmtEUR(Number(s.horas) * valorHora),
-    ];
-  });
+  // Tabela de sessões / prestação
+  if (modo === "avulso") {
+    autoTable(doc, {
+      ...tableTheme,
+      startY: y,
+      head: [["Descrição", "Horas", "Valor/h", "Total"]],
+      body: [[
+        opts.descricaoAvulso || "Prestação de serviços de formação",
+        `${totalHoras.toFixed(2)}h`,
+        fmtEUR(valorHora),
+        fmtEUR(subtotal),
+      ]],
+      columnStyles: {
+        1: { halign: "right" },
+        2: { halign: "right" },
+        3: { halign: "right", fontStyle: "bold" },
+      },
+    });
+  } else {
+    const body = sess.map(s => {
+      const cuf = cufById.get(s.curso_ufcd_id);
+      const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
+      const curso = cursoById.get(s.curso_id);
+      return [
+        fmtDate(s.data),
+        curso ? `${curso.codigo}` : "",
+        ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : "",
+        `${(s.hora_inicio ?? "").slice(0,5)}–${(s.hora_fim ?? "").slice(0,5)}`,
+        `${Number(s.horas).toFixed(2)}h`,
+        fmtEUR(valorHora),
+        fmtEUR(Number(s.horas) * valorHora),
+      ];
+    });
+    autoTable(doc, {
+      ...tableTheme,
+      startY: y,
+      head: [["Data", "Curso", "UFCD", "Horário", "Horas", "Valor/h", "Total"]],
+      body: body.length ? body : [["—","—","Sem sessões no período","—","0h", fmtEUR(valorHora), fmtEUR(0)]],
+      columnStyles: {
+        4: { halign: "right" },
+        5: { halign: "right" },
+        6: { halign: "right", fontStyle: "bold" },
+      },
+    });
+  }
 
-  autoTable(doc, {
-    ...tableTheme,
-    startY: y,
-    head: [["Data", "Curso", "UFCD", "Horário", "Horas", "Valor/h", "Total"]],
-    body: body.length ? body : [["—","—","Sem sessões no período","—","0h", fmtEUR(valorHora), fmtEUR(0)]],
-    columnStyles: {
-      4: { halign: "right" },
-      5: { halign: "right" },
-      6: { halign: "right", fontStyle: "bold" },
-    },
-  });
 
   let yEnd = (doc as any).lastAutoTable.finalY + 6;
 

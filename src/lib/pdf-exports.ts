@@ -686,7 +686,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   doc.line(14, y, w - 14, y);
   y += 6;
   doc.setFont("helvetica","bold"); doc.setFontSize(9);
-  doc.text(`Período: ${meses[mes-1]} ${ano}`, 14, y);
+  doc.text(`Período: ${periodoLabel}`, 14, y);
   doc.text(`Data de emissão: ${fmtDate(new Date().toISOString().slice(0,10))}`, w - 14, y, { align: "right" });
   y += 6;
 

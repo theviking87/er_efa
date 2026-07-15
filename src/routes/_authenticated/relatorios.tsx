@@ -28,7 +28,9 @@ function NotaHonorariosCard() {
   const [ufcdId, setUfcdId] = useState<string>("");
 
   const [valorHora, setValorHora] = useState<string>("15");
-  const [retencao, setRetencao] = useState<string>("25");
+  const [retencao, setRetencao] = useState<string>("23");
+  const [aplicarIva, setAplicarIva] = useState(false);
+  const [iva, setIva] = useState<string>("23");
   const [destNome, setDestNome] = useState("");
   const [destNif, setDestNif] = useState("");
   const [destMorada, setDestMorada] = useState("");

@@ -437,8 +437,10 @@ export function NotaHonorariosCard() {
           const ivaPct = aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0;
           const sessoes = isExt ? [] : (preview.data?.sessoes ?? []);
           const horasExt = parseFloat((extHoras || "0").replace(",", ".")) || 0;
+          const totalExt = parseFloat((extValorTotal || "0").replace(",", ".")) || 0;
+          const usaTotalExt = isExt && extModoValor === "total" && totalExt > 0;
           const totalHoras = isExt ? horasExt : sessoes.reduce((a: number, s: any) => a + Number(s.horas || 0), 0);
-          const subtotal = totalHoras * vh;
+          const subtotal = usaTotalExt ? totalExt : totalHoras * vh;
           const ivaVal = subtotal * (ivaPct / 100);
           const ret = subtotal * (retPct / 100);
           const total = subtotal + ivaVal - ret;

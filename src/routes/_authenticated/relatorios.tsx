@@ -513,8 +513,8 @@ export function NotaHonorariosCard() {
                     <tbody>
                       <tr className="border-t border-emerald-700/10">
                         <td className="px-2 py-1">{extDescricao || "Prestação de serviços de formação"}</td>
-                        <td className="px-2 py-1 text-right">{horasExt.toFixed(2)}h</td>
-                        <td className="px-2 py-1 text-right">{fmtEUR(vh)}</td>
+                        <td className="px-2 py-1 text-right">{usaTotalExt && horasExt === 0 ? "—" : `${horasExt.toFixed(2)}h`}</td>
+                        <td className="px-2 py-1 text-right">{usaTotalExt ? "—" : fmtEUR(vh)}</td>
                         <td className="px-2 py-1 text-right font-semibold">{fmtEUR(subtotal)}</td>
                       </tr>
                     </tbody>

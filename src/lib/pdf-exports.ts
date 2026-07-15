@@ -659,10 +659,13 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   }
 
 
+  const avulsoTotal = modo === "avulso" && (opts.valorTotalAvulso ?? 0) > 0
+    ? Number(opts.valorTotalAvulso)
+    : null;
   const totalHoras = modo === "avulso"
     ? Number(opts.horasAvulso || 0)
     : sess.reduce((a, s) => a + Number(s.horas || 0), 0);
-  const subtotal = totalHoras * valorHora;
+  const subtotal = avulsoTotal !== null ? avulsoTotal : totalHoras * valorHora;
   const ivaPct = opts.iva ?? 0;
   const ivaValor = subtotal * (ivaPct / 100);
   const retencaoPct = opts.retencaoIrs ?? 0;

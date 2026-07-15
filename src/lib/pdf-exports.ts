@@ -562,8 +562,10 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
 // ============= Nota de Honorários =============
 export interface NotaHonorariosOpts {
   formadorId: string;
-  ano: number;
-  mes: number; // 1-12
+  // Modo "mes": filtra por ano+mes. Modo "ufcd": filtra por UFCD (todas as sessões ministradas).
+  modo: "mes" | "ufcd";
+  ano?: number;
+  mes?: number; // 1-12
   ufcdId?: string | null;
   valorHora: number;
   numero?: string;
@@ -577,18 +579,25 @@ export interface NotaHonorariosOpts {
 }
 
 export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
-  const { formadorId, ano, mes, ufcdId, valorHora } = opts;
-  const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
-  const fimDate = new Date(ano, mes, 0);
-  const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
+  const { formadorId, modo, ano, mes, ufcdId, valorHora } = opts;
+
+  if (modo === "mes" && (!ano || !mes)) throw new Error("Ano/mês obrigatórios");
+  if (modo === "ufcd" && !ufcdId) throw new Error("UFCD obrigatória");
+
+  let query = supabase.from("sessoes")
+    .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
+    .eq("formador_id", formadorId);
+
+  if (modo === "mes") {
+    const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
+    const fimDate = new Date(ano!, mes!, 0);
+    const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
+    query = query.gte("data", inicio).lte("data", fim);
+  }
 
   const [formadorRes, sessoesRes] = await Promise.all([
     supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle(),
-    supabase.from("sessoes")
-      .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
-      .eq("formador_id", formadorId)
-      .gte("data", inicio).lte("data", fim)
-      .order("data").order("hora_inicio"),
+    query.order("data").order("hora_inicio"),
   ]);
   if (!formadorRes.data) throw new Error("Formador não encontrado");
   if (sessoesRes.error) throw sessoesRes.error;
@@ -604,7 +613,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     rowsById("cursos", "id, codigo, nome", cursoIds),
   ]);
 
-  if (ufcdId) {
+  if (modo === "ufcd" && ufcdId) {
     sess = sess.filter(s => {
       const cuf = cufById.get(s.curso_ufcd_id);
       return cuf?.ufcd_id === ufcdId;
@@ -618,7 +627,15 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   const total = subtotal - retencao;
 
   const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-  const numero = opts.numero || `NH-${ano}${String(mes).padStart(2,"0")}-${String(formador.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}`;
+  const ufcdSel = modo === "ufcd" && ufcdId ? ufcdById.get(ufcdId) : null;
+  const periodoLabel = modo === "mes"
+    ? `${meses[mes!-1]} ${ano}`
+    : (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD");
+  const numeroSuffix = modo === "mes"
+    ? `${ano}${String(mes).padStart(2,"0")}`
+    : (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD");
+  const numero = opts.numero || `NH-${numeroSuffix}-${String(formador.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}`;
+
   const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
 
   const doc = newDoc("portrait");
@@ -669,7 +686,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   doc.line(14, y, w - 14, y);
   y += 6;
   doc.setFont("helvetica","bold"); doc.setFontSize(9);
-  doc.text(`Período: ${meses[mes-1]} ${ano}`, 14, y);
+  doc.text(`Período: ${periodoLabel}`, 14, y);
   doc.text(`Data de emissão: ${fmtDate(new Date().toISOString().slice(0,10))}`, w - 14, y, { align: "right" });
   y += 6;
 
@@ -740,7 +757,9 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   doc.setTextColor(0,0,0);
 
   footer(doc);
-  const fname = `NotaHonorarios_${sanitize(formador.nome || "formador")}_${ano}-${String(mes).padStart(2,"0")}.pdf`;
+  const fnameSuffix = modo === "mes" ? `${ano}-${String(mes).padStart(2,"0")}` : (ufcdSel ? sanitize(String(ufcdSel.codigo)) : "ufcd");
+  const fname = `NotaHonorarios_${sanitize(formador.nome || "formador")}_${fnameSuffix}.pdf`;
+
   await savePdf(doc, fname);
 }
 

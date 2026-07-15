@@ -50,6 +50,8 @@ export function NotaHonorariosCard() {
   const [extIban, setExtIban] = useState("");
   const [extHoras, setExtHoras] = useState<string>("");
   const [extDescricao, setExtDescricao] = useState<string>("Prestação de serviços de formação");
+  const [extModoValor, setExtModoValor] = useState<"hora" | "total">("hora");
+  const [extValorTotal, setExtValorTotal] = useState<string>("");
 
   const formadores = useQuery({
     enabled: tipoFormador === "registado",

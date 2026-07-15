@@ -392,23 +392,33 @@ export function NotaHonorariosCard() {
         </div>
 
         {(() => {
+          const isExt = tipoFormador === "externo";
           const vh = parseFloat(valorHora.replace(",", ".")) || 0;
           const retPct = parseFloat(retencao.replace(",", ".")) || 0;
           const ivaPct = aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0;
-          const sessoes = preview.data?.sessoes ?? [];
-          const totalHoras = sessoes.reduce((a: number, s: any) => a + Number(s.horas || 0), 0);
+          const sessoes = isExt ? [] : (preview.data?.sessoes ?? []);
+          const horasExt = parseFloat((extHoras || "0").replace(",", ".")) || 0;
+          const totalHoras = isExt ? horasExt : sessoes.reduce((a: number, s: any) => a + Number(s.horas || 0), 0);
           const subtotal = totalHoras * vh;
           const ivaVal = subtotal * (ivaPct / 100);
           const ret = subtotal * (retPct / 100);
           const total = subtotal + ivaVal - ret;
           const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-          const ufcdSel = modo === "ufcd" && ufcdId ? preview.data?.ufcdMap.get(ufcdId) : null;
-          const periodoLabel = modo === "mes"
-            ? `${meses[mes-1]} ${ano}`
-            : (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD");
-          const numSuf = modo === "mes" ? `${ano}${String(mes).padStart(2,"0")}` : (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD");
-          const form: any = formadorDet.data ?? {};
-          const nDoc = numero || (formadorId ? `NH-${numSuf}-${String(form.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}` : "NH-…");
+          const ufcdSel = !isExt && modo === "ufcd" && ufcdId ? preview.data?.ufcdMap.get(ufcdId) : null;
+          const periodoLabel = isExt
+            ? `Prestação de serviços — ${fmtDate(dataEmissao)}`
+            : modo === "mes"
+              ? `${meses[mes-1]} ${ano}`
+              : (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD");
+          const numSuf = isExt
+            ? (dataEmissao || "").replace(/-/g,"")
+            : modo === "mes"
+              ? `${ano}${String(mes).padStart(2,"0")}`
+              : (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD");
+          const form: any = isExt
+            ? { nome: extNome, nif: extNif, morada: extMorada, codigo_postal: extCp, localidade: extLocalidade, email: extEmail, iban: extIban }
+            : (formadorDet.data ?? {});
+          const nDoc = numero || ((isExt ? extNome : formadorId) ? `NH-${numSuf}-${String(form.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}` : "NH-…");
           const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
           return (
             <div className="mt-2 rounded-lg border-2 border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/30 p-5 shadow-sm">
@@ -444,11 +454,31 @@ export function NotaHonorariosCard() {
               <div className="mt-3 pt-2 border-t border-emerald-700/30 text-xs text-emerald-950 dark:text-emerald-50">
                 <div className="flex justify-between font-semibold">
                   <span>Período: {periodoLabel}</span>
-                  <span>{sessoes.length} sessão(ões)</span>
+                  <span>{isExt ? "Prestação única" : `${sessoes.length} sessão(ões)`}</span>
                 </div>
               </div>
 
               <div className="mt-2 max-h-56 overflow-auto rounded border border-emerald-700/20 bg-white/60 dark:bg-emerald-950/40">
+                {isExt ? (
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-emerald-700/10 text-emerald-900 dark:text-emerald-100">
+                      <tr>
+                        <th className="text-left px-2 py-1">Descrição</th>
+                        <th className="text-right px-2 py-1">Horas</th>
+                        <th className="text-right px-2 py-1">V/h</th>
+                        <th className="text-right px-2 py-1">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-emerald-700/10">
+                        <td className="px-2 py-1">{extDescricao || "Prestação de serviços de formação"}</td>
+                        <td className="px-2 py-1 text-right">{horasExt.toFixed(2)}h</td>
+                        <td className="px-2 py-1 text-right">{fmtEUR(vh)}</td>
+                        <td className="px-2 py-1 text-right font-semibold">{fmtEUR(subtotal)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                ) : (
                 <table className="w-full text-[11px]">
                   <thead className="bg-emerald-700/10 text-emerald-900 dark:text-emerald-100">
                     <tr>
@@ -482,7 +512,9 @@ export function NotaHonorariosCard() {
                     })}
                   </tbody>
                 </table>
+                )}
               </div>
+
 
               <div className="mt-3 flex justify-end">
                 <div className="w-full max-w-xs space-y-1 text-xs text-emerald-950 dark:text-emerald-50">

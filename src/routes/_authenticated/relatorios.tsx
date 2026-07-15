@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { localDateIso } from "@/lib/format";
+import { localDateIso, fmtDate } from "@/lib/format";
 import { paintBeforeHeavyWork } from "@/lib/offline-sql";
 import { runNativeExcelReport, runNativePdfReport } from "@/lib/electron-io";
 
@@ -42,6 +42,49 @@ function NotaHonorariosCard() {
   const formadores = useQuery({
     queryKey: ["formadores-nomes"],
     queryFn: async () => (await supabase.from("formadores").select("id, nome").order("nome")).data ?? [],
+  });
+
+  const formadorDet = useQuery({
+    enabled: !!formadorId,
+    queryKey: ["formador-det", formadorId],
+    queryFn: async () => (await supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle()).data,
+  });
+
+  const preview = useQuery({
+    enabled: !!formadorId && (modo === "mes" || !!ufcdId),
+    queryKey: ["nh-preview", formadorId, modo, ano, mes, ufcdId],
+    queryFn: async () => {
+      let q = supabase.from("sessoes")
+        .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
+        .eq("formador_id", formadorId);
+      if (modo === "mes") {
+        const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
+        const fimDate = new Date(ano, mes, 0);
+        const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
+        q = q.gte("data", inicio).lte("data", fim);
+      }
+      const { data: sess } = await q.order("data").order("hora_inicio");
+      let sessoes = sess ?? [];
+      const cufIds = Array.from(new Set(sessoes.map((s: any) => s.curso_ufcd_id).filter(Boolean)));
+      const { data: cufs } = cufIds.length
+        ? await supabase.from("curso_ufcds").select("id, ufcd_id, curso_id").in("id", cufIds)
+        : { data: [] as any[] };
+      const cufMap = new Map((cufs ?? []).map((c: any) => [c.id, c]));
+      const ufcdIds = Array.from(new Set((cufs ?? []).map((c: any) => c.ufcd_id).filter(Boolean)));
+      const { data: ufcds } = ufcdIds.length
+        ? await supabase.from("ufcds").select("id, codigo, designacao").in("id", ufcdIds)
+        : { data: [] as any[] };
+      const ufcdMap = new Map((ufcds ?? []).map((u: any) => [u.id, u]));
+      const cursoIds = Array.from(new Set(sessoes.map((s: any) => s.curso_id).filter(Boolean)));
+      const { data: cursos } = cursoIds.length
+        ? await supabase.from("cursos").select("id, codigo, nome").in("id", cursoIds)
+        : { data: [] as any[] };
+      const cursoMap = new Map((cursos ?? []).map((c: any) => [c.id, c]));
+      if (modo === "ufcd" && ufcdId) {
+        sessoes = sessoes.filter((s: any) => cufMap.get(s.curso_ufcd_id)?.ufcd_id === ufcdId);
+      }
+      return { sessoes, cufMap, ufcdMap, cursoMap };
+    },
   });
 
   const ufcdsDisponiveis = useQuery({
@@ -254,11 +297,131 @@ function NotaHonorariosCard() {
           </div>
         </div>
 
+        {(() => {
+          const vh = parseFloat(valorHora.replace(",", ".")) || 0;
+          const retPct = parseFloat(retencao.replace(",", ".")) || 0;
+          const ivaPct = aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0;
+          const sessoes = preview.data?.sessoes ?? [];
+          const totalHoras = sessoes.reduce((a: number, s: any) => a + Number(s.horas || 0), 0);
+          const subtotal = totalHoras * vh;
+          const ivaVal = subtotal * (ivaPct / 100);
+          const ret = subtotal * (retPct / 100);
+          const total = subtotal + ivaVal - ret;
+          const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+          const ufcdSel = modo === "ufcd" && ufcdId ? preview.data?.ufcdMap.get(ufcdId) : null;
+          const periodoLabel = modo === "mes"
+            ? `${meses[mes-1]} ${ano}`
+            : (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD");
+          const numSuf = modo === "mes" ? `${ano}${String(mes).padStart(2,"0")}` : (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD");
+          const form: any = formadorDet.data ?? {};
+          const nDoc = numero || (formadorId ? `NH-${numSuf}-${String(form.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}` : "NH-…");
+          const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
+          return (
+            <div className="mt-2 rounded-lg border-2 border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/30 p-5 shadow-sm">
+              <div className="mb-3 flex items-center justify-between border-b-2 border-emerald-700/40 pb-2">
+                <div>
+                  <div className="text-xs uppercase tracking-wider text-emerald-900/70 dark:text-emerald-200/70">Pré-visualização</div>
+                  <div className="text-lg font-bold text-emerald-900 dark:text-emerald-100">NOTA DE HONORÁRIOS</div>
+                </div>
+                <div className="text-right text-xs text-emerald-900/80 dark:text-emerald-200/80">
+                  <div><span className="font-semibold">Nº</span> {nDoc}</div>
+                  <div><span className="font-semibold">Data:</span> {fmtDate(dataEmissao)}</div>
+                </div>
+              </div>
+
+              <div className="grid gap-3 md:grid-cols-2 text-xs text-emerald-950 dark:text-emerald-50">
+                <div>
+                  <div className="font-semibold uppercase text-[10px] tracking-wider text-emerald-900/60 dark:text-emerald-200/60 mb-1">Emitente</div>
+                  <div className="font-medium">{form.nome || "—"}</div>
+                  {form.nif && <div>NIF: {form.nif}</div>}
+                  {form.morada && <div>{form.morada}</div>}
+                  {(form.codigo_postal || form.localidade) && <div>{`${form.codigo_postal ?? ""} ${form.localidade ?? ""}`.trim()}</div>}
+                  {form.email && <div>{form.email}</div>}
+                  {form.iban && <div>IBAN: {form.iban}</div>}
+                </div>
+                <div>
+                  <div className="font-semibold uppercase text-[10px] tracking-wider text-emerald-900/60 dark:text-emerald-200/60 mb-1">Destinatário</div>
+                  <div className="font-medium">{destNome || "—"}</div>
+                  {destNif && <div>NIF: {destNif}</div>}
+                  {destMorada && <div>{destMorada}</div>}
+                </div>
+              </div>
+
+              <div className="mt-3 pt-2 border-t border-emerald-700/30 text-xs text-emerald-950 dark:text-emerald-50">
+                <div className="flex justify-between font-semibold">
+                  <span>Período: {periodoLabel}</span>
+                  <span>{sessoes.length} sessão(ões)</span>
+                </div>
+              </div>
+
+              <div className="mt-2 max-h-56 overflow-auto rounded border border-emerald-700/20 bg-white/60 dark:bg-emerald-950/40">
+                <table className="w-full text-[11px]">
+                  <thead className="bg-emerald-700/10 text-emerald-900 dark:text-emerald-100">
+                    <tr>
+                      <th className="text-left px-2 py-1">Data</th>
+                      <th className="text-left px-2 py-1">Curso</th>
+                      <th className="text-left px-2 py-1">UFCD</th>
+                      <th className="text-left px-2 py-1">Horário</th>
+                      <th className="text-right px-2 py-1">Horas</th>
+                      <th className="text-right px-2 py-1">V/h</th>
+                      <th className="text-right px-2 py-1">Total</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {sessoes.length === 0 ? (
+                      <tr><td colSpan={7} className="text-center px-2 py-3 text-emerald-900/60 dark:text-emerald-200/60">Sem sessões no período</td></tr>
+                    ) : sessoes.map((s: any, i: number) => {
+                      const cuf = preview.data?.cufMap.get(s.curso_ufcd_id);
+                      const ufcd = cuf ? preview.data?.ufcdMap.get(cuf.ufcd_id) : null;
+                      const curso = preview.data?.cursoMap.get(s.curso_id);
+                      return (
+                        <tr key={i} className="border-t border-emerald-700/10">
+                          <td className="px-2 py-1">{fmtDate(s.data)}</td>
+                          <td className="px-2 py-1">{curso?.codigo ?? ""}</td>
+                          <td className="px-2 py-1 truncate max-w-[180px]">{ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : ""}</td>
+                          <td className="px-2 py-1">{(s.hora_inicio ?? "").slice(0,5)}–{(s.hora_fim ?? "").slice(0,5)}</td>
+                          <td className="px-2 py-1 text-right">{Number(s.horas).toFixed(2)}h</td>
+                          <td className="px-2 py-1 text-right">{fmtEUR(vh)}</td>
+                          <td className="px-2 py-1 text-right font-semibold">{fmtEUR(Number(s.horas) * vh)}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+
+              <div className="mt-3 flex justify-end">
+                <div className="w-full max-w-xs space-y-1 text-xs text-emerald-950 dark:text-emerald-50">
+                  <div className="flex justify-between"><span>Total de horas:</span><span>{totalHoras.toFixed(2)}h</span></div>
+                  <div className="flex justify-between"><span>Subtotal:</span><span>{fmtEUR(subtotal)}</span></div>
+                  {ivaPct > 0 && <div className="flex justify-between"><span>IVA ({ivaPct}%):</span><span>+ {fmtEUR(ivaVal)}</span></div>}
+                  {retPct > 0 && <div className="flex justify-between"><span>Retenção IRS ({retPct}%):</span><span>- {fmtEUR(ret)}</span></div>}
+                  <div className="flex justify-between border-t-2 border-emerald-700/50 pt-1 text-sm font-bold text-emerald-900 dark:text-emerald-100">
+                    <span>TOTAL A PAGAR:</span><span>{fmtEUR(total)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {observacoes && (
+                <div className="mt-3 text-xs text-emerald-950 dark:text-emerald-50">
+                  <div className="font-semibold uppercase text-[10px] tracking-wider text-emerald-900/60 dark:text-emerald-200/60">Observações</div>
+                  <div>{observacoes}</div>
+                </div>
+              )}
+
+              <div className="mt-3 text-[10px] italic text-emerald-900/60 dark:text-emerald-200/60">
+                Pré-visualização — documento sem valor fiscal.
+              </div>
+            </div>
+          );
+        })()}
+
         <div className="flex gap-2">
           <Button onClick={gerar} disabled={!formadorId || busy}>
             <FileText className="size-4" /> {busy ? "A gerar…" : "Gerar PDF"}
           </Button>
         </div>
+
       </CardContent>
     </Card>
   );

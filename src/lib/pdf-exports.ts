@@ -577,6 +577,7 @@ export interface NotaHonorariosOpts {
   };
   retencaoIrs?: number; // percentagem (ex. 23)
   iva?: number; // percentagem de IVA a acrescer (ex. 23). 0 ou undefined = sem IVA
+  aplicarIva?: boolean; // se false, mostra "Regime de isenção"
   observacoes?: string;
   dataEmissao?: string; // ISO yyyy-mm-dd; default = hoje
   // Modo "avulso":
@@ -793,8 +794,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   };
   drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
   drawRow("Subtotal:", fmtEUR(subtotal));
-  if (ivaPct > 0) drawRow(`IVA (${ivaPct}%):`, `+ ${fmtEUR(ivaValor)}`);
-  else if (ivaPct === 0) drawRow("IVA:", "Regime de isenção");
+  if (!opts.aplicarIva || ivaPct === 0) drawRow("IVA:", "Regime de isenção");
+  else if (ivaPct > 0) drawRow(`IVA (${ivaPct}%):`, `+ ${fmtEUR(ivaValor)}`);
   if (retencaoPct > 0) drawRow(`Retenção IRS (${retencaoPct}%):`, `- ${fmtEUR(retencao)}`);
   else if (retencaoPct === 0) drawRow("Retenção IRS:", "Regime de isenção");
   doc.setDrawColor(...BRAND); doc.setLineWidth(0.5);

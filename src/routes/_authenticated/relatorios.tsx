@@ -559,7 +559,9 @@ export function NotaHonorariosCard() {
 
               <div className="mt-3 flex justify-end">
                 <div className="w-full max-w-xs space-y-1 text-xs text-emerald-950 dark:text-emerald-50">
-                  <div className="flex justify-between"><span>Total de horas:</span><span>{totalHoras.toFixed(2)}h</span></div>
+                  {!(usaTotalExt && horasExt === 0) && (
+                    <div className="flex justify-between"><span>Total de horas:</span><span>{totalHoras.toFixed(2)}h</span></div>
+                  )}
                   <div className="flex justify-between"><span>Subtotal:</span><span>{fmtEUR(subtotal)}</span></div>
                   {!aplicarIva || ivaPct === 0 ? (
                     <div className="flex justify-between"><span>IVA:</span><span>Regime de isenção</span></div>

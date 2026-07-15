@@ -561,9 +561,10 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
 
 // ============= Nota de Honorários =============
 export interface NotaHonorariosOpts {
-  formadorId: string;
-  // Modo "mes": filtra por ano+mes. Modo "ufcd": filtra por UFCD (todas as sessões ministradas).
-  modo: "mes" | "ufcd";
+  formadorId?: string;
+  // Modo "mes": filtra sessões por ano+mes. "ufcd": por UFCD ministrada.
+  // "avulso": formador externo / prestação única, sem sessões da BD.
+  modo: "mes" | "ufcd" | "avulso";
   ano?: number;
   mes?: number; // 1-12
   ufcdId?: string | null;
@@ -578,50 +579,80 @@ export interface NotaHonorariosOpts {
   iva?: number; // percentagem de IVA a acrescer (ex. 23). 0 ou undefined = sem IVA
   observacoes?: string;
   dataEmissao?: string; // ISO yyyy-mm-dd; default = hoje
+  // Modo "avulso":
+  formadorExterno?: {
+    nome: string;
+    nif?: string;
+    morada?: string;
+    codigo_postal?: string;
+    localidade?: string;
+    email?: string;
+    iban?: string;
+  };
+  horasAvulso?: number;
+  descricaoAvulso?: string; // descrição da prestação (linha única)
 }
 
 export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
-  const { formadorId, modo, ano, mes, ufcdId, valorHora } = opts;
+  const { modo, ano, mes, ufcdId, valorHora } = opts;
   const dataEmissao = opts.dataEmissao || new Date().toISOString().slice(0, 10);
 
   if (modo === "mes" && (!ano || !mes)) throw new Error("Ano/mês obrigatórios");
   if (modo === "ufcd" && !ufcdId) throw new Error("UFCD obrigatória");
-
-  let query = supabase.from("sessoes")
-    .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
-    .eq("formador_id", formadorId);
-
-  if (modo === "mes") {
-    const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
-    const fimDate = new Date(ano!, mes!, 0);
-    const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
-    query = query.gte("data", inicio).lte("data", fim);
+  if (modo === "avulso") {
+    if (!opts.formadorExterno?.nome) throw new Error("Nome do formador obrigatório");
+    if (!opts.horasAvulso || opts.horasAvulso <= 0) throw new Error("Horas obrigatórias");
+  } else {
+    if (!opts.formadorId) throw new Error("Formador obrigatório");
   }
 
-  const [formadorRes, sessoesRes] = await Promise.all([
-    supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle(),
-    query.order("data").order("hora_inicio"),
-  ]);
-  if (!formadorRes.data) throw new Error("Formador não encontrado");
-  if (sessoesRes.error) throw sessoesRes.error;
-  const formador: any = formadorRes.data;
-  let sess: any[] = sessoesRes.data ?? [];
+  let formador: any;
+  let sess: any[] = [];
+  let cufById = new Map<string, any>();
+  let ufcdById = new Map<string, any>();
+  let cursoById = new Map<string, any>();
 
-  const cufIds = uniqueIds(sess.map(s => s.curso_ufcd_id));
-  const cursoIds = uniqueIds(sess.map(s => s.curso_id));
-  const cufById = await rowsById("curso_ufcds", "id, ufcd_id, curso_id", cufIds);
-  const ufcdIds = uniqueIds(Array.from(cufById.values()).map((c: any) => c.ufcd_id));
-  const [ufcdById, cursoById] = await Promise.all([
-    rowsById("ufcds", "id, codigo, designacao", ufcdIds),
-    rowsById("cursos", "id, codigo, nome", cursoIds),
-  ]);
+  if (modo === "avulso") {
+    formador = opts.formadorExterno!;
+  } else {
+    const formadorId = opts.formadorId!;
+    let query = supabase.from("sessoes")
+      .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
+      .eq("formador_id", formadorId);
 
-  if (modo === "ufcd" && ufcdId) {
-    sess = sess.filter(s => {
-      const cuf = cufById.get(s.curso_ufcd_id);
-      return cuf?.ufcd_id === ufcdId;
-    });
+    if (modo === "mes") {
+      const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
+      const fimDate = new Date(ano!, mes!, 0);
+      const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
+      query = query.gte("data", inicio).lte("data", fim);
+    }
+
+    const [formadorRes, sessoesRes] = await Promise.all([
+      supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle(),
+      query.order("data").order("hora_inicio"),
+    ]);
+    if (!formadorRes.data) throw new Error("Formador não encontrado");
+    if (sessoesRes.error) throw sessoesRes.error;
+    formador = formadorRes.data;
+    sess = sessoesRes.data ?? [];
+
+    const cufIds = uniqueIds(sess.map(s => s.curso_ufcd_id));
+    const cursoIds = uniqueIds(sess.map(s => s.curso_id));
+    cufById = await rowsById("curso_ufcds", "id, ufcd_id, curso_id", cufIds);
+    const ufcdIds = uniqueIds(Array.from(cufById.values()).map((c: any) => c.ufcd_id));
+    [ufcdById, cursoById] = await Promise.all([
+      rowsById("ufcds", "id, codigo, designacao", ufcdIds),
+      rowsById("cursos", "id, codigo, nome", cursoIds),
+    ]);
+
+    if (modo === "ufcd" && ufcdId) {
+      sess = sess.filter(s => {
+        const cuf = cufById.get(s.curso_ufcd_id);
+        return cuf?.ufcd_id === ufcdId;
+      });
+    }
   }
+
 
   const totalHoras = sess.reduce((a, s) => a + Number(s.horas || 0), 0);
   const subtotal = totalHoras * valorHora;

@@ -734,6 +734,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   };
   drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
   drawRow("Subtotal:", fmtEUR(subtotal));
+  if (ivaPct > 0) drawRow(`IVA (${ivaPct}%):`, `+ ${fmtEUR(ivaValor)}`);
   if (retencaoPct > 0) drawRow(`Retenção IRS (${retencaoPct}%):`, `- ${fmtEUR(retencao)}`);
   doc.setDrawColor(...BRAND); doc.setLineWidth(0.5);
   doc.line(boxX, yEnd - 2, w - 14, yEnd - 2);

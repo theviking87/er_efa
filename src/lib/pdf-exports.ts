@@ -799,7 +799,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     doc.text(value, w - 14, yEnd, { align: "right" });
     yEnd += bold ? 7 : 5;
   };
-  drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
+  if (!(avulsoTotal !== null && totalHoras === 0)) drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
   drawRow("Subtotal:", fmtEUR(subtotal));
   if (!opts.aplicarIva || ivaPct === 0) drawRow("IVA:", "Regime de isenção");
   else if (ivaPct > 0) drawRow(`IVA (${ivaPct}%):`, `+ ${fmtEUR(ivaValor)}`);

@@ -65,7 +65,8 @@ export function NotaHonorariosCard() {
 
 
   const preview = useQuery({
-    enabled: !!formadorId && (modo === "mes" || !!ufcdId),
+    enabled: tipoFormador === "registado" && !!formadorId && (modo === "mes" || !!ufcdId),
+
     queryKey: ["nh-preview", formadorId, modo, ano, mes, ufcdId],
     queryFn: async () => {
       let q = supabase.from("sessoes")

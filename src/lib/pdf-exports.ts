@@ -574,7 +574,8 @@ export interface NotaHonorariosOpts {
     nif?: string;
     morada?: string;
   };
-  retencaoIrs?: number; // percentagem (ex. 25)
+  retencaoIrs?: number; // percentagem (ex. 23)
+  iva?: number; // percentagem de IVA a acrescer (ex. 23). 0 ou undefined = sem IVA
   observacoes?: string;
 }
 
@@ -622,9 +623,11 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   const totalHoras = sess.reduce((a, s) => a + Number(s.horas || 0), 0);
   const subtotal = totalHoras * valorHora;
+  const ivaPct = opts.iva ?? 0;
+  const ivaValor = subtotal * (ivaPct / 100);
   const retencaoPct = opts.retencaoIrs ?? 0;
   const retencao = subtotal * (retencaoPct / 100);
-  const total = subtotal - retencao;
+  const total = subtotal + ivaValor - retencao;
 
   const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const ufcdSel = modo === "ufcd" && ufcdId ? ufcdById.get(ufcdId) : null;
@@ -731,6 +734,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   };
   drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
   drawRow("Subtotal:", fmtEUR(subtotal));
+  if (ivaPct > 0) drawRow(`IVA (${ivaPct}%):`, `+ ${fmtEUR(ivaValor)}`);
   if (retencaoPct > 0) drawRow(`Retenção IRS (${retencaoPct}%):`, `- ${fmtEUR(retencao)}`);
   doc.setDrawColor(...BRAND); doc.setLineWidth(0.5);
   doc.line(boxX, yEnd - 2, w - 14, yEnd - 2);

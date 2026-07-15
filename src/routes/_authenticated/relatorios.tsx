@@ -28,7 +28,9 @@ function NotaHonorariosCard() {
   const [ufcdId, setUfcdId] = useState<string>("");
 
   const [valorHora, setValorHora] = useState<string>("15");
-  const [retencao, setRetencao] = useState<string>("25");
+  const [retencao, setRetencao] = useState<string>("23");
+  const [aplicarIva, setAplicarIva] = useState(false);
+  const [iva, setIva] = useState<string>("23");
   const [destNome, setDestNome] = useState("");
   const [destNif, setDestNif] = useState("");
   const [destMorada, setDestMorada] = useState("");
@@ -80,6 +82,7 @@ function NotaHonorariosCard() {
         ufcdId: modo === "ufcd" ? ufcdId : (ufcdId || null),
         valorHora: vh,
         retencaoIrs: parseFloat(retencao.replace(",", ".")) || 0,
+        iva: aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0,
         numero: numero || undefined,
         destinatario: (destNome || destNif || destMorada) ? { nome: destNome, nif: destNif, morada: destMorada } : undefined,
         observacoes: observacoes || undefined,
@@ -197,7 +200,30 @@ function NotaHonorariosCard() {
           </div>
         )}
 
-
+        <div className="grid gap-3 md:grid-cols-3 items-end rounded-md border p-3 bg-muted/30">
+          <div className="flex items-center gap-2 md:col-span-1">
+            <input
+              id="aplicar-iva"
+              type="checkbox"
+              className="size-4"
+              checked={aplicarIva}
+              onChange={e => setAplicarIva(e.target.checked)}
+            />
+            <Label htmlFor="aplicar-iva" className="cursor-pointer">Acrescer IVA (recibo com IVA)</Label>
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Taxa de IVA (%)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={iva}
+              onChange={e => setIva(e.target.value)}
+              disabled={!aplicarIva}
+            />
+          </div>
+        </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">

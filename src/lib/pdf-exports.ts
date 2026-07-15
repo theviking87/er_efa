@@ -577,6 +577,7 @@ export interface NotaHonorariosOpts {
   };
   retencaoIrs?: number; // percentagem (ex. 23)
   iva?: number; // percentagem de IVA a acrescer (ex. 23). 0 ou undefined = sem IVA
+  aplicarIva?: boolean; // se false, mostra "Regime de isenção"
   observacoes?: string;
   dataEmissao?: string; // ISO yyyy-mm-dd; default = hoje
   // Modo "avulso":

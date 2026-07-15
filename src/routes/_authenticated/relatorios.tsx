@@ -50,6 +50,8 @@ export function NotaHonorariosCard() {
   const [extIban, setExtIban] = useState("");
   const [extHoras, setExtHoras] = useState<string>("");
   const [extDescricao, setExtDescricao] = useState<string>("Prestação de serviços de formação");
+  const [extModoValor, setExtModoValor] = useState<"hora" | "total">("hora");
+  const [extValorTotal, setExtValorTotal] = useState<string>("");
 
   const formadores = useQuery({
     enabled: tipoFormador === "registado",
@@ -126,13 +128,19 @@ export function NotaHonorariosCard() {
   });
 
   async function gerar() {
-    const vh = parseFloat(valorHora.replace(",", "."));
-    if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
+    const vh = parseFloat(valorHora.replace(",", ".")) || 0;
+    const vTotal = parseFloat(extValorTotal.replace(",", ".")) || 0;
     if (tipoFormador === "externo") {
       if (!extNome.trim()) { toast.error("Nome do formador obrigatório"); return; }
-      const h = parseFloat(extHoras.replace(",", "."));
-      if (!h || h <= 0) { toast.error("Horas inválidas"); return; }
+      if (extModoValor === "total") {
+        if (!vTotal || vTotal <= 0) { toast.error("Valor total inválido"); return; }
+      } else {
+        if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
+        const h = parseFloat(extHoras.replace(",", "."));
+        if (!h || h <= 0) { toast.error("Horas inválidas"); return; }
+      }
     } else {
+      if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
       if (!formadorId) { toast.error("Escolha um formador"); return; }
       if (modo === "ufcd" && !ufcdId) { toast.error("Escolha uma UFCD"); return; }
     }
@@ -158,8 +166,9 @@ export function NotaHonorariosCard() {
           nome: extNome, nif: extNif, morada: extMorada, codigo_postal: extCp,
           localidade: extLocalidade, email: extEmail, iban: extIban,
         } : undefined,
-        horasAvulso: tipoFormador === "externo" ? parseFloat(extHoras.replace(",", ".")) : undefined,
+        horasAvulso: tipoFormador === "externo" ? (parseFloat(extHoras.replace(",", ".")) || 0) : undefined,
         descricaoAvulso: tipoFormador === "externo" ? extDescricao : undefined,
+        valorTotalAvulso: tipoFormador === "externo" && extModoValor === "total" ? vTotal : undefined,
       });
       toast.success("Nota de honorários gerada");
     } catch (e: any) {
@@ -232,14 +241,43 @@ export function NotaHonorariosCard() {
               <Label>Descrição da prestação</Label>
               <Input value={extDescricao} onChange={e => setExtDescricao(e.target.value)} placeholder="Ex.: Formação em Segurança Alimentar — 12h" />
             </div>
-            <div className="space-y-1.5">
-              <Label>Horas ministradas *</Label>
-              <Input type="number" step="0.01" min="0" value={extHoras} onChange={e => setExtHoras(e.target.value)} />
+            <div className="md:col-span-4">
+              <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setExtModoValor("hora")}
+                  className={`px-3 py-1 rounded ${extModoValor === "hora" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >Valor por hora</button>
+                <button
+                  type="button"
+                  onClick={() => setExtModoValor("total")}
+                  className={`px-3 py-1 rounded ${extModoValor === "total" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >Valor total (avença)</button>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Valor / hora (€) *</Label>
-              <Input type="number" step="0.01" min="0" value={valorHora} onChange={e => setValorHora(e.target.value)} />
-            </div>
+            {extModoValor === "hora" ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Horas ministradas *</Label>
+                  <Input type="number" step="0.01" min="0" value={extHoras} onChange={e => setExtHoras(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Valor / hora (€) *</Label>
+                  <Input type="number" step="0.01" min="0" value={valorHora} onChange={e => setValorHora(e.target.value)} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Horas (opcional)</Label>
+                  <Input type="number" step="0.01" min="0" value={extHoras} onChange={e => setExtHoras(e.target.value)} placeholder="—" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Valor total (€) *</Label>
+                  <Input type="number" step="0.01" min="0" value={extValorTotal} onChange={e => setExtValorTotal(e.target.value)} />
+                </div>
+              </>
+            )}
             <div className="space-y-1.5">
               <Label>Retenção IRS (%)</Label>
               <Input type="number" step="0.01" min="0" max="100" value={retencao} onChange={e => setRetencao(e.target.value)} />
@@ -399,8 +437,10 @@ export function NotaHonorariosCard() {
           const ivaPct = aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0;
           const sessoes = isExt ? [] : (preview.data?.sessoes ?? []);
           const horasExt = parseFloat((extHoras || "0").replace(",", ".")) || 0;
+          const totalExt = parseFloat((extValorTotal || "0").replace(",", ".")) || 0;
+          const usaTotalExt = isExt && extModoValor === "total" && totalExt > 0;
           const totalHoras = isExt ? horasExt : sessoes.reduce((a: number, s: any) => a + Number(s.horas || 0), 0);
-          const subtotal = totalHoras * vh;
+          const subtotal = usaTotalExt ? totalExt : totalHoras * vh;
           const ivaVal = subtotal * (ivaPct / 100);
           const ret = subtotal * (retPct / 100);
           const total = subtotal + ivaVal - ret;
@@ -473,8 +513,8 @@ export function NotaHonorariosCard() {
                     <tbody>
                       <tr className="border-t border-emerald-700/10">
                         <td className="px-2 py-1">{extDescricao || "Prestação de serviços de formação"}</td>
-                        <td className="px-2 py-1 text-right">{horasExt.toFixed(2)}h</td>
-                        <td className="px-2 py-1 text-right">{fmtEUR(vh)}</td>
+                        <td className="px-2 py-1 text-right">{usaTotalExt && horasExt === 0 ? "—" : `${horasExt.toFixed(2)}h`}</td>
+                        <td className="px-2 py-1 text-right">{usaTotalExt ? "—" : fmtEUR(vh)}</td>
                         <td className="px-2 py-1 text-right font-semibold">{fmtEUR(subtotal)}</td>
                       </tr>
                     </tbody>
@@ -519,7 +559,9 @@ export function NotaHonorariosCard() {
 
               <div className="mt-3 flex justify-end">
                 <div className="w-full max-w-xs space-y-1 text-xs text-emerald-950 dark:text-emerald-50">
-                  <div className="flex justify-between"><span>Total de horas:</span><span>{totalHoras.toFixed(2)}h</span></div>
+                  {!(usaTotalExt && horasExt === 0) && (
+                    <div className="flex justify-between"><span>Total de horas:</span><span>{totalHoras.toFixed(2)}h</span></div>
+                  )}
                   <div className="flex justify-between"><span>Subtotal:</span><span>{fmtEUR(subtotal)}</span></div>
                   {!aplicarIva || ivaPct === 0 ? (
                     <div className="flex justify-between"><span>IVA:</span><span>Regime de isenção</span></div>

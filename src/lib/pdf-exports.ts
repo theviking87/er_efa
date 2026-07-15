@@ -592,6 +592,9 @@ export interface NotaHonorariosOpts {
   };
   horasAvulso?: number;
   descricaoAvulso?: string; // descrição da prestação (linha única)
+  // Se definido (> 0) em modo "avulso", usa este valor como subtotal (prestação única
+  // com preço fechado, sem cálculo por hora). Sobrepõe valorHora × horasAvulso.
+  valorTotalAvulso?: number;
 }
 
 export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
@@ -602,7 +605,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   if (modo === "ufcd" && !ufcdId) throw new Error("UFCD obrigatória");
   if (modo === "avulso") {
     if (!opts.formadorExterno?.nome) throw new Error("Nome do formador obrigatório");
-    if (!opts.horasAvulso || opts.horasAvulso <= 0) throw new Error("Horas obrigatórias");
+    const usaTotal = (opts.valorTotalAvulso ?? 0) > 0;
+    if (!usaTotal && (!opts.horasAvulso || opts.horasAvulso <= 0)) throw new Error("Horas obrigatórias");
   } else {
     if (!opts.formadorId) throw new Error("Formador obrigatório");
   }
@@ -655,10 +659,13 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   }
 
 
+  const avulsoTotal = modo === "avulso" && (opts.valorTotalAvulso ?? 0) > 0
+    ? Number(opts.valorTotalAvulso)
+    : null;
   const totalHoras = modo === "avulso"
     ? Number(opts.horasAvulso || 0)
     : sess.reduce((a, s) => a + Number(s.horas || 0), 0);
-  const subtotal = totalHoras * valorHora;
+  const subtotal = avulsoTotal !== null ? avulsoTotal : totalHoras * valorHora;
   const ivaPct = opts.iva ?? 0;
   const ivaValor = subtotal * (ivaPct / 100);
   const retencaoPct = opts.retencaoIrs ?? 0;
@@ -742,8 +749,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       head: [["Descrição", "Horas", "Valor/h", "Total"]],
       body: [[
         opts.descricaoAvulso || "Prestação de serviços de formação",
-        `${totalHoras.toFixed(2)}h`,
-        fmtEUR(valorHora),
+        avulsoTotal !== null && totalHoras === 0 ? "—" : `${totalHoras.toFixed(2)}h`,
+        avulsoTotal !== null ? "—" : fmtEUR(valorHora),
         fmtEUR(subtotal),
       ]],
       columnStyles: {
@@ -792,7 +799,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     doc.text(value, w - 14, yEnd, { align: "right" });
     yEnd += bold ? 7 : 5;
   };
-  drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
+  if (!(avulsoTotal !== null && totalHoras === 0)) drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
   drawRow("Subtotal:", fmtEUR(subtotal));
   if (!opts.aplicarIva || ivaPct === 0) drawRow("IVA:", "Regime de isenção");
   else if (ivaPct > 0) drawRow(`IVA (${ivaPct}%):`, `+ ${fmtEUR(ivaValor)}`);

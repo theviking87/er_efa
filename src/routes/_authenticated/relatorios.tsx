@@ -241,14 +241,43 @@ export function NotaHonorariosCard() {
               <Label>Descrição da prestação</Label>
               <Input value={extDescricao} onChange={e => setExtDescricao(e.target.value)} placeholder="Ex.: Formação em Segurança Alimentar — 12h" />
             </div>
-            <div className="space-y-1.5">
-              <Label>Horas ministradas *</Label>
-              <Input type="number" step="0.01" min="0" value={extHoras} onChange={e => setExtHoras(e.target.value)} />
+            <div className="md:col-span-4">
+              <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setExtModoValor("hora")}
+                  className={`px-3 py-1 rounded ${extModoValor === "hora" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >Valor por hora</button>
+                <button
+                  type="button"
+                  onClick={() => setExtModoValor("total")}
+                  className={`px-3 py-1 rounded ${extModoValor === "total" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+                >Valor total (avença)</button>
+              </div>
             </div>
-            <div className="space-y-1.5">
-              <Label>Valor / hora (€) *</Label>
-              <Input type="number" step="0.01" min="0" value={valorHora} onChange={e => setValorHora(e.target.value)} />
-            </div>
+            {extModoValor === "hora" ? (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Horas ministradas *</Label>
+                  <Input type="number" step="0.01" min="0" value={extHoras} onChange={e => setExtHoras(e.target.value)} />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Valor / hora (€) *</Label>
+                  <Input type="number" step="0.01" min="0" value={valorHora} onChange={e => setValorHora(e.target.value)} />
+                </div>
+              </>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                  <Label>Horas (opcional)</Label>
+                  <Input type="number" step="0.01" min="0" value={extHoras} onChange={e => setExtHoras(e.target.value)} placeholder="—" />
+                </div>
+                <div className="space-y-1.5">
+                  <Label>Valor total (€) *</Label>
+                  <Input type="number" step="0.01" min="0" value={extValorTotal} onChange={e => setExtValorTotal(e.target.value)} />
+                </div>
+              </>
+            )}
             <div className="space-y-1.5">
               <Label>Retenção IRS (%)</Label>
               <Input type="number" step="0.01" min="0" max="100" value={retencao} onChange={e => setRetencao(e.target.value)} />

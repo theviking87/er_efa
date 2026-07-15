@@ -574,7 +574,8 @@ export interface NotaHonorariosOpts {
     nif?: string;
     morada?: string;
   };
-  retencaoIrs?: number; // percentagem (ex. 25)
+  retencaoIrs?: number; // percentagem (ex. 23)
+  iva?: number; // percentagem de IVA a acrescer (ex. 23). 0 ou undefined = sem IVA
   observacoes?: string;
 }
 

@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
 });
 
 export function NotaHonorariosCard() {
+  const [tipoFormador, setTipoFormador] = useState<"registado" | "externo">("registado");
   const [formadorId, setFormadorId] = useState("");
   const now = new Date();
   const [modo, setModo] = useState<"mes" | "ufcd">("mes");
@@ -39,16 +40,29 @@ export function NotaHonorariosCard() {
   const [observacoes, setObservacoes] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Modo "externo" (formador não registado, prestação única)
+  const [extNome, setExtNome] = useState("");
+  const [extNif, setExtNif] = useState("");
+  const [extMorada, setExtMorada] = useState("");
+  const [extCp, setExtCp] = useState("");
+  const [extLocalidade, setExtLocalidade] = useState("");
+  const [extEmail, setExtEmail] = useState("");
+  const [extIban, setExtIban] = useState("");
+  const [extHoras, setExtHoras] = useState<string>("");
+  const [extDescricao, setExtDescricao] = useState<string>("Prestação de serviços de formação");
+
   const formadores = useQuery({
+    enabled: tipoFormador === "registado",
     queryKey: ["formadores-nomes"],
     queryFn: async () => (await supabase.from("formadores").select("id, nome").order("nome")).data ?? [],
   });
 
   const formadorDet = useQuery({
-    enabled: !!formadorId,
+    enabled: tipoFormador === "registado" && !!formadorId,
     queryKey: ["formador-det", formadorId],
     queryFn: async () => (await supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle()).data,
   });
+
 
   const preview = useQuery({
     enabled: !!formadorId && (modo === "mes" || !!ufcdId),

@@ -749,8 +749,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       head: [["Descrição", "Horas", "Valor/h", "Total"]],
       body: [[
         opts.descricaoAvulso || "Prestação de serviços de formação",
-        `${totalHoras.toFixed(2)}h`,
-        fmtEUR(valorHora),
+        avulsoTotal !== null && totalHoras === 0 ? "—" : `${totalHoras.toFixed(2)}h`,
+        avulsoTotal !== null ? "—" : fmtEUR(valorHora),
         fmtEUR(subtotal),
       ]],
       columnStyles: {

@@ -20,6 +20,7 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
 });
 
 export function NotaHonorariosCard() {
+  const [tipoFormador, setTipoFormador] = useState<"registado" | "externo">("registado");
   const [formadorId, setFormadorId] = useState("");
   const now = new Date();
   const [modo, setModo] = useState<"mes" | "ufcd">("mes");
@@ -39,19 +40,33 @@ export function NotaHonorariosCard() {
   const [observacoes, setObservacoes] = useState("");
   const [busy, setBusy] = useState(false);
 
+  // Modo "externo" (formador não registado, prestação única)
+  const [extNome, setExtNome] = useState("");
+  const [extNif, setExtNif] = useState("");
+  const [extMorada, setExtMorada] = useState("");
+  const [extCp, setExtCp] = useState("");
+  const [extLocalidade, setExtLocalidade] = useState("");
+  const [extEmail, setExtEmail] = useState("");
+  const [extIban, setExtIban] = useState("");
+  const [extHoras, setExtHoras] = useState<string>("");
+  const [extDescricao, setExtDescricao] = useState<string>("Prestação de serviços de formação");
+
   const formadores = useQuery({
+    enabled: tipoFormador === "registado",
     queryKey: ["formadores-nomes"],
     queryFn: async () => (await supabase.from("formadores").select("id, nome").order("nome")).data ?? [],
   });
 
   const formadorDet = useQuery({
-    enabled: !!formadorId,
+    enabled: tipoFormador === "registado" && !!formadorId,
     queryKey: ["formador-det", formadorId],
     queryFn: async () => (await supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle()).data,
   });
 
+
   const preview = useQuery({
-    enabled: !!formadorId && (modo === "mes" || !!ufcdId),
+    enabled: tipoFormador === "registado" && !!formadorId && (modo === "mes" || !!ufcdId),
+
     queryKey: ["nh-preview", formadorId, modo, ano, mes, ufcdId],
     queryFn: async () => {
       let q = supabase.from("sessoes")
@@ -88,7 +103,8 @@ export function NotaHonorariosCard() {
   });
 
   const ufcdsDisponiveis = useQuery({
-    enabled: !!formadorId,
+    enabled: tipoFormador === "registado" && !!formadorId,
+
     queryKey: ["ufcds-formador", formadorId, modo, ano, mes],
     queryFn: async () => {
       let q = supabase.from("sessoes").select("curso_ufcd_id").eq("formador_id", formadorId);
@@ -110,20 +126,26 @@ export function NotaHonorariosCard() {
   });
 
   async function gerar() {
-    if (!formadorId) { toast.error("Escolha um formador"); return; }
-    if (modo === "ufcd" && !ufcdId) { toast.error("Escolha uma UFCD"); return; }
     const vh = parseFloat(valorHora.replace(",", "."));
     if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
+    if (tipoFormador === "externo") {
+      if (!extNome.trim()) { toast.error("Nome do formador obrigatório"); return; }
+      const h = parseFloat(extHoras.replace(",", "."));
+      if (!h || h <= 0) { toast.error("Horas inválidas"); return; }
+    } else {
+      if (!formadorId) { toast.error("Escolha um formador"); return; }
+      if (modo === "ufcd" && !ufcdId) { toast.error("Escolha uma UFCD"); return; }
+    }
     try {
       setBusy(true);
       await paintBeforeHeavyWork();
       const { exportNotaHonorariosPdf } = await import("@/lib/pdf-exports");
       await exportNotaHonorariosPdf({
-        formadorId,
-        modo,
-        ano: modo === "mes" ? ano : undefined,
-        mes: modo === "mes" ? mes : undefined,
-        ufcdId: modo === "ufcd" ? ufcdId : (ufcdId || null),
+        modo: tipoFormador === "externo" ? "avulso" : modo,
+        formadorId: tipoFormador === "registado" ? formadorId : undefined,
+        ano: tipoFormador === "registado" && modo === "mes" ? ano : undefined,
+        mes: tipoFormador === "registado" && modo === "mes" ? mes : undefined,
+        ufcdId: tipoFormador === "registado" ? (modo === "ufcd" ? ufcdId : (ufcdId || null)) : undefined,
         valorHora: vh,
         retencaoIrs: parseFloat(retencao.replace(",", ".")) || 0,
         iva: aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0,
@@ -131,6 +153,12 @@ export function NotaHonorariosCard() {
         dataEmissao: dataEmissao || undefined,
         destinatario: (destNome || destNif || destMorada) ? { nome: destNome, nif: destNif, morada: destMorada } : undefined,
         observacoes: observacoes || undefined,
+        formadorExterno: tipoFormador === "externo" ? {
+          nome: extNome, nif: extNif, morada: extMorada, codigo_postal: extCp,
+          localidade: extLocalidade, email: extEmail, iban: extIban,
+        } : undefined,
+        horasAvulso: tipoFormador === "externo" ? parseFloat(extHoras.replace(",", ".")) : undefined,
+        descricaoAvulso: tipoFormador === "externo" ? extDescricao : undefined,
       });
       toast.success("Nota de honorários gerada");
     } catch (e: any) {
@@ -139,6 +167,7 @@ export function NotaHonorariosCard() {
       setBusy(false);
     }
   }
+
 
   const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const anos = Array.from({ length: 6 }, (_, i) => now.getFullYear() - 3 + i);
@@ -152,10 +181,71 @@ export function NotaHonorariosCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Gera um PDF com o detalhe das sessões ministradas por um formador.
-          Escolha filtrar <strong>por mês</strong> ou <strong>por UFCD ministrada</strong>.
+          Gera um PDF de nota de honorários. Escolha um <strong>formador registado</strong> (agrega sessões da base de dados) ou um <strong>formador externo</strong> (prestação única, sem histórico).
         </p>
 
+        <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-sm">
+          <button
+            type="button"
+            onClick={() => setTipoFormador("registado")}
+            className={`px-3 py-1.5 rounded ${tipoFormador === "registado" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >Formador registado</button>
+          <button
+            type="button"
+            onClick={() => setTipoFormador("externo")}
+            className={`px-3 py-1.5 rounded ${tipoFormador === "externo" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >Formador externo (prestação única)</button>
+        </div>
+
+        {tipoFormador === "externo" ? (
+          <div className="grid gap-3 md:grid-cols-4 rounded-md border p-3 bg-muted/20">
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Nome do formador *</Label>
+              <Input value={extNome} onChange={e => setExtNome(e.target.value)} placeholder="Nome completo" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>NIF</Label>
+              <Input value={extNif} onChange={e => setExtNif(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>IBAN</Label>
+              <Input value={extIban} onChange={e => setExtIban(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Morada</Label>
+              <Input value={extMorada} onChange={e => setExtMorada(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Código Postal</Label>
+              <Input value={extCp} onChange={e => setExtCp(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Localidade</Label>
+              <Input value={extLocalidade} onChange={e => setExtLocalidade(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Email</Label>
+              <Input type="email" value={extEmail} onChange={e => setExtEmail(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 md:col-span-4">
+              <Label>Descrição da prestação</Label>
+              <Input value={extDescricao} onChange={e => setExtDescricao(e.target.value)} placeholder="Ex.: Formação em Segurança Alimentar — 12h" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Horas ministradas *</Label>
+              <Input type="number" step="0.01" min="0" value={extHoras} onChange={e => setExtHoras(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Valor / hora (€) *</Label>
+              <Input type="number" step="0.01" min="0" value={valorHora} onChange={e => setValorHora(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Retenção IRS (%)</Label>
+              <Input type="number" step="0.01" min="0" max="100" value={retencao} onChange={e => setRetencao(e.target.value)} />
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-1.5 md:col-span-2">
             <Label>Formador *</Label>
@@ -179,6 +269,7 @@ export function NotaHonorariosCard() {
             </Select>
           </div>
         </div>
+
 
         {modo === "mes" ? (
           <div className="grid gap-3 md:grid-cols-4">
@@ -244,6 +335,9 @@ export function NotaHonorariosCard() {
             </div>
           </div>
         )}
+        </>
+        )}
+
 
         <div className="grid gap-3 md:grid-cols-3 items-end rounded-md border p-3 bg-muted/30">
           <div className="flex items-center gap-2 md:col-span-1">
@@ -298,23 +392,33 @@ export function NotaHonorariosCard() {
         </div>
 
         {(() => {
+          const isExt = tipoFormador === "externo";
           const vh = parseFloat(valorHora.replace(",", ".")) || 0;
           const retPct = parseFloat(retencao.replace(",", ".")) || 0;
           const ivaPct = aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0;
-          const sessoes = preview.data?.sessoes ?? [];
-          const totalHoras = sessoes.reduce((a: number, s: any) => a + Number(s.horas || 0), 0);
+          const sessoes = isExt ? [] : (preview.data?.sessoes ?? []);
+          const horasExt = parseFloat((extHoras || "0").replace(",", ".")) || 0;
+          const totalHoras = isExt ? horasExt : sessoes.reduce((a: number, s: any) => a + Number(s.horas || 0), 0);
           const subtotal = totalHoras * vh;
           const ivaVal = subtotal * (ivaPct / 100);
           const ret = subtotal * (retPct / 100);
           const total = subtotal + ivaVal - ret;
           const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
-          const ufcdSel = modo === "ufcd" && ufcdId ? preview.data?.ufcdMap.get(ufcdId) : null;
-          const periodoLabel = modo === "mes"
-            ? `${meses[mes-1]} ${ano}`
-            : (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD");
-          const numSuf = modo === "mes" ? `${ano}${String(mes).padStart(2,"0")}` : (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD");
-          const form: any = formadorDet.data ?? {};
-          const nDoc = numero || (formadorId ? `NH-${numSuf}-${String(form.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}` : "NH-…");
+          const ufcdSel = !isExt && modo === "ufcd" && ufcdId ? preview.data?.ufcdMap.get(ufcdId) : null;
+          const periodoLabel = isExt
+            ? `Prestação de serviços — ${fmtDate(dataEmissao)}`
+            : modo === "mes"
+              ? `${meses[mes-1]} ${ano}`
+              : (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD");
+          const numSuf = isExt
+            ? (dataEmissao || "").replace(/-/g,"")
+            : modo === "mes"
+              ? `${ano}${String(mes).padStart(2,"0")}`
+              : (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD");
+          const form: any = isExt
+            ? { nome: extNome, nif: extNif, morada: extMorada, codigo_postal: extCp, localidade: extLocalidade, email: extEmail, iban: extIban }
+            : (formadorDet.data ?? {});
+          const nDoc = numero || ((isExt ? extNome : formadorId) ? `NH-${numSuf}-${String(form.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}` : "NH-…");
           const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
           return (
             <div className="mt-2 rounded-lg border-2 border-emerald-700/40 bg-emerald-50 dark:bg-emerald-950/30 p-5 shadow-sm">
@@ -350,11 +454,31 @@ export function NotaHonorariosCard() {
               <div className="mt-3 pt-2 border-t border-emerald-700/30 text-xs text-emerald-950 dark:text-emerald-50">
                 <div className="flex justify-between font-semibold">
                   <span>Período: {periodoLabel}</span>
-                  <span>{sessoes.length} sessão(ões)</span>
+                  <span>{isExt ? "Prestação única" : `${sessoes.length} sessão(ões)`}</span>
                 </div>
               </div>
 
               <div className="mt-2 max-h-56 overflow-auto rounded border border-emerald-700/20 bg-white/60 dark:bg-emerald-950/40">
+                {isExt ? (
+                  <table className="w-full text-[11px]">
+                    <thead className="bg-emerald-700/10 text-emerald-900 dark:text-emerald-100">
+                      <tr>
+                        <th className="text-left px-2 py-1">Descrição</th>
+                        <th className="text-right px-2 py-1">Horas</th>
+                        <th className="text-right px-2 py-1">V/h</th>
+                        <th className="text-right px-2 py-1">Total</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-t border-emerald-700/10">
+                        <td className="px-2 py-1">{extDescricao || "Prestação de serviços de formação"}</td>
+                        <td className="px-2 py-1 text-right">{horasExt.toFixed(2)}h</td>
+                        <td className="px-2 py-1 text-right">{fmtEUR(vh)}</td>
+                        <td className="px-2 py-1 text-right font-semibold">{fmtEUR(subtotal)}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                ) : (
                 <table className="w-full text-[11px]">
                   <thead className="bg-emerald-700/10 text-emerald-900 dark:text-emerald-100">
                     <tr>
@@ -388,7 +512,9 @@ export function NotaHonorariosCard() {
                     })}
                   </tbody>
                 </table>
+                )}
               </div>
+
 
               <div className="mt-3 flex justify-end">
                 <div className="w-full max-w-xs space-y-1 text-xs text-emerald-950 dark:text-emerald-50">
@@ -417,7 +543,7 @@ export function NotaHonorariosCard() {
         })()}
 
         <div className="flex gap-2">
-          <Button onClick={gerar} disabled={!formadorId || busy}>
+          <Button onClick={gerar} disabled={busy || (tipoFormador === "registado" ? !formadorId : !extNome.trim())}>
             <FileText className="size-4" /> {busy ? "A gerar…" : "Gerar PDF"}
           </Button>
         </div>

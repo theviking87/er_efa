@@ -520,8 +520,16 @@ export function NotaHonorariosCard() {
                 <div className="w-full max-w-xs space-y-1 text-xs text-emerald-950 dark:text-emerald-50">
                   <div className="flex justify-between"><span>Total de horas:</span><span>{totalHoras.toFixed(2)}h</span></div>
                   <div className="flex justify-between"><span>Subtotal:</span><span>{fmtEUR(subtotal)}</span></div>
-                  {ivaPct > 0 && <div className="flex justify-between"><span>IVA ({ivaPct}%):</span><span>+ {fmtEUR(ivaVal)}</span></div>}
-                  {retPct > 0 && <div className="flex justify-between"><span>Retenção IRS ({retPct}%):</span><span>- {fmtEUR(ret)}</span></div>}
+                  {aplicarIva && ivaPct === 0 ? (
+                    <div className="flex justify-between"><span>IVA:</span><span>Regime de isenção</span></div>
+                  ) : ivaPct > 0 ? (
+                    <div className="flex justify-between"><span>IVA ({ivaPct}%):</span><span>+ {fmtEUR(ivaVal)}</span></div>
+                  ) : null}
+                  {retPct === 0 ? (
+                    <div className="flex justify-between"><span>Retenção IRS:</span><span>Regime de isenção</span></div>
+                  ) : retPct > 0 ? (
+                    <div className="flex justify-between"><span>Retenção IRS ({retPct}%):</span><span>- {fmtEUR(ret)}</span></div>
+                  ) : null}
                   <div className="flex justify-between border-t-2 border-emerald-700/50 pt-1 text-sm font-bold text-emerald-900 dark:text-emerald-100">
                     <span>TOTAL A PAGAR:</span><span>{fmtEUR(total)}</span>
                   </div>

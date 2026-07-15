@@ -558,3 +558,189 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
   footer(doc);
   await savePdf(doc, `Relatorio_Faltas_${inicio}_${fim}.pdf`);
 }
+
+// ============= Nota de Honorários =============
+export interface NotaHonorariosOpts {
+  formadorId: string;
+  ano: number;
+  mes: number; // 1-12
+  ufcdId?: string | null;
+  valorHora: number;
+  numero?: string;
+  destinatario?: {
+    nome?: string;
+    nif?: string;
+    morada?: string;
+  };
+  retencaoIrs?: number; // percentagem (ex. 25)
+  observacoes?: string;
+}
+
+export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
+  const { formadorId, ano, mes, ufcdId, valorHora } = opts;
+  const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
+  const fimDate = new Date(ano, mes, 0);
+  const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
+
+  const [formadorRes, sessoesRes] = await Promise.all([
+    supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle(),
+    supabase.from("sessoes")
+      .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
+      .eq("formador_id", formadorId)
+      .gte("data", inicio).lte("data", fim)
+      .order("data").order("hora_inicio"),
+  ]);
+  if (!formadorRes.data) throw new Error("Formador não encontrado");
+  if (sessoesRes.error) throw sessoesRes.error;
+  const formador: any = formadorRes.data;
+  let sess: any[] = sessoesRes.data ?? [];
+
+  const cufIds = uniqueIds(sess.map(s => s.curso_ufcd_id));
+  const cursoIds = uniqueIds(sess.map(s => s.curso_id));
+  const cufById = await rowsById("curso_ufcds", "id, ufcd_id, curso_id", cufIds);
+  const ufcdIds = uniqueIds(Array.from(cufById.values()).map((c: any) => c.ufcd_id));
+  const [ufcdById, cursoById] = await Promise.all([
+    rowsById("ufcds", "id, codigo, designacao", ufcdIds),
+    rowsById("cursos", "id, codigo, nome", cursoIds),
+  ]);
+
+  if (ufcdId) {
+    sess = sess.filter(s => {
+      const cuf = cufById.get(s.curso_ufcd_id);
+      return cuf?.ufcd_id === ufcdId;
+    });
+  }
+
+  const totalHoras = sess.reduce((a, s) => a + Number(s.horas || 0), 0);
+  const subtotal = totalHoras * valorHora;
+  const retencaoPct = opts.retencaoIrs ?? 0;
+  const retencao = subtotal * (retencaoPct / 100);
+  const total = subtotal - retencao;
+
+  const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const numero = opts.numero || `NH-${ano}${String(mes).padStart(2,"0")}-${String(formador.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}`;
+  const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
+
+  const doc = newDoc("portrait");
+  const w = doc.internal.pageSize.getWidth();
+
+  // Header
+  doc.setFillColor(...BRAND);
+  doc.rect(0, 0, w, 22, "F");
+  doc.setTextColor(255,255,255);
+  doc.setFont("helvetica","bold"); doc.setFontSize(16);
+  doc.text("NOTA DE HONORÁRIOS", 14, 13);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9);
+  doc.text(`Nº ${numero}`, 14, 19);
+  doc.setTextColor(0,0,0);
+
+  // Emitente
+  let y = 32;
+  doc.setFont("helvetica","bold"); doc.setFontSize(10);
+  doc.text("EMITENTE", 14, y);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9);
+  y += 5;
+  doc.text(formador.nome || "", 14, y); y += 4;
+  if (formador.nif) { doc.text(`NIF: ${formador.nif}`, 14, y); y += 4; }
+  if (formador.morada) { doc.text(formador.morada, 14, y); y += 4; }
+  if (formador.codigo_postal || formador.localidade) {
+    doc.text(`${formador.codigo_postal ?? ""} ${formador.localidade ?? ""}`.trim(), 14, y); y += 4;
+  }
+  if (formador.email) { doc.text(formador.email, 14, y); y += 4; }
+  if (formador.iban) { doc.text(`IBAN: ${formador.iban}`, 14, y); y += 4; }
+
+  // Destinatário (lado direito)
+  let yr = 32;
+  doc.setFont("helvetica","bold"); doc.setFontSize(10);
+  doc.text("DESTINATÁRIO", w/2 + 5, yr);
+  doc.setFont("helvetica","normal"); doc.setFontSize(9);
+  yr += 5;
+  const d = opts.destinatario ?? {};
+  doc.text(d.nome || "—", w/2 + 5, yr); yr += 4;
+  if (d.nif) { doc.text(`NIF: ${d.nif}`, w/2 + 5, yr); yr += 4; }
+  if (d.morada) {
+    const lines = doc.splitTextToSize(d.morada, w/2 - 20);
+    doc.text(lines, w/2 + 5, yr); yr += 4 * lines.length;
+  }
+
+  // Meta
+  y = Math.max(y, yr) + 4;
+  doc.setDrawColor(...MUTED); doc.setLineWidth(0.2);
+  doc.line(14, y, w - 14, y);
+  y += 6;
+  doc.setFont("helvetica","bold"); doc.setFontSize(9);
+  doc.text(`Período: ${meses[mes-1]} ${ano}`, 14, y);
+  doc.text(`Data de emissão: ${fmtDate(new Date().toISOString().slice(0,10))}`, w - 14, y, { align: "right" });
+  y += 6;
+
+  // Tabela de sessões
+  const body = sess.map(s => {
+    const cuf = cufById.get(s.curso_ufcd_id);
+    const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
+    const curso = cursoById.get(s.curso_id);
+    return [
+      fmtDate(s.data),
+      curso ? `${curso.codigo}` : "",
+      ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : "",
+      `${(s.hora_inicio ?? "").slice(0,5)}–${(s.hora_fim ?? "").slice(0,5)}`,
+      `${Number(s.horas).toFixed(2)}h`,
+      fmtEUR(valorHora),
+      fmtEUR(Number(s.horas) * valorHora),
+    ];
+  });
+
+  autoTable(doc, {
+    ...tableTheme,
+    startY: y,
+    head: [["Data", "Curso", "UFCD", "Horário", "Horas", "Valor/h", "Total"]],
+    body: body.length ? body : [["—","—","Sem sessões no período","—","0h", fmtEUR(valorHora), fmtEUR(0)]],
+    columnStyles: {
+      4: { halign: "right" },
+      5: { halign: "right" },
+      6: { halign: "right", fontStyle: "bold" },
+    },
+  });
+
+  let yEnd = (doc as any).lastAutoTable.finalY + 6;
+
+  // Totais
+  const boxX = w - 90;
+  const drawRow = (label: string, value: string, bold = false) => {
+    doc.setFont("helvetica", bold ? "bold" : "normal");
+    doc.setFontSize(bold ? 11 : 9);
+    doc.text(label, boxX, yEnd);
+    doc.text(value, w - 14, yEnd, { align: "right" });
+    yEnd += bold ? 7 : 5;
+  };
+  drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
+  drawRow("Subtotal:", fmtEUR(subtotal));
+  if (retencaoPct > 0) drawRow(`Retenção IRS (${retencaoPct}%):`, `- ${fmtEUR(retencao)}`);
+  doc.setDrawColor(...BRAND); doc.setLineWidth(0.5);
+  doc.line(boxX, yEnd - 2, w - 14, yEnd - 2);
+  yEnd += 2;
+  drawRow("TOTAL A PAGAR:", fmtEUR(total), true);
+
+  // Observações
+  if (opts.observacoes) {
+    yEnd += 6;
+    doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.text("Observações", 14, yEnd);
+    doc.setFont("helvetica","normal");
+    yEnd += 4;
+    const lines = doc.splitTextToSize(opts.observacoes, w - 28);
+    doc.text(lines, 14, yEnd);
+    yEnd += 4 * lines.length;
+  }
+
+  // Nota legal
+  yEnd += 10;
+  doc.setFont("helvetica","italic"); doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text("Documento sem valor fiscal. Emitido para efeitos de processamento de honorários.", 14, yEnd);
+  doc.setTextColor(0,0,0);
+
+  footer(doc);
+  const fname = `NotaHonorarios_${sanitize(formador.nome || "formador")}_${ano}-${String(mes).padStart(2,"0")}.pdf`;
+  await savePdf(doc, fname);
+}
+

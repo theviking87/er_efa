@@ -351,7 +351,10 @@ function RelatoriosPage() {
             </div>
           </CardContent>
         </Card>
+
+        <NotaHonorariosCard />
       </div>
+
     </PageContainer>
   );
 }

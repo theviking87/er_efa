@@ -820,8 +820,13 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   doc.setTextColor(0,0,0);
 
   footer(doc);
-  const fnameSuffix = modo === "mes" ? `${ano}-${String(mes).padStart(2,"0")}` : (ufcdSel ? sanitize(String(ufcdSel.codigo)) : "ufcd");
+  const fnameSuffix = modo === "mes"
+    ? `${ano}-${String(mes).padStart(2,"0")}`
+    : modo === "ufcd"
+      ? (ufcdSel ? sanitize(String(ufcdSel.codigo)) : "ufcd")
+      : `avulso-${dataEmissao}`;
   const fname = `NotaHonorarios_${sanitize(formador.nome || "formador")}_${fnameSuffix}.pdf`;
+
 
   await savePdf(doc, fname);
 }

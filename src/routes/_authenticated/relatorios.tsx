@@ -149,6 +149,7 @@ export function NotaHonorariosCard() {
         valorHora: vh,
         retencaoIrs: parseFloat(retencao.replace(",", ".")) || 0,
         iva: aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0,
+        aplicarIva,
         numero: numero || undefined,
         dataEmissao: dataEmissao || undefined,
         destinatario: (destNome || destNif || destMorada) ? { nome: destNome, nif: destNif, morada: destMorada } : undefined,

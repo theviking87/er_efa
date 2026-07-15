@@ -19,7 +19,7 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
   component: RelatoriosPage,
 });
 
-function NotaHonorariosCard() {
+export function NotaHonorariosCard() {
   const [formadorId, setFormadorId] = useState("");
   const now = new Date();
   const [modo, setModo] = useState<"mes" | "ufcd">("mes");

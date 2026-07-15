@@ -592,6 +592,9 @@ export interface NotaHonorariosOpts {
   };
   horasAvulso?: number;
   descricaoAvulso?: string; // descrição da prestação (linha única)
+  // Se definido (> 0) em modo "avulso", usa este valor como subtotal (prestação única
+  // com preço fechado, sem cálculo por hora). Sobrepõe valorHora × horasAvulso.
+  valorTotalAvulso?: number;
 }
 
 export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {

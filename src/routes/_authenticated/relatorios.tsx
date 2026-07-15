@@ -44,6 +44,49 @@ function NotaHonorariosCard() {
     queryFn: async () => (await supabase.from("formadores").select("id, nome").order("nome")).data ?? [],
   });
 
+  const formadorDet = useQuery({
+    enabled: !!formadorId,
+    queryKey: ["formador-det", formadorId],
+    queryFn: async () => (await supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle()).data,
+  });
+
+  const preview = useQuery({
+    enabled: !!formadorId && (modo === "mes" || !!ufcdId),
+    queryKey: ["nh-preview", formadorId, modo, ano, mes, ufcdId],
+    queryFn: async () => {
+      let q = supabase.from("sessoes")
+        .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
+        .eq("formador_id", formadorId);
+      if (modo === "mes") {
+        const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
+        const fimDate = new Date(ano, mes, 0);
+        const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
+        q = q.gte("data", inicio).lte("data", fim);
+      }
+      const { data: sess } = await q.order("data").order("hora_inicio");
+      let sessoes = sess ?? [];
+      const cufIds = Array.from(new Set(sessoes.map((s: any) => s.curso_ufcd_id).filter(Boolean)));
+      const { data: cufs } = cufIds.length
+        ? await supabase.from("curso_ufcds").select("id, ufcd_id, curso_id").in("id", cufIds)
+        : { data: [] as any[] };
+      const cufMap = new Map((cufs ?? []).map((c: any) => [c.id, c]));
+      const ufcdIds = Array.from(new Set((cufs ?? []).map((c: any) => c.ufcd_id).filter(Boolean)));
+      const { data: ufcds } = ufcdIds.length
+        ? await supabase.from("ufcds").select("id, codigo, designacao").in("id", ufcdIds)
+        : { data: [] as any[] };
+      const ufcdMap = new Map((ufcds ?? []).map((u: any) => [u.id, u]));
+      const cursoIds = Array.from(new Set(sessoes.map((s: any) => s.curso_id).filter(Boolean)));
+      const { data: cursos } = cursoIds.length
+        ? await supabase.from("cursos").select("id, codigo, nome").in("id", cursoIds)
+        : { data: [] as any[] };
+      const cursoMap = new Map((cursos ?? []).map((c: any) => [c.id, c]));
+      if (modo === "ufcd" && ufcdId) {
+        sessoes = sessoes.filter((s: any) => cufMap.get(s.curso_ufcd_id)?.ufcd_id === ufcdId);
+      }
+      return { sessoes, cufMap, ufcdMap, cursoMap };
+    },
+  });
+
   const ufcdsDisponiveis = useQuery({
     enabled: !!formadorId,
     queryKey: ["ufcds-formador", formadorId, modo, ano, mes],

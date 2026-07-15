@@ -103,7 +103,8 @@ export function NotaHonorariosCard() {
   });
 
   const ufcdsDisponiveis = useQuery({
-    enabled: !!formadorId,
+    enabled: tipoFormador === "registado" && !!formadorId,
+
     queryKey: ["ufcds-formador", formadorId, modo, ano, mes],
     queryFn: async () => {
       let q = supabase.from("sessoes").select("curso_ufcd_id").eq("formador_id", formadorId);

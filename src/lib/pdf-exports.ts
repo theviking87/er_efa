@@ -577,10 +577,12 @@ export interface NotaHonorariosOpts {
   retencaoIrs?: number; // percentagem (ex. 23)
   iva?: number; // percentagem de IVA a acrescer (ex. 23). 0 ou undefined = sem IVA
   observacoes?: string;
+  dataEmissao?: string; // ISO yyyy-mm-dd; default = hoje
 }
 
 export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   const { formadorId, modo, ano, mes, ufcdId, valorHora } = opts;
+  const dataEmissao = opts.dataEmissao || new Date().toISOString().slice(0, 10);
 
   if (modo === "mes" && (!ano || !mes)) throw new Error("Ano/mês obrigatórios");
   if (modo === "ufcd" && !ufcdId) throw new Error("UFCD obrigatória");
@@ -690,7 +692,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   y += 6;
   doc.setFont("helvetica","bold"); doc.setFontSize(9);
   doc.text(`Período: ${periodoLabel}`, 14, y);
-  doc.text(`Data de emissão: ${fmtDate(new Date().toISOString().slice(0,10))}`, w - 14, y, { align: "right" });
+  doc.text(`Data de emissão: ${fmtDate(dataEmissao)}`, w - 14, y, { align: "right" });
   y += 6;
 
   // Tabela de sessões

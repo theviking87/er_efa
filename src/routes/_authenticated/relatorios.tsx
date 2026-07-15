@@ -29,6 +29,7 @@ function NotaHonorariosCard() {
 
   const [valorHora, setValorHora] = useState<string>("15");
   const [retencao, setRetencao] = useState<string>("23");
+  const [dataEmissao, setDataEmissao] = useState<string>(() => new Date().toISOString().slice(0, 10));
   const [aplicarIva, setAplicarIva] = useState(false);
   const [iva, setIva] = useState<string>("23");
   const [destNome, setDestNome] = useState("");
@@ -84,6 +85,7 @@ function NotaHonorariosCard() {
         retencaoIrs: parseFloat(retencao.replace(",", ".")) || 0,
         iva: aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0,
         numero: numero || undefined,
+        dataEmissao: dataEmissao || undefined,
         destinatario: (destNome || destNif || destMorada) ? { nome: destNome, nif: destNif, morada: destMorada } : undefined,
         observacoes: observacoes || undefined,
       });
@@ -241,6 +243,10 @@ function NotaHonorariosCard() {
           <div className="space-y-1.5">
             <Label>Destinatário — Morada</Label>
             <Input value={destMorada} onChange={e => setDestMorada(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Data de emissão</Label>
+            <Input type="date" value={dataEmissao} onChange={e => setDataEmissao(e.target.value)} />
           </div>
           <div className="space-y-1.5 md:col-span-2">
             <Label>Observações</Label>

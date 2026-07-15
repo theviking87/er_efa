@@ -623,9 +623,11 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   const totalHoras = sess.reduce((a, s) => a + Number(s.horas || 0), 0);
   const subtotal = totalHoras * valorHora;
+  const ivaPct = opts.iva ?? 0;
+  const ivaValor = subtotal * (ivaPct / 100);
   const retencaoPct = opts.retencaoIrs ?? 0;
   const retencao = subtotal * (retencaoPct / 100);
-  const total = subtotal - retencao;
+  const total = subtotal + ivaValor - retencao;
 
   const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const ufcdSel = modo === "ufcd" && ufcdId ? ufcdById.get(ufcdId) : null;

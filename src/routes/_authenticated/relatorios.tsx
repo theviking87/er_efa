@@ -126,20 +126,26 @@ export function NotaHonorariosCard() {
   });
 
   async function gerar() {
-    if (!formadorId) { toast.error("Escolha um formador"); return; }
-    if (modo === "ufcd" && !ufcdId) { toast.error("Escolha uma UFCD"); return; }
     const vh = parseFloat(valorHora.replace(",", "."));
     if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
+    if (tipoFormador === "externo") {
+      if (!extNome.trim()) { toast.error("Nome do formador obrigatório"); return; }
+      const h = parseFloat(extHoras.replace(",", "."));
+      if (!h || h <= 0) { toast.error("Horas inválidas"); return; }
+    } else {
+      if (!formadorId) { toast.error("Escolha um formador"); return; }
+      if (modo === "ufcd" && !ufcdId) { toast.error("Escolha uma UFCD"); return; }
+    }
     try {
       setBusy(true);
       await paintBeforeHeavyWork();
       const { exportNotaHonorariosPdf } = await import("@/lib/pdf-exports");
       await exportNotaHonorariosPdf({
-        formadorId,
-        modo,
-        ano: modo === "mes" ? ano : undefined,
-        mes: modo === "mes" ? mes : undefined,
-        ufcdId: modo === "ufcd" ? ufcdId : (ufcdId || null),
+        modo: tipoFormador === "externo" ? "avulso" : modo,
+        formadorId: tipoFormador === "registado" ? formadorId : undefined,
+        ano: tipoFormador === "registado" && modo === "mes" ? ano : undefined,
+        mes: tipoFormador === "registado" && modo === "mes" ? mes : undefined,
+        ufcdId: tipoFormador === "registado" ? (modo === "ufcd" ? ufcdId : (ufcdId || null)) : undefined,
         valorHora: vh,
         retencaoIrs: parseFloat(retencao.replace(",", ".")) || 0,
         iva: aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0,
@@ -147,6 +153,12 @@ export function NotaHonorariosCard() {
         dataEmissao: dataEmissao || undefined,
         destinatario: (destNome || destNif || destMorada) ? { nome: destNome, nif: destNif, morada: destMorada } : undefined,
         observacoes: observacoes || undefined,
+        formadorExterno: tipoFormador === "externo" ? {
+          nome: extNome, nif: extNif, morada: extMorada, codigo_postal: extCp,
+          localidade: extLocalidade, email: extEmail, iban: extIban,
+        } : undefined,
+        horasAvulso: tipoFormador === "externo" ? parseFloat(extHoras.replace(",", ".")) : undefined,
+        descricaoAvulso: tipoFormador === "externo" ? extDescricao : undefined,
       });
       toast.success("Nota de honorários gerada");
     } catch (e: any) {
@@ -155,6 +167,7 @@ export function NotaHonorariosCard() {
       setBusy(false);
     }
   }
+
 
   const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
   const anos = Array.from({ length: 6 }, (_, i) => now.getFullYear() - 3 + i);

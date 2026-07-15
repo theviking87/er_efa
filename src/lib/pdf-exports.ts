@@ -605,7 +605,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   if (modo === "ufcd" && !ufcdId) throw new Error("UFCD obrigatória");
   if (modo === "avulso") {
     if (!opts.formadorExterno?.nome) throw new Error("Nome do formador obrigatório");
-    if (!opts.horasAvulso || opts.horasAvulso <= 0) throw new Error("Horas obrigatórias");
+    const usaTotal = (opts.valorTotalAvulso ?? 0) > 0;
+    if (!usaTotal && (!opts.horasAvulso || opts.horasAvulso <= 0)) throw new Error("Horas obrigatórias");
   } else {
     if (!opts.formadorId) throw new Error("Formador obrigatório");
   }

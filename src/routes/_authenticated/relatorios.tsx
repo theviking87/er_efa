@@ -181,10 +181,71 @@ export function NotaHonorariosCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          Gera um PDF com o detalhe das sessões ministradas por um formador.
-          Escolha filtrar <strong>por mês</strong> ou <strong>por UFCD ministrada</strong>.
+          Gera um PDF de nota de honorários. Escolha um <strong>formador registado</strong> (agrega sessões da base de dados) ou um <strong>formador externo</strong> (prestação única, sem histórico).
         </p>
 
+        <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-sm">
+          <button
+            type="button"
+            onClick={() => setTipoFormador("registado")}
+            className={`px-3 py-1.5 rounded ${tipoFormador === "registado" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >Formador registado</button>
+          <button
+            type="button"
+            onClick={() => setTipoFormador("externo")}
+            className={`px-3 py-1.5 rounded ${tipoFormador === "externo" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}
+          >Formador externo (prestação única)</button>
+        </div>
+
+        {tipoFormador === "externo" ? (
+          <div className="grid gap-3 md:grid-cols-4 rounded-md border p-3 bg-muted/20">
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Nome do formador *</Label>
+              <Input value={extNome} onChange={e => setExtNome(e.target.value)} placeholder="Nome completo" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>NIF</Label>
+              <Input value={extNif} onChange={e => setExtNif(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>IBAN</Label>
+              <Input value={extIban} onChange={e => setExtIban(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Morada</Label>
+              <Input value={extMorada} onChange={e => setExtMorada(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Código Postal</Label>
+              <Input value={extCp} onChange={e => setExtCp(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Localidade</Label>
+              <Input value={extLocalidade} onChange={e => setExtLocalidade(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Email</Label>
+              <Input type="email" value={extEmail} onChange={e => setExtEmail(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 md:col-span-4">
+              <Label>Descrição da prestação</Label>
+              <Input value={extDescricao} onChange={e => setExtDescricao(e.target.value)} placeholder="Ex.: Formação em Segurança Alimentar — 12h" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Horas ministradas *</Label>
+              <Input type="number" step="0.01" min="0" value={extHoras} onChange={e => setExtHoras(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Valor / hora (€) *</Label>
+              <Input type="number" step="0.01" min="0" value={valorHora} onChange={e => setValorHora(e.target.value)} />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Retenção IRS (%)</Label>
+              <Input type="number" step="0.01" min="0" max="100" value={retencao} onChange={e => setRetencao(e.target.value)} />
+            </div>
+          </div>
+        ) : (
+        <>
         <div className="grid gap-3 md:grid-cols-3">
           <div className="space-y-1.5 md:col-span-2">
             <Label>Formador *</Label>
@@ -208,6 +269,7 @@ export function NotaHonorariosCard() {
             </Select>
           </div>
         </div>
+
 
         {modo === "mes" ? (
           <div className="grid gap-3 md:grid-cols-4">

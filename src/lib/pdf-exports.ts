@@ -654,7 +654,9 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   }
 
 
-  const totalHoras = sess.reduce((a, s) => a + Number(s.horas || 0), 0);
+  const totalHoras = modo === "avulso"
+    ? Number(opts.horasAvulso || 0)
+    : sess.reduce((a, s) => a + Number(s.horas || 0), 0);
   const subtotal = totalHoras * valorHora;
   const ivaPct = opts.iva ?? 0;
   const ivaValor = subtotal * (ivaPct / 100);
@@ -666,11 +668,16 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   const ufcdSel = modo === "ufcd" && ufcdId ? ufcdById.get(ufcdId) : null;
   const periodoLabel = modo === "mes"
     ? `${meses[mes!-1]} ${ano}`
-    : (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD");
+    : modo === "ufcd"
+      ? (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD")
+      : `Prestação de serviços — ${fmtDate(dataEmissao)}`;
   const numeroSuffix = modo === "mes"
     ? `${ano}${String(mes).padStart(2,"0")}`
-    : (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD");
+    : modo === "ufcd"
+      ? (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD")
+      : dataEmissao.replace(/-/g,"");
   const numero = opts.numero || `NH-${numeroSuffix}-${String(formador.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}`;
+
 
   const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
 

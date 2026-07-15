@@ -543,7 +543,7 @@ export function NotaHonorariosCard() {
         })()}
 
         <div className="flex gap-2">
-          <Button onClick={gerar} disabled={!formadorId || busy}>
+          <Button onClick={gerar} disabled={busy || (tipoFormador === "registado" ? !formadorId : !extNome.trim())}>
             <FileText className="size-4" /> {busy ? "A gerar…" : "Gerar PDF"}
           </Button>
         </div>

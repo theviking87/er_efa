@@ -128,13 +128,19 @@ export function NotaHonorariosCard() {
   });
 
   async function gerar() {
-    const vh = parseFloat(valorHora.replace(",", "."));
-    if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
+    const vh = parseFloat(valorHora.replace(",", ".")) || 0;
+    const vTotal = parseFloat(extValorTotal.replace(",", ".")) || 0;
     if (tipoFormador === "externo") {
       if (!extNome.trim()) { toast.error("Nome do formador obrigatório"); return; }
-      const h = parseFloat(extHoras.replace(",", "."));
-      if (!h || h <= 0) { toast.error("Horas inválidas"); return; }
+      if (extModoValor === "total") {
+        if (!vTotal || vTotal <= 0) { toast.error("Valor total inválido"); return; }
+      } else {
+        if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
+        const h = parseFloat(extHoras.replace(",", "."));
+        if (!h || h <= 0) { toast.error("Horas inválidas"); return; }
+      }
     } else {
+      if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
       if (!formadorId) { toast.error("Escolha um formador"); return; }
       if (modo === "ufcd" && !ufcdId) { toast.error("Escolha uma UFCD"); return; }
     }
@@ -160,8 +166,9 @@ export function NotaHonorariosCard() {
           nome: extNome, nif: extNif, morada: extMorada, codigo_postal: extCp,
           localidade: extLocalidade, email: extEmail, iban: extIban,
         } : undefined,
-        horasAvulso: tipoFormador === "externo" ? parseFloat(extHoras.replace(",", ".")) : undefined,
+        horasAvulso: tipoFormador === "externo" ? (parseFloat(extHoras.replace(",", ".")) || 0) : undefined,
         descricaoAvulso: tipoFormador === "externo" ? extDescricao : undefined,
+        valorTotalAvulso: tipoFormador === "externo" && extModoValor === "total" ? vTotal : undefined,
       });
       toast.success("Nota de honorários gerada");
     } catch (e: any) {

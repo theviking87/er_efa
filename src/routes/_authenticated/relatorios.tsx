@@ -200,7 +200,30 @@ function NotaHonorariosCard() {
           </div>
         )}
 
-
+        <div className="grid gap-3 md:grid-cols-3 items-end rounded-md border p-3 bg-muted/30">
+          <div className="flex items-center gap-2 md:col-span-1">
+            <input
+              id="aplicar-iva"
+              type="checkbox"
+              className="size-4"
+              checked={aplicarIva}
+              onChange={e => setAplicarIva(e.target.checked)}
+            />
+            <Label htmlFor="aplicar-iva" className="cursor-pointer">Acrescer IVA (recibo com IVA)</Label>
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Taxa de IVA (%)</Label>
+            <Input
+              type="number"
+              step="0.01"
+              min="0"
+              max="100"
+              value={iva}
+              onChange={e => setIva(e.target.value)}
+              disabled={!aplicarIva}
+            />
+          </div>
+        </div>
 
         <div className="grid gap-3 md:grid-cols-2">
           <div className="space-y-1.5">

@@ -22,9 +22,11 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
 function NotaHonorariosCard() {
   const [formadorId, setFormadorId] = useState("");
   const now = new Date();
+  const [modo, setModo] = useState<"mes" | "ufcd">("mes");
   const [ano, setAno] = useState(now.getFullYear());
   const [mes, setMes] = useState(now.getMonth() + 1);
-  const [ufcdId, setUfcdId] = useState<string>("__all__");
+  const [ufcdId, setUfcdId] = useState<string>("");
+
   const [valorHora, setValorHora] = useState<string>("15");
   const [retencao, setRetencao] = useState<string>("25");
   const [destNome, setDestNome] = useState("");

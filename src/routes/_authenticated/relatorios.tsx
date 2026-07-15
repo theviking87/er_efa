@@ -19,6 +19,178 @@ export const Route = createFileRoute("/_authenticated/relatorios")({
   component: RelatoriosPage,
 });
 
+function NotaHonorariosCard() {
+  const [formadorId, setFormadorId] = useState("");
+  const now = new Date();
+  const [ano, setAno] = useState(now.getFullYear());
+  const [mes, setMes] = useState(now.getMonth() + 1);
+  const [ufcdId, setUfcdId] = useState<string>("__all__");
+  const [valorHora, setValorHora] = useState<string>("15");
+  const [retencao, setRetencao] = useState<string>("25");
+  const [destNome, setDestNome] = useState("");
+  const [destNif, setDestNif] = useState("");
+  const [destMorada, setDestMorada] = useState("");
+  const [numero, setNumero] = useState("");
+  const [observacoes, setObservacoes] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const formadores = useQuery({
+    queryKey: ["formadores-nomes"],
+    queryFn: async () => (await supabase.from("formadores").select("id, nome").order("nome")).data ?? [],
+  });
+
+  const ufcdsMes = useQuery({
+    enabled: !!formadorId,
+    queryKey: ["ufcds-formador-mes", formadorId, ano, mes],
+    queryFn: async () => {
+      const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
+      const fimDate = new Date(ano, mes, 0);
+      const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
+      const { data: sess } = await supabase
+        .from("sessoes")
+        .select("curso_ufcd_id")
+        .eq("formador_id", formadorId)
+        .gte("data", inicio).lte("data", fim);
+      const cufIds = Array.from(new Set((sess ?? []).map((s: any) => s.curso_ufcd_id).filter(Boolean)));
+      if (!cufIds.length) return [];
+      const { data: cufs } = await supabase.from("curso_ufcds").select("id, ufcd_id").in("id", cufIds);
+      const ufcdIds = Array.from(new Set((cufs ?? []).map((c: any) => c.ufcd_id)));
+      if (!ufcdIds.length) return [];
+      const { data: ufcds } = await supabase.from("ufcds").select("id, codigo, designacao").in("id", ufcdIds).order("codigo");
+      return ufcds ?? [];
+    },
+  });
+
+  async function gerar() {
+    if (!formadorId) { toast.error("Escolha um formador"); return; }
+    const vh = parseFloat(valorHora.replace(",", "."));
+    if (!vh || vh <= 0) { toast.error("Valor/hora inválido"); return; }
+    try {
+      setBusy(true);
+      await paintBeforeHeavyWork();
+      const { exportNotaHonorariosPdf } = await import("@/lib/pdf-exports");
+      await exportNotaHonorariosPdf({
+        formadorId,
+        ano, mes,
+        ufcdId: ufcdId === "__all__" ? null : ufcdId,
+        valorHora: vh,
+        retencaoIrs: parseFloat(retencao.replace(",", ".")) || 0,
+        numero: numero || undefined,
+        destinatario: (destNome || destNif || destMorada) ? { nome: destNome, nif: destNif, morada: destMorada } : undefined,
+        observacoes: observacoes || undefined,
+      });
+      toast.success("Nota de honorários gerada");
+    } catch (e: any) {
+      toast.error("Erro ao gerar", { description: e.message });
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const anos = Array.from({ length: 6 }, (_, i) => now.getFullYear() - 3 + i);
+
+  return (
+    <Card className="lg:col-span-2">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base font-semibold flex items-center gap-2">
+          <FileText className="size-4" /> Nota de honorários (formador)
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground">
+          Gera um PDF com o detalhe das sessões ministradas por um formador num determinado mês.
+          Pode filtrar por UFCD e definir valor/hora, retenção IRS e dados do destinatário.
+        </p>
+
+        <div className="grid gap-3 md:grid-cols-3">
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Formador *</Label>
+            <Select value={formadorId} onValueChange={(v) => { setFormadorId(v); setUfcdId("__all__"); }}>
+              <SelectTrigger><SelectValue placeholder="Escolher formador…" /></SelectTrigger>
+              <SelectContent>
+                {(formadores.data ?? []).map((f: any) => (
+                  <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>UFCD (opcional)</Label>
+            <Select value={ufcdId} onValueChange={setUfcdId} disabled={!formadorId}>
+              <SelectTrigger><SelectValue placeholder="Todas as UFCD do mês" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">Todas as UFCD do mês</SelectItem>
+                {(ufcdsMes.data ?? []).map((u: any) => (
+                  <SelectItem key={u.id} value={u.id}>{u.codigo} — {u.designacao}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-4">
+          <div className="space-y-1.5">
+            <Label>Mês *</Label>
+            <Select value={String(mes)} onValueChange={(v) => setMes(parseInt(v))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {meses.map((m, i) => <SelectItem key={i} value={String(i+1)}>{m}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Ano *</Label>
+            <Select value={String(ano)} onValueChange={(v) => setAno(parseInt(v))}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                {anos.map(a => <SelectItem key={a} value={String(a)}>{a}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-1.5">
+            <Label>Valor / hora (€) *</Label>
+            <Input type="number" step="0.01" min="0" value={valorHora} onChange={e => setValorHora(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Retenção IRS (%)</Label>
+            <Input type="number" step="0.01" min="0" max="100" value={retencao} onChange={e => setRetencao(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1.5">
+            <Label>Nº da nota (opcional)</Label>
+            <Input placeholder="Auto se vazio" value={numero} onChange={e => setNumero(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Destinatário — Nome</Label>
+            <Input value={destNome} onChange={e => setDestNome(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Destinatário — NIF</Label>
+            <Input value={destNif} onChange={e => setDestNif(e.target.value)} />
+          </div>
+          <div className="space-y-1.5">
+            <Label>Destinatário — Morada</Label>
+            <Input value={destMorada} onChange={e => setDestMorada(e.target.value)} />
+          </div>
+          <div className="space-y-1.5 md:col-span-2">
+            <Label>Observações</Label>
+            <Input value={observacoes} onChange={e => setObservacoes(e.target.value)} />
+          </div>
+        </div>
+
+        <div className="flex gap-2">
+          <Button onClick={gerar} disabled={!formadorId || busy}>
+            <FileText className="size-4" /> {busy ? "A gerar…" : "Gerar PDF"}
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 function RelatoriosPage() {
   const [cursoId, setCursoId] = useState("");
   const [inicio, setInicio] = useState(() => {

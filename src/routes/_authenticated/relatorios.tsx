@@ -82,6 +82,7 @@ function NotaHonorariosCard() {
         ufcdId: modo === "ufcd" ? ufcdId : (ufcdId || null),
         valorHora: vh,
         retencaoIrs: parseFloat(retencao.replace(",", ".")) || 0,
+        iva: aplicarIva ? (parseFloat(iva.replace(",", ".")) || 0) : 0,
         numero: numero || undefined,
         destinatario: (destNome || destNif || destMorada) ? { nome: destNome, nif: destNif, morada: destMorada } : undefined,
         observacoes: observacoes || undefined,

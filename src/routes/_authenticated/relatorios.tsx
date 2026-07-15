@@ -335,6 +335,9 @@ export function NotaHonorariosCard() {
             </div>
           </div>
         )}
+        </>
+        )}
+
 
         <div className="grid gap-3 md:grid-cols-3 items-end rounded-md border p-3 bg-muted/30">
           <div className="flex items-center gap-2 md:col-span-1">

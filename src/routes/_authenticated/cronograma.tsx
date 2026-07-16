@@ -17,6 +17,7 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso, localDateIso } from "@/lib/format";
 import { toast } from "sonner";
+import { confirmarFimDeSemana } from "@/lib/weekend-check";
 import { compareUfcdCodigo } from "@/lib/utils";
 
 export const Route = createFileRoute("/_authenticated/cronograma")({

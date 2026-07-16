@@ -13,6 +13,7 @@ import { EstadoBadge } from "./formadores.index";
 import { FormadorDialog } from "@/components/formador-dialog";
 import { fmtDate } from "@/lib/format";
 import { toast } from "sonner";
+import { confirmarFimDeSemana } from "@/lib/weekend-check";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
@@ -318,6 +319,7 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
   async function add() {
     if (!form.data) { toast.error("Data obrigatória"); return; }
     if (form.hora_fim <= form.hora_inicio) { toast.error("Hora fim tem de ser depois da hora início"); return; }
+    if (!confirmarFimDeSemana(form.data, "esta disponibilidade")) return;
     // verificar sobreposição com disponibilidades já lançadas nesse dia
     const { data: existentes } = await supabase
       .from("formador_disponibilidades" as any)

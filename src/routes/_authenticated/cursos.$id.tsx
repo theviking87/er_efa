@@ -20,6 +20,7 @@ import {
   INSCRICAO_ESTADO_LABEL, FALTA_TIPO_LABEL, formadorLabel,
 } from "@/lib/format";
 import { toast } from "sonner";
+import { confirmarFimDeSemana, confirmarFimDeSemanaMultiplo } from "@/lib/weekend-check";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
@@ -2139,6 +2140,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     if (!data || !cufId || !formadorId) return toast.error("Preencha todos os campos");
     const horas = diffHoras(hi, hf);
     if (horas <= 0) return toast.error("Horas inválidas");
+    if (!confirmarFimDeSemana(data, "esta sessão")) return;
 
     const { data: fer } = await supabase.from("curso_ferias" as any)
       .select("data_inicio, data_fim, motivo").eq("curso_id", cursoId)
@@ -2887,6 +2889,7 @@ function BulkRetroativosDialog({ open, onOpenChange, cursoId, onSaved }: { open:
     });
     if (validas.length === 0) return toast.error("Sem linhas válidas para lançar");
     if (erros.length > 0) return toast.error("Corrija as linhas inválidas", { description: erros.slice(0, 4).join(" · ") });
+    if (!confirmarFimDeSemanaMultiplo(validas.map(r => r.data), "estas sessões retroativas")) return;
 
     setSaving(true);
     const payload = validas.map(r => ({

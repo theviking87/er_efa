@@ -1019,6 +1019,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     if (!cursoId) return toast.error("Escolhe o curso");
     if (!cursoUfcdId) return toast.error("Escolhe a UFCD");
     if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
+    if (!confirmarFimDeSemana(slot.data, "esta sessão")) return;
 
     const cu = (opcoes.data ?? []).find((x: any) => x.id === cursoUfcdId) as any;
     if (!cu) return toast.error("UFCD inválida");
@@ -1222,6 +1223,7 @@ function CreateDispDialog({
     const hf = horaFim;
 
     if (!hi || !hf || hf <= hi) return toast.error("Horário inválido");
+    if (!confirmarFimDeSemana(dataEdit, tipo === "disponivel" ? "esta disponibilidade" : "esta indisponibilidade")) return;
 
     // Conflito com sessão já agendada (qualquer curso) à mesma hora
     if (tipo === "disponivel") {

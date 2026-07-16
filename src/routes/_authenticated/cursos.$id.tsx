@@ -2139,6 +2139,7 @@ function SessaoDialog({ open, onOpenChange, cursoId, defaultDate, onSaved }: { o
     if (!data || !cufId || !formadorId) return toast.error("Preencha todos os campos");
     const horas = diffHoras(hi, hf);
     if (horas <= 0) return toast.error("Horas inválidas");
+    if (!confirmarFimDeSemana(data, "esta sessão")) return;
 
     const { data: fer } = await supabase.from("curso_ferias" as any)
       .select("data_inicio, data_fim, motivo").eq("curso_id", cursoId)
@@ -2887,6 +2888,7 @@ function BulkRetroativosDialog({ open, onOpenChange, cursoId, onSaved }: { open:
     });
     if (validas.length === 0) return toast.error("Sem linhas válidas para lançar");
     if (erros.length > 0) return toast.error("Corrija as linhas inválidas", { description: erros.slice(0, 4).join(" · ") });
+    if (!confirmarFimDeSemanaMultiplo(validas.map(r => r.data), "estas sessões retroativas")) return;
 
     setSaving(true);
     const payload = validas.map(r => ({

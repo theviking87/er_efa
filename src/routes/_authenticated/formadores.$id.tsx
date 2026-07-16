@@ -318,6 +318,7 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
   async function add() {
     if (!form.data) { toast.error("Data obrigatória"); return; }
     if (form.hora_fim <= form.hora_inicio) { toast.error("Hora fim tem de ser depois da hora início"); return; }
+    if (!confirmarFimDeSemana(form.data, "esta disponibilidade")) return;
     // verificar sobreposição com disponibilidades já lançadas nesse dia
     const { data: existentes } = await supabase
       .from("formador_disponibilidades" as any)

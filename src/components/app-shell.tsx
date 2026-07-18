@@ -77,33 +77,38 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
-        <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-          {NAV.map(item => {
-            const active = pathname === item.to || pathname.startsWith(item.to + "/");
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.to}
-                to={item.to}
-                className={cn(
-                  "group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-150",
-                  active
-                    ? "bg-white/10 text-white font-medium shadow-sm"
-                    : "text-white/70 hover:bg-white/5 hover:text-white",
-                )}
-              >
-                {active && (
-                  <span
-                    className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full"
-                    style={{ background: "var(--color-sidebar-primary)" }}
-                  />
-                )}
-                <Icon className={cn("size-4 shrink-0 transition-colors", active ? "text-[var(--color-sidebar-primary)]" : "text-white/60 group-hover:text-white/90")} />
-                <span className="truncate">{item.label}</span>
-              </Link>
-            );
-          })}
+        <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto">
+          {Array.from(new Set(NAV.map(n => n.section))).map(section => (
+            <div key={section} className="space-y-1">
+              <div className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wider text-white/40">{section}</div>
+              {NAV.filter(n => n.section === section).map(item => {
+                const active = item.to === "/financeiro"
+                  ? pathname === item.to
+                  : pathname === item.to || pathname.startsWith(item.to + "/");
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.to}
+                    to={item.to}
+                    className={cn(
+                      "group relative flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-all duration-150",
+                      active
+                        ? "bg-white/10 text-white font-medium shadow-sm"
+                        : "text-white/70 hover:bg-white/5 hover:text-white",
+                    )}
+                  >
+                    {active && (
+                      <span className="absolute left-0 top-1.5 bottom-1.5 w-1 rounded-r-full" style={{ background: "var(--color-sidebar-primary)" }} />
+                    )}
+                    <Icon className={cn("size-4 shrink-0 transition-colors", active ? "text-[var(--color-sidebar-primary)]" : "text-white/60 group-hover:text-white/90")} />
+                    <span className="truncate">{item.label}</span>
+                  </Link>
+                );
+              })}
+            </div>
+          ))}
         </nav>
+
 
         <div className="p-3 border-t border-sidebar-border">
           {typeof window !== "undefined" && Boolean((window as any).electronAPI?.isElectron) && (

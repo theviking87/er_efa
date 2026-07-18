@@ -25,7 +25,12 @@ import { Route as AuthenticatedFinanceiroIndexRouteImport } from './routes/_auth
 import { Route as AuthenticatedCursosIndexRouteImport } from './routes/_authenticated/cursos.index'
 import { Route as AuthenticatedFormandosIdRouteImport } from './routes/_authenticated/formandos.$id'
 import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
+import { Route as AuthenticatedFinanceiroSubsidiosRouteImport } from './routes/_authenticated/financeiro.subsidios'
+import { Route as AuthenticatedFinanceiroQuilometrosRouteImport } from './routes/_authenticated/financeiro.quilometros'
 import { Route as AuthenticatedFinanceiroProcessamentosRouteImport } from './routes/_authenticated/financeiro.processamentos'
+import { Route as AuthenticatedFinanceiroHonorariosRouteImport } from './routes/_authenticated/financeiro.honorarios'
+import { Route as AuthenticatedFinanceiroConfiguracaoRouteImport } from './routes/_authenticated/financeiro.configuracao'
+import { Route as AuthenticatedFinanceiroBolsasRouteImport } from './routes/_authenticated/financeiro.bolsas'
 import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
 import { Route as AuthenticatedCursosIdImportarRouteImport } from './routes/_authenticated/cursos_.$id.importar'
 
@@ -115,10 +120,40 @@ const AuthenticatedFormadoresIdRoute =
     path: '/formadores/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFinanceiroSubsidiosRoute =
+  AuthenticatedFinanceiroSubsidiosRouteImport.update({
+    id: '/financeiro/subsidios',
+    path: '/financeiro/subsidios',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceiroQuilometrosRoute =
+  AuthenticatedFinanceiroQuilometrosRouteImport.update({
+    id: '/financeiro/quilometros',
+    path: '/financeiro/quilometros',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFinanceiroProcessamentosRoute =
   AuthenticatedFinanceiroProcessamentosRouteImport.update({
     id: '/financeiro/processamentos',
     path: '/financeiro/processamentos',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceiroHonorariosRoute =
+  AuthenticatedFinanceiroHonorariosRouteImport.update({
+    id: '/financeiro/honorarios',
+    path: '/financeiro/honorarios',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceiroConfiguracaoRoute =
+  AuthenticatedFinanceiroConfiguracaoRouteImport.update({
+    id: '/financeiro/configuracao',
+    path: '/financeiro/configuracao',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceiroBolsasRoute =
+  AuthenticatedFinanceiroBolsasRouteImport.update({
+    id: '/financeiro/bolsas',
+    path: '/financeiro/bolsas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedCursosIdRoute = AuthenticatedCursosIdRouteImport.update({
@@ -144,7 +179,12 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/financeiro/bolsas': typeof AuthenticatedFinanceiroBolsasRoute
+  '/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
+  '/financeiro/honorarios': typeof AuthenticatedFinanceiroHonorariosRoute
   '/financeiro/processamentos': typeof AuthenticatedFinanceiroProcessamentosRoute
+  '/financeiro/quilometros': typeof AuthenticatedFinanceiroQuilometrosRoute
+  '/financeiro/subsidios': typeof AuthenticatedFinanceiroSubsidiosRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/formandos/$id': typeof AuthenticatedFormandosIdRoute
   '/cursos/': typeof AuthenticatedCursosIndexRoute
@@ -164,7 +204,12 @@ export interface FileRoutesByTo {
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/financeiro/bolsas': typeof AuthenticatedFinanceiroBolsasRoute
+  '/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
+  '/financeiro/honorarios': typeof AuthenticatedFinanceiroHonorariosRoute
   '/financeiro/processamentos': typeof AuthenticatedFinanceiroProcessamentosRoute
+  '/financeiro/quilometros': typeof AuthenticatedFinanceiroQuilometrosRoute
+  '/financeiro/subsidios': typeof AuthenticatedFinanceiroSubsidiosRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/formandos/$id': typeof AuthenticatedFormandosIdRoute
   '/cursos': typeof AuthenticatedCursosIndexRoute
@@ -186,7 +231,12 @@ export interface FileRoutesById {
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/ufcds': typeof AuthenticatedUfcdsRoute
   '/_authenticated/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/_authenticated/financeiro/bolsas': typeof AuthenticatedFinanceiroBolsasRoute
+  '/_authenticated/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
+  '/_authenticated/financeiro/honorarios': typeof AuthenticatedFinanceiroHonorariosRoute
   '/_authenticated/financeiro/processamentos': typeof AuthenticatedFinanceiroProcessamentosRoute
+  '/_authenticated/financeiro/quilometros': typeof AuthenticatedFinanceiroQuilometrosRoute
+  '/_authenticated/financeiro/subsidios': typeof AuthenticatedFinanceiroSubsidiosRoute
   '/_authenticated/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/_authenticated/formandos/$id': typeof AuthenticatedFormandosIdRoute
   '/_authenticated/cursos/': typeof AuthenticatedCursosIndexRoute
@@ -208,7 +258,12 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/ufcds'
     | '/cursos/$id'
+    | '/financeiro/bolsas'
+    | '/financeiro/configuracao'
+    | '/financeiro/honorarios'
     | '/financeiro/processamentos'
+    | '/financeiro/quilometros'
+    | '/financeiro/subsidios'
     | '/formadores/$id'
     | '/formandos/$id'
     | '/cursos/'
@@ -228,7 +283,12 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/ufcds'
     | '/cursos/$id'
+    | '/financeiro/bolsas'
+    | '/financeiro/configuracao'
+    | '/financeiro/honorarios'
     | '/financeiro/processamentos'
+    | '/financeiro/quilometros'
+    | '/financeiro/subsidios'
     | '/formadores/$id'
     | '/formandos/$id'
     | '/cursos'
@@ -249,7 +309,12 @@ export interface FileRouteTypes {
     | '/_authenticated/relatorios'
     | '/_authenticated/ufcds'
     | '/_authenticated/cursos/$id'
+    | '/_authenticated/financeiro/bolsas'
+    | '/_authenticated/financeiro/configuracao'
+    | '/_authenticated/financeiro/honorarios'
     | '/_authenticated/financeiro/processamentos'
+    | '/_authenticated/financeiro/quilometros'
+    | '/_authenticated/financeiro/subsidios'
     | '/_authenticated/formadores/$id'
     | '/_authenticated/formandos/$id'
     | '/_authenticated/cursos/'
@@ -379,11 +444,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFormadoresIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/financeiro/subsidios': {
+      id: '/_authenticated/financeiro/subsidios'
+      path: '/financeiro/subsidios'
+      fullPath: '/financeiro/subsidios'
+      preLoaderRoute: typeof AuthenticatedFinanceiroSubsidiosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/financeiro/quilometros': {
+      id: '/_authenticated/financeiro/quilometros'
+      path: '/financeiro/quilometros'
+      fullPath: '/financeiro/quilometros'
+      preLoaderRoute: typeof AuthenticatedFinanceiroQuilometrosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/financeiro/processamentos': {
       id: '/_authenticated/financeiro/processamentos'
       path: '/financeiro/processamentos'
       fullPath: '/financeiro/processamentos'
       preLoaderRoute: typeof AuthenticatedFinanceiroProcessamentosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/financeiro/honorarios': {
+      id: '/_authenticated/financeiro/honorarios'
+      path: '/financeiro/honorarios'
+      fullPath: '/financeiro/honorarios'
+      preLoaderRoute: typeof AuthenticatedFinanceiroHonorariosRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/financeiro/configuracao': {
+      id: '/_authenticated/financeiro/configuracao'
+      path: '/financeiro/configuracao'
+      fullPath: '/financeiro/configuracao'
+      preLoaderRoute: typeof AuthenticatedFinanceiroConfiguracaoRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/financeiro/bolsas': {
+      id: '/_authenticated/financeiro/bolsas'
+      path: '/financeiro/bolsas'
+      fullPath: '/financeiro/bolsas'
+      preLoaderRoute: typeof AuthenticatedFinanceiroBolsasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cursos/$id': {
@@ -412,7 +512,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedUfcdsRoute: typeof AuthenticatedUfcdsRoute
   AuthenticatedCursosIdRoute: typeof AuthenticatedCursosIdRoute
+  AuthenticatedFinanceiroBolsasRoute: typeof AuthenticatedFinanceiroBolsasRoute
+  AuthenticatedFinanceiroConfiguracaoRoute: typeof AuthenticatedFinanceiroConfiguracaoRoute
+  AuthenticatedFinanceiroHonorariosRoute: typeof AuthenticatedFinanceiroHonorariosRoute
   AuthenticatedFinanceiroProcessamentosRoute: typeof AuthenticatedFinanceiroProcessamentosRoute
+  AuthenticatedFinanceiroQuilometrosRoute: typeof AuthenticatedFinanceiroQuilometrosRoute
+  AuthenticatedFinanceiroSubsidiosRoute: typeof AuthenticatedFinanceiroSubsidiosRoute
   AuthenticatedFormadoresIdRoute: typeof AuthenticatedFormadoresIdRoute
   AuthenticatedFormandosIdRoute: typeof AuthenticatedFormandosIdRoute
   AuthenticatedCursosIndexRoute: typeof AuthenticatedCursosIndexRoute
@@ -431,8 +536,16 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedUfcdsRoute: AuthenticatedUfcdsRoute,
   AuthenticatedCursosIdRoute: AuthenticatedCursosIdRoute,
+  AuthenticatedFinanceiroBolsasRoute: AuthenticatedFinanceiroBolsasRoute,
+  AuthenticatedFinanceiroConfiguracaoRoute:
+    AuthenticatedFinanceiroConfiguracaoRoute,
+  AuthenticatedFinanceiroHonorariosRoute:
+    AuthenticatedFinanceiroHonorariosRoute,
   AuthenticatedFinanceiroProcessamentosRoute:
     AuthenticatedFinanceiroProcessamentosRoute,
+  AuthenticatedFinanceiroQuilometrosRoute:
+    AuthenticatedFinanceiroQuilometrosRoute,
+  AuthenticatedFinanceiroSubsidiosRoute: AuthenticatedFinanceiroSubsidiosRoute,
   AuthenticatedFormadoresIdRoute: AuthenticatedFormadoresIdRoute,
   AuthenticatedFormandosIdRoute: AuthenticatedFormandosIdRoute,
   AuthenticatedCursosIndexRoute: AuthenticatedCursosIndexRoute,

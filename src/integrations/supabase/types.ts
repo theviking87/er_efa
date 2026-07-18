@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      configuracao_financeira: {
+        Row: {
+          atualizacao: string
+          created_at: string
+          horas_mes: number
+          id: string
+          iva: number
+          moeda: string
+          updated_at: string
+          valor_km: number
+          valor_refeicao: number
+        }
+        Insert: {
+          atualizacao?: string
+          created_at?: string
+          horas_mes?: number
+          id?: string
+          iva?: number
+          moeda?: string
+          updated_at?: string
+          valor_km?: number
+          valor_refeicao?: number
+        }
+        Update: {
+          atualizacao?: string
+          created_at?: string
+          horas_mes?: number
+          id?: string
+          iva?: number
+          moeda?: string
+          updated_at?: string
+          valor_km?: number
+          valor_refeicao?: number
+        }
+        Relationships: []
+      }
       cronograma_observacoes: {
         Row: {
           created_at: string
@@ -287,6 +323,269 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      financeiro_bolsas: {
+        Row: {
+          created_at: string
+          editado_manual: boolean
+          formando_id: string
+          horas_frequentadas: number
+          horas_previstas: number
+          id: string
+          observacoes: string | null
+          processamento_id: string
+          updated_at: string
+          valor_calculado: number
+          valor_final: number
+          valor_hora: number
+        }
+        Insert: {
+          created_at?: string
+          editado_manual?: boolean
+          formando_id: string
+          horas_frequentadas?: number
+          horas_previstas?: number
+          id?: string
+          observacoes?: string | null
+          processamento_id: string
+          updated_at?: string
+          valor_calculado?: number
+          valor_final?: number
+          valor_hora?: number
+        }
+        Update: {
+          created_at?: string
+          editado_manual?: boolean
+          formando_id?: string
+          horas_frequentadas?: number
+          horas_previstas?: number
+          id?: string
+          observacoes?: string | null
+          processamento_id?: string
+          updated_at?: string
+          valor_calculado?: number
+          valor_final?: number
+          valor_hora?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_bolsas_formando_id_fkey"
+            columns: ["formando_id"]
+            isOneToOne: false
+            referencedRelation: "formandos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_bolsas_processamento_id_fkey"
+            columns: ["processamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_processamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_honorarios: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          formador_id: string | null
+          id: string
+          iva: number
+          processamento_id: string
+          total: number
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          formador_id?: string | null
+          id?: string
+          iva?: number
+          processamento_id: string
+          total?: number
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          formador_id?: string | null
+          id?: string
+          iva?: number
+          processamento_id?: string
+          total?: number
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_honorarios_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: false
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_honorarios_processamento_id_fkey"
+            columns: ["processamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_processamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_processamentos: {
+        Row: {
+          ano: number
+          created_at: string
+          curso_id: string
+          data_criacao: string
+          data_fecho: string | null
+          estado: string
+          id: string
+          mes: number
+          observacoes: string | null
+          updated_at: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          curso_id: string
+          data_criacao?: string
+          data_fecho?: string | null
+          estado?: string
+          id?: string
+          mes: number
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          curso_id?: string
+          data_criacao?: string
+          data_fecho?: string | null
+          estado?: string
+          id?: string
+          mes?: number
+          observacoes?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_processamentos_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_quilometros: {
+        Row: {
+          created_at: string
+          data: string
+          destino: string | null
+          formando_id: string
+          id: string
+          km: number
+          origem: string | null
+          processamento_id: string
+          total: number
+          updated_at: string
+          valor_km: number
+        }
+        Insert: {
+          created_at?: string
+          data: string
+          destino?: string | null
+          formando_id: string
+          id?: string
+          km?: number
+          origem?: string | null
+          processamento_id: string
+          total?: number
+          updated_at?: string
+          valor_km?: number
+        }
+        Update: {
+          created_at?: string
+          data?: string
+          destino?: string | null
+          formando_id?: string
+          id?: string
+          km?: number
+          origem?: string | null
+          processamento_id?: string
+          total?: number
+          updated_at?: string
+          valor_km?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_quilometros_formando_id_fkey"
+            columns: ["formando_id"]
+            isOneToOne: false
+            referencedRelation: "formandos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_quilometros_processamento_id_fkey"
+            columns: ["processamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_processamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financeiro_subsidios: {
+        Row: {
+          created_at: string
+          dias: number
+          formando_id: string
+          id: string
+          processamento_id: string
+          total: number
+          updated_at: string
+          valor_dia: number
+        }
+        Insert: {
+          created_at?: string
+          dias?: number
+          formando_id: string
+          id?: string
+          processamento_id: string
+          total?: number
+          updated_at?: string
+          valor_dia?: number
+        }
+        Update: {
+          created_at?: string
+          dias?: number
+          formando_id?: string
+          id?: string
+          processamento_id?: string
+          total?: number
+          updated_at?: string
+          valor_dia?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financeiro_subsidios_formando_id_fkey"
+            columns: ["formando_id"]
+            isOneToOne: false
+            referencedRelation: "formandos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_subsidios_processamento_id_fkey"
+            columns: ["processamento_id"]
+            isOneToOne: false
+            referencedRelation: "financeiro_processamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       formador_disponibilidades: {
         Row: {

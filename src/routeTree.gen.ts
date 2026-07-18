@@ -21,6 +21,7 @@ import { Route as AuthenticatedDashboardRouteImport } from './routes/_authentica
 import { Route as AuthenticatedCronogramaRouteImport } from './routes/_authenticated/cronograma'
 import { Route as AuthenticatedFormandosIndexRouteImport } from './routes/_authenticated/formandos.index'
 import { Route as AuthenticatedFormadoresIndexRouteImport } from './routes/_authenticated/formadores.index'
+import { Route as AuthenticatedFinanceiroIndexRouteImport } from './routes/_authenticated/financeiro.index'
 import { Route as AuthenticatedCursosIndexRouteImport } from './routes/_authenticated/cursos.index'
 import { Route as AuthenticatedFormandosIdRouteImport } from './routes/_authenticated/formandos.$id'
 import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
@@ -89,6 +90,12 @@ const AuthenticatedFormadoresIndexRoute =
     path: '/formadores/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFinanceiroIndexRoute =
+  AuthenticatedFinanceiroIndexRouteImport.update({
+    id: '/financeiro/',
+    path: '/financeiro/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCursosIndexRoute =
   AuthenticatedCursosIndexRouteImport.update({
     id: '/cursos/',
@@ -133,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/formandos/$id': typeof AuthenticatedFormandosIdRoute
   '/cursos/': typeof AuthenticatedCursosIndexRoute
+  '/financeiro/': typeof AuthenticatedFinanceiroIndexRoute
   '/formadores/': typeof AuthenticatedFormadoresIndexRoute
   '/formandos/': typeof AuthenticatedFormandosIndexRoute
   '/cursos/$id/importar': typeof AuthenticatedCursosIdImportarRoute
@@ -151,6 +159,7 @@ export interface FileRoutesByTo {
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/formandos/$id': typeof AuthenticatedFormandosIdRoute
   '/cursos': typeof AuthenticatedCursosIndexRoute
+  '/financeiro': typeof AuthenticatedFinanceiroIndexRoute
   '/formadores': typeof AuthenticatedFormadoresIndexRoute
   '/formandos': typeof AuthenticatedFormandosIndexRoute
   '/cursos/$id/importar': typeof AuthenticatedCursosIdImportarRoute
@@ -171,6 +180,7 @@ export interface FileRoutesById {
   '/_authenticated/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/_authenticated/formandos/$id': typeof AuthenticatedFormandosIdRoute
   '/_authenticated/cursos/': typeof AuthenticatedCursosIndexRoute
+  '/_authenticated/financeiro/': typeof AuthenticatedFinanceiroIndexRoute
   '/_authenticated/formadores/': typeof AuthenticatedFormadoresIndexRoute
   '/_authenticated/formandos/': typeof AuthenticatedFormandosIndexRoute
   '/_authenticated/cursos_/$id/importar': typeof AuthenticatedCursosIdImportarRoute
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/formadores/$id'
     | '/formandos/$id'
     | '/cursos/'
+    | '/financeiro/'
     | '/formadores/'
     | '/formandos/'
     | '/cursos/$id/importar'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/formadores/$id'
     | '/formandos/$id'
     | '/cursos'
+    | '/financeiro'
     | '/formadores'
     | '/formandos'
     | '/cursos/$id/importar'
@@ -228,6 +240,7 @@ export interface FileRouteTypes {
     | '/_authenticated/formadores/$id'
     | '/_authenticated/formandos/$id'
     | '/_authenticated/cursos/'
+    | '/_authenticated/financeiro/'
     | '/_authenticated/formadores/'
     | '/_authenticated/formandos/'
     | '/_authenticated/cursos_/$id/importar'
@@ -325,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFormadoresIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/financeiro/': {
+      id: '/_authenticated/financeiro/'
+      path: '/financeiro'
+      fullPath: '/financeiro/'
+      preLoaderRoute: typeof AuthenticatedFinanceiroIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cursos/': {
       id: '/_authenticated/cursos/'
       path: '/cursos'
@@ -375,6 +395,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFormadoresIdRoute: typeof AuthenticatedFormadoresIdRoute
   AuthenticatedFormandosIdRoute: typeof AuthenticatedFormandosIdRoute
   AuthenticatedCursosIndexRoute: typeof AuthenticatedCursosIndexRoute
+  AuthenticatedFinanceiroIndexRoute: typeof AuthenticatedFinanceiroIndexRoute
   AuthenticatedFormadoresIndexRoute: typeof AuthenticatedFormadoresIndexRoute
   AuthenticatedFormandosIndexRoute: typeof AuthenticatedFormandosIndexRoute
   AuthenticatedCursosIdImportarRoute: typeof AuthenticatedCursosIdImportarRoute
@@ -392,6 +413,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFormadoresIdRoute: AuthenticatedFormadoresIdRoute,
   AuthenticatedFormandosIdRoute: AuthenticatedFormandosIdRoute,
   AuthenticatedCursosIndexRoute: AuthenticatedCursosIndexRoute,
+  AuthenticatedFinanceiroIndexRoute: AuthenticatedFinanceiroIndexRoute,
   AuthenticatedFormadoresIndexRoute: AuthenticatedFormadoresIndexRoute,
   AuthenticatedFormandosIndexRoute: AuthenticatedFormandosIndexRoute,
   AuthenticatedCursosIdImportarRoute: AuthenticatedCursosIdImportarRoute,

@@ -15,10 +15,11 @@ function eur(n: number) {
 }
 
 async function sum(table: string, col: string) {
-  const { data, error } = await supabase.from(table).select(col);
+  const { data, error } = await (supabase as any).from(table).select(col);
   if (error) throw error;
   return (data ?? []).reduce((acc: number, r: any) => acc + Number(r[col] ?? 0), 0);
 }
+
 
 function FinanceiroDashboard() {
   const totals = useQuery({

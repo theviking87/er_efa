@@ -12,17 +12,25 @@ import { toast } from "sonner";
 const LOCAL_FORCE_IMPORT_KEY = "formacao-er-force-import";
 
 const NAV = [
-  { to: "/dashboard", label: "Painel", icon: LayoutDashboard },
-  { to: "/cronograma", label: "Cronograma", icon: CalendarDays },
-  { to: "/formadores", label: "Formadores", icon: Users },
-  { to: "/formandos", label: "Formandos", icon: UserSquare2 },
-  { to: "/cursos", label: "Cursos", icon: BookOpen },
-  { to: "/ufcds", label: "UFCD", icon: ListChecks },
-  { to: "/relatorios", label: "Relatórios & SIGO", icon: FileBarChart2 },
-  { to: "/nota-honorarios", label: "Nota de Honorários", icon: Receipt },
-  { to: "/exportar", label: "Exportar / Backup", icon: Download },
-  { to: "/perfil", label: "O meu perfil", icon: UserCog },
+  { to: "/dashboard", label: "Painel", icon: LayoutDashboard, section: "Geral" },
+  { to: "/cronograma", label: "Cronograma", icon: CalendarDays, section: "Geral" },
+  { to: "/formadores", label: "Formadores", icon: Users, section: "Geral" },
+  { to: "/formandos", label: "Formandos", icon: UserSquare2, section: "Geral" },
+  { to: "/cursos", label: "Cursos", icon: BookOpen, section: "Geral" },
+  { to: "/ufcds", label: "UFCD", icon: ListChecks, section: "Geral" },
+  { to: "/relatorios", label: "Relatórios & SIGO", icon: FileBarChart2, section: "Geral" },
+  { to: "/nota-honorarios", label: "Nota de Honorários", icon: Receipt, section: "Geral" },
+  { to: "/financeiro", label: "Painel Financeiro", icon: Wallet, section: "Financeiro" },
+  { to: "/financeiro/processamentos", label: "Processamentos", icon: ClipboardList, section: "Financeiro" },
+  { to: "/financeiro/bolsas", label: "Bolsas de Formação", icon: Coins, section: "Financeiro" },
+  { to: "/financeiro/subsidios", label: "Subsídio de Alimentação", icon: UtensilsCrossed, section: "Financeiro" },
+  { to: "/financeiro/quilometros", label: "Quilómetros", icon: Car, section: "Financeiro" },
+  { to: "/financeiro/honorarios", label: "Honorários", icon: HandCoins, section: "Financeiro" },
+  { to: "/financeiro/configuracao", label: "Configuração Financeira", icon: Settings2, section: "Financeiro" },
+  { to: "/exportar", label: "Exportar / Backup", icon: Download, section: "Sistema" },
+  { to: "/perfil", label: "O meu perfil", icon: UserCog, section: "Sistema" },
 ] as const;
+
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: s => s.location.pathname });

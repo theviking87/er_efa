@@ -699,9 +699,12 @@ export type Database = {
           horas_frequentadas: number
           horas_previstas: number
           id: string
+          memoria_calculo: Json | null
           observacoes: string | null
           processamento_id: string
+          teto_aplicado: boolean
           updated_at: string
+          valor_aprovado: number | null
           valor_calculado: number
           valor_final: number
           valor_hora: number
@@ -713,9 +716,12 @@ export type Database = {
           horas_frequentadas?: number
           horas_previstas?: number
           id?: string
+          memoria_calculo?: Json | null
           observacoes?: string | null
           processamento_id: string
+          teto_aplicado?: boolean
           updated_at?: string
+          valor_aprovado?: number | null
           valor_calculado?: number
           valor_final?: number
           valor_hora?: number
@@ -727,9 +733,12 @@ export type Database = {
           horas_frequentadas?: number
           horas_previstas?: number
           id?: string
+          memoria_calculo?: Json | null
           observacoes?: string | null
           processamento_id?: string
+          teto_aplicado?: boolean
           updated_at?: string
+          valor_aprovado?: number | null
           valor_calculado?: number
           valor_final?: number
           valor_hora?: number
@@ -756,34 +765,52 @@ export type Database = {
           created_at: string
           descricao: string | null
           formador_id: string | null
+          horas: number
           id: string
           iva: number
+          memoria_calculo: Json | null
           processamento_id: string
+          retencao_irs: number
+          seguranca_social: number
           total: number
           updated_at: string
           valor: number
+          valor_aprovado: number | null
+          valor_hora: number
         }
         Insert: {
           created_at?: string
           descricao?: string | null
           formador_id?: string | null
+          horas?: number
           id?: string
           iva?: number
+          memoria_calculo?: Json | null
           processamento_id: string
+          retencao_irs?: number
+          seguranca_social?: number
           total?: number
           updated_at?: string
           valor?: number
+          valor_aprovado?: number | null
+          valor_hora?: number
         }
         Update: {
           created_at?: string
           descricao?: string | null
           formador_id?: string | null
+          horas?: number
           id?: string
           iva?: number
+          memoria_calculo?: Json | null
           processamento_id?: string
+          retencao_irs?: number
+          seguranca_social?: number
           total?: number
           updated_at?: string
           valor?: number
+          valor_aprovado?: number | null
+          valor_hora?: number
         }
         Relationships: [
           {
@@ -810,10 +837,17 @@ export type Database = {
           data_criacao: string
           data_fecho: string | null
           estado: string
+          fechado_por: string | null
           id: string
           mes: number
           observacoes: string | null
           projeto_id: string | null
+          snapshot: Json | null
+          total_bolsas: number
+          total_geral: number
+          total_honorarios: number
+          total_km: number
+          total_subsidios: number
           updated_at: string
         }
         Insert: {
@@ -823,10 +857,17 @@ export type Database = {
           data_criacao?: string
           data_fecho?: string | null
           estado?: string
+          fechado_por?: string | null
           id?: string
           mes: number
           observacoes?: string | null
           projeto_id?: string | null
+          snapshot?: Json | null
+          total_bolsas?: number
+          total_geral?: number
+          total_honorarios?: number
+          total_km?: number
+          total_subsidios?: number
           updated_at?: string
         }
         Update: {
@@ -836,10 +877,17 @@ export type Database = {
           data_criacao?: string
           data_fecho?: string | null
           estado?: string
+          fechado_por?: string | null
           id?: string
           mes?: number
           observacoes?: string | null
           projeto_id?: string | null
+          snapshot?: Json | null
+          total_bolsas?: number
+          total_geral?: number
+          total_honorarios?: number
+          total_km?: number
+          total_subsidios?: number
           updated_at?: string
         }
         Relationships: [
@@ -867,10 +915,12 @@ export type Database = {
           formando_id: string
           id: string
           km: number
+          memoria_calculo: Json | null
           origem: string | null
           processamento_id: string
           total: number
           updated_at: string
+          valor_aprovado: number | null
           valor_km: number
         }
         Insert: {
@@ -880,10 +930,12 @@ export type Database = {
           formando_id: string
           id?: string
           km?: number
+          memoria_calculo?: Json | null
           origem?: string | null
           processamento_id: string
           total?: number
           updated_at?: string
+          valor_aprovado?: number | null
           valor_km?: number
         }
         Update: {
@@ -893,10 +945,12 @@ export type Database = {
           formando_id?: string
           id?: string
           km?: number
+          memoria_calculo?: Json | null
           origem?: string | null
           processamento_id?: string
           total?: number
           updated_at?: string
+          valor_aprovado?: number | null
           valor_km?: number
         }
         Relationships: [
@@ -922,9 +976,11 @@ export type Database = {
           dias: number
           formando_id: string
           id: string
+          memoria_calculo: Json | null
           processamento_id: string
           total: number
           updated_at: string
+          valor_aprovado: number | null
           valor_dia: number
         }
         Insert: {
@@ -932,9 +988,11 @@ export type Database = {
           dias?: number
           formando_id: string
           id?: string
+          memoria_calculo?: Json | null
           processamento_id: string
           total?: number
           updated_at?: string
+          valor_aprovado?: number | null
           valor_dia?: number
         }
         Update: {
@@ -942,9 +1000,11 @@ export type Database = {
           dias?: number
           formando_id?: string
           id?: string
+          memoria_calculo?: Json | null
           processamento_id?: string
           total?: number
           updated_at?: string
+          valor_aprovado?: number | null
           valor_dia?: number
         }
         Relationships: [

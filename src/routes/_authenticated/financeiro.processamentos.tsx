@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Lock, Unlock, Trash2, ChevronDown, ChevronRight } from "lucide-react";
+import { Plus, Lock, Unlock, Trash2, ChevronDown, ChevronRight, Play } from "lucide-react";
 import { toast } from "sonner";
 import { useProjetoAtivo, useProjetosList } from "@/lib/projeto-context";
 
@@ -107,7 +107,12 @@ function ProcessamentosPage() {
       <PageHeader
         title="Processamentos"
         description="Processamentos financeiros mensais por projeto e curso."
-        actions={<Button onClick={() => setOpen(true)}><Plus className="size-4 mr-1" /> Novo processamento</Button>}
+        actions={
+          <div className="flex gap-2">
+            <Link to="/financeiro/processamentos/novo"><Button variant="default"><Play className="size-4 mr-1" /> Assistente</Button></Link>
+            <Button variant="outline" onClick={() => setOpen(true)}><Plus className="size-4 mr-1" /> Manual</Button>
+          </div>
+        }
       />
 
       <Card className="mb-4">
@@ -196,6 +201,9 @@ function ProcessamentosPage() {
                         </td>
                         <td className="py-2 pr-3 text-xs text-muted-foreground">{r.data_fecho ? new Date(r.data_fecho).toLocaleDateString("pt-PT") : "—"}</td>
                         <td className="py-2 pr-3 text-right">
+                          <Link to="/financeiro/processamentos/novo" search={{ id: r.id }}>
+                            <Button size="sm" variant="ghost" title="Calcular / rever no assistente"><Play className="size-4" /></Button>
+                          </Link>
                           <Button size="sm" variant="ghost" onClick={() => toggle.mutate(r)} title={r.estado === "aberto" ? "Fechar" : "Reabrir"}>
                             {r.estado === "aberto" ? <Lock className="size-4" /> : <Unlock className="size-4" />}
                           </Button>

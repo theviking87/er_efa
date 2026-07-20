@@ -3,11 +3,13 @@ import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, HandCoins, Settings2, ClipboardList, Tags, ScrollText, ShieldCheck, Bell,
+  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, HandCoins, Settings2, ClipboardList, Tags, ScrollText, ShieldCheck, Bell, FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useProjetoAtivo, useProjetosList } from "@/lib/projeto-context";
 
 const LOCAL_FORCE_IMPORT_KEY = "formacao-er-force-import";
 

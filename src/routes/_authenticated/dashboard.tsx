@@ -5,7 +5,7 @@ import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, BookOpen, Users, Calendar, ListChecks } from "lucide-react";
+import { AlertTriangle, BookOpen, Users, Calendar, ListChecks, FolderKanban, ClipboardList } from "lucide-react";
 import { addDaysIso, fmtDate, fmtHoras, localDateIso } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -17,10 +17,13 @@ function Dashboard() {
   const counts = useQuery({
     queryKey: ["dashboard-counts"],
     queryFn: async () => {
-      const [cursos, formadores, ufcds] = await Promise.all([
+      const [cursos, formadores, ufcds, projetos, formandos, procs] = await Promise.all([
         supabase.from("cursos").select("id, estado"),
         supabase.from("formadores").select("id, estado, validade_ccp"),
         supabase.from("ufcds").select("id"),
+        supabase.from("projetos").select("id, estado, ativo"),
+        supabase.from("formandos").select("id"),
+        supabase.from("financeiro_processamentos").select("id"),
       ]);
       return {
         cursosAtivos: (cursos.data ?? []).filter(c => c.estado === "ativo").length,
@@ -28,6 +31,10 @@ function Dashboard() {
         formadoresAtivos: (formadores.data ?? []).filter(f => f.estado === "ativo").length,
         formadoresTotal: formadores.data?.length ?? 0,
         ufcdsTotal: ufcds.data?.length ?? 0,
+        projetosTotal: projetos.data?.length ?? 0,
+        projetosAtivos: (projetos.data ?? []).filter((p: any) => p.ativo && p.estado === "ativo").length,
+        formandosTotal: formandos.data?.length ?? 0,
+        procsTotal: procs.data?.length ?? 0,
         ccpExpirado: (formadores.data ?? []).filter(f => f.validade_ccp && new Date(f.validade_ccp) < new Date()),
         ccpProximoExpirar: (formadores.data ?? []).filter(f => {
           if (!f.validade_ccp) return false;
@@ -59,10 +66,16 @@ function Dashboard() {
     <PageContainer>
       <PageHeader title="Painel" description="Visão geral da atividade. Apenas o essencial." />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        <Stat label="Projetos ativos" value={counts.data?.projetosAtivos ?? 0} total={counts.data?.projetosTotal} icon={FolderKanban} href="/projetos" />
         <Stat label="Cursos ativos" value={counts.data?.cursosAtivos ?? 0} total={counts.data?.cursosTotal} icon={BookOpen} href="/cursos" />
         <Stat label="Formadores ativos" value={counts.data?.formadoresAtivos ?? 0} total={counts.data?.formadoresTotal} icon={Users} href="/formadores" />
+        <Stat label="Formandos" value={counts.data?.formandosTotal ?? 0} icon={Users} href="/formandos" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Stat label="UFCD no catálogo" value={counts.data?.ufcdsTotal ?? 0} icon={ListChecks} href="/ufcds" />
+        <Stat label="Processamentos" value={counts.data?.procsTotal ?? 0} icon={ClipboardList} href="/financeiro/processamentos" />
+        <Stat label="Valor financeiro" value={"—"} icon={ClipboardList} />
         <Stat label="Próximas 7 dias" value={proximas.data?.length ?? 0} icon={Calendar} />
       </div>
 

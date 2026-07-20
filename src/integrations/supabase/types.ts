@@ -295,6 +295,7 @@ export type Database = {
           id: string
           nome: string
           observacoes: string | null
+          projeto_id: string | null
           tipologia: Database["public"]["Enums"]["curso_tipologia"]
           updated_at: string
         }
@@ -307,6 +308,7 @@ export type Database = {
           id?: string
           nome: string
           observacoes?: string | null
+          projeto_id?: string | null
           tipologia?: Database["public"]["Enums"]["curso_tipologia"]
           updated_at?: string
         }
@@ -319,10 +321,19 @@ export type Database = {
           id?: string
           nome?: string
           observacoes?: string | null
+          projeto_id?: string | null
           tipologia?: Database["public"]["Enums"]["curso_tipologia"]
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "cursos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fin_auditoria: {
         Row: {
@@ -802,6 +813,7 @@ export type Database = {
           id: string
           mes: number
           observacoes: string | null
+          projeto_id: string | null
           updated_at: string
         }
         Insert: {
@@ -814,6 +826,7 @@ export type Database = {
           id?: string
           mes: number
           observacoes?: string | null
+          projeto_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -826,6 +839,7 @@ export type Database = {
           id?: string
           mes?: number
           observacoes?: string | null
+          projeto_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -834,6 +848,13 @@ export type Database = {
             columns: ["curso_id"]
             isOneToOne: false
             referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financeiro_processamentos_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
             referencedColumns: ["id"]
           },
         ]
@@ -1337,6 +1358,54 @@ export type Database = {
         }
         Relationships: []
       }
+      projetos: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          descricao: string | null
+          entidade_promotora: string | null
+          estado: Database["public"]["Enums"]["projeto_estado"]
+          id: string
+          nome: string
+          observacoes: string | null
+          programa_financiamento: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          entidade_promotora?: string | null
+          estado?: Database["public"]["Enums"]["projeto_estado"]
+          id?: string
+          nome: string
+          observacoes?: string | null
+          programa_financiamento?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          entidade_promotora?: string | null
+          estado?: Database["public"]["Enums"]["projeto_estado"]
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          programa_financiamento?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sessoes: {
         Row: {
           created_at: string
@@ -1450,6 +1519,7 @@ export type Database = {
         | "arquivado"
       formando_estado: "ativo" | "inativo" | "desistente" | "concluido"
       inscricao_estado: "inscrito" | "em_formacao" | "concluido" | "desistente"
+      projeto_estado: "planeado" | "ativo" | "concluido" | "arquivado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -1590,6 +1660,7 @@ export const Constants = {
       ],
       formando_estado: ["ativo", "inativo", "desistente", "concluido"],
       inscricao_estado: ["inscrito", "em_formacao", "concluido", "desistente"],
+      projeto_estado: ["planeado", "ativo", "concluido", "arquivado"],
     },
   },
 } as const

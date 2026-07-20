@@ -3,16 +3,19 @@ import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, HandCoins, Settings2, ClipboardList, Tags, ScrollText, ShieldCheck, Bell,
+  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, HandCoins, Settings2, ClipboardList, Tags, ScrollText, ShieldCheck, Bell, FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
+import { useProjetoAtivo, useProjetosList } from "@/lib/projeto-context";
 
 const LOCAL_FORCE_IMPORT_KEY = "formacao-er-force-import";
 
 const NAV = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard, section: "Geral" },
+  { to: "/projetos", label: "Projetos", icon: FolderKanban, section: "Geral" },
   { to: "/cronograma", label: "Cronograma", icon: CalendarDays, section: "Geral" },
   { to: "/formadores", label: "Formadores", icon: Users, section: "Geral" },
   { to: "/formandos", label: "Formandos", icon: UserSquare2, section: "Geral" },
@@ -77,6 +80,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
+        <div className="px-3 pt-3 pb-2 border-b border-sidebar-border">
+          <div className="text-[10px] uppercase tracking-wider text-white/50 mb-1.5 flex items-center gap-1.5">
+            <FolderKanban className="size-3" /> Projeto ativo
+          </div>
+          <ProjetoSelector />
+        </div>
+
+
         <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto">
           {Array.from(new Set(NAV.map(n => n.section))).map(section => (
             <div key={section} className="space-y-1">
@@ -139,6 +150,24 @@ export function AppShell({ children }: { children: ReactNode }) {
         {children}
       </main>
     </div>
+  );
+}
+
+function ProjetoSelector() {
+  const { projetoId, setProjetoId } = useProjetoAtivo();
+  const { data } = useProjetosList();
+  return (
+    <Select value={projetoId} onValueChange={setProjetoId}>
+      <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-white hover:bg-white/10">
+        <SelectValue placeholder="Todos os projetos" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Todos os projetos</SelectItem>
+        {(data ?? []).map(p => (
+          <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   );
 }
 

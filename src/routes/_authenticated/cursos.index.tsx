@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ESTADO_CURSO_LABEL, TIPOLOGIA_LABEL, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
+import { useProjetoAtivo, useProjetosList } from "@/lib/projeto-context";
+
 
 export const Route = createFileRoute("/_authenticated/cursos/")({
   head: () => ({ meta: [{ title: "Cursos — Gestão Pedagógica" }] }),
@@ -20,9 +22,13 @@ export const Route = createFileRoute("/_authenticated/cursos/")({
 
 function CursosPage() {
   const qc = useQueryClient();
+  const { projetoId } = useProjetoAtivo();
+  const projetos = useProjetosList();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [form, setForm] = useState({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado" });
+  const [fEstado, setFEstado] = useState<string>("all");
+  const [fProjeto, setFProjeto] = useState<string>("all");
+  const [form, setForm] = useState({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "" });
 
   const list = useQuery({
     queryKey: ["cursos"],
@@ -38,20 +44,24 @@ function CursosPage() {
       const payload: any = { ...form };
       if (!payload.data_inicio) payload.data_inicio = null;
       if (!payload.data_fim) payload.data_fim = null;
+      if (!payload.projeto_id) throw new Error("Projeto é obrigatório");
       const { error } = await supabase.from("cursos").insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cursos"] });
       setOpen(false);
-      setForm({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado" });
+      setForm({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "" });
       toast.success("Curso criado");
     },
     onError: (e: any) => toast.error("Erro", { description: e.message }),
   });
 
+  const projetoFiltro = projetoId !== "all" ? projetoId : (fProjeto !== "all" ? fProjeto : null);
   const filtered = (list.data ?? []).filter(c =>
-    !q || c.nome.toLowerCase().includes(q.toLowerCase()) || c.codigo.toLowerCase().includes(q.toLowerCase()));
+    (!projetoFiltro || (c as any).projeto_id === projetoFiltro) &&
+    (fEstado === "all" || c.estado === fEstado) &&
+    (!q || c.nome.toLowerCase().includes(q.toLowerCase()) || c.codigo.toLowerCase().includes(q.toLowerCase())));
 
   return (
     <PageContainer>
@@ -61,10 +71,35 @@ function CursosPage() {
         actions={<Button onClick={() => setOpen(true)}><Plus className="size-4" /> Novo curso</Button>}
       />
 
-      <div className="relative max-w-xs mb-4">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Pesquisar…" className="pl-8" />
+      <div className="flex flex-wrap gap-3 items-end mb-4">
+        <div className="relative max-w-xs flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Pesquisar…" className="pl-8" />
+        </div>
+        {projetoId === "all" && (
+          <div className="min-w-[180px]">
+            <Label className="text-xs">Projeto</Label>
+            <Select value={fProjeto} onValueChange={setFProjeto}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {(projetos.data ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.codigo}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="min-w-[160px]">
+          <Label className="text-xs">Estado</Label>
+          <Select value={fEstado} onValueChange={setFEstado}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {Object.entries(ESTADO_CURSO_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {list.isLoading && <div className="text-muted-foreground">A carregar…</div>}
@@ -102,6 +137,15 @@ function CursosPage() {
               </Select>
             </div>
             <div className="col-span-2 space-y-1.5"><Label>Nome *</Label><Input required value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
+            <div className="col-span-2 space-y-1.5">
+              <Label>Projeto *</Label>
+              <Select value={form.projeto_id || (projetoId !== "all" ? projetoId : "")} onValueChange={v => setForm({ ...form, projeto_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Escolher projeto…" /></SelectTrigger>
+                <SelectContent>
+                  {(projetos.data ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={form.data_fim} onChange={e => setForm({ ...form, data_fim: e.target.value })} /></div>
             <div className="col-span-2 space-y-1.5">

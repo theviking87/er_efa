@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Plus, Lock, Unlock, Trash2, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
-import { listarRubricas } from "@/lib/financeiro/services/rubricas";
+import { useProjetoAtivo, useProjetosList } from "@/lib/projeto-context";
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos")({
   head: () => ({ meta: [{ title: "Financeiro — Processamentos" }] }),
@@ -21,37 +21,23 @@ export const Route = createFileRoute("/_authenticated/financeiro/processamentos"
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-// Preparação para multi-projeto — por agora catálogo estático guardado
-// como prefixo no campo observacoes ("[projeto: X] resto"). Migração futura
-// substituirá isto por coluna dedicada.
-const PROJETOS = ["Projeto principal"];
-const PROJ_RE = /^\[projeto:\s*([^\]]+)\]\s*/i;
-function parseObs(obs: string | null): { projeto: string; texto: string } {
-  if (!obs) return { projeto: PROJETOS[0], texto: "" };
-  const m = obs.match(PROJ_RE);
-  return { projeto: m?.[1]?.trim() || PROJETOS[0], texto: m ? obs.replace(PROJ_RE, "") : obs };
-}
-function buildObs(projeto: string, texto: string): string | null {
-  const t = (texto || "").trim();
-  const p = (projeto || "").trim() || PROJETOS[0];
-  const s = `[projeto: ${p}] ${t}`.trim();
-  return s || null;
-}
-
 function ProcessamentosPage() {
   const qc = useQueryClient();
+  const { projetoId } = useProjetoAtivo();
+  const projetos = useProjetosList();
   const now = new Date();
   const [open, setOpen] = useState(false);
-  const [form, setForm] = useState({ projeto: PROJETOS[0], curso_id: "", ano: now.getFullYear(), mes: now.getMonth() + 1, observacoes: "" });
+  const [form, setForm] = useState({ projeto_id: "", curso_id: "", ano: now.getFullYear(), mes: now.getMonth() + 1, observacoes: "" });
   const [fAno, setFAno] = useState<string>("all");
   const [fCurso, setFCurso] = useState<string>("all");
   const [fProjeto, setFProjeto] = useState<string>("all");
+  const [fEstado, setFEstado] = useState<string>("all");
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const cursos = useQuery({
-    queryKey: ["cursos-min"],
+    queryKey: ["cursos-min-proj"],
     queryFn: async () => {
-      const { data, error } = await supabase.from("cursos").select("id, codigo, nome").order("created_at", { ascending: false });
+      const { data, error } = await supabase.from("cursos").select("id, codigo, nome, projeto_id").order("created_at", { ascending: false });
       if (error) throw error;
       return data ?? [];
     },
@@ -62,7 +48,7 @@ function ProcessamentosPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("financeiro_processamentos")
-        .select("*, cursos(id, codigo, nome)")
+        .select("*, cursos(id, codigo, nome), projetos(id, codigo, nome)")
         .order("ano", { ascending: false })
         .order("mes", { ascending: false });
       if (error) throw error;
@@ -72,11 +58,14 @@ function ProcessamentosPage() {
 
   const create = useMutation({
     mutationFn: async () => {
+      const chosenProjeto = form.projeto_id || (projetoId !== "all" ? projetoId : "");
+      if (!chosenProjeto) throw new Error("Projeto é obrigatório");
       if (!form.curso_id) throw new Error("Escolhe um curso");
       const { error } = await supabase.from("financeiro_processamentos").insert({
-        curso_id: form.curso_id, ano: Number(form.ano), mes: Number(form.mes),
-        observacoes: buildObs(form.projeto, form.observacoes),
-      });
+        projeto_id: chosenProjeto, curso_id: form.curso_id,
+        ano: Number(form.ano), mes: Number(form.mes),
+        observacoes: form.observacoes || null,
+      } as any);
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financeiro-processamentos"] }); setOpen(false); toast.success("Processamento criado"); },
@@ -102,11 +91,14 @@ function ProcessamentosPage() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["financeiro-processamentos"] }); toast.success("Removido"); },
   });
 
+  const activeProjeto = projetoId !== "all" ? projetoId : (fProjeto !== "all" ? fProjeto : null);
+  const cursosFiltered = (cursos.data ?? []).filter(c => !activeProjeto || (c as any).projeto_id === activeProjeto);
+
   const rows = (list.data ?? []).filter((r: any) => {
-    const { projeto } = parseObs(r.observacoes);
-    return (fAno === "all" || String(r.ano) === fAno)
+    return (!activeProjeto || r.projeto_id === activeProjeto)
+      && (fAno === "all" || String(r.ano) === fAno)
       && (fCurso === "all" || r.curso_id === fCurso)
-      && (fProjeto === "all" || projeto === fProjeto);
+      && (fEstado === "all" || r.estado === fEstado);
   });
   const anos = Array.from(new Set((list.data ?? []).map((r: any) => r.ano))).sort((a, b) => b - a);
 
@@ -120,17 +112,19 @@ function ProcessamentosPage() {
 
       <Card className="mb-4">
         <CardContent className="pt-6 flex flex-wrap gap-3">
-          <div className="min-w-[180px]">
-            <Label>Projeto</Label>
-            <Select value={fProjeto} onValueChange={setFProjeto}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {PROJETOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="min-w-[160px]">
+          {projetoId === "all" && (
+            <div className="min-w-[180px]">
+              <Label>Projeto</Label>
+              <Select value={fProjeto} onValueChange={setFProjeto}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos</SelectItem>
+                  {(projetos.data ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className="min-w-[140px]">
             <Label>Ano</Label>
             <Select value={fAno} onValueChange={setFAno}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -146,7 +140,19 @@ function ProcessamentosPage() {
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                {(cursos.data ?? []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.codigo} — {c.nome}</SelectItem>)}
+                {cursosFiltered.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.codigo} — {c.nome}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="min-w-[140px]">
+            <Label>Estado</Label>
+            <Select value={fEstado} onValueChange={setFEstado}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="aberto">Aberto</SelectItem>
+                <SelectItem value="fechado">Fechado</SelectItem>
+                <SelectItem value="validado">Validado</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -172,7 +178,6 @@ function ProcessamentosPage() {
               </thead>
               <tbody>
                 {rows.map((r: any) => {
-                  const { projeto } = parseObs(r.observacoes);
                   const isOpen = !!expanded[r.id];
                   return (
                     <>
@@ -182,7 +187,7 @@ function ProcessamentosPage() {
                             {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                           </Button>
                         </td>
-                        <td className="py-2 pr-3 text-xs">{projeto}</td>
+                        <td className="py-2 pr-3 text-xs">{r.projetos?.codigo ?? "—"}</td>
                         <td className="py-2 pr-3">{r.cursos ? `${r.cursos.codigo} — ${r.cursos.nome}` : "—"}</td>
                         <td className="py-2 pr-3">{r.ano}</td>
                         <td className="py-2 pr-3">{MESES[r.mes - 1]}</td>
@@ -221,18 +226,21 @@ function ProcessamentosPage() {
           <DialogHeader><DialogTitle>Novo processamento</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div>
-              <Label>Projeto</Label>
-              <Select value={form.projeto} onValueChange={v => setForm(f => ({ ...f, projeto: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>{PROJETOS.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+              <Label>Projeto *</Label>
+              <Select value={form.projeto_id || (projetoId !== "all" ? projetoId : "")} onValueChange={v => setForm(f => ({ ...f, projeto_id: v, curso_id: "" }))}>
+                <SelectTrigger><SelectValue placeholder="Escolher projeto…" /></SelectTrigger>
+                <SelectContent>{(projetos.data ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>
-              <Label>Curso</Label>
+              <Label>Curso *</Label>
               <Select value={form.curso_id} onValueChange={v => setForm(f => ({ ...f, curso_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Escolher curso…" /></SelectTrigger>
                 <SelectContent>
-                  {(cursos.data ?? []).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.codigo} — {c.nome}</SelectItem>)}
+                  {(cursos.data ?? []).filter(c => {
+                    const pid = form.projeto_id || (projetoId !== "all" ? projetoId : "");
+                    return !pid || (c as any).projeto_id === pid;
+                  }).map((c: any) => <SelectItem key={c.id} value={c.id}>{c.codigo} — {c.nome}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
@@ -267,8 +275,6 @@ function ProcessamentosPage() {
 }
 
 function ProcessamentoDetalhe({ cursoId }: { cursoId: string }) {
-  // Carrega formandos inscritos + rubricas elegíveis.
-  // Placeholder — cálculos automáticos não implementados nesta fase.
   const formandos = useQuery({
     queryKey: ["proc-formandos", cursoId],
     queryFn: async () => {

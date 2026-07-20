@@ -18,12 +18,14 @@ function FinanceiroDashboard() {
   const procs = useQuery({
     queryKey: ["fin-procs-count"],
     queryFn: async () => {
-      const { data } = await supabase.from("financeiro_processamentos").select("id, estado");
-      const arr = data ?? [];
+      const { data } = await supabase.from("financeiro_processamentos").select("id, estado, total_geral");
+      const arr = (data ?? []) as any[];
       return {
         total: arr.length,
-        abertos: arr.filter((p: any) => p.estado === "aberto").length,
-        fechados: arr.filter((p: any) => p.estado === "fechado" || p.estado === "validado").length,
+        abertos: arr.filter((p) => p.estado === "aberto").length,
+        calculados: arr.filter((p) => p.estado === "calculado").length,
+        fechados: arr.filter((p) => p.estado === "fechado").length,
+        totalGeral: arr.reduce((a, p) => a + Number(p.total_geral ?? 0), 0),
       };
     },
   });
@@ -70,7 +72,8 @@ function FinanceiroDashboard() {
   const alertasCount = alertas.data?.length ?? 0;
 
   const cards = [
-    { label: "Processamentos", value: procs.data?.total ?? 0, extra: `${procs.data?.abertos ?? 0} abertos · ${procs.data?.fechados ?? 0} fechados`, icon: ClipboardList, to: "/financeiro/processamentos" as const },
+    { label: "Processamentos", value: procs.data?.total ?? 0, extra: `${procs.data?.abertos ?? 0} abertos · ${procs.data?.calculados ?? 0} calc. · ${procs.data?.fechados ?? 0} fechados`, icon: ClipboardList, to: "/financeiro/processamentos" as const },
+    { label: "Total processado", value: new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(procs.data?.totalGeral ?? 0), extra: "Soma dos processamentos", icon: HandCoins, to: "/financeiro/processamentos" as const },
     { label: "Rubricas", value: rubricas.data?.ativas ?? 0, extra: `${rubricas.data?.total ?? 0} no catálogo`, icon: Tags, to: "/financeiro/rubricas" as const },
     { label: "Honorários", value: honor.data?.total ?? 0, extra: "Lançamentos + notas", icon: HandCoins, to: "/financeiro/honorarios" as const },
     { label: "Alertas", value: alertasCount, extra: alertasCount ? "A rever" : "Sem alertas", icon: Bell, to: "/financeiro/alertas" as const },

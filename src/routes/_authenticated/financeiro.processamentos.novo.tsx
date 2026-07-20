@@ -129,9 +129,11 @@ function WizardPage() {
 
   return (
     <PageContainer>
-      <PageHeader title="Assistente de Processamento" description={`Passo ${step} de 4`}>
-        <Link to="/financeiro/processamentos"><Button variant="outline" size="sm">Voltar</Button></Link>
-      </PageHeader>
+      <PageHeader
+        title="Assistente de Processamento"
+        description={`Passo ${step} de 4`}
+        actions={<Link to="/financeiro/processamentos"><Button variant="outline" size="sm">Voltar</Button></Link>}
+      />
 
       <div className="flex gap-2 mb-4 text-xs">
         {[1,2,3,4].map((n) => (
@@ -147,7 +149,7 @@ function WizardPage() {
               <Label>Projeto</Label>
               <Select value={projetoSel} onValueChange={setProjetoSel}>
                 <SelectTrigger><SelectValue placeholder="Todos" /></SelectTrigger>
-                <SelectContent>{projetos.map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
+                <SelectContent>{((projetos.data ?? []) as any[]).map((p) => <SelectItem key={p.id} value={p.id}>{p.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
             <div>

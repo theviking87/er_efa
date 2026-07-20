@@ -11,6 +11,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import { localDateIso, fmtDate } from "@/lib/format";
+import { paintBeforeHeavyWork } from "@/lib/offline-sql";
+
 
 export function NotaHonorariosCard() {
   const [tipoFormador, setTipoFormador] = useState<"registado" | "externo">("registado");

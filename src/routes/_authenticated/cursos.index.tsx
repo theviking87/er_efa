@@ -71,10 +71,35 @@ function CursosPage() {
         actions={<Button onClick={() => setOpen(true)}><Plus className="size-4" /> Novo curso</Button>}
       />
 
-      <div className="relative max-w-xs mb-4">
-        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
-        <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Pesquisar…" className="pl-8" />
+      <div className="flex flex-wrap gap-3 items-end mb-4">
+        <div className="relative max-w-xs flex-1 min-w-[200px]">
+          <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
+          <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Pesquisar…" className="pl-8" />
+        </div>
+        {projetoId === "all" && (
+          <div className="min-w-[180px]">
+            <Label className="text-xs">Projeto</Label>
+            <Select value={fProjeto} onValueChange={setFProjeto}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                {(projetos.data ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.codigo}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div className="min-w-[160px]">
+          <Label className="text-xs">Estado</Label>
+          <Select value={fEstado} onValueChange={setFEstado}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              {Object.entries(ESTADO_CURSO_LABEL).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
       </div>
+
 
       <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3">
         {list.isLoading && <div className="text-muted-foreground">A carregar…</div>}
@@ -112,6 +137,15 @@ function CursosPage() {
               </Select>
             </div>
             <div className="col-span-2 space-y-1.5"><Label>Nome *</Label><Input required value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
+            <div className="col-span-2 space-y-1.5">
+              <Label>Projeto *</Label>
+              <Select value={form.projeto_id || (projetoId !== "all" ? projetoId : "")} onValueChange={v => setForm({ ...form, projeto_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Escolher projeto…" /></SelectTrigger>
+                <SelectContent>
+                  {(projetos.data ?? []).map(p => <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={form.data_fim} onChange={e => setForm({ ...form, data_fim: e.target.value })} /></div>
             <div className="col-span-2 space-y-1.5">

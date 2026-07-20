@@ -15,6 +15,7 @@ import { fmtDate, INSCRICAO_ESTADO_LABEL } from "@/lib/format";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { FinanceiroFormandoPanel } from "@/components/financeiro/formando-panel";
 
 export const Route = createFileRoute("/_authenticated/formandos/$id")({
   head: () => ({ meta: [{ title: "Formando — Gestão Pedagógica" }] }),
@@ -94,6 +95,7 @@ function FormandoDetail() {
           <TabsTrigger value="inscricoes">Inscrições</TabsTrigger>
           <TabsTrigger value="pra">PRA</TabsTrigger>
           <TabsTrigger value="horas">Horas</TabsTrigger>
+          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados">
@@ -157,6 +159,10 @@ function FormandoDetail() {
               ))
             )}
           </CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="financeiro">
+          <FinanceiroFormandoPanel formandoId={id} />
         </TabsContent>
       </Tabs>
 

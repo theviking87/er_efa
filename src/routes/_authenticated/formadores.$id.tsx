@@ -16,6 +16,7 @@ import { toast } from "sonner";
 import { confirmarFimDeSemana } from "@/lib/weekend-check";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { FinanceiroFormadorPanel } from "@/components/financeiro/formador-panel";
 
 export const Route = createFileRoute("/_authenticated/formadores/$id")({
   head: () => ({ meta: [{ title: "Formador — Gestão Pedagógica" }] }),
@@ -106,6 +107,7 @@ function FormadorDetail() {
           <TabsTrigger value="disponibilidades">Disponibilidades</TabsTrigger>
           <TabsTrigger value="inatividades">Inatividades</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados">
@@ -140,6 +142,10 @@ function FormadorDetail() {
 
         <TabsContent value="documentos">
           <DocumentosTab formadorId={id} items={q.data.documentos} onChange={() => qc.invalidateQueries({ queryKey: ["formador", id] })} />
+        </TabsContent>
+
+        <TabsContent value="financeiro">
+          <FinanceiroFormadorPanel formadorId={id} />
         </TabsContent>
       </Tabs>
 

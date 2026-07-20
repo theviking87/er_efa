@@ -10,7 +10,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
-import { localDateIso, fmtDate } from "@/lib/format";
+import { localDateIso } from "@/lib/format";
 import { paintBeforeHeavyWork } from "@/lib/offline-sql";
 import { runNativeExcelReport, runNativePdfReport } from "@/lib/electron-io";
 

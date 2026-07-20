@@ -324,6 +324,362 @@ export type Database = {
         }
         Relationships: []
       }
+      fin_auditoria: {
+        Row: {
+          campo_alterado: string | null
+          data_hora: string
+          entidade: string
+          id: string
+          motivo: string | null
+          nome_utilizador: string
+          operacao: string
+          registo_id: string | null
+          utilizador_id: string | null
+          valor_anterior: string | null
+          valor_novo: string | null
+        }
+        Insert: {
+          campo_alterado?: string | null
+          data_hora?: string
+          entidade: string
+          id?: string
+          motivo?: string | null
+          nome_utilizador: string
+          operacao: string
+          registo_id?: string | null
+          utilizador_id?: string | null
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Update: {
+          campo_alterado?: string | null
+          data_hora?: string
+          entidade?: string
+          id?: string
+          motivo?: string | null
+          nome_utilizador?: string
+          operacao?: string
+          registo_id?: string | null
+          utilizador_id?: string | null
+          valor_anterior?: string | null
+          valor_novo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_auditoria_utilizador_id_fkey"
+            columns: ["utilizador_id"]
+            isOneToOne: false
+            referencedRelation: "fin_utilizadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_configuracao_global: {
+        Row: {
+          ativo: boolean
+          casas_decimais: number
+          created_at: string
+          data_inicio: string
+          horas_mes_referencia: number
+          id: string
+          moeda: string
+          observacoes: string | null
+          updated_at: string
+          utilizador_id: string | null
+          utilizador_nome: string | null
+          valor_km: number
+          valor_subsidio_alimentacao: number
+        }
+        Insert: {
+          ativo?: boolean
+          casas_decimais?: number
+          created_at?: string
+          data_inicio?: string
+          horas_mes_referencia?: number
+          id?: string
+          moeda?: string
+          observacoes?: string | null
+          updated_at?: string
+          utilizador_id?: string | null
+          utilizador_nome?: string | null
+          valor_km?: number
+          valor_subsidio_alimentacao?: number
+        }
+        Update: {
+          ativo?: boolean
+          casas_decimais?: number
+          created_at?: string
+          data_inicio?: string
+          horas_mes_referencia?: number
+          id?: string
+          moeda?: string
+          observacoes?: string | null
+          updated_at?: string
+          utilizador_id?: string | null
+          utilizador_nome?: string | null
+          valor_km?: number
+          valor_subsidio_alimentacao?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_configuracao_global_utilizador_id_fkey"
+            columns: ["utilizador_id"]
+            isOneToOne: false
+            referencedRelation: "fin_utilizadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_formador_config: {
+        Row: {
+          artigo_isencao: string | null
+          created_at: string
+          formador_id: string
+          iban: string | null
+          id: string
+          observacoes: string | null
+          percentagem_irs: number
+          percentagem_ss: number | null
+          regime_iva: string
+          retencao_irs: boolean
+          seguranca_social: boolean
+          updated_at: string
+        }
+        Insert: {
+          artigo_isencao?: string | null
+          created_at?: string
+          formador_id: string
+          iban?: string | null
+          id?: string
+          observacoes?: string | null
+          percentagem_irs?: number
+          percentagem_ss?: number | null
+          regime_iva?: string
+          retencao_irs?: boolean
+          seguranca_social?: boolean
+          updated_at?: string
+        }
+        Update: {
+          artigo_isencao?: string | null
+          created_at?: string
+          formador_id?: string
+          iban?: string | null
+          id?: string
+          observacoes?: string | null
+          percentagem_irs?: number
+          percentagem_ss?: number | null
+          regime_iva?: string
+          retencao_irs?: boolean
+          seguranca_social?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_formador_config_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: true
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_formando_rubricas: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          elegivel: boolean
+          formando_id: string
+          iban: string | null
+          id: string
+          limite_especifico: number | null
+          observacoes: string | null
+          rubrica_id: string
+          updated_at: string
+          valor_especifico: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          elegivel?: boolean
+          formando_id: string
+          iban?: string | null
+          id?: string
+          limite_especifico?: number | null
+          observacoes?: string | null
+          rubrica_id: string
+          updated_at?: string
+          valor_especifico?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          elegivel?: boolean
+          formando_id?: string
+          iban?: string | null
+          id?: string
+          limite_especifico?: number | null
+          observacoes?: string | null
+          rubrica_id?: string
+          updated_at?: string
+          valor_especifico?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_formando_rubricas_formando_id_fkey"
+            columns: ["formando_id"]
+            isOneToOne: false
+            referencedRelation: "formandos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_formando_rubricas_rubrica_id_fkey"
+            columns: ["rubrica_id"]
+            isOneToOne: false
+            referencedRelation: "fin_rubricas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_rubrica_regras: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          dias_minimos: number | null
+          horas_referencia: number | null
+          id: string
+          observacoes: string | null
+          permite_edicao_manual: boolean
+          permite_limite: boolean
+          rubrica_id: string
+          updated_at: string
+          valor_maximo: number | null
+          valor_unitario: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          dias_minimos?: number | null
+          horas_referencia?: number | null
+          id?: string
+          observacoes?: string | null
+          permite_edicao_manual?: boolean
+          permite_limite?: boolean
+          rubrica_id: string
+          updated_at?: string
+          valor_maximo?: number | null
+          valor_unitario?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          dias_minimos?: number | null
+          horas_referencia?: number | null
+          id?: string
+          observacoes?: string | null
+          permite_edicao_manual?: boolean
+          permite_limite?: boolean
+          rubrica_id?: string
+          updated_at?: string
+          valor_maximo?: number | null
+          valor_unitario?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_rubrica_regras_rubrica_id_fkey"
+            columns: ["rubrica_id"]
+            isOneToOne: false
+            referencedRelation: "fin_rubricas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_rubricas: {
+        Row: {
+          ativo: boolean
+          categoria: string
+          codigo: string
+          created_at: string
+          descricao: string
+          gera_documento: boolean
+          gera_exportacao: boolean
+          id: string
+          observacoes: string | null
+          ordem: number
+          permite_edicao_manual: boolean
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          categoria: string
+          codigo: string
+          created_at?: string
+          descricao: string
+          gera_documento?: boolean
+          gera_exportacao?: boolean
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          permite_edicao_manual?: boolean
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          categoria?: string
+          codigo?: string
+          created_at?: string
+          descricao?: string
+          gera_documento?: boolean
+          gera_exportacao?: boolean
+          id?: string
+          observacoes?: string | null
+          ordem?: number
+          permite_edicao_manual?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fin_utilizadores: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          nome_utilizador: string
+          observacoes: string | null
+          perfil: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          nome_utilizador: string
+          observacoes?: string | null
+          perfil?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          nome_utilizador?: string
+          observacoes?: string | null
+          perfil?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financeiro_bolsas: {
         Row: {
           created_at: string

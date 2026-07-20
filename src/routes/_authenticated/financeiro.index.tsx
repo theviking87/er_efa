@@ -1,107 +1,148 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
 import { PageContainer, PageHeader } from "@/components/app-shell";
-import { PageHeader as _ } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Link } from "@tanstack/react-router";
-import { Wallet, Coins, UtensilsCrossed, Car, HandCoins, ClipboardList, AlertTriangle, Info, XCircle } from "lucide-react";
-import { obterTotaisDashboard } from "@/lib/financeiro/services/dashboard";
+import { Badge } from "@/components/ui/badge";
+import { ClipboardList, Tags, HandCoins, Bell, Settings2, AlertTriangle, Info, XCircle, History } from "lucide-react";
 import { calcularAlertas } from "@/lib/financeiro/services/alertas";
+import { supabase } from "@/integrations/supabase/client";
 
 export const Route = createFileRoute("/_authenticated/financeiro/")({
-  head: () => ({ meta: [{ title: "Financeiro — Painel" }] }),
+  head: () => ({ meta: [{ title: "Financeiro — Dashboard" }] }),
   component: FinanceiroDashboard,
 });
 
-function eur(n: number) {
-  return new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(n || 0);
-}
-
 function FinanceiroDashboard() {
-  const totals = useQuery({ queryKey: ["fin-dashboard"], queryFn: obterTotaisDashboard });
   const alertas = useQuery({ queryKey: ["fin-alertas"], queryFn: calcularAlertas });
 
-  const t = totals.data;
-  const cards = [
-    { label: "Bolsas de formação", value: t?.bolsas ?? 0, icon: Coins, to: "/financeiro/bolsas" as const },
-    { label: "Subsídio de alimentação", value: t?.subsidios ?? 0, icon: UtensilsCrossed, to: "/financeiro/subsidios" as const },
-    { label: "Quilómetros", value: t?.km ?? 0, icon: Car, to: "/financeiro/quilometros" as const },
-    { label: "Honorários", value: t?.honorarios ?? 0, icon: HandCoins, to: "/financeiro/honorarios" as const },
-  ];
+  const procs = useQuery({
+    queryKey: ["fin-procs-count"],
+    queryFn: async () => {
+      const { data } = await supabase.from("financeiro_processamentos").select("id, estado");
+      const arr = data ?? [];
+      return {
+        total: arr.length,
+        abertos: arr.filter((p: any) => p.estado === "aberto").length,
+        fechados: arr.filter((p: any) => p.estado === "fechado" || p.estado === "validado").length,
+      };
+    },
+  });
+
+  const rubricas = useQuery({
+    queryKey: ["fin-rubs-count"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("fin_rubricas").select("id, ativo");
+      const arr = data ?? [];
+      return { total: arr.length, ativas: arr.filter((r: any) => r.ativo).length };
+    },
+  });
+
+  const honor = useQuery({
+    queryKey: ["fin-hon-count"],
+    queryFn: async () => {
+      const { data } = await supabase.from("financeiro_honorarios").select("id");
+      return { total: (data ?? []).length };
+    },
+  });
+
+  const configs = useQuery({
+    queryKey: ["fin-cfg-count"],
+    queryFn: async () => {
+      const { data } = await (supabase as any).from("fin_configuracao_global").select("id, ativo");
+      const arr = data ?? [];
+      return { total: arr.length, ativa: arr.some((c: any) => c.ativo) };
+    },
+  });
+
+  const historico = useQuery({
+    queryKey: ["fin-audit-recent"],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("fin_auditoria")
+        .select("id, created_at, nome_utilizador, operacao, entidade, campo_alterado")
+        .order("created_at", { ascending: false })
+        .limit(8);
+      return (data ?? []) as any[];
+    },
+  });
 
   const nivelIcon = { info: Info, aviso: AlertTriangle, erro: XCircle } as const;
+  const alertasCount = alertas.data?.length ?? 0;
+
+  const cards = [
+    { label: "Processamentos", value: procs.data?.total ?? 0, extra: `${procs.data?.abertos ?? 0} abertos · ${procs.data?.fechados ?? 0} fechados`, icon: ClipboardList, to: "/financeiro/processamentos" as const },
+    { label: "Rubricas", value: rubricas.data?.ativas ?? 0, extra: `${rubricas.data?.total ?? 0} no catálogo`, icon: Tags, to: "/financeiro/rubricas" as const },
+    { label: "Honorários", value: honor.data?.total ?? 0, extra: "Lançamentos + notas", icon: HandCoins, to: "/financeiro/honorarios" as const },
+    { label: "Alertas", value: alertasCount, extra: alertasCount ? "A rever" : "Sem alertas", icon: Bell, to: "/financeiro/alertas" as const },
+    { label: "Configurações", value: configs.data?.ativa ? "Ativa" : "Em falta", extra: `${configs.data?.total ?? 0} versão(ões)`, icon: Settings2, to: "/financeiro/configuracao" as const },
+  ];
 
   return (
     <PageContainer>
-      <PageHeader title="Painel Financeiro" description="Visão global de custos e alertas do módulo financeiro." />
+      <PageHeader title="Dashboard Financeira" description="Visão global do módulo — valores calculados serão apresentados numa fase posterior." />
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
-        <Card className="bg-primary/5 border-primary/30">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Total geral</CardTitle>
-            <Wallet className="size-4 text-primary" />
-          </CardHeader>
-          <CardContent><div className="text-2xl font-bold">{eur(t?.geral ?? 0)}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm text-muted-foreground">Processamentos</CardTitle>
-            <ClipboardList className="size-4" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{(t?.processamentosAbertos ?? 0) + (t?.processamentosValidados ?? 0)}</div>
-            <div className="text-xs text-muted-foreground">{t?.processamentosAbertos ?? 0} em aberto · {t?.processamentosValidados ?? 0} validados</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Rubricas ativas</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{t?.rubricasAtivas ?? 0}</div></CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Alertas</CardTitle></CardHeader>
-          <CardContent><div className="text-2xl font-bold">{alertas.data?.length ?? 0}</div></CardContent>
-        </Card>
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4 mb-6">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5 mb-6">
         {cards.map(c => {
           const Icon = c.icon;
           return (
             <Link key={c.label} to={c.to} className="block">
-              <Card className="hover:border-primary/50 transition-colors">
+              <Card className="hover:border-primary/50 transition-colors h-full">
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm text-muted-foreground">{c.label}</CardTitle>
                   <Icon className="size-4" />
                 </CardHeader>
-                <CardContent><div className="text-xl font-semibold">{eur(c.value)}</div></CardContent>
+                <CardContent>
+                  <div className="text-2xl font-bold">{c.value}</div>
+                  <div className="text-xs text-muted-foreground mt-1">{c.extra}</div>
+                </CardContent>
               </Card>
             </Link>
           );
         })}
       </div>
 
-      <Card>
-        <CardHeader><CardTitle className="text-base">Alertas ativos</CardTitle></CardHeader>
-        <CardContent className="space-y-2">
-          {(alertas.data ?? []).map(a => {
-            const Icon = nivelIcon[a.nivel as keyof typeof nivelIcon] ?? Info;
-            const color = a.nivel === "erro" ? "text-destructive" : a.nivel === "aviso" ? "text-amber-600" : "text-muted-foreground";
-            const content = (
-              <div className="flex items-start gap-2 text-sm">
-                <Icon className={`size-4 mt-0.5 ${color}`} />
-                <div>
-                  <div className="font-medium">{a.titulo}</div>
-                  {a.detalhe && <div className="text-muted-foreground text-xs">{a.detalhe}</div>}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base">Alertas ativos</CardTitle>
+            <Link to="/financeiro/alertas" className="text-xs text-primary hover:underline">Ver todos</Link>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {(alertas.data ?? []).slice(0, 5).map(a => {
+              const Icon = nivelIcon[a.nivel as keyof typeof nivelIcon] ?? Info;
+              const color = a.nivel === "erro" ? "text-destructive" : a.nivel === "aviso" ? "text-amber-600" : "text-muted-foreground";
+              return (
+                <div key={a.id} className="flex items-start gap-2 text-sm border rounded-md p-3">
+                  <Icon className={`size-4 mt-0.5 ${color}`} />
+                  <div>
+                    <div className="font-medium">{a.titulo}</div>
+                    {a.detalhe && <div className="text-muted-foreground text-xs">{a.detalhe}</div>}
+                  </div>
                 </div>
+              );
+            })}
+            {!alertas.data?.length && <div className="text-muted-foreground text-sm">Sem alertas — está tudo em ordem.</div>}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2"><History className="size-4" /> Últimas alterações</CardTitle>
+            <Link to="/financeiro/auditoria" className="text-xs text-primary hover:underline">Ver auditoria</Link>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            {(historico.data ?? []).map(h => (
+              <div key={h.id} className="flex items-center gap-2 text-xs border-b py-1.5 last:border-0">
+                <span className="text-muted-foreground w-32 shrink-0">{new Date(h.created_at).toLocaleString("pt-PT")}</span>
+                <Badge variant="secondary" className="capitalize">{h.operacao}</Badge>
+                <span className="truncate">{h.entidade}{h.campo_alterado ? ` · ${h.campo_alterado}` : ""}</span>
+                <span className="ml-auto text-muted-foreground">{h.nome_utilizador ?? "—"}</span>
               </div>
-            );
-            return a.href
-              ? <Link key={a.id} to={a.href as any} className="block border rounded-md p-3 hover:bg-muted/40">{content}</Link>
-              : <div key={a.id} className="border rounded-md p-3">{content}</div>;
-          })}
-          {!alertas.data?.length && <div className="text-muted-foreground text-sm">Sem alertas — está tudo em ordem.</div>}
-        </CardContent>
-      </Card>
+            ))}
+            {!historico.data?.length && <div className="text-muted-foreground text-sm">Sem histórico registado.</div>}
+          </CardContent>
+        </Card>
+      </div>
     </PageContainer>
   );
 }

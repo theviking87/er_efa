@@ -9,8 +9,11 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Plus, Trash2 } from "lucide-react";
 import { toast } from "sonner";
+import { listarRubricas } from "@/lib/financeiro/services/rubricas";
+import { NotaHonorariosCard } from "./relatorios";
 
 export const Route = createFileRoute("/_authenticated/financeiro/honorarios")({
   head: () => ({ meta: [{ title: "Financeiro — Honorários" }] }),
@@ -20,10 +23,33 @@ export const Route = createFileRoute("/_authenticated/financeiro/honorarios")({
 const eur = (n: number) => new Intl.NumberFormat("pt-PT", { style: "currency", currency: "EUR" }).format(n || 0);
 
 function HonorariosPage() {
+  return (
+    <PageContainer>
+      <PageHeader
+        title="Honorários"
+        description="Emissão de notas de honorários e registo de lançamentos por processamento."
+      />
+      <Tabs defaultValue="nota" className="space-y-4">
+        <TabsList>
+          <TabsTrigger value="nota">Nova Nota de Honorários</TabsTrigger>
+          <TabsTrigger value="lancamentos">Lançamentos</TabsTrigger>
+        </TabsList>
+        <TabsContent value="nota" className="space-y-4">
+          <NotaHonorariosCard />
+        </TabsContent>
+        <TabsContent value="lancamentos" className="space-y-4">
+          <LancamentosHonorarios />
+        </TabsContent>
+      </Tabs>
+    </PageContainer>
+  );
+}
+
+function LancamentosHonorarios() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const [fProc, setFProc] = useState<string>("all");
-  const [form, setForm] = useState({ processamento_id: "", formador_id: "", descricao: "", valor: 0, iva: 23 });
+  const [form, setForm] = useState({ processamento_id: "", formador_id: "", rubrica_id: "", descricao: "", valor: 0, iva: 23 });
 
   const procs = useQuery({ queryKey: ["fin-procs-min"], queryFn: async () => {
     const { data, error } = await supabase.from("financeiro_processamentos").select("id, ano, mes, cursos(codigo)").order("ano", { ascending: false });
@@ -32,11 +58,14 @@ function HonorariosPage() {
   const formadores = useQuery({ queryKey: ["formadores-min"], queryFn: async () => {
     const { data, error } = await supabase.from("formadores").select("id, nome").order("nome"); if (error) throw error; return data ?? [];
   } });
+  const rubricas = useQuery({ queryKey: ["fin-rubricas"], queryFn: listarRubricas });
   const list = useQuery({ queryKey: ["financeiro-honorarios"], queryFn: async () => {
     const { data, error } = await supabase.from("financeiro_honorarios")
       .select("*, formadores(nome), financeiro_processamentos(ano, mes, cursos(codigo))").order("created_at", { ascending: false });
     if (error) throw error; return data ?? [];
   } });
+
+  const rubricasHon = (rubricas.data ?? []).filter(r => r.ativo && (r.categoria === "Honorários" || r.codigo?.toUpperCase().startsWith("HON")));
 
   const rows = (list.data ?? []).filter((r: any) => fProc === "all" || r.processamento_id === fProc);
   const total = useMemo(() => rows.reduce((s: number, r: any) => s + Number(r.total || 0), 0), [rows]);
@@ -45,9 +74,12 @@ function HonorariosPage() {
     mutationFn: async () => {
       if (!form.processamento_id) throw new Error("Escolhe processamento");
       const total = Number(form.valor) * (1 + Number(form.iva) / 100);
+      const rub = rubricasHon.find(r => r.id === form.rubrica_id);
+      const prefixo = rub ? `[${rub.codigo}] ` : "";
+      const descricaoFinal = `${prefixo}${form.descricao || ""}`.trim() || null;
       const { error } = await supabase.from("financeiro_honorarios").insert({
         processamento_id: form.processamento_id, formador_id: form.formador_id || null,
-        descricao: form.descricao || null, valor: form.valor, iva: form.iva, total,
+        descricao: descricaoFinal, valor: form.valor, iva: form.iva, total,
       });
       if (error) throw error;
     },
@@ -61,12 +93,8 @@ function HonorariosPage() {
   });
 
   return (
-    <PageContainer>
-      <PageHeader title="Honorários" description="Honorários processados por formador." actions={
-        <Button onClick={() => setOpen(true)}><Plus className="size-4 mr-1" /> Novo honorário</Button>
-      } />
-
-      <Card className="mb-4">
+    <>
+      <Card>
         <CardContent className="pt-6 flex flex-wrap gap-3 items-end">
           <div className="min-w-[260px]">
             <Label>Processamento</Label>
@@ -80,7 +108,10 @@ function HonorariosPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="ml-auto text-right"><div className="text-xs text-muted-foreground">Total (c/IVA)</div><div className="text-xl font-bold">{eur(total)}</div></div>
+          <div className="ml-auto flex items-end gap-3">
+            <div className="text-right"><div className="text-xs text-muted-foreground">Total (c/IVA)</div><div className="text-xl font-bold">{eur(total)}</div></div>
+            <Button onClick={() => setOpen(true)}><Plus className="size-4 mr-1" /> Novo lançamento</Button>
+          </div>
         </CardContent>
       </Card>
 
@@ -110,12 +141,21 @@ function HonorariosPage() {
 
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
-          <DialogHeader><DialogTitle>Novo honorário</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>Novo lançamento de honorário</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Processamento</Label>
               <Select value={form.processamento_id} onValueChange={v => setForm(f => ({ ...f, processamento_id: v }))}>
                 <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
                 <SelectContent>{(procs.data ?? []).map((p: any) => (<SelectItem key={p.id} value={p.id}>{p.cursos?.codigo} — {p.ano}/{String(p.mes).padStart(2, "0")}</SelectItem>))}</SelectContent>
+              </Select>
+            </div>
+            <div><Label>Rubrica</Label>
+              <Select value={form.rubrica_id} onValueChange={v => setForm(f => ({ ...f, rubrica_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Escolher rubrica…" /></SelectTrigger>
+                <SelectContent>
+                  {rubricasHon.length === 0 && <SelectItem value="_" disabled>Sem rubricas de honorários</SelectItem>}
+                  {rubricasHon.map(r => (<SelectItem key={r.id} value={r.id}>{r.codigo} — {r.descricao}</SelectItem>))}
+                </SelectContent>
               </Select>
             </div>
             <div><Label>Formador (opcional)</Label>
@@ -137,6 +177,6 @@ function HonorariosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </>
   );
 }

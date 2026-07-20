@@ -1,22 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { PageContainer, PageHeader } from "@/components/app-shell";
-import { NotaHonorariosCard } from "./relatorios";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// Rota consolidada — Nota de Honorários vive agora em Financeiro › Honorários.
+// Mantemos este ficheiro apenas para redirecionar links antigos.
 export const Route = createFileRoute("/_authenticated/nota-honorarios")({
-  head: () => ({ meta: [{ title: "Nota de Honorários — Gestão Pedagógica" }] }),
-  component: NotaHonorariosPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/financeiro/honorarios" });
+  },
 });
-
-function NotaHonorariosPage() {
-  return (
-    <PageContainer>
-      <PageHeader
-        title="Nota de Honorários"
-        description="Gera notas de honorários por mês ou por UFCD ministrada, com pré-visualização em tempo real."
-      />
-      <div className="grid gap-4">
-        <NotaHonorariosCard />
-      </div>
-    </PageContainer>
-  );
-}

@@ -34,6 +34,8 @@ import { Route as AuthenticatedFinanceiroProcessamentosRouteImport } from './rou
 import { Route as AuthenticatedFinanceiroHonorariosRouteImport } from './routes/_authenticated/financeiro.honorarios'
 import { Route as AuthenticatedFinanceiroConfiguracaoRouteImport } from './routes/_authenticated/financeiro.configuracao'
 import { Route as AuthenticatedFinanceiroBolsasRouteImport } from './routes/_authenticated/financeiro.bolsas'
+import { Route as AuthenticatedFinanceiroAuditoriaRouteImport } from './routes/_authenticated/financeiro.auditoria'
+import { Route as AuthenticatedFinanceiroAlertasRouteImport } from './routes/_authenticated/financeiro.alertas'
 import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
 import { Route as AuthenticatedCursosIdImportarRouteImport } from './routes/_authenticated/cursos_.$id.importar'
 
@@ -177,6 +179,18 @@ const AuthenticatedFinanceiroBolsasRoute =
     path: '/financeiro/bolsas',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedFinanceiroAuditoriaRoute =
+  AuthenticatedFinanceiroAuditoriaRouteImport.update({
+    id: '/financeiro/auditoria',
+    path: '/financeiro/auditoria',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceiroAlertasRoute =
+  AuthenticatedFinanceiroAlertasRouteImport.update({
+    id: '/financeiro/alertas',
+    path: '/financeiro/alertas',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedCursosIdRoute = AuthenticatedCursosIdRouteImport.update({
   id: '/cursos/$id',
   path: '/cursos/$id',
@@ -200,6 +214,8 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/financeiro/alertas': typeof AuthenticatedFinanceiroAlertasRoute
+  '/financeiro/auditoria': typeof AuthenticatedFinanceiroAuditoriaRoute
   '/financeiro/bolsas': typeof AuthenticatedFinanceiroBolsasRoute
   '/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
   '/financeiro/honorarios': typeof AuthenticatedFinanceiroHonorariosRoute
@@ -228,6 +244,8 @@ export interface FileRoutesByTo {
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/financeiro/alertas': typeof AuthenticatedFinanceiroAlertasRoute
+  '/financeiro/auditoria': typeof AuthenticatedFinanceiroAuditoriaRoute
   '/financeiro/bolsas': typeof AuthenticatedFinanceiroBolsasRoute
   '/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
   '/financeiro/honorarios': typeof AuthenticatedFinanceiroHonorariosRoute
@@ -258,6 +276,8 @@ export interface FileRoutesById {
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/ufcds': typeof AuthenticatedUfcdsRoute
   '/_authenticated/cursos/$id': typeof AuthenticatedCursosIdRoute
+  '/_authenticated/financeiro/alertas': typeof AuthenticatedFinanceiroAlertasRoute
+  '/_authenticated/financeiro/auditoria': typeof AuthenticatedFinanceiroAuditoriaRoute
   '/_authenticated/financeiro/bolsas': typeof AuthenticatedFinanceiroBolsasRoute
   '/_authenticated/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
   '/_authenticated/financeiro/honorarios': typeof AuthenticatedFinanceiroHonorariosRoute
@@ -288,6 +308,8 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/ufcds'
     | '/cursos/$id'
+    | '/financeiro/alertas'
+    | '/financeiro/auditoria'
     | '/financeiro/bolsas'
     | '/financeiro/configuracao'
     | '/financeiro/honorarios'
@@ -316,6 +338,8 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/ufcds'
     | '/cursos/$id'
+    | '/financeiro/alertas'
+    | '/financeiro/auditoria'
     | '/financeiro/bolsas'
     | '/financeiro/configuracao'
     | '/financeiro/honorarios'
@@ -345,6 +369,8 @@ export interface FileRouteTypes {
     | '/_authenticated/relatorios'
     | '/_authenticated/ufcds'
     | '/_authenticated/cursos/$id'
+    | '/_authenticated/financeiro/alertas'
+    | '/_authenticated/financeiro/auditoria'
     | '/_authenticated/financeiro/bolsas'
     | '/_authenticated/financeiro/configuracao'
     | '/_authenticated/financeiro/honorarios'
@@ -546,6 +572,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinanceiroBolsasRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/financeiro/auditoria': {
+      id: '/_authenticated/financeiro/auditoria'
+      path: '/financeiro/auditoria'
+      fullPath: '/financeiro/auditoria'
+      preLoaderRoute: typeof AuthenticatedFinanceiroAuditoriaRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/financeiro/alertas': {
+      id: '/_authenticated/financeiro/alertas'
+      path: '/financeiro/alertas'
+      fullPath: '/financeiro/alertas'
+      preLoaderRoute: typeof AuthenticatedFinanceiroAlertasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/cursos/$id': {
       id: '/_authenticated/cursos/$id'
       path: '/cursos/$id'
@@ -572,6 +612,8 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedUfcdsRoute: typeof AuthenticatedUfcdsRoute
   AuthenticatedCursosIdRoute: typeof AuthenticatedCursosIdRoute
+  AuthenticatedFinanceiroAlertasRoute: typeof AuthenticatedFinanceiroAlertasRoute
+  AuthenticatedFinanceiroAuditoriaRoute: typeof AuthenticatedFinanceiroAuditoriaRoute
   AuthenticatedFinanceiroBolsasRoute: typeof AuthenticatedFinanceiroBolsasRoute
   AuthenticatedFinanceiroConfiguracaoRoute: typeof AuthenticatedFinanceiroConfiguracaoRoute
   AuthenticatedFinanceiroHonorariosRoute: typeof AuthenticatedFinanceiroHonorariosRoute
@@ -599,6 +641,8 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedUfcdsRoute: AuthenticatedUfcdsRoute,
   AuthenticatedCursosIdRoute: AuthenticatedCursosIdRoute,
+  AuthenticatedFinanceiroAlertasRoute: AuthenticatedFinanceiroAlertasRoute,
+  AuthenticatedFinanceiroAuditoriaRoute: AuthenticatedFinanceiroAuditoriaRoute,
   AuthenticatedFinanceiroBolsasRoute: AuthenticatedFinanceiroBolsasRoute,
   AuthenticatedFinanceiroConfiguracaoRoute:
     AuthenticatedFinanceiroConfiguracaoRoute,

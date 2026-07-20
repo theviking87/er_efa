@@ -5,7 +5,7 @@ import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
-import { AlertTriangle, BookOpen, Users, Calendar, ListChecks } from "lucide-react";
+import { AlertTriangle, BookOpen, Users, Calendar, ListChecks, FolderKanban, ClipboardList } from "lucide-react";
 import { addDaysIso, fmtDate, fmtHoras, localDateIso } from "@/lib/format";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -17,10 +17,13 @@ function Dashboard() {
   const counts = useQuery({
     queryKey: ["dashboard-counts"],
     queryFn: async () => {
-      const [cursos, formadores, ufcds] = await Promise.all([
+      const [cursos, formadores, ufcds, projetos, formandos, procs] = await Promise.all([
         supabase.from("cursos").select("id, estado"),
         supabase.from("formadores").select("id, estado, validade_ccp"),
         supabase.from("ufcds").select("id"),
+        supabase.from("projetos").select("id, estado, ativo"),
+        supabase.from("formandos").select("id"),
+        supabase.from("financeiro_processamentos").select("id"),
       ]);
       return {
         cursosAtivos: (cursos.data ?? []).filter(c => c.estado === "ativo").length,
@@ -28,6 +31,10 @@ function Dashboard() {
         formadoresAtivos: (formadores.data ?? []).filter(f => f.estado === "ativo").length,
         formadoresTotal: formadores.data?.length ?? 0,
         ufcdsTotal: ufcds.data?.length ?? 0,
+        projetosTotal: projetos.data?.length ?? 0,
+        projetosAtivos: (projetos.data ?? []).filter((p: any) => p.ativo && p.estado === "ativo").length,
+        formandosTotal: formandos.data?.length ?? 0,
+        procsTotal: procs.data?.length ?? 0,
         ccpExpirado: (formadores.data ?? []).filter(f => f.validade_ccp && new Date(f.validade_ccp) < new Date()),
         ccpProximoExpirar: (formadores.data ?? []).filter(f => {
           if (!f.validade_ccp) return false;

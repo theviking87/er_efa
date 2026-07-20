@@ -19,10 +19,12 @@ import { Route as AuthenticatedNotaHonorariosRouteImport } from './routes/_authe
 import { Route as AuthenticatedExportarRouteImport } from './routes/_authenticated/exportar'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
 import { Route as AuthenticatedCronogramaRouteImport } from './routes/_authenticated/cronograma'
+import { Route as AuthenticatedProjetosIndexRouteImport } from './routes/_authenticated/projetos.index'
 import { Route as AuthenticatedFormandosIndexRouteImport } from './routes/_authenticated/formandos.index'
 import { Route as AuthenticatedFormadoresIndexRouteImport } from './routes/_authenticated/formadores.index'
 import { Route as AuthenticatedFinanceiroIndexRouteImport } from './routes/_authenticated/financeiro.index'
 import { Route as AuthenticatedCursosIndexRouteImport } from './routes/_authenticated/cursos.index'
+import { Route as AuthenticatedProjetosIdRouteImport } from './routes/_authenticated/projetos.$id'
 import { Route as AuthenticatedFormandosIdRouteImport } from './routes/_authenticated/formandos.$id'
 import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
 import { Route as AuthenticatedFinanceiroUtilizadoresRouteImport } from './routes/_authenticated/financeiro.utilizadores'
@@ -89,6 +91,12 @@ const AuthenticatedCronogramaRoute = AuthenticatedCronogramaRouteImport.update({
   path: '/cronograma',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedProjetosIndexRoute =
+  AuthenticatedProjetosIndexRouteImport.update({
+    id: '/projetos/',
+    path: '/projetos/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFormandosIndexRoute =
   AuthenticatedFormandosIndexRouteImport.update({
     id: '/formandos/',
@@ -113,6 +121,11 @@ const AuthenticatedCursosIndexRoute =
     path: '/cursos/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
+const AuthenticatedProjetosIdRoute = AuthenticatedProjetosIdRouteImport.update({
+  id: '/projetos/$id',
+  path: '/projetos/$id',
+  getParentRoute: () => AuthenticatedRouteRoute,
+} as any)
 const AuthenticatedFormandosIdRoute =
   AuthenticatedFormandosIdRouteImport.update({
     id: '/formandos/$id',
@@ -227,10 +240,12 @@ export interface FileRoutesByFullPath {
   '/financeiro/utilizadores': typeof AuthenticatedFinanceiroUtilizadoresRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/formandos/$id': typeof AuthenticatedFormandosIdRoute
+  '/projetos/$id': typeof AuthenticatedProjetosIdRoute
   '/cursos/': typeof AuthenticatedCursosIndexRoute
   '/financeiro/': typeof AuthenticatedFinanceiroIndexRoute
   '/formadores/': typeof AuthenticatedFormadoresIndexRoute
   '/formandos/': typeof AuthenticatedFormandosIndexRoute
+  '/projetos/': typeof AuthenticatedProjetosIndexRoute
   '/cursos/$id/importar': typeof AuthenticatedCursosIdImportarRoute
 }
 export interface FileRoutesByTo {
@@ -257,10 +272,12 @@ export interface FileRoutesByTo {
   '/financeiro/utilizadores': typeof AuthenticatedFinanceiroUtilizadoresRoute
   '/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/formandos/$id': typeof AuthenticatedFormandosIdRoute
+  '/projetos/$id': typeof AuthenticatedProjetosIdRoute
   '/cursos': typeof AuthenticatedCursosIndexRoute
   '/financeiro': typeof AuthenticatedFinanceiroIndexRoute
   '/formadores': typeof AuthenticatedFormadoresIndexRoute
   '/formandos': typeof AuthenticatedFormandosIndexRoute
+  '/projetos': typeof AuthenticatedProjetosIndexRoute
   '/cursos/$id/importar': typeof AuthenticatedCursosIdImportarRoute
 }
 export interface FileRoutesById {
@@ -289,10 +306,12 @@ export interface FileRoutesById {
   '/_authenticated/financeiro/utilizadores': typeof AuthenticatedFinanceiroUtilizadoresRoute
   '/_authenticated/formadores/$id': typeof AuthenticatedFormadoresIdRoute
   '/_authenticated/formandos/$id': typeof AuthenticatedFormandosIdRoute
+  '/_authenticated/projetos/$id': typeof AuthenticatedProjetosIdRoute
   '/_authenticated/cursos/': typeof AuthenticatedCursosIndexRoute
   '/_authenticated/financeiro/': typeof AuthenticatedFinanceiroIndexRoute
   '/_authenticated/formadores/': typeof AuthenticatedFormadoresIndexRoute
   '/_authenticated/formandos/': typeof AuthenticatedFormandosIndexRoute
+  '/_authenticated/projetos/': typeof AuthenticatedProjetosIndexRoute
   '/_authenticated/cursos_/$id/importar': typeof AuthenticatedCursosIdImportarRoute
 }
 export interface FileRouteTypes {
@@ -321,10 +340,12 @@ export interface FileRouteTypes {
     | '/financeiro/utilizadores'
     | '/formadores/$id'
     | '/formandos/$id'
+    | '/projetos/$id'
     | '/cursos/'
     | '/financeiro/'
     | '/formadores/'
     | '/formandos/'
+    | '/projetos/'
     | '/cursos/$id/importar'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -351,10 +372,12 @@ export interface FileRouteTypes {
     | '/financeiro/utilizadores'
     | '/formadores/$id'
     | '/formandos/$id'
+    | '/projetos/$id'
     | '/cursos'
     | '/financeiro'
     | '/formadores'
     | '/formandos'
+    | '/projetos'
     | '/cursos/$id/importar'
   id:
     | '__root__'
@@ -382,10 +405,12 @@ export interface FileRouteTypes {
     | '/_authenticated/financeiro/utilizadores'
     | '/_authenticated/formadores/$id'
     | '/_authenticated/formandos/$id'
+    | '/_authenticated/projetos/$id'
     | '/_authenticated/cursos/'
     | '/_authenticated/financeiro/'
     | '/_authenticated/formadores/'
     | '/_authenticated/formandos/'
+    | '/_authenticated/projetos/'
     | '/_authenticated/cursos_/$id/importar'
   fileRoutesById: FileRoutesById
 }
@@ -467,6 +492,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCronogramaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/projetos/': {
+      id: '/_authenticated/projetos/'
+      path: '/projetos'
+      fullPath: '/projetos/'
+      preLoaderRoute: typeof AuthenticatedProjetosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/formandos/': {
       id: '/_authenticated/formandos/'
       path: '/formandos'
@@ -493,6 +525,13 @@ declare module '@tanstack/react-router' {
       path: '/cursos'
       fullPath: '/cursos/'
       preLoaderRoute: typeof AuthenticatedCursosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/projetos/$id': {
+      id: '/_authenticated/projetos/$id'
+      path: '/projetos/$id'
+      fullPath: '/projetos/$id'
+      preLoaderRoute: typeof AuthenticatedProjetosIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/formandos/$id': {
@@ -625,10 +664,12 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFinanceiroUtilizadoresRoute: typeof AuthenticatedFinanceiroUtilizadoresRoute
   AuthenticatedFormadoresIdRoute: typeof AuthenticatedFormadoresIdRoute
   AuthenticatedFormandosIdRoute: typeof AuthenticatedFormandosIdRoute
+  AuthenticatedProjetosIdRoute: typeof AuthenticatedProjetosIdRoute
   AuthenticatedCursosIndexRoute: typeof AuthenticatedCursosIndexRoute
   AuthenticatedFinanceiroIndexRoute: typeof AuthenticatedFinanceiroIndexRoute
   AuthenticatedFormadoresIndexRoute: typeof AuthenticatedFormadoresIndexRoute
   AuthenticatedFormandosIndexRoute: typeof AuthenticatedFormandosIndexRoute
+  AuthenticatedProjetosIndexRoute: typeof AuthenticatedProjetosIndexRoute
   AuthenticatedCursosIdImportarRoute: typeof AuthenticatedCursosIdImportarRoute
 }
 
@@ -659,10 +700,12 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
     AuthenticatedFinanceiroUtilizadoresRoute,
   AuthenticatedFormadoresIdRoute: AuthenticatedFormadoresIdRoute,
   AuthenticatedFormandosIdRoute: AuthenticatedFormandosIdRoute,
+  AuthenticatedProjetosIdRoute: AuthenticatedProjetosIdRoute,
   AuthenticatedCursosIndexRoute: AuthenticatedCursosIndexRoute,
   AuthenticatedFinanceiroIndexRoute: AuthenticatedFinanceiroIndexRoute,
   AuthenticatedFormadoresIndexRoute: AuthenticatedFormadoresIndexRoute,
   AuthenticatedFormandosIndexRoute: AuthenticatedFormandosIndexRoute,
+  AuthenticatedProjetosIndexRoute: AuthenticatedProjetosIndexRoute,
   AuthenticatedCursosIdImportarRoute: AuthenticatedCursosIdImportarRoute,
 }
 

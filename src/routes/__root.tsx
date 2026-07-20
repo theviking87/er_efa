@@ -17,6 +17,7 @@ import "@fontsource/manrope/700.css";
 import "@fontsource/manrope/800.css";
 import { Toaster } from "@/components/ui/sonner";
 import { reportLovableError } from "../lib/lovable-error-reporting";
+import { ProjetoProvider } from "@/lib/projeto-context";
 
 function NotFoundComponent() {
   return (
@@ -141,9 +142,11 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <Toaster />
+      <ProjetoProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <Toaster />
+      </ProjetoProvider>
     </QueryClientProvider>
   );
 }

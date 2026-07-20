@@ -106,6 +106,7 @@ function FormadorDetail() {
           <TabsTrigger value="disponibilidades">Disponibilidades</TabsTrigger>
           <TabsTrigger value="inatividades">Inatividades</TabsTrigger>
           <TabsTrigger value="documentos">Documentos</TabsTrigger>
+          <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
         </TabsList>
 
         <TabsContent value="dados">

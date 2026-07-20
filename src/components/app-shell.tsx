@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Receipt, Wallet, Coins, UtensilsCrossed, Car, HandCoins, Settings2, ClipboardList,
+  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Receipt, Wallet, Coins, UtensilsCrossed, Car, HandCoins, Settings2, ClipboardList, Tags, ScrollText, ShieldCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -21,12 +21,15 @@ const NAV = [
   { to: "/relatorios", label: "Relatórios & SIGO", icon: FileBarChart2, section: "Geral" },
   { to: "/nota-honorarios", label: "Nota de Honorários", icon: Receipt, section: "Geral" },
   { to: "/financeiro", label: "Painel Financeiro", icon: Wallet, section: "Financeiro" },
+  { to: "/financeiro/rubricas", label: "Rubricas", icon: Tags, section: "Financeiro" },
+  { to: "/financeiro/regras", label: "Regras", icon: ScrollText, section: "Financeiro" },
   { to: "/financeiro/processamentos", label: "Processamentos", icon: ClipboardList, section: "Financeiro" },
   { to: "/financeiro/bolsas", label: "Bolsas de Formação", icon: Coins, section: "Financeiro" },
   { to: "/financeiro/subsidios", label: "Subsídio de Alimentação", icon: UtensilsCrossed, section: "Financeiro" },
   { to: "/financeiro/quilometros", label: "Quilómetros", icon: Car, section: "Financeiro" },
   { to: "/financeiro/honorarios", label: "Honorários", icon: HandCoins, section: "Financeiro" },
-  { to: "/financeiro/configuracao", label: "Configuração Financeira", icon: Settings2, section: "Financeiro" },
+  { to: "/financeiro/configuracao", label: "Configuração Global", icon: Settings2, section: "Financeiro" },
+  { to: "/financeiro/utilizadores", label: "Utilizadores (auditoria)", icon: ShieldCheck, section: "Financeiro" },
   { to: "/exportar", label: "Exportar / Backup", icon: Download, section: "Sistema" },
   { to: "/perfil", label: "O meu perfil", icon: UserCog, section: "Sistema" },
 ] as const;

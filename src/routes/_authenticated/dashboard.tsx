@@ -66,10 +66,16 @@ function Dashboard() {
     <PageContainer>
       <PageHeader title="Painel" description="Visão geral da atividade. Apenas o essencial." />
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-3">
+        <Stat label="Projetos ativos" value={counts.data?.projetosAtivos ?? 0} total={counts.data?.projetosTotal} icon={FolderKanban} href="/projetos" />
         <Stat label="Cursos ativos" value={counts.data?.cursosAtivos ?? 0} total={counts.data?.cursosTotal} icon={BookOpen} href="/cursos" />
         <Stat label="Formadores ativos" value={counts.data?.formadoresAtivos ?? 0} total={counts.data?.formadoresTotal} icon={Users} href="/formadores" />
+        <Stat label="Formandos" value={counts.data?.formandosTotal ?? 0} icon={Users} href="/formandos" />
+      </div>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Stat label="UFCD no catálogo" value={counts.data?.ufcdsTotal ?? 0} icon={ListChecks} href="/ufcds" />
+        <Stat label="Processamentos" value={counts.data?.procsTotal ?? 0} icon={ClipboardList} href="/financeiro/processamentos" />
+        <Stat label="Valor financeiro" value={"—"} icon={ClipboardList} />
         <Stat label="Próximas 7 dias" value={proximas.data?.length ?? 0} icon={Calendar} />
       </div>
 

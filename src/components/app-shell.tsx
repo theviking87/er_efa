@@ -13,6 +13,7 @@ const LOCAL_FORCE_IMPORT_KEY = "formacao-er-force-import";
 
 const NAV = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard, section: "Geral" },
+  { to: "/projetos", label: "Projetos", icon: FolderKanban, section: "Geral" },
   { to: "/cronograma", label: "Cronograma", icon: CalendarDays, section: "Geral" },
   { to: "/formadores", label: "Formadores", icon: Users, section: "Geral" },
   { to: "/formandos", label: "Formandos", icon: UserSquare2, section: "Geral" },

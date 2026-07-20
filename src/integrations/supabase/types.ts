@@ -14,42 +14,6 @@ export type Database = {
   }
   public: {
     Tables: {
-      configuracao_financeira: {
-        Row: {
-          atualizacao: string
-          created_at: string
-          horas_mes: number
-          id: string
-          iva: number
-          moeda: string
-          updated_at: string
-          valor_km: number
-          valor_refeicao: number
-        }
-        Insert: {
-          atualizacao?: string
-          created_at?: string
-          horas_mes?: number
-          id?: string
-          iva?: number
-          moeda?: string
-          updated_at?: string
-          valor_km?: number
-          valor_refeicao?: number
-        }
-        Update: {
-          atualizacao?: string
-          created_at?: string
-          horas_mes?: number
-          id?: string
-          iva?: number
-          moeda?: string
-          updated_at?: string
-          valor_km?: number
-          valor_refeicao?: number
-        }
-        Relationships: []
-      }
       cronograma_observacoes: {
         Row: {
           created_at: string

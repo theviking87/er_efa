@@ -12,6 +12,8 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ESTADO_CURSO_LABEL, TIPOLOGIA_LABEL, fmtDate } from "@/lib/format";
 import { toast } from "sonner";
+import { useProjetoAtivo, useProjetosList } from "@/lib/projeto-context";
+
 
 export const Route = createFileRoute("/_authenticated/cursos/")({
   head: () => ({ meta: [{ title: "Cursos — Gestão Pedagógica" }] }),
@@ -20,9 +22,13 @@ export const Route = createFileRoute("/_authenticated/cursos/")({
 
 function CursosPage() {
   const qc = useQueryClient();
+  const { projetoId } = useProjetoAtivo();
+  const projetos = useProjetosList();
   const [open, setOpen] = useState(false);
   const [q, setQ] = useState("");
-  const [form, setForm] = useState({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado" });
+  const [fEstado, setFEstado] = useState<string>("all");
+  const [fProjeto, setFProjeto] = useState<string>("all");
+  const [form, setForm] = useState({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "" });
 
   const list = useQuery({
     queryKey: ["cursos"],
@@ -38,20 +44,24 @@ function CursosPage() {
       const payload: any = { ...form };
       if (!payload.data_inicio) payload.data_inicio = null;
       if (!payload.data_fim) payload.data_fim = null;
+      if (!payload.projeto_id) throw new Error("Projeto é obrigatório");
       const { error } = await supabase.from("cursos").insert(payload);
       if (error) throw error;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cursos"] });
       setOpen(false);
-      setForm({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado" });
+      setForm({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "" });
       toast.success("Curso criado");
     },
     onError: (e: any) => toast.error("Erro", { description: e.message }),
   });
 
+  const projetoFiltro = projetoId !== "all" ? projetoId : (fProjeto !== "all" ? fProjeto : null);
   const filtered = (list.data ?? []).filter(c =>
-    !q || c.nome.toLowerCase().includes(q.toLowerCase()) || c.codigo.toLowerCase().includes(q.toLowerCase()));
+    (!projetoFiltro || (c as any).projeto_id === projetoFiltro) &&
+    (fEstado === "all" || c.estado === fEstado) &&
+    (!q || c.nome.toLowerCase().includes(q.toLowerCase()) || c.codigo.toLowerCase().includes(q.toLowerCase())));
 
   return (
     <PageContainer>

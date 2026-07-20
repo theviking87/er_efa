@@ -153,6 +153,24 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 }
 
+function ProjetoSelector() {
+  const { projetoId, setProjetoId } = useProjetoAtivo();
+  const { data } = useProjetosList();
+  return (
+    <Select value={projetoId} onValueChange={setProjetoId}>
+      <SelectTrigger className="h-8 text-xs bg-white/5 border-white/10 text-white hover:bg-white/10">
+        <SelectValue placeholder="Todos os projetos" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">Todos os projetos</SelectItem>
+        {(data ?? []).map(p => (
+          <SelectItem key={p.id} value={p.id}>{p.codigo} — {p.nome}</SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+}
+
 export function PageHeader({ title, description, actions }: { title: string; description?: string; actions?: ReactNode }) {
   return (
     <div className="relative mb-8">

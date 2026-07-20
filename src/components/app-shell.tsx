@@ -80,6 +80,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </div>
         </div>
 
+        <div className="px-3 pt-3 pb-2 border-b border-sidebar-border">
+          <div className="text-[10px] uppercase tracking-wider text-white/50 mb-1.5 flex items-center gap-1.5">
+            <FolderKanban className="size-3" /> Projeto ativo
+          </div>
+          <ProjetoSelector />
+        </div>
+
+
         <nav className="flex-1 px-3 py-2 space-y-4 overflow-y-auto">
           {Array.from(new Set(NAV.map(n => n.section))).map(section => (
             <div key={section} className="space-y-1">

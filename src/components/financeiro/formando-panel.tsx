@@ -1,14 +1,14 @@
-import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { listarRubricas } from "@/lib/financeiro/services/rubricas";
 import { listarRubricasDoFormando, upsertRubricaFormando } from "@/lib/financeiro/services/formando-rubricas";
-import type { FinFormandoRubrica } from "@/lib/financeiro/types";
+
+// Categorias configuráveis por formando: apenas elegibilidade.
+// Valores, limites e IBAN são definidos globalmente no módulo Financeiro.
+const CATEGORIAS_ELEGIVEIS = new Set(["Bolsa", "Subsídio", "Deslocação"]);
 
 export function FinanceiroFormandoPanel({ formandoId }: { formandoId: string }) {
   const qc = useQueryClient();
@@ -18,41 +18,40 @@ export function FinanceiroFormandoPanel({ formandoId }: { formandoId: string }) 
     queryFn: () => listarRubricasDoFormando(formandoId),
   });
 
-  const [drafts, setDrafts] = useState<Record<string, Partial<FinFormandoRubrica>>>({});
-
-  const save = useMutation({
-    mutationFn: async (rubricaId: string) => {
+  const toggle = useMutation({
+    mutationFn: async ({ rubricaId, elegivel }: { rubricaId: string; elegivel: boolean }) => {
       const existente = cfgs.data?.find(x => x.rubrica_id === rubricaId);
-      const draft = drafts[rubricaId] ?? {};
-      const payload: any = {
-        ...existente,
-        ...draft,
+      return upsertRubricaFormando({
+        ...(existente ?? {}),
         formando_id: formandoId,
         rubrica_id: rubricaId,
-      };
-      // limpar campos numéricos vazios
-      ["valor_especifico", "limite_especifico"].forEach(k => {
-        if (payload[k] === "" || payload[k] === undefined) payload[k] = null;
-        else if (payload[k] !== null) payload[k] = Number(payload[k]);
-      });
-      return upsertRubricaFormando(payload);
+        elegivel,
+        valor_especifico: null,
+        limite_especifico: null,
+        iban: existente?.iban ?? null,
+        data_inicio: existente?.data_inicio ?? null,
+        data_fim: existente?.data_fim ?? null,
+        observacoes: existente?.observacoes ?? null,
+      } as any);
     },
     onSuccess: () => {
       toast.success("Rubrica atualizada");
       qc.invalidateQueries({ queryKey: ["fin-formando-rubricas", formandoId] });
-      setDrafts({});
     },
     onError: (e: any) => toast.error(e.message),
   });
 
   if (rubs.isLoading || cfgs.isLoading) return <div className="text-muted-foreground">A carregar…</div>;
 
+  const rubricas = (rubs.data ?? []).filter(r => r.ativo && CATEGORIAS_ELEGIVEIS.has(r.categoria as string));
+
   return (
     <div className="space-y-3">
-      {(rubs.data ?? []).filter(r => r.ativo).map(r => {
+      <p className="text-xs text-muted-foreground">
+        Seleciona apenas as rubricas a que este formando tem direito. Os valores e limites são definidos no módulo Financeiro.
+      </p>
+      {rubricas.map(r => {
         const cur = cfgs.data?.find(x => x.rubrica_id === r.id);
-        const d = drafts[r.id] ?? {};
-        const merged: any = { ...cur, ...d };
         return (
           <Card key={r.id}>
             <CardHeader className="pb-2 flex flex-row items-center justify-between">
@@ -63,32 +62,19 @@ export function FinanceiroFormandoPanel({ formandoId }: { formandoId: string }) 
               <div className="flex items-center gap-2">
                 <Label className="text-xs">Elegível</Label>
                 <Switch
-                  checked={merged.elegivel ?? false}
-                  onCheckedChange={v => setDrafts(s => ({ ...s, [r.id]: { ...s[r.id], elegivel: v } }))}
+                  checked={cur?.elegivel ?? false}
+                  disabled={toggle.isPending}
+                  onCheckedChange={v => toggle.mutate({ rubricaId: r.id, elegivel: v })}
                 />
               </div>
             </CardHeader>
-            <CardContent className="grid gap-3 sm:grid-cols-4">
-              <div>
-                <Label className="text-xs">Valor específico</Label>
-                <Input type="number" step="0.01" value={merged.valor_especifico ?? ""} onChange={e => setDrafts(s => ({ ...s, [r.id]: { ...s[r.id], valor_especifico: e.target.value as any } }))} />
-              </div>
-              <div>
-                <Label className="text-xs">Limite mensal</Label>
-                <Input type="number" step="0.01" value={merged.limite_especifico ?? ""} onChange={e => setDrafts(s => ({ ...s, [r.id]: { ...s[r.id], limite_especifico: e.target.value as any } }))} />
-              </div>
-              <div>
-                <Label className="text-xs">IBAN (opcional)</Label>
-                <Input value={merged.iban ?? ""} onChange={e => setDrafts(s => ({ ...s, [r.id]: { ...s[r.id], iban: e.target.value } }))} />
-              </div>
-              <div className="flex items-end">
-                <Button size="sm" onClick={() => save.mutate(r.id)} disabled={save.isPending}>Guardar</Button>
-              </div>
+            <CardContent className="pt-0 pb-3 text-xs text-muted-foreground">
+              Configuração de valores em <b>Financeiro → Rubricas / Regras</b>.
             </CardContent>
           </Card>
         );
       })}
-      {!rubs.data?.length && <div className="text-muted-foreground text-sm">Ainda não existem rubricas configuradas.</div>}
+      {!rubricas.length && <div className="text-muted-foreground text-sm">Sem rubricas configuráveis.</div>}
     </div>
   );
 }

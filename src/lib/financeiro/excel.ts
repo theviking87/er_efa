@@ -119,5 +119,5 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   const buf = await wb.xlsx.writeBuffer();
   const name = `processamento_${p.ano}-${String(p.mes).padStart(2, "0")}_${(p.curso?.codigo ?? "curso").replace(/\W+/g, "_")}.xlsx`;
-  saveFile(new Blob([buf], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }), name);
+  await saveFile(name, buf as ArrayBuffer);
 }

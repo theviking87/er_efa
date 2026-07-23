@@ -119,11 +119,13 @@ function DetailPage() {
     const fmds = fmdsList.map((l: any) => ({
       id: l.formando_id, nome: l.formando?.nome ?? "—", rubrica: l.rubrica,
       horas_previstas: Number(l.horas_previstas ?? 0), horas_frequentadas: Number(l.horas_frequentadas ?? 0),
-      dias_elegiveis: Number(l.dias_elegiveis ?? 0), valor_hora: Number(l.valor_hora ?? 0), valor: Number(l.valor ?? 0),
+      dias_elegiveis: Number(l.dias_elegiveis ?? 0), valor_hora: Number(l.valor_hora ?? 0),
+      valor_dia: Number(l.valor_dia ?? 0), km_total: Number(l.km_total ?? 0),
+      valor: Number(l.valor ?? 0), memoria_calculo: l.memoria_calculo ?? null,
     }));
     const fdrs = fdrsList.map((l: any) => ({
       id: l.formador_id, nome: l.formador?.nome ?? "—", horas_frequentadas: Number(l.horas_frequentadas ?? 0),
-      valor_hora: Number(l.valor_hora ?? 0), valor: Number(l.valor ?? 0),
+      valor_hora: Number(l.valor_hora ?? 0), valor: Number(l.valor ?? 0), memoria_calculo: l.memoria_calculo ?? null,
     }));
     if (filtroModo !== "tudo" && !filtroId) { toast.error("Escolhe quem exportar."); return; }
     await exportProcessamentoExcel({

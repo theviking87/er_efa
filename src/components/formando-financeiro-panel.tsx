@@ -68,7 +68,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
     mutationFn: async () => {
       const payload = {
         tipo, valor_mensal: valor, elegivel_sa: elegSa, elegivel_tr: elegTr,
-        km_diario: kmDia,
+        km_diario: kmDia, valor_atl: valorAtl,
       };
       if (bolsa.data?.id) {
         const { error } = await supabase.from("fin_bolsa_config")

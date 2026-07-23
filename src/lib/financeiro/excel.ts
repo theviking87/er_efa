@@ -9,7 +9,7 @@ export type ProcessamentoExport = {
   ano: number; mes: number;
   curso: { codigo?: string | null; nome?: string | null; acao?: string | null; codigo_operacao?: string | null; codigo_sigo?: string | null } | null;
   totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; geral: number };
-  formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor: number }>;
+  formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor_hora?: number; valor: number }>;
   formadores: Array<{ id?: string; nome: string; horas_frequentadas: number; valor_hora: number; valor: number }>;
   empresa?: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
   logoEmpresaUrl?: string | null;
@@ -41,7 +41,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   const ws = wb.addWorksheet("Processamento", { pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } } });
   ws.columns = [
-    { width: 32 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 8 }, { width: 14 },
+    { width: 32 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 8 }, { width: 10 }, { width: 14 },
   ];
 
   // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo
@@ -58,10 +58,10 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   }
   ws.getRow(1).height = 46; ws.getRow(2).height = 20;
 
-  ws.mergeCells("A4:F4");
+  ws.mergeCells("A4:G4");
   ws.getCell("A4").value = `Processamento — ${MESES[p.mes-1]} / ${p.ano}`;
   ws.getCell("A4").font = { size: 14, bold: true };
-  ws.mergeCells("A5:F5");
+  ws.mergeCells("A5:G5");
   ws.getCell("A5").value = `${p.curso?.codigo ?? ""} — ${p.curso?.nome ?? ""}`;
   ws.getCell("A5").font = { size: 11, color: { argb: "FF666666" } };
 
@@ -71,13 +71,13 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     p.curso?.codigo_sigo ? `Cód. SIGO: ${p.curso.codigo_sigo}` : "",
   ].filter(Boolean).join("  •  ");
   if (metaCurso) {
-    ws.mergeCells("A6:F6");
+    ws.mergeCells("A6:G6");
     ws.getCell("A6").value = metaCurso;
     ws.getCell("A6").font = { size: 9, color: { argb: "FF444444" } };
   }
 
   if (p.empresa) {
-    ws.mergeCells("A7:F7");
+    ws.mergeCells("A7:G7");
     ws.getCell("A7").value = `${p.empresa.nome ?? ""} • NIF ${p.empresa.nif ?? "—"} • ${p.empresa.morada ?? ""}`;
     ws.getCell("A7").font = { size: 9, color: { argb: "FF888888" } };
   }
@@ -103,13 +103,13 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   let r = 8;
 
   if (!soFormador) {
-    ws.mergeCells(`A${r}:F${r}`);
+    ws.mergeCells(`A${r}:G${r}`);
     const tituloF = soFormando
       ? `Formando — ${formandosFiltrados[0]?.nome ?? ""}`
       : "Formandos";
     ws.getCell(`A${r}`).value = tituloF; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Valor (€)"];
+    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "€/hora", "Valor (€)"];
     headFormandos.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true }; c.alignment = { horizontal: i < 2 ? "left" : "right" };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
@@ -122,11 +122,12 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       ws.getCell(r, 3).value = l.horas_previstas; ws.getCell(r, 3).numFmt = "0.0";
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 5).value = l.dias_elegiveis;
-      ws.getCell(r, 6).value = l.valor; ws.getCell(r, 6).numFmt = "#,##0.00 €";
+      if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 6).value = l.valor_hora; ws.getCell(r, 6).numFmt = "#,##0.0000 €"; }
+      ws.getCell(r, 7).value = l.valor; ws.getCell(r, 7).numFmt = "#,##0.00 €";
       r++;
     });
     if (!formandosFiltrados.length) {
-      ws.mergeCells(`A${r}:F${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
+      ws.mergeCells(`A${r}:G${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
       r++;
     }
@@ -134,13 +135,13 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   }
 
   if (!soFormando) {
-    ws.mergeCells(`A${r}:F${r}`);
+    ws.mergeCells(`A${r}:G${r}`);
     const tituloH = soFormador
       ? `Honorários — ${formadoresFiltrados[0]?.nome ?? ""}`
       : "Honorários — Formadores";
     ws.getCell(`A${r}`).value = tituloH; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headForm = ["Formador", "", "Horas", "€/hora", "", "Valor (€)"];
+    const headForm = ["Formador", "", "Horas", "", "€/hora", "", "Valor (€)"];
     headForm.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true }; c.alignment = { horizontal: i === 0 ? "left" : "right" };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
@@ -149,12 +150,12 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     formadoresFiltrados.forEach(l => {
       ws.getCell(r, 1).value = l.nome;
       ws.getCell(r, 3).value = l.horas_frequentadas; ws.getCell(r, 3).numFmt = "0.0";
-      ws.getCell(r, 4).value = l.valor_hora; ws.getCell(r, 4).numFmt = "#,##0.00 €";
-      ws.getCell(r, 6).value = l.valor; ws.getCell(r, 6).numFmt = "#,##0.00 €";
+      ws.getCell(r, 5).value = l.valor_hora; ws.getCell(r, 5).numFmt = "#,##0.00 €";
+      ws.getCell(r, 7).value = l.valor; ws.getCell(r, 7).numFmt = "#,##0.00 €";
       r++;
     });
     if (!formadoresFiltrados.length) {
-      ws.mergeCells(`A${r}:F${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
+      ws.mergeCells(`A${r}:G${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
       r++;
     }
@@ -179,16 +180,16 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   totRows.forEach(([lab, val], i) => {
     const isTotal = i === totRows.length - 1;
-    ws.mergeCells(r, 1, r, 5);
+    ws.mergeCells(r, 1, r, 6);
     ws.getCell(r, 1).value = lab;
     ws.getCell(r, 1).alignment = { horizontal: "right" };
     ws.getCell(r, 1).font = { bold: isTotal };
-    ws.getCell(r, 6).value = val; ws.getCell(r, 6).numFmt = "#,##0.00 €";
-    ws.getCell(r, 6).font = { bold: isTotal, size: isTotal ? 12 : 11 };
+    ws.getCell(r, 7).value = val; ws.getCell(r, 7).numFmt = "#,##0.00 €";
+    ws.getCell(r, 7).font = { bold: isTotal, size: isTotal ? 12 : 11 };
     if (isTotal) {
-      ws.getCell(r, 1).fill = ws.getCell(r, 6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111827" } };
+      ws.getCell(r, 1).fill = ws.getCell(r, 7).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111827" } };
       ws.getCell(r, 1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-      ws.getCell(r, 6).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+      ws.getCell(r, 7).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
     }
     r++;
   });
@@ -196,8 +197,9 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   // Rodapé Pessoas 2030 centrado abaixo dos totais
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
-    ws.addImage(id, { tl: { col: 2, row: r + 1 }, ext: { width: 160, height: 55 } });
+    ws.addImage(id, { tl: { col: 3, row: r + 1 }, ext: { width: 160, height: 55 } });
   }
+
 
   const buf = await wb.xlsx.writeBuffer();
   const alvo = soFormando

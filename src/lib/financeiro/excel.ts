@@ -64,11 +64,13 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   ]);
   if (logoE) {
     const id = wb.addImage({ buffer: logoE.buf as any, extension: logoE.ext });
-    ws.addImage(id, { tl: { col: 0, row: 0 }, ext: { width: 130, height: 55 } });
+    const s = fit(logoE.w, logoE.h, 150, 55);
+    ws.addImage(id, { tl: { col: 0, row: 0 }, ext: s });
   }
   if (logoD) {
     const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
-    ws.addImage(id, { tl: { col: 5, row: 0 }, ext: { width: 130, height: 55 } });
+    const s = fit(logoD.w, logoD.h, 150, 55);
+    ws.addImage(id, { tl: { col: 5, row: 0 }, ext: s });
   }
   ws.getRow(1).height = 46; ws.getRow(2).height = 20;
 

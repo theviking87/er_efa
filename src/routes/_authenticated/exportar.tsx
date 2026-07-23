@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Loader2, CheckCircle2, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
-import { saveFileElectron } from "@/lib/electron-io";
+import { saveFileElectron } from "@/lib/dom-helpers";
 
 export const Route = createFileRoute("/_authenticated/exportar")({
   component: ExportarPage,

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fmtDate } from "@/lib/format";
-import { localRows } from "@/lib/offline-sql";
+import { localRows } from "@/lib/dom-helpers";
 
 type Estado = "presente" | "justificada" | "injustificada";
 

@@ -45,6 +45,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
   const [elegSa, setElegSa] = useState<boolean>(true);
   const [elegTr, setElegTr] = useState<boolean>(false);
   const [kmDia, setKmDia] = useState<number>(0);
+  const [trTeto, setTrTeto] = useState<number>(0);
   useEffect(() => {
     if (bolsa.data) {
       setTipo(bolsa.data.tipo);
@@ -52,12 +53,16 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
       setElegSa(bolsa.data.elegivel_sa ?? true);
       setElegTr(bolsa.data.elegivel_tr ?? false);
       setKmDia(Number(bolsa.data.km_diario ?? 0));
+      setTrTeto(Number((bolsa.data as any).tr_teto_mensal ?? 0));
     }
   }, [bolsa.data]);
 
   const saveBolsa = useMutation({
     mutationFn: async () => {
-      const payload = { tipo, valor_mensal: valor, elegivel_sa: elegSa, elegivel_tr: elegTr, km_diario: kmDia };
+      const payload = {
+        tipo, valor_mensal: valor, elegivel_sa: elegSa, elegivel_tr: elegTr,
+        km_diario: kmDia, tr_teto_mensal: trTeto > 0 ? trTeto : null,
+      };
       if (bolsa.data?.id) {
         const { error } = await supabase.from("fin_bolsa_config")
           .update(payload as never).eq("id", bolsa.data.id);
@@ -101,10 +106,18 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
             <Label htmlFor="tr" className="text-sm">Elegível a Transporte</Label>
           </div>
           {elegTr && (
-            <div className="space-y-1.5">
-              <Label>Km diários (ida + volta)</Label>
-              <Input type="number" step="0.1" value={kmDia} onChange={e => setKmDia(Number(e.target.value))} />
-            </div>
+            <>
+              <div className="space-y-1.5">
+                <Label>Tecto mensal de transporte (€)</Label>
+                <Input type="number" step="0.01" value={trTeto} onChange={e => setTrTeto(Number(e.target.value))} />
+                <p className="text-[11px] text-muted-foreground">Valor máximo mensal a pagar ao formando. Deixa 0 para sem tecto.</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label>Km diários (nota informativa)</Label>
+                <Input type="number" step="0.1" value={kmDia} onChange={e => setKmDia(Number(e.target.value))} />
+                <p className="text-[11px] text-muted-foreground">Registo informativo (ida + volta). O cálculo mensal usa o tecto acima.</p>
+              </div>
+            </>
           )}
           <div><Button onClick={() => saveBolsa.mutate()} disabled={saveBolsa.isPending}>Guardar</Button></div>
           <p className="text-xs text-muted-foreground">Valor por dia de SA e €/km vêm da Configuração Financeira global.</p>

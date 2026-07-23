@@ -247,7 +247,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasTr,
         km_total, valor,
-        memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, regra: "dias com ≥ 1h frequentada; km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥1h) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
+        memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, regra: "dias com ≥ 3h efectivas (mesmo critério do SA); km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
       });
     }
 

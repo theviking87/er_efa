@@ -9,18 +9,15 @@ export type ProcessamentoExport = {
   ano: number; mes: number;
   curso: { codigo?: string | null; nome?: string | null; acao?: string | null; codigo_operacao?: string | null; codigo_sigo?: string | null } | null;
   totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; ATL: number; geral: number };
-  formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor_hora?: number; valor: number }>;
-  formadores: Array<{ id?: string; nome: string; horas_frequentadas: number; valor_hora: number; valor: number }>;
+  formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor_hora?: number; valor_dia?: number; km_total?: number; valor: number; memoria_calculo?: Record<string, unknown> | null }>;
+  formadores: Array<{ id?: string; nome: string; horas_frequentadas: number; valor_hora: number; valor: number; memoria_calculo?: Record<string, unknown> | null }>;
   empresa?: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
   logoEmpresaUrl?: string | null;
   logoDgertUrl?: string | null;
   logoPessoas2030Url?: string | null;
   filtro?: {
-    // Se definido, exporta APENAS este formando (esconde secção de formadores)
     formandoId?: string | null;
-    // Se definido, exporta APENAS este formador (esconde secção de formandos)
     formadorId?: string | null;
-    // Rubricas a incluir. Se vazio/omitido = todas.
     rubricas?: RubricaFilter[];
   };
 };
@@ -49,14 +46,39 @@ function fit(nw: number, nh: number, maxW: number, maxH: number) {
   return { width: Math.round(nw * r), height: Math.round(nh * r) };
 }
 
+function fmtVal(v: unknown): string {
+  if (v === null || v === undefined) return "—";
+  if (typeof v === "number") return Number.isInteger(v) ? String(v) : (+v.toFixed(4)).toString().replace(/\.?0+$/, "");
+  if (typeof v === "boolean") return v ? "sim" : "não";
+  return String(v);
+}
+
+function memoriaToStr(m?: Record<string, unknown> | null): string {
+  if (!m || typeof m !== "object") return "";
+  const entries = Object.entries(m);
+  if (!entries.length) return "";
+  // Coloca formula/regra à frente, depois pares chave=valor.
+  const partes: string[] = [];
+  const formula = m["formula"]; const regra = m["regra"];
+  if (formula) partes.push(String(formula));
+  if (regra) partes.push(String(regra));
+  const resto = entries.filter(([k]) => k !== "formula" && k !== "regra");
+  if (resto.length) {
+    partes.push(resto.map(([k, v]) => `${k}=${fmtVal(v)}`).join("; "));
+  }
+  return partes.join("  •  ");
+}
+
 export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Gestão de Formação"; wb.created = new Date();
 
-  const ws = wb.addWorksheet("Processamento", { pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } } });
+  const ws = wb.addWorksheet("Processamento", { pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } } });
+  // 9 colunas: Nome, Rubrica, H.prev, H.freq, Dias, Km, €/hora, Valor, Cálculo
   ws.columns = [
-    { width: 32 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 8 }, { width: 10 }, { width: 14 },
+    { width: 30 }, { width: 9 }, { width: 10 }, { width: 11 }, { width: 7 }, { width: 8 }, { width: 11 }, { width: 13 }, { width: 55 },
   ];
+  const LAST_COL = "I"; // 9
 
   // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo
   const [logoE, logoD, logoP] = await Promise.all([
@@ -70,14 +92,14 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   if (logoD) {
     const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
     const s = fit(logoD.w, logoD.h, 150, 55);
-    ws.addImage(id, { tl: { col: 5, row: 0 }, ext: s });
+    ws.addImage(id, { tl: { col: 7, row: 0 }, ext: s });
   }
   ws.getRow(1).height = 46; ws.getRow(2).height = 20;
 
-  ws.mergeCells("A4:G4");
+  ws.mergeCells(`A4:${LAST_COL}4`);
   ws.getCell("A4").value = `Processamento — ${MESES[p.mes-1]} / ${p.ano}`;
   ws.getCell("A4").font = { size: 14, bold: true };
-  ws.mergeCells("A5:G5");
+  ws.mergeCells(`A5:${LAST_COL}5`);
   ws.getCell("A5").value = `${p.curso?.codigo ?? ""} — ${p.curso?.nome ?? ""}`;
   ws.getCell("A5").font = { size: 11, color: { argb: "FF666666" } };
 
@@ -87,13 +109,13 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     p.curso?.codigo_sigo ? `Cód. SIGO: ${p.curso.codigo_sigo}` : "",
   ].filter(Boolean).join("  •  ");
   if (metaCurso) {
-    ws.mergeCells("A6:G6");
+    ws.mergeCells(`A6:${LAST_COL}6`);
     ws.getCell("A6").value = metaCurso;
     ws.getCell("A6").font = { size: 9, color: { argb: "FF444444" } };
   }
 
   if (p.empresa) {
-    ws.mergeCells("A7:G7");
+    ws.mergeCells(`A7:${LAST_COL}7`);
     ws.getCell("A7").value = `${p.empresa.nome ?? ""} • NIF ${p.empresa.nif ?? "—"} • ${p.empresa.morada ?? ""}`;
     ws.getCell("A7").font = { size: 9, color: { argb: "FF888888" } };
   }
@@ -119,15 +141,16 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   let r = 8;
 
   if (!soFormador) {
-    ws.mergeCells(`A${r}:G${r}`);
+    ws.mergeCells(`A${r}:${LAST_COL}${r}`);
     const tituloF = soFormando
       ? `Formando — ${formandosFiltrados[0]?.nome ?? ""}`
       : "Formandos";
     ws.getCell(`A${r}`).value = tituloF; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "€/hora", "Valor (€)"];
+    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora", "Valor (€)", "Cálculo"];
     headFormandos.forEach((h, i) => {
-      const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true }; c.alignment = { horizontal: i < 2 ? "left" : "right" };
+      const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
+      c.alignment = { horizontal: i < 2 || i === 8 ? "left" : "right", vertical: "middle", wrapText: true };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
       c.border = { bottom: { style: "thin", color: { argb: "FFCCCCCC" } } };
     });
@@ -138,12 +161,20 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       ws.getCell(r, 3).value = l.horas_previstas; ws.getCell(r, 3).numFmt = "0.0";
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 5).value = l.dias_elegiveis;
-      if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 6).value = l.valor_hora; ws.getCell(r, 6).numFmt = "#,##0.0000 €"; }
-      ws.getCell(r, 7).value = l.valor; ws.getCell(r, 7).numFmt = "#,##0.00 €";
+      if (l.km_total && l.km_total > 0) { ws.getCell(r, 6).value = l.km_total; ws.getCell(r, 6).numFmt = "0.0"; }
+      if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.0000 €"; }
+      else if (l.valor_dia && l.valor_dia > 0) { ws.getCell(r, 7).value = l.valor_dia; ws.getCell(r, 7).numFmt = "#,##0.00 €/dia"; }
+      ws.getCell(r, 8).value = l.valor; ws.getCell(r, 8).numFmt = "#,##0.00 €";
+      const memo = memoriaToStr(l.memoria_calculo);
+      if (memo) {
+        ws.getCell(r, 9).value = memo;
+        ws.getCell(r, 9).alignment = { wrapText: true, vertical: "top" };
+        ws.getCell(r, 9).font = { size: 9, color: { argb: "FF555555" } };
+      }
       r++;
     });
     if (!formandosFiltrados.length) {
-      ws.mergeCells(`A${r}:G${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
+      ws.mergeCells(`A${r}:${LAST_COL}${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
       r++;
     }
@@ -151,27 +182,34 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   }
 
   if (!soFormando) {
-    ws.mergeCells(`A${r}:G${r}`);
+    ws.mergeCells(`A${r}:${LAST_COL}${r}`);
     const tituloH = soFormador
       ? `Honorários — ${formadoresFiltrados[0]?.nome ?? ""}`
       : "Honorários — Formadores";
     ws.getCell(`A${r}`).value = tituloH; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headForm = ["Formador", "", "Horas", "", "€/hora", "", "Valor (€)"];
+    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "Valor (€)", "Cálculo"];
     headForm.forEach((h, i) => {
-      const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true }; c.alignment = { horizontal: i === 0 ? "left" : "right" };
+      const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
+      c.alignment = { horizontal: i === 0 || i === 8 ? "left" : "right", wrapText: true, vertical: "middle" };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
     });
     r++;
     formadoresFiltrados.forEach(l => {
       ws.getCell(r, 1).value = l.nome;
-      ws.getCell(r, 3).value = l.horas_frequentadas; ws.getCell(r, 3).numFmt = "0.0";
-      ws.getCell(r, 5).value = l.valor_hora; ws.getCell(r, 5).numFmt = "#,##0.00 €";
-      ws.getCell(r, 7).value = l.valor; ws.getCell(r, 7).numFmt = "#,##0.00 €";
+      ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
+      ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.00 €";
+      ws.getCell(r, 8).value = l.valor; ws.getCell(r, 8).numFmt = "#,##0.00 €";
+      const memo = memoriaToStr(l.memoria_calculo);
+      if (memo) {
+        ws.getCell(r, 9).value = memo;
+        ws.getCell(r, 9).alignment = { wrapText: true, vertical: "top" };
+        ws.getCell(r, 9).font = { size: 9, color: { argb: "FF555555" } };
+      }
       r++;
     });
     if (!formadoresFiltrados.length) {
-      ws.mergeCells(`A${r}:G${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
+      ws.mergeCells(`A${r}:${LAST_COL}${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
       r++;
     }
@@ -200,23 +238,24 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   totRows.forEach(([lab, val], i) => {
     const isTotal = i === totRows.length - 1;
-    ws.mergeCells(r, 1, r, 6);
+    ws.mergeCells(r, 1, r, 7);
     ws.getCell(r, 1).value = lab;
     ws.getCell(r, 1).alignment = { horizontal: "right" };
     ws.getCell(r, 1).font = { bold: isTotal };
-    ws.getCell(r, 7).value = val; ws.getCell(r, 7).numFmt = "#,##0.00 €";
-    ws.getCell(r, 7).font = { bold: isTotal, size: isTotal ? 12 : 11 };
+    ws.mergeCells(r, 8, r, 9);
+    ws.getCell(r, 8).value = val; ws.getCell(r, 8).numFmt = "#,##0.00 €";
+    ws.getCell(r, 8).font = { bold: isTotal, size: isTotal ? 12 : 11 };
     if (isTotal) {
-      ws.getCell(r, 1).fill = ws.getCell(r, 7).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111827" } };
+      ws.getCell(r, 1).fill = ws.getCell(r, 8).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111827" } };
       ws.getCell(r, 1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-      ws.getCell(r, 7).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+      ws.getCell(r, 8).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
     }
     r++;
   });
 
   // Legenda das rubricas
-  ws.mergeCells(`A${r}:G${r}`);
-  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; ATL — Apoio ao Tempo Livre; HN — Honorários";
+  ws.mergeCells(`A${r}:${LAST_COL}${r}`);
+  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; ATL — Apoio ao Tempo Livre; HN — Honorários. Coluna Km aplica-se ao TR (dias × km/dia aplicado).";
   ws.getCell(`A${r}`).font = { italic: true, size: 9, color: { argb: "FF666666" } };
   ws.getCell(`A${r}`).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
   ws.getRow(r).height = 32;
@@ -226,7 +265,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
     const s = fit(logoP.w, logoP.h, 200, 70);
-    ws.addImage(id, { tl: { col: 3, row: r + 1 }, ext: s });
+    ws.addImage(id, { tl: { col: 4, row: r + 1 }, ext: s });
   }
 
 

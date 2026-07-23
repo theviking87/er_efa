@@ -23,6 +23,7 @@ type Formador = {
   telemovel?: string | null;
   email?: string | null;
   iban?: string | null;
+  valor_hora?: number | null;
   habilitacoes?: string | null;
   ccp?: string | null;
   validade_ccp?: string | null;

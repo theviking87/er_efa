@@ -65,7 +65,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const avisos: string[] = [];
   const { first, last } = firstLastDay(ano, mes);
 
-  const [cfgRes, sessRes, inscRes, freqRes, bolsasRes, formadoresRes] = await Promise.all([
+  const [cfgRes, sessRes, inscRes, formadoresRes] = await Promise.all([
     supabase.from("fin_config").select("*").limit(1).maybeSingle(),
     supabase.from("sessoes")
       .select("id, data, horas, curso_ufcd_id, formador_id")
@@ -73,10 +73,13 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     supabase.from("curso_formandos")
       .select("id, formando_id, formando:formandos(id, nome)")
       .eq("curso_id", cursoId),
-    supabase.from("curso_formando_ufcds").select("curso_formando_id, curso_ufcd_id, frequenta"),
-    supabase.from("fin_bolsa_config").select("*"),
     supabase.from("formadores").select("id, nome, valor_hora"),
   ]);
+
+  if (cfgRes.error) throw cfgRes.error;
+  if (sessRes.error) throw sessRes.error;
+  if (inscRes.error) throw inscRes.error;
+  if (formadoresRes.error) throw formadoresRes.error;
 
   const cfg = cfgRes.data;
   if (!cfg) {
@@ -90,16 +93,39 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
 
   const sessoes = sessRes.data ?? [];
   const inscritos = inscRes.data ?? [];
-  const freq = freqRes.data ?? [];
-  const bolsas = bolsasRes.data ?? [];
   const formadores = formadoresRes.data ?? [];
+
+  const inscIds = inscritos.map(i => i.id);
+  const formandoIds = inscritos.map(i => i.formando_id).filter(Boolean);
+
+  // Importante: não carregar todas as inscrições UC da base de dados.
+  // O cliente limita resultados por defeito e os formandos criados mais tarde
+  // podiam ficar fora do cálculo. Aqui só buscamos as UCs dos inscritos neste curso.
+  let freq: any[] = [];
+  if (inscIds.length) {
+    const { data, error } = await supabase.from("curso_formando_ufcds")
+      .select("curso_formando_id, curso_ufcd_id, frequenta")
+      .in("curso_formando_id", inscIds)
+      .range(0, 9999);
+    if (error) throw error;
+    freq = data ?? [];
+  }
+
+  let bolsas: any[] = [];
+  if (formandoIds.length) {
+    const { data, error } = await supabase.from("fin_bolsa_config")
+      .select("*")
+      .in("formando_id", formandoIds)
+      .range(0, 9999);
+    if (error) throw error;
+    bolsas = data ?? [];
+  }
 
   if (!sessoes.length) avisos.push(`Sem sessões neste curso entre ${first} e ${last}. Verifica o curso e o mês/ano escolhidos.`);
   if (!inscritos.length) avisos.push("Este curso não tem formandos inscritos.");
   if (!bolsas.length) avisos.push("Nenhum formando tem bolsa configurada (Financeiro › Formandos).");
 
   // Faltas do mês para estas inscrições
-  const inscIds = inscritos.map(i => i.id);
   const { data: faltas } = inscIds.length
     ? await supabase.from("formando_faltas")
         .select("curso_formando_id, sessao_id, data, horas, tipo")

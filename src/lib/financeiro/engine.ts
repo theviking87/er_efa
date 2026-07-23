@@ -251,7 +251,18 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
         memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, regra: "dias com ≥ 3h efectivas (mesmo critério do SA); km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
       });
     }
-
+    // ATL — valor mensal por formando, com tecto global (se definido)
+    const valorAtlFormando = Number(bolsaCfg?.valor_atl ?? 0);
+    if (valorAtlFormando > 0) {
+      const valor = atlTetoMensal > 0 ? +Math.min(valorAtlFormando, atlTetoMensal).toFixed(2) : +valorAtlFormando.toFixed(2);
+      linhasFormandos.push({
+        formando_id: insc.formando_id, formando_nome: formandoNome,
+        rubrica: "ATL", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
+        horas_elegiveis: horasFreq, dias_elegiveis: diasPresenca,
+        valor,
+        memoria_calculo: { valor_formando: valorAtlFormando, teto_mensal: atlTetoMensal || null, aplicado_teto: atlTetoMensal > 0 && valorAtlFormando > atlTetoMensal, regra: "valor mensal fixo por formando, limitado pelo tecto global", formula: "min(valor_atl, atl_teto_mensal)" },
+      });
+    }
 
   }
 

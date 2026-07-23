@@ -189,12 +189,11 @@ function DetailPage() {
         </CardContent>
       </Card>
 
-      <errorComp />
     </PageContainer>
   );
 }
 
-function errorComp() { return null; }
+
 
 function Stat({ label, v, strong }: { label: string; v: number; strong?: boolean }) {
   return (

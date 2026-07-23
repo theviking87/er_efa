@@ -163,6 +163,7 @@ function infoBlock(doc: jsPDF, startY: number, items: [string, string][]) {
 
 // ============= 1. SIGO por curso =============
 export async function exportSigoCursoPdf(cursoId: string) {
+  await loadBranding();
   const offline = await localRows<any>(`
     SELECT 'curso' AS kind, c.id, c.codigo, c.nome, c.tipologia, c.estado, c.data_inicio, c.data_fim,
            NULL::uuid AS ufcd_id, NULL::text AS ufcd_codigo, NULL::text AS ufcd_designacao,
@@ -292,6 +293,7 @@ export async function exportSigoCursoPdf(cursoId: string) {
 
 // ============= 2. Horas por formador =============
 export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) {
+  await loadBranding();
   const offline = await localRows<any>(`
     SELECT s.data, s.horas, s.formador_id, s.curso_id, s.curso_ufcd_id,
            f.nome AS formador_nome, f.nif AS formador_nif,
@@ -393,6 +395,7 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
 
 // ============= 3. Execução de cursos =============
 export async function exportRelatorioCursosPdf() {
+  await loadBranding();
   const offline = await localRows<any>(`
     SELECT c.id, c.codigo, c.nome, c.tipologia, c.estado, c.data_inicio, c.data_fim,
            COUNT(cu.id) AS n_ufcds,
@@ -467,6 +470,7 @@ export async function exportRelatorioCursosPdf() {
 
 // ============= 4. Faltas dos formandos =============
 export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
+  await loadBranding();
   const offline = await localRows<any>(`
     SELECT ff.data, ff.horas, ff.tipo, ff.observacoes, ff.curso_formando_id, ff.sessao_id,
            c.codigo AS curso_codigo, c.nome AS curso_nome,
@@ -662,6 +666,7 @@ export interface NotaHonorariosOpts {
 }
 
 export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
+  await loadBranding();
   const { modo, ano, mes, ufcdId, valorHora } = opts;
   const dataEmissao = opts.dataEmissao || new Date().toISOString().slice(0, 10);
 

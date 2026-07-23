@@ -305,8 +305,11 @@ export type Database = {
       fin_bolsa_config: {
         Row: {
           created_at: string
+          elegivel_sa: boolean
+          elegivel_tr: boolean
           formando_id: string
           id: string
+          km_diario: number
           projeto_id: string | null
           tipo: string
           updated_at: string
@@ -314,8 +317,11 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          elegivel_sa?: boolean
+          elegivel_tr?: boolean
           formando_id: string
           id?: string
+          km_diario?: number
           projeto_id?: string | null
           tipo: string
           updated_at?: string
@@ -323,8 +329,11 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          elegivel_sa?: boolean
+          elegivel_tr?: boolean
           formando_id?: string
           id?: string
+          km_diario?: number
           projeto_id?: string | null
           tipo?: string
           updated_at?: string
@@ -744,6 +753,7 @@ export type Database = {
           updated_at: string
           validade_cc: string | null
           validade_ccp: string | null
+          valor_hora: number
         }
         Insert: {
           abreviatura?: string | null
@@ -767,6 +777,7 @@ export type Database = {
           updated_at?: string
           validade_cc?: string | null
           validade_ccp?: string | null
+          valor_hora?: number
         }
         Update: {
           abreviatura?: string | null
@@ -790,6 +801,7 @@ export type Database = {
           updated_at?: string
           validade_cc?: string | null
           validade_ccp?: string | null
+          valor_hora?: number
         }
         Relationships: []
       }
@@ -1103,7 +1115,7 @@ export type Database = {
         | "suspenso"
         | "cancelado"
       curso_tipologia: "EFA" | "ERFA" | "MFA" | "OUTRO"
-      falta_tipo: "justificada" | "injustificada"
+      falta_tipo: "justificada" | "injustificada" | "ausencia"
       formador_estado:
         | "ativo"
         | "inativo"
@@ -1243,7 +1255,7 @@ export const Constants = {
     Enums: {
       curso_estado: ["planeado", "ativo", "concluido", "suspenso", "cancelado"],
       curso_tipologia: ["EFA", "ERFA", "MFA", "OUTRO"],
-      falta_tipo: ["justificada", "injustificada"],
+      falta_tipo: ["justificada", "injustificada", "ausencia"],
       formador_estado: [
         "ativo",
         "inativo",

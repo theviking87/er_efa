@@ -128,9 +128,10 @@ function footer(doc: jsPDF) {
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     if (b.logoPessoas) {
-      const logoH = 14, logoW = 38;
-      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), (w - logoW) / 2, h - 12 - logoH - 1, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
+      const logoW = 70, logoH = 22;
+      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), w - 14 - logoW, h - 12 - logoH - 2, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
     }
+
     doc.setDrawColor(...MUTED);
     doc.setLineWidth(0.2);
     doc.line(14, h - 12, w - 14, h - 12);

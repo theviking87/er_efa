@@ -307,7 +307,7 @@ function FormandosGrouped({ linhas }: { linhas: any[] }) {
   const grupos = useMemo(() => {
     const m = new Map<string, { id: string; nome: string; total: number; linhas: any[] }>();
     for (const l of linhas) {
-      const g = m.get(l.formando_id) ?? { id: l.formando_id, nome: l.formando?.nome ?? "—", total: 0, linhas: [] };
+      const g = m.get(l.formando_id) ?? { id: l.formando_id, nome: l.formando?.nome ?? "—", total: 0, linhas: [] as any[] };
       g.linhas.push(l);
       g.total += Number(l.valor ?? 0);
       m.set(l.formando_id, g);

@@ -153,7 +153,7 @@ function DetailPage() {
   const fechado = p.estado === "fechado";
   const fmds = fmdsList;
   const fdrs = fdrsList;
-  const RUBRICAS: RubricaFilter[] = ["BF","BFM","SA","TR","HN"];
+  const RUBRICAS: RubricaFilter[] = ["BF","BFM","SA","TR","HN","ATL"];
 
   return (
     <PageContainer>

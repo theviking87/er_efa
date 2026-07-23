@@ -770,28 +770,20 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       return await new Promise<string>(res => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(blob); });
     } catch { return null; }
   }
-  const [logoE, logoD, logoP] = await Promise.all([
-    fetchDataUrl(cfg?.logo_empresa_url), fetchDataUrl(cfg?.logo_dgert_url), fetchDataUrl(cfg?.logo_pessoas2030_url),
+  const [logoE, logoD] = await Promise.all([
+    fetchDataUrl(cfg?.logo_empresa_url), fetchDataUrl(cfg?.logo_dgert_url),
   ]);
 
   const doc = newDoc("portrait");
   const w = doc.internal.pageSize.getWidth();
 
-  // Faixa de logotipos (topo)
+  // Faixa de logotipos (topo) — Empresa à esquerda, DGERT à direita. Pessoas 2030 vai no rodapé.
   const logoBandH = 22;
-  const logos = [logoE, logoD, logoP].filter(Boolean) as string[];
-  if (logos.length) {
-    const logoH = 16;
-    const logoW = 32;
-    const gap = 6;
-    const totalW = logos.length * logoW + (logos.length - 1) * gap;
-    let lx = (w - totalW) / 2;
-    const ly = (logoBandH - logoH) / 2;
-    for (const src of logos) {
-      try { doc.addImage(src, "PNG", lx, ly, logoW, logoH, undefined, "FAST"); } catch { /* ignore */ }
-      lx += logoW + gap;
-    }
-  }
+  const logoH = 16, logoW = 32;
+  const ly = (logoBandH - logoH) / 2;
+  if (logoE) { try { doc.addImage(logoE, "PNG", 14, ly, logoW, logoH, undefined, "FAST"); } catch { /* noop */ } }
+  if (logoD) { try { doc.addImage(logoD, "PNG", w - 14 - logoW, ly, logoW, logoH, undefined, "FAST"); } catch { /* noop */ } }
+
 
   // Header azul
   doc.setFillColor(...BRAND);

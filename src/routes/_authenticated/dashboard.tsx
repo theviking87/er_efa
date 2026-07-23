@@ -63,6 +63,40 @@ function Dashboard() {
     },
   });
 
+  const faltasAlerta = useQuery({
+    queryKey: ["dashboard-faltas-limite"],
+    queryFn: async () => {
+      const { data: faltas } = await supabase
+        .from("formando_faltas")
+        .select("horas, sessao:sessoes(curso_ufcd_id), curso_formando:curso_formandos(id, formando:formandos(nome), curso:cursos(id, codigo, nome))");
+      const { data: ucs } = await supabase
+        .from("curso_ufcds")
+        .select("id, horas_totais, ufcd:ufcds(codigo, designacao)");
+      const ucMap = new Map((ucs ?? []).map((u: any) => [u.id, u]));
+      // agrupar por (curso_formando_id, curso_ufcd_id)
+      const agg = new Map<string, { horas: number; cf: any; uc: any }>();
+      for (const f of (faltas ?? []) as any[]) {
+        const ucId = f.sessao?.curso_ufcd_id;
+        if (!ucId || !f.curso_formando) continue;
+        const uc = ucMap.get(ucId);
+        if (!uc) continue;
+        const key = `${f.curso_formando.id}::${ucId}`;
+        const cur = agg.get(key) ?? { horas: 0, cf: f.curso_formando, uc };
+        cur.horas += Number(f.horas ?? 0);
+        agg.set(key, cur);
+      }
+      const rows = Array.from(agg.values())
+        .map(r => {
+          const total = Number(r.uc.horas_totais ?? 0);
+          const pct = total > 0 ? (r.horas / total) * 100 : 0;
+          return { ...r, total, pct };
+        })
+        .filter(r => r.pct >= 8)
+        .sort((a, b) => b.pct - a.pct);
+      return rows;
+    },
+  });
+
   return (
     <PageContainer>
       <PageHeader title="Painel" description="Visão geral da atividade. Apenas o essencial." />

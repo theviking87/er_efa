@@ -161,33 +161,6 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     }
   }
 
-  if (!soFormando) {
-    ws.mergeCells(`A${r}:F${r}`);
-    const tituloH = soFormador
-      ? `Honorários — ${formadoresFiltrados[0]?.nome ?? ""}`
-      : "Honorários — Formadores";
-    ws.getCell(`A${r}`).value = tituloH; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
-    r++;
-    const headForm = ["Formador", "", "Horas", "€/hora", "", "Valor (€)"];
-    headForm.forEach((h, i) => {
-      const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true }; c.alignment = { horizontal: i === 0 ? "left" : "right" };
-      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
-    });
-    r++;
-    formadoresFiltrados.forEach(l => {
-      ws.getCell(r, 1).value = l.nome;
-      ws.getCell(r, 3).value = l.horas_frequentadas; ws.getCell(r, 3).numFmt = "0.0";
-      ws.getCell(r, 4).value = l.valor_hora; ws.getCell(r, 4).numFmt = "#,##0.00 €";
-      ws.getCell(r, 6).value = l.valor; ws.getCell(r, 6).numFmt = "#,##0.00 €";
-      r++;
-    });
-    if (!formadoresFiltrados.length) {
-      ws.mergeCells(`A${r}:F${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
-      ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
-      r++;
-    }
-  }
-
   // Totais recalculados sobre linhas filtradas
   r += 2;
   const t = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0 };
@@ -207,16 +180,16 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   totRows.forEach(([lab, val], i) => {
     const isTotal = i === totRows.length - 1;
-    ws.mergeCells(r, 1, r, 5);
+    ws.mergeCells(r, 1, r, 6);
     ws.getCell(r, 1).value = lab;
     ws.getCell(r, 1).alignment = { horizontal: "right" };
     ws.getCell(r, 1).font = { bold: isTotal };
-    ws.getCell(r, 6).value = val; ws.getCell(r, 6).numFmt = "#,##0.00 €";
-    ws.getCell(r, 6).font = { bold: isTotal, size: isTotal ? 12 : 11 };
+    ws.getCell(r, 7).value = val; ws.getCell(r, 7).numFmt = "#,##0.00 €";
+    ws.getCell(r, 7).font = { bold: isTotal, size: isTotal ? 12 : 11 };
     if (isTotal) {
-      ws.getCell(r, 1).fill = ws.getCell(r, 6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111827" } };
+      ws.getCell(r, 1).fill = ws.getCell(r, 7).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111827" } };
       ws.getCell(r, 1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-      ws.getCell(r, 6).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+      ws.getCell(r, 7).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
     }
     r++;
   });
@@ -224,8 +197,9 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   // Rodapé Pessoas 2030 centrado abaixo dos totais
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
-    ws.addImage(id, { tl: { col: 2, row: r + 1 }, ext: { width: 160, height: 55 } });
+    ws.addImage(id, { tl: { col: 3, row: r + 1 }, ext: { width: 160, height: 55 } });
   }
+
 
   const buf = await wb.xlsx.writeBuffer();
   const alvo = soFormando

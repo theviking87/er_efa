@@ -179,20 +179,21 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   // Totais recalculados sobre linhas filtradas
   r += 2;
-  const t = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0 };
+  const t = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 };
   formandosFiltrados.forEach(l => { const k = l.rubrica as keyof typeof t; if (k in t) t[k] += l.valor; });
   formadoresFiltrados.forEach(l => { t.HN += l.valor; });
-  const geral = t.BF + t.BFM + t.SA + t.TR + t.HN;
+  const geral = t.BF + t.BFM + t.SA + t.TR + t.HN + t.ATL;
   const totRows: Array<[string, number]> = [];
-  const rubricasVis: RubricaFilter[] = rubricasSel ? Array.from(rubricasSel) : ["BF","BFM","SA","TR","HN"];
-  const totalFormandos = (rubricasVis.includes("BF") ? t.BF : 0) + (rubricasVis.includes("BFM") ? t.BFM : 0) + (rubricasVis.includes("SA") ? t.SA : 0) + (rubricasVis.includes("TR") ? t.TR : 0);
+  const rubricasVis: RubricaFilter[] = rubricasSel ? Array.from(rubricasSel) : ["BF","BFM","SA","TR","HN","ATL"];
+  const totalFormandos = (rubricasVis.includes("BF") ? t.BF : 0) + (rubricasVis.includes("BFM") ? t.BFM : 0) + (rubricasVis.includes("SA") ? t.SA : 0) + (rubricasVis.includes("TR") ? t.TR : 0) + (rubricasVis.includes("ATL") ? t.ATL : 0);
   const totalFormadores = rubricasVis.includes("HN") ? t.HN : 0;
   if (!soFormador) {
     if (rubricasVis.includes("BF")) totRows.push(["Total BF", t.BF]);
     if (rubricasVis.includes("BFM")) totRows.push(["Total BFM", t.BFM]);
     if (rubricasVis.includes("SA")) totRows.push(["Total SA", t.SA]);
     if (rubricasVis.includes("TR")) totRows.push(["Total TR", t.TR]);
-    totRows.push(["Subtotal Formandos (BF+BFM+SA+TR)", totalFormandos]);
+    if (rubricasVis.includes("ATL")) totRows.push(["Total ATL", t.ATL]);
+    totRows.push(["Subtotal Formandos (BF+BFM+SA+TR+ATL)", totalFormandos]);
   }
   if (!soFormando && rubricasVis.includes("HN")) totRows.push(["Subtotal Formadores (HN)", totalFormadores]);
   totRows.push(["TOTAL", geral]);

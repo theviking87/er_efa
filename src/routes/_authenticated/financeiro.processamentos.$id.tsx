@@ -134,8 +134,9 @@ function DetailPage() {
 
   const p = proc.data as any;
   const fechado = p.estado === "fechado";
-  const fmds = (linhas.data ?? []).filter((l: any) => l.formando_id);
-  const fdrs = (linhas.data ?? []).filter((l: any) => l.formador_id);
+  const fmds = fmdsList;
+  const fdrs = fdrsList;
+  const RUBRICAS: RubricaFilter[] = ["BF","BFM","SA","TR","HN"];
 
   return (
     <PageContainer>
@@ -145,7 +146,6 @@ function DetailPage() {
         actions={
           <div className="flex gap-2 items-center">
             <Badge variant={fechado ? "default" : "secondary"}>{p.estado}</Badge>
-            <Button variant="outline" onClick={exportar}><FileSpreadsheet className="size-4" />Excel</Button>
             {fechado ? (
               <Button variant="outline" onClick={() => toggleEstado.mutate("rascunho")}><LockOpen className="size-4" />Reabrir</Button>
             ) : (
@@ -173,6 +173,62 @@ function DetailPage() {
         <Stat label="SA" v={p.total_sa} /><Stat label="TR" v={p.total_tr} />
         <Stat label="HN" v={p.total_hn} /><Stat label="Total" v={p.total_geral} strong />
       </div>
+
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><FileSpreadsheet className="size-4" />Exportar Excel</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-4">
+          <div className="space-y-1.5">
+            <Label>Alvo</Label>
+            <Select value={filtroModo} onValueChange={(v: any) => { setFiltroModo(v); setFiltroId(""); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tudo">Todos (formandos + formadores)</SelectItem>
+                <SelectItem value="formando">Apenas um formando</SelectItem>
+                <SelectItem value="formador">Apenas um formador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {filtroModo === "formando" && (
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Formando</Label>
+              <Select value={filtroId} onValueChange={setFiltroId}>
+                <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
+                <SelectContent>
+                  {opcoesFormandos.map(o => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {filtroModo === "formador" && (
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Formador</Label>
+              <Select value={filtroId} onValueChange={setFiltroId}>
+                <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
+                <SelectContent>
+                  {opcoesFormadores.map(o => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className={`space-y-1.5 ${filtroModo === "tudo" ? "md:col-span-3" : ""}`}>
+            <Label>Rubricas</Label>
+            <div className="flex flex-wrap gap-3 items-center pt-1">
+              {RUBRICAS.map(r => (
+                <label key={r} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <Checkbox checked={rubricasSel.has(r)} onCheckedChange={() => toggleRubrica(r)} />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="md:col-span-4 flex justify-end">
+            <Button onClick={exportar}><FileSpreadsheet className="size-4" />Gerar Excel</Button>
+          </div>
+        </CardContent>
+      </Card>
+
 
       <Card className="mb-4">
         <CardHeader className="pb-3"><CardTitle className="text-base">Formandos</CardTitle></CardHeader>

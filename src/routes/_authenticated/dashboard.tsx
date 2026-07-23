@@ -176,7 +176,7 @@ function Dashboard() {
             {counts.data?.ccpProximoExpirar?.length ? (
               <Alert tone="warning" title={`${counts.data.ccpProximoExpirar.length} CCP a expirar em 60 dias`} />
             ) : null}
-            {!counts.data?.ccpExpirado?.length && !counts.data?.ccpProximoExpirar?.length && (
+            {!counts.data?.ccpExpirado?.length && !counts.data?.ccpProximoExpirar?.length && !faltasAlerta.data?.length && (
               <div className="text-xs text-muted-foreground">Sem alertas críticos.</div>
             )}
           </CardContent>

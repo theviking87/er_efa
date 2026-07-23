@@ -51,7 +51,7 @@ function CursosPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cursos"] });
       setOpen(false);
-      setForm({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "" });
+      setForm({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "", acao: "", codigo_operacao: "", codigo_sigo: "" });
       toast.success("Curso criado");
     },
     onError: (e: any) => toast.error("Erro", { description: e.message }),

@@ -1,113 +1,132 @@
+# Refatoração v2.0 — Módulo Financeiro + Limpeza Total
 
-# Motor Financeiro — Fase 1
+## 1. Eliminação (irreversível)
 
-Ligar todos os módulos existentes (Projetos → Cursos → UFCD → Sessões → Faltas → Formandos → Rubricas) a um **motor de processamento mensal** único. Nada é reinventado: aproveitamos `fin_rubricas`, `fin_rubrica_regras`, `fin_formando_rubricas`, `fin_formador_config`, `fin_configuracao_global`, `financeiro_processamentos` e as tabelas de linhas (`financeiro_bolsas`, `_subsidios`, `_quilometros`, `_honorarios`). O objetivo é que o utilizador abra o wizard, escolha Projeto/Curso/Mês, e o sistema calcule tudo automaticamente.
+**Pastas/ficheiros removidos por completo:**
+- `offline/` (subprojeto inteiro)
+- `electron/`, `dist-electron/`, `index.electron.html`, `vite.config.electron.ts`, `src/electron-entry.tsx`
+- `src/integrations/local/` (todos os shims: supabase-shim, auth-shim, storage-shim, realtime-shim, query-builder, select-parser, relationships, tanstack-start-shim, server-stubs/)
+- `src/lib/pglite.worker.ts`, `src/lib/local-db.ts`, `src/lib/local-migrations.generated.ts`, `src/lib/local-import-backup.ts`, `src/lib/offline-sql.ts`
+- `scripts/bundle-migrations.mjs`
+- `docs/OFFLINE.md`
 
-## O que o utilizador vai ver
+**Dependências npm removidas:**
+- `@electric-sql/pglite`, `electron`, `@electron/packager`, `jszip` (se só usado por import-backup)
 
-**Nova rota** `/financeiro/processamentos/novo` — wizard em 4 passos:
+**Código morto identificado no scan:**
+- Serviços/hooks nunca importados
+- Componentes shadcn órfãos remanescentes
+- `src/lib/error-page.ts`, `error-capture.ts` se não referenciados fora do offline
+- Referências a `paintBeforeHeavyWork` (do offline-sql)
 
-1. **Contexto** — Projeto (pré‑preenchido do global), Curso, Ano, Mês.
-2. **Dados carregados** — resumo automático: formandos inscritos, sessões do mês, horas previstas, horas frequentadas (= previstas − faltas), rubricas atribuídas a cada formando, config global e config dos formadores das sessões.
-3. **Validações** — lista de avisos bloqueantes vs. não bloqueantes (IBAN em falta, rubrica sem regra ativa, curso encerrado, sessões sem faltas registadas, config incompleta, regras expiradas).
-4. **Cálculo & revisão** — tabela por formando × rubrica com valor calculado, valor aprovado editável, memória de cálculo (tooltip explicando como foi obtido), e totais gerais (Bolsas / Alimentação / Km / Honorários / Total).
+## 2. Base de dados — Reset do Financeiro
 
-Botões: **Guardar rascunho** (estado `aberto`, recalculável), **Fechar processamento** (só se sem erros bloqueantes; passa a `fechado`, imutável).
+**Drop:** `fin_rubrica_regras`, `fin_formando_rubricas`, `fin_formador_config`, `fin_configuracao_global`, `fin_rubricas`, `fin_auditoria`, `fin_utilizadores`, `financeiro_bolsas`, `financeiro_subsidios`, `financeiro_quilometros`, `financeiro_honorarios`, `financeiro_processamentos`.
 
-**Página existente** `/financeiro/processamentos` — passa a listar todos os processamentos com estado, totais agregados e ligação para ver/editar/reabrir (quando `aberto`) ou apenas visualizar (quando `fechado`).
+**Criar (schema simplificado):**
 
-**Dashboard** `/financeiro` — cartões passam a mostrar totais reais dos processamentos abertos/fechados do projeto ativo, últimos alertas e últimas entradas de auditoria (já existe a infraestrutura).
+```
+fin_config (linha única global)
+  horas_mes_referencia, valor_sa, valor_km, limite_km_dia,
+  percentagem_irs, percentagem_ss, percentagem_iva,
+  empresa_nome, empresa_nif, empresa_morada, empresa_email, empresa_telefone,
+  logo_empresa_url, logo_dgert_url, logo_pessoas2030_url
 
-## Arquitetura (camadas)
+fin_bolsa_config (por formando+projeto)
+  formando_id, projeto_id, tipo ('BF'|'BFM'), valor_mensal
 
-```text
-src/lib/financeiro/
-  types.ts                     (já existe — só acrescento tipos do motor)
-  engine/
-    horas.ts                   calcula horas previstas/frequentadas por formando/mês
-    contexto.ts                carrega o "snapshot" do processamento (formandos, sessões, faltas, rubricas, regras, configs)
-    validacoes.ts              regras de validação (bloqueantes vs avisos)
-    rubricas/
-      index.ts                 registry: mapa código → função de cálculo
-      bolsa.ts                 BF1 / BF2 / BFM  (valor_hora × horas, com teto mensal)
-      alimentacao.ts           SA  (dias com ≥3h × valor_dia)
-      quilometros.ts           KM  (dias de formação × km × valor_km, com teto)
-      honorarios.ts            HON (sessões × horas × valor_hora do formador, IVA/IRS/SS)
-    processamento.ts           orquestra: contexto → validações → calcula todas as rubricas → devolve resultado tipado
-    persistencia.ts            escreve linhas nas tabelas financeiro_* dentro de uma transação; auditoria por linha
-  services/                    (já existe — reutilizado sem alterações)
+formando_ufcds (novo, na ficha do formando)
+  formando_id, ufcd_id  — UCs que o formando frequenta
+
+fin_processamento
+  projeto_id, curso_id, ano, mes, estado ('rascunho'|'fechado'), totais, created_at
+
+fin_processamento_linha (uma linha por formando+rubrica)
+  processamento_id, formando_id, rubrica ('BF'|'BFM'|'SA'|'TR'|'HN'),
+  horas_previstas, horas_frequentadas, horas_elegiveis, dias_elegiveis,
+  valor_hora, valor_dia, km_total, valor, memoria_calculo (jsonb)
 ```
 
-Regras de ouro:
-- Componentes React só chamam `engine/processamento.ts` e `engine/persistencia.ts`. Zero SQL/cálculo em JSX.
-- Cada rubrica implementa a mesma assinatura `calcular(contexto, formando, regra, override?) → LinhaCalculada`. Adicionar uma nova rubrica no futuro = criar um ficheiro e registá‑lo no `registry`, sem tocar no motor.
-- Todo o `insert/update/delete` financeiro passa pelo helper de auditoria existente (`services/auditoria.ts`).
+**Presenças:** adicionar `tipo` a `formando_faltas` com valores `falta`/`ausencia_uc`. Trigger auto-marca `ausencia_uc` quando a UFCD da sessão não está em `formando_ufcds`. Ausências não contam para cálculo.
 
-## Base de dados (migração mínima)
+## 3. Motor Financeiro (reescrito, simples)
 
-Só ajustes cirúrgicos; **não são criadas tabelas duplicadas**:
+`src/lib/financeiro/` limpo, com apenas:
+- `config.ts` — get/update fin_config
+- `engine.ts` — 1 função `calcularProcessamento(projetoId, cursoId, ano, mes, selecoes)` que devolve linhas
+- `rubricas/{bolsa,alimentacao,transporte,honorarios}.ts` — cada uma expõe `calcular(ctx, formando)`
 
-1. `financeiro_processamentos`
-   - `estado` passa a aceitar também `calculado` (aberto → calculado → fechado).
-   - Colunas novas: `fechado_por` (texto/nome), `total_bolsas`, `total_subsidios`, `total_km`, `total_honorarios`, `total_geral` (numeric), `snapshot jsonb` (memória de cálculo imutável ao fechar).
-2. `financeiro_bolsas`
-   - Colunas: `valor_aprovado numeric` (fica editável até fechar), `teto_aplicado boolean`, `memoria_calculo jsonb`.
-3. `financeiro_subsidios`, `financeiro_quilometros`, `financeiro_honorarios`
-   - Cada uma ganha `memoria_calculo jsonb` e `valor_aprovado numeric`.
-4. Trigger `fin_bloqueio_fechado` em cada tabela `financeiro_*`: se o processamento pai estiver `fechado`, `RAISE EXCEPTION` em UPDATE/DELETE. Garante imutabilidade a nível de BD.
-5. `fin_rubrica_regras` — sem alterações estruturais; passa a ser usado a fundo pelo engine (procura pela regra ativa em `data_inicio ≤ mês ≤ COALESCE(data_fim, ∞)`).
+**Regras codificadas:**
+- BF/BFM: `valor_hora = valor_mensal / horas_mes_referencia`; total = horas_frequentadas × valor_hora
+- SA: dias com ≥ 3h frequentadas × valor_sa
+- TR: min(km_dia × valor_km, limite_km_dia) somado por dia
+- HN: horas × valor_hora × (1 + iva%) - retenção IRS/SS
 
-## Seed condicional (só se vazio)
+## 4. UI Financeira
 
-Executado **apenas** se `SELECT count(*) FROM fin_rubricas = 0`. Cria:
-- `BF1` Bolsa Formação Tipo 1
-- `BF2` Bolsa Formação Tipo 2
-- `BFM` Bolsa Formação Majorada
-- `SA`  Subsídio Alimentação
-- `KM`  Quilómetros
-- `HON` Honorários
+**Sidebar (reduzido):**
+- Configuração (form único)
+- Rubricas (só valores default por projeto, opcional)
+- Processamentos (lista + wizard novo)
+- Auditoria (mantida)
 
-E uma regra ativa por rubrica com valores exemplo parametrizáveis (`valor_unitario`, `valor_maximo`, `dias_minimos`, `horas_referencia`). Todos editáveis em `/financeiro/regras` (página já existe).
+**Wizard novo processamento (1 ecrã):**
+- Escolher projeto/curso/mês/ano
+- Tabela: 1 linha por formando, 5 checkboxes (BF, BFM, SA, TR, HN) + input `valor_mensal` quando BF/BFM marcado
+- Botão "Calcular" → preview totais → "Fechar processamento"
 
-## Fórmulas parametrizadas
+**Ficha formando:** adicionar tab "UFCDs frequentadas" (multi-select das UFCDs do curso).
 
-- **Bolsa**: `horas_frequentadas × valor_hora`, limitado a `valor_maximo` mensal. Se aplicado, `teto_aplicado=true` e explicação no `memoria_calculo`.
-- **Alimentação**: dias distintos em que o formando esteve ≥ `dias_minimos` horas presente (default 3) × `valor_unitario`.
-- **Km**: dias com sessão × `km` do formando (campo já existente ou 0) × 2 (ida/volta) × `valor_unitario`, limitado a `valor_maximo`.
-- **Honorários**: por formador com sessões no mês, `Σ horas × valor_hora` (de `fin_formador_config` ou tabela HON) + IVA + retenção IRS + SS conforme regime; nunca hardcoded.
+## 5. Documentos (Excel + PDF)
 
-Horas frequentadas = `Σ sessoes_do_mes.horas − Σ faltas.horas`, por formando (via `curso_formandos` → `formando_faltas`). Correções manuais registam motivo, utilizador e timestamp em auditoria.
+Layout único em `src/lib/documentos/layout.ts`:
+- Header: logo empresa (esq) + logo DGERT (dir) + título
+- Footer: logo Pessoas 2030 + página X/Y
 
-## Validações (Passo 3)
+Exports por processamento:
+- Individual por formando: `mapa-bolsa.xlsx`, `mapa-sa.xlsx`, `mapa-transporte.xlsx`, `mapa-honorarios.xlsx`, `mapa-geral.xlsx`
+- Consolidado (todos os formandos): mesmos 5 tipos
+- PDFs equivalentes (mesma estrutura)
 
-Bloqueantes: curso arquivado, config global em falta, formando sem IBAN quando rubrica exige, rubrica atribuída sem regra ativa no período, horas frequentadas negativas.
-Avisos: sessões sem faltas registadas (assume 100%), formador sem `fin_formador_config` (usa defaults), regra a expirar durante o mês.
+Logos: 3 campos URL em fin_config + upload via storage bucket `empresa-logos`.
 
-## Fecho e auditoria
+## 6. Ficheiros que MUDAM (fora do financeiro só o mínimo)
 
-- `Fechar processamento` só executa se validações bloqueantes = 0.
-- Grava `snapshot` completo, muda estado para `fechado`, e o trigger bloqueia futuras alterações. Reabrir cria nova versão (novo `processamento_id` com referência) — não sobrescreve.
-- Cada linha alterada (valor aprovado, observação, correção manual de horas) gera registo em `fin_auditoria` com campo, valor anterior, valor novo, motivo e utilizador ativo (via `current-user.ts`).
+- `src/routes/__root.tsx`, `src/router.tsx`, `vite.config.ts`, `package.json` — limpeza
+- `src/components/app-shell.tsx` — sidebar sem itens removidos
+- `src/components/formando-dialog.tsx` / rota — adiciona tab UFCDs
+- `src/components/presencas-dialog.tsx` — respeita `ausencia_uc`
+- Nada mais em cursos/cronograma/formadores fora do financeiro
 
-## Componentes reutilizados
+## 7. Verificações finais
 
-- `Card`, `Tabs`, `Table`, `Dialog`, `Badge` do shadcn (já em uso).
-- `useProjetoAtivo` para pré‑seleção do projeto.
-- `services/auditoria.ts`, `services/formando-rubricas.ts`, `services/formador-config.ts`, `services/config-global.ts` — sem alterações.
-- Componente existente `formando-panel.tsx` para o drill‑down por formando dentro do wizard.
+- `tsgo --noEmit` sem erros
+- `bun run build` (só web) sem erros
+- ESLint clean
+- Grep final: 0 ocorrências de `electron`, `pglite`, `offline`, `local-db`, `sql.js`
 
-## Fora do âmbito desta fase
+## Detalhes técnicos
 
-- Geração de PDFs por rubrica (Nota de Honorários já existe; recibos de bolsa ficam para v2).
-- Reabertura formal com versionamento imutável completo (grava snapshot mas reabertura simples nesta fase).
-- Exportação bancária SEPA.
-- Dashboard financeiro global multi‑projeto (mantém filtro por projeto ativo).
+**Tabela `formando_ufcds` vs `curso_formando_ufcds`:** já existe `curso_formando_ufcds` — reutilizo essa, adiciono coluna `frequenta boolean default true`. Se `false`, presenças dessa UFCD marcadas como ausência.
 
-## Entregáveis finais (relatório)
+**Migração de dados históricos:** conforme decidido — RESET TOTAL. Aviso o utilizador que os processamentos atuais serão apagados antes de correr.
 
-1. Serviços novos: `engine/{horas,contexto,validacoes,processamento,persistencia}.ts` + 4 rubricas.
-2. Componentes alterados: `financeiro.processamentos.tsx`, `financeiro.index.tsx`, nova rota do wizard.
-3. Reutilizados: todos os `services/*`, `formando-panel.tsx`, `utilizadores-card.tsx`.
-4. Migração única: colunas extra + triggers de bloqueio + seed condicional.
-5. Performance: uma única query por bloco (formandos, sessões, faltas, rubricas) em vez de N+1.
-6. Faltas para v1.0: reabertura versionada, PDFs por rubrica, exportação bancária, dashboard multi‑projeto, testes automáticos do engine.
+**Excel:** `exceljs` (já no bundle via alguma dep? senão adiciono). PDF: `jspdf` + `jspdf-autotable` (já usados).
+
+**Ordem de execução:**
+1. Migração DB (drop + create + coluna `frequenta`)
+2. Remoção pastas offline/electron
+3. Remoção deps do package.json
+4. Reescrita `src/lib/financeiro/`
+5. Reescrita rotas `_authenticated/financeiro.*`
+6. Documentos
+7. Cleanup imports órfãos + typecheck
+
+## Riscos / avisos
+
+- **Perda de dados financeiros existentes** (confirmado pelo utilizador)
+- **Sem rollback fácil** para o offline — vai só ao histórico Git
+- Terceiros que dependam de URL `/electron-entry` ou downloads do executável deixam de funcionar
+- Logos ficam placeholder até serem enviados
+
+Confirma para eu executar tudo de uma vez.

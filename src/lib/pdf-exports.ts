@@ -791,10 +791,17 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   // Faixa de logotipos (topo) — Empresa à esquerda, DGERT à direita. Pessoas 2030 vai no rodapé.
   const logoBandH = 22;
-  const logoH = 16, logoW = 32;
-  const ly = (logoBandH - logoH) / 2;
-  if (logoE) { try { doc.addImage(logoE, imgFmt(logoE), 14, ly, logoW, logoH, undefined, "NONE"); } catch { /* noop */ } }
-  if (logoD) { try { doc.addImage(logoD, imgFmt(logoD), w - 14 - logoW, ly, logoW, logoH, undefined, "NONE"); } catch { /* noop */ } }
+  const maxW = 38, maxH = 18;
+  if (logoE) {
+    const s = fitBox(doc, logoE, maxW, maxH);
+    const y = (logoBandH - s.h) / 2;
+    try { doc.addImage(logoE, imgFmt(logoE), 14, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+  }
+  if (logoD) {
+    const s = fitBox(doc, logoD, maxW, maxH);
+    const y = (logoBandH - s.h) / 2;
+    try { doc.addImage(logoD, imgFmt(logoD), w - 14 - s.w, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+  }
 
 
   // Header azul

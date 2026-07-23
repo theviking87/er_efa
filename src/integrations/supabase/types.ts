@@ -321,6 +321,7 @@ export type Database = {
           km_diario: number
           projeto_id: string | null
           tipo: string
+          tr_teto_mensal: number | null
           updated_at: string
           valor_mensal: number
         }
@@ -333,6 +334,7 @@ export type Database = {
           km_diario?: number
           projeto_id?: string | null
           tipo: string
+          tr_teto_mensal?: number | null
           updated_at?: string
           valor_mensal?: number
         }
@@ -345,6 +347,7 @@ export type Database = {
           km_diario?: number
           projeto_id?: string | null
           tipo?: string
+          tr_teto_mensal?: number | null
           updated_at?: string
           valor_mensal?: number
         }

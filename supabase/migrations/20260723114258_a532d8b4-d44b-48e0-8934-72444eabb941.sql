@@ -1,0 +1,1 @@
+ALTER TABLE public.fin_bolsa_config ADD COLUMN IF NOT EXISTS tr_teto_mensal numeric;

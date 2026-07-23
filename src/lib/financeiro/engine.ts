@@ -133,10 +133,26 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const horasFreq = Math.max(0, horasPrevistas - horasFalta);
 
     // Dias = todos os dias do cronograma com formação atribuída (UCs em que o formando está inscrito).
-    // Faltas não reduzem dias — apenas descontam horas.
+    // Faltas não reduzem o nº de dias — apenas descontam horas.
     const diasSet = new Set<string>();
     minhasSess.forEach((s: any) => diasSet.add(s.data));
     const diasPresenca = diasSet.size;
+
+    // Dias elegíveis para SA: apenas dias com ≥ 3h efectivamente frequentadas
+    // (horas do dia nas UCs inscritas menos faltas registadas nesse dia).
+    const horasPorDia = new Map<string, number>();
+    minhasSess.forEach((s: any) => {
+      horasPorDia.set(s.data, (horasPorDia.get(s.data) ?? 0) + Number(s.horas || 0));
+    });
+    const faltasPorDia = new Map<string, number>();
+    minhasFaltas.forEach((f: any) => {
+      faltasPorDia.set(f.data, (faltasPorDia.get(f.data) ?? 0) + Number(f.horas || 0));
+    });
+    let diasSa = 0;
+    horasPorDia.forEach((h, dia) => {
+      const efect = Math.max(0, h - (faltasPorDia.get(dia) ?? 0));
+      if (efect >= 3) diasSa += 1;
+    });
 
     const bolsaCfg = bolsaByFormando.get(insc.formando_id);
     const tipoBolsa = bolsaCfg?.tipo as "BF" | "BFM" | "nenhuma" | undefined;
@@ -156,31 +172,32 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       });
     }
 
-    // SA
-    if (elegSa && valorSa > 0 && diasPresenca > 0) {
-      const valor = +(diasPresenca * valorSa).toFixed(2);
+    // SA — só dias com ≥ 3h frequentadas
+    if (elegSa && valorSa > 0 && diasSa > 0) {
+      const valor = +(diasSa * valorSa).toFixed(2);
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "SA", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
-        horas_elegiveis: horasFreq, dias_elegiveis: diasPresenca,
+        horas_elegiveis: horasFreq, dias_elegiveis: diasSa,
         valor_dia: valorSa, valor,
-        memoria_calculo: { valor_dia: valorSa, dias: diasPresenca, formula: "dias_presenca × valor_sa" },
+        memoria_calculo: { valor_dia: valorSa, dias: diasSa, regra: "dias com ≥ 3h frequentadas", formula: "dias(≥3h) × valor_sa" },
       });
     }
 
-    // TR
-    if (elegTr && kmDia > 0 && valorKm > 0 && diasPresenca > 0) {
-      const km_total = +(diasPresenca * kmDia).toFixed(2);
+    // TR — só dias elegíveis (mesma regra ≥ 3h)
+    if (elegTr && kmDia > 0 && valorKm > 0 && diasSa > 0) {
+      const km_total = +(diasSa * kmDia).toFixed(2);
       const valor = +(km_total * valorKm).toFixed(2);
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
-        horas_elegiveis: horasFreq, dias_elegiveis: diasPresenca,
+        horas_elegiveis: horasFreq, dias_elegiveis: diasSa,
         km_total, valor,
-        memoria_calculo: { km_dia: kmDia, dias: diasPresenca, valor_km: valorKm, formula: "dias × km_dia × valor_km" },
+        memoria_calculo: { km_dia: kmDia, dias: diasSa, valor_km: valorKm, regra: "dias com ≥ 3h frequentadas", formula: "dias(≥3h) × km_dia × valor_km" },
       });
     }
   }
+
 
   // Honorários por formador — soma horas de sessões do mês por formador
   const horasPorFormador = new Map<string, number>();

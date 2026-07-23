@@ -133,8 +133,10 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const linhasFormandos: LinhaFormando[] = [];
 
   for (const insc of inscritos) {
-    const formandoNome = (insc as any).formando?.nome ?? "—";
-    const ucsInscritas = ucsByInsc.get(insc.id) ?? new Set<string>();
+    const ausentes = ausentesByInsc.get(insc.id) ?? new Set<string>();
+    const ucsInscritas = inscHasRows.has(insc.id)
+      ? (ucsByInsc.get(insc.id) ?? new Set<string>())
+      : new Set<string>([...ucsCurso].filter(u => !ausentes.has(u)));
 
     // Sessões elegíveis: só as UC em que o formando está inscrito/frequenta.
     const minhasSess = sessoes.filter((s: any) => ucsInscritas.has(s.curso_ufcd_id));

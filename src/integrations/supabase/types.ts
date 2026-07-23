@@ -494,12 +494,12 @@ export type Database = {
       fin_processamento_linha: {
         Row: {
           created_at: string
-          dias_elegiveis: number
+          dias_elegiveis: number | null
           formador_id: string | null
           formando_id: string | null
-          horas_elegiveis: number
-          horas_frequentadas: number
-          horas_previstas: number
+          horas_elegiveis: number | null
+          horas_frequentadas: number | null
+          horas_previstas: number | null
           id: string
           km_total: number
           memoria_calculo: Json
@@ -507,16 +507,16 @@ export type Database = {
           rubrica: string
           valor: number
           valor_dia: number
-          valor_hora: number
+          valor_hora: number | null
         }
         Insert: {
           created_at?: string
-          dias_elegiveis?: number
+          dias_elegiveis?: number | null
           formador_id?: string | null
           formando_id?: string | null
-          horas_elegiveis?: number
-          horas_frequentadas?: number
-          horas_previstas?: number
+          horas_elegiveis?: number | null
+          horas_frequentadas?: number | null
+          horas_previstas?: number | null
           id?: string
           km_total?: number
           memoria_calculo?: Json
@@ -524,16 +524,16 @@ export type Database = {
           rubrica: string
           valor?: number
           valor_dia?: number
-          valor_hora?: number
+          valor_hora?: number | null
         }
         Update: {
           created_at?: string
-          dias_elegiveis?: number
+          dias_elegiveis?: number | null
           formador_id?: string | null
           formando_id?: string | null
-          horas_elegiveis?: number
-          horas_frequentadas?: number
-          horas_previstas?: number
+          horas_elegiveis?: number | null
+          horas_frequentadas?: number | null
+          horas_previstas?: number | null
           id?: string
           km_total?: number
           memoria_calculo?: Json
@@ -541,7 +541,7 @@ export type Database = {
           rubrica?: string
           valor?: number
           valor_dia?: number
-          valor_hora?: number
+          valor_hora?: number | null
         }
         Relationships: [
           {

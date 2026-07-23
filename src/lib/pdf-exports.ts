@@ -112,7 +112,7 @@ function drawLogoBand(doc: jsPDF) {
   if (b.logoDgert) {
     const s = fitBox(doc, b.logoDgert, maxW, maxH);
     const y = (HEADER_LOGO_BAND - s.h) / 2;
-    try { doc.addImage(b.logoDgert, imgFmt(b.logoEmpresa), w - 14 - s.w, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+    try { doc.addImage(b.logoDgert, imgFmt(b.logoDgert), w - 14 - s.w, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
   }
 }
 

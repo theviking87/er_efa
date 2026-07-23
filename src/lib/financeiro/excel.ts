@@ -25,14 +25,28 @@ export type ProcessamentoExport = {
   };
 };
 
-async function fetchImage(url?: string | null): Promise<{ buf: ArrayBuffer; ext: "png" | "jpeg" } | null> {
+async function fetchImage(url?: string | null): Promise<{ buf: ArrayBuffer; ext: "png" | "jpeg"; w: number; h: number } | null> {
   if (!url) return null;
   try {
     const r = await fetch(url); if (!r.ok) return null;
     const buf = await r.arrayBuffer();
     const ext: "png" | "jpeg" = /\.jpe?g(\?|$)/i.test(url) ? "jpeg" : "png";
-    return { buf, ext };
+    const blob = new Blob([buf], { type: `image/${ext}` });
+    const url2 = URL.createObjectURL(blob);
+    const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+      img.onerror = () => resolve({ w: 1, h: 1 });
+      img.src = url2;
+    });
+    URL.revokeObjectURL(url2);
+    return { buf, ext, w: dims.w, h: dims.h };
   } catch { return null; }
+}
+
+function fit(nw: number, nh: number, maxW: number, maxH: number) {
+  const r = Math.min(maxW / nw, maxH / nh);
+  return { width: Math.round(nw * r), height: Math.round(nh * r) };
 }
 
 export async function exportProcessamentoExcel(p: ProcessamentoExport) {
@@ -50,11 +64,13 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   ]);
   if (logoE) {
     const id = wb.addImage({ buffer: logoE.buf as any, extension: logoE.ext });
-    ws.addImage(id, { tl: { col: 0, row: 0 }, ext: { width: 130, height: 55 } });
+    const s = fit(logoE.w, logoE.h, 150, 55);
+    ws.addImage(id, { tl: { col: 0, row: 0 }, ext: s });
   }
   if (logoD) {
     const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
-    ws.addImage(id, { tl: { col: 5, row: 0 }, ext: { width: 130, height: 55 } });
+    const s = fit(logoD.w, logoD.h, 150, 55);
+    ws.addImage(id, { tl: { col: 5, row: 0 }, ext: s });
   }
   ws.getRow(1).height = 46; ws.getRow(2).height = 20;
 
@@ -205,7 +221,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   // Rodapé Pessoas 2030 centrado abaixo dos totais
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
-    ws.addImage(id, { tl: { col: 3, row: r + 1 }, ext: { width: 160, height: 55 } });
+    const s = fit(logoP.w, logoP.h, 200, 70);
+    ws.addImage(id, { tl: { col: 3, row: r + 1 }, ext: s });
   }
 
 

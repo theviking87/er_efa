@@ -9,7 +9,7 @@ export type ProcessamentoExport = {
   ano: number; mes: number;
   curso: { codigo?: string | null; nome?: string | null; acao?: string | null; codigo_operacao?: string | null; codigo_sigo?: string | null } | null;
   totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; geral: number };
-  formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor: number }>;
+  formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor_hora?: number; valor: number }>;
   formadores: Array<{ id?: string; nome: string; horas_frequentadas: number; valor_hora: number; valor: number }>;
   empresa?: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
   logoEmpresaUrl?: string | null;

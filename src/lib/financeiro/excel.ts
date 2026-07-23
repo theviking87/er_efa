@@ -198,8 +198,9 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   ws.mergeCells(`A${r}:G${r}`);
   ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; HN — Honorários";
   ws.getCell(`A${r}`).font = { italic: true, size: 9, color: { argb: "FF666666" } };
-  ws.getCell(`A${r}`).alignment = { horizontal: "left", vertical: "center" };
-  ws.getRow(r).height = 28;
+  ws.getCell(`A${r}`).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+  ws.getRow(r).height = 32;
+
 
   // Rodapé Pessoas 2030 centrado abaixo dos totais
   if (logoP) {

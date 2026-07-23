@@ -26,6 +26,7 @@ type FinConfig = {
   valor_sa: number;
   valor_km: number;
   limite_km_dia: number;
+  tr_teto_mensal: number;
   percentagem_irs: number;
   percentagem_iva: number;
   percentagem_ss: number;
@@ -43,7 +44,8 @@ const DEFAULT: FinConfig = {
   horas_mes_referencia: 150,
   valor_sa: 6,
   valor_km: 0.4,
-  limite_km_dia: 100,
+  limite_km_dia: 50,
+  tr_teto_mensal: 0,
   percentagem_irs: 23,
   percentagem_iva: 23,
   percentagem_ss: 11,
@@ -112,6 +114,7 @@ function ConfiguracaoPage() {
             <F label="SA por dia (€)"><Input type="number" step="0.01" value={form.valor_sa} onChange={e => setForm({ ...form, valor_sa: Number(e.target.value) })} /></F>
             <F label="Valor por km (€)"><Input type="number" step="0.001" value={form.valor_km} onChange={e => setForm({ ...form, valor_km: Number(e.target.value) })} /></F>
             <F label="Limite km/dia"><Input type="number" value={form.limite_km_dia} onChange={e => setForm({ ...form, limite_km_dia: Number(e.target.value) })} /></F>
+            <F label="Tecto mensal Transporte (€)"><Input type="number" step="0.01" value={form.tr_teto_mensal} onChange={e => setForm({ ...form, tr_teto_mensal: Number(e.target.value) })} /></F>
             <F label="IRS % (retenção padrão)"><Input type="number" step="0.01" value={form.percentagem_irs} onChange={e => setForm({ ...form, percentagem_irs: Number(e.target.value) })} /></F>
             <F label="IVA % (padrão)"><Input type="number" step="0.01" value={form.percentagem_iva} onChange={e => setForm({ ...form, percentagem_iva: Number(e.target.value) })} /></F>
             <F label="SS % (padrão)"><Input type="number" step="0.01" value={form.percentagem_ss} onChange={e => setForm({ ...form, percentagem_ss: Number(e.target.value) })} /></F>

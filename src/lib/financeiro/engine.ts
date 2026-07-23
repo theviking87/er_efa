@@ -85,6 +85,8 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const horasMesRef = Number(cfg?.horas_mes_referencia ?? 150) || 150;
   const valorSa = Number(cfg?.valor_sa ?? 0);
   const valorKm = Number(cfg?.valor_km ?? 0);
+  const limiteKmDia = Number((cfg as any)?.limite_km_dia ?? 0);
+  const trTetoMensal = Number((cfg as any)?.tr_teto_mensal ?? 0);
 
   const sessoes = sessRes.data ?? [];
   const inscritos = inscRes.data ?? [];
@@ -188,20 +190,21 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       });
     }
 
-    // TR — dias com ≥ 1h frequentada, com tecto mensal por formando
+    // TR — dias com ≥ 1h frequentada; km/dia limitado; tecto mensal global.
     if (elegTr && kmDia > 0 && valorKm > 0 && diasTr > 0) {
-      const km_total = +(diasTr * kmDia).toFixed(2);
+      const kmDiaAplicado = limiteKmDia > 0 ? Math.min(kmDia, limiteKmDia) : kmDia;
+      const km_total = +(diasTr * kmDiaAplicado).toFixed(2);
       const bruto = +(km_total * valorKm).toFixed(2);
-      const teto = Number(bolsaCfg?.tr_teto_mensal ?? 0);
-      const valor = teto > 0 ? +Math.min(bruto, teto).toFixed(2) : bruto;
+      const valor = trTetoMensal > 0 ? +Math.min(bruto, trTetoMensal).toFixed(2) : bruto;
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasTr,
         km_total, valor,
-        memoria_calculo: { km_dia: kmDia, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: teto || null, aplicado_teto: teto > 0 && bruto > teto, regra: "dias com ≥ 1h frequentada; aplicado tecto mensal se definido", formula: "min(dias(≥1h) × km_dia × valor_km, teto_mensal)" },
+        memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, regra: "dias com ≥ 1h frequentada; km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥1h) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
       });
     }
+
 
   }
 

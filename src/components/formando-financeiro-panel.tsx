@@ -52,6 +52,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
   const [elegSa, setElegSa] = useState<boolean>(true);
   const [elegTr, setElegTr] = useState<boolean>(false);
   const [kmDia, setKmDia] = useState<number>(0);
+  const [valorAtl, setValorAtl] = useState<number>(0);
   useEffect(() => {
     if (bolsa.data) {
       setTipo(bolsa.data.tipo);
@@ -59,6 +60,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
       setElegSa(bolsa.data.elegivel_sa ?? true);
       setElegTr(bolsa.data.elegivel_tr ?? false);
       setKmDia(Number(bolsa.data.km_diario ?? 0));
+      setValorAtl(Number((bolsa.data as any).valor_atl ?? 0));
     }
   }, [bolsa.data]);
 

@@ -103,13 +103,13 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   let r = 8;
 
   if (!soFormador) {
-    ws.mergeCells(`A${r}:F${r}`);
+    ws.mergeCells(`A${r}:G${r}`);
     const tituloF = soFormando
       ? `Formando — ${formandosFiltrados[0]?.nome ?? ""}`
       : "Formandos";
     ws.getCell(`A${r}`).value = tituloF; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Valor (€)"];
+    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "€/hora", "Valor (€)"];
     headFormandos.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true }; c.alignment = { horizontal: i < 2 ? "left" : "right" };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
@@ -122,15 +122,43 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       ws.getCell(r, 3).value = l.horas_previstas; ws.getCell(r, 3).numFmt = "0.0";
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 5).value = l.dias_elegiveis;
-      ws.getCell(r, 6).value = l.valor; ws.getCell(r, 6).numFmt = "#,##0.00 €";
+      if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 6).value = l.valor_hora; ws.getCell(r, 6).numFmt = "#,##0.0000 €"; }
+      ws.getCell(r, 7).value = l.valor; ws.getCell(r, 7).numFmt = "#,##0.00 €";
       r++;
     });
     if (!formandosFiltrados.length) {
-      ws.mergeCells(`A${r}:F${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
+      ws.mergeCells(`A${r}:G${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
       r++;
     }
     r++;
+  }
+
+  if (!soFormando) {
+    ws.mergeCells(`A${r}:G${r}`);
+    const tituloH = soFormador
+      ? `Honorários — ${formadoresFiltrados[0]?.nome ?? ""}`
+      : "Honorários — Formadores";
+    ws.getCell(`A${r}`).value = tituloH; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
+    r++;
+    const headForm = ["Formador", "", "Horas", "", "€/hora", "", "Valor (€)"];
+    headForm.forEach((h, i) => {
+      const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true }; c.alignment = { horizontal: i === 0 ? "left" : "right" };
+      c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+    });
+    r++;
+    formadoresFiltrados.forEach(l => {
+      ws.getCell(r, 1).value = l.nome;
+      ws.getCell(r, 3).value = l.horas_frequentadas; ws.getCell(r, 3).numFmt = "0.0";
+      ws.getCell(r, 5).value = l.valor_hora; ws.getCell(r, 5).numFmt = "#,##0.00 €";
+      ws.getCell(r, 7).value = l.valor; ws.getCell(r, 7).numFmt = "#,##0.00 €";
+      r++;
+    });
+    if (!formadoresFiltrados.length) {
+      ws.mergeCells(`A${r}:G${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
+      ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
+      r++;
+    }
   }
 
   if (!soFormando) {

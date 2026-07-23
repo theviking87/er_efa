@@ -263,6 +263,7 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
       processamento_id: processamentoId, formando_id: l.formando_id, rubrica: l.rubrica,
       horas_previstas: l.horas_previstas, horas_frequentadas: l.horas_frequentadas,
       horas_elegiveis: l.horas_elegiveis, dias_elegiveis: l.dias_elegiveis,
+      valor_hora: l.valor_hora ?? null,
       valor_dia: l.valor_dia ?? null, km_total: l.km_total ?? null, valor: l.valor,
       memoria_calculo: l.memoria_calculo,
     })),

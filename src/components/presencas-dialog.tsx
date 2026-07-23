@@ -63,20 +63,24 @@ export function PresencasDialog({
 
   const [estados, setEstados] = useState<Record<string, Estado>>({});
   const [obs, setObs] = useState<Record<string, string>>({});
+  const [horasFalta, setHorasFalta] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open || !inscritos.data || !faltas.data) return;
     const e: Record<string, Estado> = {};
     const o: Record<string, string> = {};
+    const h: Record<string, string> = {};
     for (const i of inscritos.data) {
       const f = faltas.data.find((x: any) => x.curso_formando_id === i.id);
       e[i.id] = (f?.tipo as Estado) ?? "presente";
       o[i.id] = f?.observacoes ?? "";
+      h[i.id] = String(f?.horas ?? sessao?.horas ?? "");
     }
     setEstados(e);
     setObs(o);
-  }, [open, inscritos.data, faltas.data]);
+    setHorasFalta(h);
+  }, [open, inscritos.data, faltas.data, sessao?.horas]);
 
   async function save() {
     if (!sessao) return;

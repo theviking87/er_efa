@@ -28,7 +28,7 @@ function CursosPage() {
   const [q, setQ] = useState("");
   const [fEstado, setFEstado] = useState<string>("all");
   const [fProjeto, setFProjeto] = useState<string>("all");
-  const [form, setForm] = useState({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "" });
+  const [form, setForm] = useState({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "", acao: "", codigo_operacao: "", codigo_sigo: "" });
 
   const list = useQuery({
     queryKey: ["cursos"],

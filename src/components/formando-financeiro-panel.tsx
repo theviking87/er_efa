@@ -124,6 +124,15 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
               </p>
             </div>
           )}
+          <div className="space-y-1.5 pt-2 border-t">
+            <Label>Valor ATL mensal (€)</Label>
+            <Input type="number" step="0.01" value={valorAtl} onChange={e => setValorAtl(Number(e.target.value))} />
+            {Number((cfg.data as any)?.atl_teto_mensal ?? 0) > 0 && (
+              <p className="text-[11px] text-muted-foreground">
+                Tecto mensal ATL: <strong>{Number((cfg.data as any)?.atl_teto_mensal).toFixed(2)} €</strong>. Valores acima são limitados no processamento.
+              </p>
+            )}
+          </div>
           <div><Button onClick={() => saveBolsa.mutate()} disabled={saveBolsa.isPending}>Guardar</Button></div>
           <p className="text-xs text-muted-foreground">Valor por dia de SA e €/km vêm da Configuração Financeira global.</p>
         </CardContent>

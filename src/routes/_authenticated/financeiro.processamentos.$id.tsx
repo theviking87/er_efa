@@ -71,17 +71,44 @@ function DetailPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const [filtroModo, setFiltroModo] = useState<"tudo" | "formando" | "formador">("tudo");
+  const [filtroId, setFiltroId] = useState<string>("");
+  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","HN"]));
+
+  const fmdsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formando_id), [linhas.data]);
+  const fdrsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formador_id), [linhas.data]);
+
+  const opcoesFormandos = useMemo(() => {
+    const m = new Map<string, string>();
+    fmdsList.forEach((l: any) => m.set(l.formando_id, l.formando?.nome ?? "—"));
+    return Array.from(m, ([id, nome]) => ({ id, nome })).sort((a,b) => a.nome.localeCompare(b.nome));
+  }, [fmdsList]);
+  const opcoesFormadores = useMemo(() => {
+    const m = new Map<string, string>();
+    fdrsList.forEach((l: any) => m.set(l.formador_id, l.formador?.nome ?? "—"));
+    return Array.from(m, ([id, nome]) => ({ id, nome })).sort((a,b) => a.nome.localeCompare(b.nome));
+  }, [fdrsList]);
+
+  function toggleRubrica(r: RubricaFilter) {
+    setRubricasSel(prev => {
+      const n = new Set(prev);
+      if (n.has(r)) n.delete(r); else n.add(r);
+      return n;
+    });
+  }
+
   async function exportar() {
     if (!proc.data || !linhas.data) return;
-    const fmds = linhas.data.filter((l: any) => l.formando_id).map((l: any) => ({
-      nome: l.formando?.nome ?? "—", rubrica: l.rubrica,
+    const fmds = fmdsList.map((l: any) => ({
+      id: l.formando_id, nome: l.formando?.nome ?? "—", rubrica: l.rubrica,
       horas_previstas: Number(l.horas_previstas ?? 0), horas_frequentadas: Number(l.horas_frequentadas ?? 0),
       dias_elegiveis: Number(l.dias_elegiveis ?? 0), valor: Number(l.valor ?? 0),
     }));
-    const fdrs = linhas.data.filter((l: any) => l.formador_id).map((l: any) => ({
-      nome: l.formador?.nome ?? "—", horas_frequentadas: Number(l.horas_frequentadas ?? 0),
+    const fdrs = fdrsList.map((l: any) => ({
+      id: l.formador_id, nome: l.formador?.nome ?? "—", horas_frequentadas: Number(l.horas_frequentadas ?? 0),
       valor_hora: Number(l.valor_hora ?? 0), valor: Number(l.valor ?? 0),
     }));
+    if (filtroModo !== "tudo" && !filtroId) { toast.error("Escolhe quem exportar."); return; }
     await exportProcessamentoExcel({
       ano: proc.data.ano, mes: proc.data.mes, curso: proc.data.curso,
       totais: {
@@ -94,6 +121,11 @@ function DetailPage() {
       logoEmpresaUrl: cfg.data?.logo_empresa_url ?? null,
       logoDgertUrl: cfg.data?.logo_dgert_url ?? null,
       logoPessoas2030Url: cfg.data?.logo_pessoas2030_url ?? null,
+      filtro: {
+        formandoId: filtroModo === "formando" ? filtroId : null,
+        formadorId: filtroModo === "formador" ? filtroId : null,
+        rubricas: Array.from(rubricasSel),
+      },
     });
   }
 

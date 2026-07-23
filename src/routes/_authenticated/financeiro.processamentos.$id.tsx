@@ -237,7 +237,9 @@ function DetailPage() {
             <TableHeader><TableRow>
               <TableHead>Formando</TableHead><TableHead>Rubrica</TableHead>
               <TableHead className="text-right">H. prev.</TableHead><TableHead className="text-right">H. freq.</TableHead>
-              <TableHead className="text-right">Dias</TableHead><TableHead className="text-right">Valor (€)</TableHead>
+              <TableHead className="text-right">Dias</TableHead>
+              <TableHead className="text-right">€/h</TableHead>
+              <TableHead className="text-right">Valor (€)</TableHead>
             </TableRow></TableHeader>
             <TableBody>
               {fmds.map((l: any) => (
@@ -247,10 +249,11 @@ function DetailPage() {
                   <TableCell className="text-right tabular-nums">{Number(l.horas_previstas).toFixed(1)}</TableCell>
                   <TableCell className="text-right tabular-nums">{Number(l.horas_frequentadas).toFixed(1)}</TableCell>
                   <TableCell className="text-right tabular-nums">{l.dias_elegiveis}</TableCell>
+                  <TableCell className="text-right tabular-nums">{l.valor_hora ? Number(l.valor_hora).toFixed(4) : "—"}</TableCell>
                   <TableCell className="text-right tabular-nums font-medium">{Number(l.valor).toFixed(2)}</TableCell>
                 </TableRow>
               ))}
-              {!fmds.length && <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">Sem linhas.</TableCell></TableRow>}
+              {!fmds.length && <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground">Sem linhas.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

@@ -124,15 +124,18 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
               </p>
             </div>
           )}
-          <div className="space-y-1.5 pt-2 border-t">
-            <Label>Valor ATL mensal (€)</Label>
-            <Input type="number" step="0.01" value={valorAtl} onChange={e => setValorAtl(Number(e.target.value))} />
-            {Number((cfg.data as any)?.atl_teto_mensal ?? 0) > 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                Tecto mensal ATL: <strong>{Number((cfg.data as any)?.atl_teto_mensal).toFixed(2)} €</strong>. Valores acima são limitados no processamento.
-              </p>
-            )}
+          <div className="flex items-center gap-2 pt-2 border-t">
+            <Checkbox id="atl" checked={elegAtl} onCheckedChange={v => setElegAtl(!!v)} />
+            <Label htmlFor="atl" className="text-sm">Elegível a ATL</Label>
           </div>
+          {elegAtl && (
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              O valor mensal de ATL é definido em cada processamento.
+              {Number((cfg.data as any)?.atl_teto_mensal ?? 0) > 0 && (
+                <> Tecto mensal: <strong>{Number((cfg.data as any)?.atl_teto_mensal).toFixed(2)} €</strong>.</>
+              )}
+            </p>
+          )}
           <div><Button onClick={() => saveBolsa.mutate()} disabled={saveBolsa.isPending}>Guardar</Button></div>
           <p className="text-xs text-muted-foreground">Valor por dia de SA e €/km vêm da Configuração Financeira global.</p>
         </CardContent>

@@ -304,6 +304,30 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
     .maybeSingle();
 
   let processamentoId = existente?.id as string | undefined;
+
+  // Preservar valores manuais de ATL já introduzidos no processamento anterior.
+  if (processamentoId) {
+    const { data: atlAntigas } = await supabase.from("fin_processamento_linha")
+      .select("formando_id, valor")
+      .eq("processamento_id", processamentoId)
+      .eq("rubrica", "ATL");
+    const mapAtl = new Map<string, number>();
+    (atlAntigas ?? []).forEach((l: any) => { if (l.formando_id) mapAtl.set(l.formando_id, Number(l.valor ?? 0)); });
+    preview.formandos.forEach(l => {
+      if (l.rubrica === "ATL") {
+        const v = mapAtl.get(l.formando_id);
+        if (v && v > 0) l.valor = v;
+      }
+    });
+  }
+
+  // Recalcular totais após aplicar ATL preservado.
+  const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0, geral: 0 };
+  preview.formandos.forEach(l => { totais[l.rubrica] += l.valor; totais.geral += l.valor; });
+  preview.formadores.forEach(l => { totais.HN += l.valor; totais.geral += l.valor; });
+  (Object.keys(totais) as (keyof typeof totais)[]).forEach(k => (totais[k] = +totais[k].toFixed(2)));
+  preview.totais = totais;
+
   const payload = {
     projeto_id: projetoId, curso_id: preview.curso_id, ano: preview.ano, mes: preview.mes,
     estado: "rascunho",

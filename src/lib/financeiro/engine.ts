@@ -163,14 +163,16 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const elegTr = bolsaCfg?.elegivel_tr ?? false;
     const kmDia = Number(bolsaCfg?.km_diario ?? 0);
 
-    // Bolsa BF/BFM
+    // Bolsa BF/BFM — valor/hora = valor_mensal / horas_mes_ref; total = valor/hora × horas_freq
     if (tipoBolsa === "BF" || tipoBolsa === "BFM") {
-      const valor = +(valorMensal * (horasFreq / horasMesRef)).toFixed(2);
+      const valorHora = horasMesRef > 0 ? +(valorMensal / horasMesRef).toFixed(4) : 0;
+      const valor = +(valorHora * horasFreq).toFixed(2);
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: tipoBolsa, horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
-        horas_elegiveis: horasFreq, dias_elegiveis: diasPresenca, valor,
-        memoria_calculo: { valor_mensal: valorMensal, horas_mes_ref: horasMesRef, formula: "valor_mensal × (horas_freq / horas_mes_ref)" },
+        horas_elegiveis: horasFreq, dias_elegiveis: diasPresenca,
+        valor_hora: valorHora, valor,
+        memoria_calculo: { valor_mensal: valorMensal, horas_mes_ref: horasMesRef, valor_hora: valorHora, horas_freq: horasFreq, formula: "(valor_mensal / horas_mes_ref) × horas_freq" },
       });
     }
 

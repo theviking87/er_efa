@@ -254,7 +254,10 @@ export type Database = {
       }
       cursos: {
         Row: {
+          acao: string | null
           codigo: string
+          codigo_operacao: string | null
+          codigo_sigo: string | null
           created_at: string
           data_fim: string | null
           data_inicio: string | null
@@ -267,7 +270,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          acao?: string | null
           codigo: string
+          codigo_operacao?: string | null
+          codigo_sigo?: string | null
           created_at?: string
           data_fim?: string | null
           data_inicio?: string | null
@@ -280,7 +286,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          acao?: string | null
           codigo?: string
+          codigo_operacao?: string | null
+          codigo_sigo?: string | null
           created_at?: string
           data_fim?: string | null
           data_inicio?: string | null

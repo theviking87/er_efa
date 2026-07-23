@@ -402,16 +402,40 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                         <TableHead className="text-right">Valor (€)</TableHead>
                       </TableRow></TableHeader>
                       <TableBody>
-                        {g.linhas.map((l: any) => (
+                        {g.linhas.map((l: any) => {
+                          const isAtl = l.rubrica === "ATL";
+                          const editable = isAtl && !fechado;
+                          const editVal = edits[l.id];
+                          const currentVal = editVal !== undefined ? editVal : String(Number(l.valor ?? 0));
+                          return (
                           <TableRow key={l.id}>
                             <TableCell><Badge variant="outline">{l.rubrica}</Badge></TableCell>
                             <TableCell className="text-right tabular-nums">{Number(l.horas_previstas).toFixed(1)}</TableCell>
                             <TableCell className="text-right tabular-nums">{Number(l.horas_frequentadas).toFixed(1)}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.dias_elegiveis}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.valor_hora ? Number(l.valor_hora).toFixed(4) : "—"}</TableCell>
-                            <TableCell className="text-right tabular-nums font-medium">{Number(l.valor).toFixed(2)}</TableCell>
+                            <TableCell className="text-right tabular-nums font-medium">
+                              {editable ? (
+                                <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                                  <input
+                                    type="number" step="0.01" min="0"
+                                    className="h-7 w-24 rounded-md border bg-background px-2 text-right text-sm"
+                                    value={currentVal}
+                                    onChange={e => setEdits(prev => ({ ...prev, [l.id]: e.target.value }))}
+                                  />
+                                  <Button size="sm" variant="outline" className="h-7 px-2"
+                                    disabled={savingId === l.id || edits[l.id] === undefined}
+                                    onClick={() => saveAtl(l.id)}>
+                                    {savingId === l.id ? "…" : "Guardar"}
+                                  </Button>
+                                </div>
+                              ) : (
+                                Number(l.valor).toFixed(2)
+                              )}
+                            </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableCell>

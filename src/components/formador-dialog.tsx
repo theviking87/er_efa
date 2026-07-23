@@ -23,6 +23,7 @@ type Formador = {
   telemovel?: string | null;
   email?: string | null;
   iban?: string | null;
+  valor_hora?: number | null;
   habilitacoes?: string | null;
   ccp?: string | null;
   validade_ccp?: string | null;
@@ -115,6 +116,7 @@ export function FormadorDialog({
           <div className="space-y-1.5"><Label>Telemóvel</Label><Input {...field("telemovel")} /></div>
           <div className="space-y-1.5"><Label>Email</Label><Input type="email" {...field("email")} /></div>
           <div className="space-y-1.5"><Label>IBAN</Label><Input {...field("iban")} /></div>
+          <div className="space-y-1.5"><Label>Valor/hora (€)</Label><Input type="number" step="0.01" value={f.valor_hora ?? 0} onChange={e => setF({ ...f, valor_hora: Number(e.target.value) })} /></div>
           <div className="col-span-2 space-y-1.5"><Label>Morada</Label><Input {...field("morada")} /></div>
           <div className="space-y-1.5"><Label>Código Postal</Label><Input {...field("codigo_postal")} /></div>
           <div className="space-y-1.5"><Label>Localidade</Label><Input {...field("localidade")} /></div>

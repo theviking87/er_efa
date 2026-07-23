@@ -42,19 +42,29 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
 
   const [tipo, setTipo] = useState<string>("nenhuma");
   const [valor, setValor] = useState<number>(0);
+  const [elegSa, setElegSa] = useState<boolean>(true);
+  const [elegTr, setElegTr] = useState<boolean>(false);
+  const [kmDia, setKmDia] = useState<number>(0);
   useEffect(() => {
-    if (bolsa.data) { setTipo(bolsa.data.tipo); setValor(Number(bolsa.data.valor_mensal ?? 0)); }
+    if (bolsa.data) {
+      setTipo(bolsa.data.tipo);
+      setValor(Number(bolsa.data.valor_mensal ?? 0));
+      setElegSa(bolsa.data.elegivel_sa ?? true);
+      setElegTr(bolsa.data.elegivel_tr ?? false);
+      setKmDia(Number(bolsa.data.km_diario ?? 0));
+    }
   }, [bolsa.data]);
 
   const saveBolsa = useMutation({
     mutationFn: async () => {
+      const payload = { tipo, valor_mensal: valor, elegivel_sa: elegSa, elegivel_tr: elegTr, km_diario: kmDia };
       if (bolsa.data?.id) {
         const { error } = await supabase.from("fin_bolsa_config")
-          .update({ tipo, valor_mensal: valor } as never).eq("id", bolsa.data.id);
+          .update(payload as never).eq("id", bolsa.data.id);
         if (error) throw error;
       } else {
         const { error } = await supabase.from("fin_bolsa_config")
-          .insert({ formando_id: formandoId, tipo, valor_mensal: valor } as never);
+          .insert({ formando_id: formandoId, ...payload } as never);
         if (error) throw error;
       }
     },
@@ -65,7 +75,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <Card>
-        <CardHeader><CardTitle className="text-base">Bolsa</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-base">Bolsa & elegibilidades</CardTitle></CardHeader>
         <CardContent className="grid gap-3">
           <div className="space-y-1.5">
             <Label>Tipo de bolsa</Label>
@@ -82,10 +92,25 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
             <Label>Valor mensal (€)</Label>
             <Input type="number" step="0.01" value={valor} onChange={e => setValor(Number(e.target.value))} disabled={tipo === "nenhuma"} />
           </div>
+          <div className="flex items-center gap-2 pt-1">
+            <Checkbox id="sa" checked={elegSa} onCheckedChange={v => setElegSa(!!v)} />
+            <Label htmlFor="sa" className="text-sm">Elegível a Subsídio de Alimentação</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox id="tr" checked={elegTr} onCheckedChange={v => setElegTr(!!v)} />
+            <Label htmlFor="tr" className="text-sm">Elegível a Transporte</Label>
+          </div>
+          {elegTr && (
+            <div className="space-y-1.5">
+              <Label>Km diários (ida + volta)</Label>
+              <Input type="number" step="0.1" value={kmDia} onChange={e => setKmDia(Number(e.target.value))} />
+            </div>
+          )}
           <div><Button onClick={() => saveBolsa.mutate()} disabled={saveBolsa.isPending}>Guardar</Button></div>
-          <p className="text-xs text-muted-foreground">SA (subsídio de alimentação) e transporte usam os valores globais definidos na Configuração Financeira.</p>
+          <p className="text-xs text-muted-foreground">Valor por dia de SA e €/km vêm da Configuração Financeira global.</p>
         </CardContent>
       </Card>
+
 
       <Card>
         <CardHeader><CardTitle className="text-base">UCs frequentadas por curso</CardTitle></CardHeader>

@@ -30,6 +30,7 @@ import { Route as AuthenticatedFinanceiroProcessamentosRouteImport } from './rou
 import { Route as AuthenticatedFinanceiroConfiguracaoRouteImport } from './routes/_authenticated/financeiro.configuracao'
 import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
 import { Route as AuthenticatedFinanceiroProcessamentosNovoRouteImport } from './routes/_authenticated/financeiro.processamentos.novo'
+import { Route as AuthenticatedFinanceiroProcessamentosIdRouteImport } from './routes/_authenticated/financeiro.processamentos.$id'
 import { Route as AuthenticatedCursosIdImportarRouteImport } from './routes/_authenticated/cursos_.$id.importar'
 
 const AuthRoute = AuthRouteImport.update({
@@ -146,6 +147,12 @@ const AuthenticatedFinanceiroProcessamentosNovoRoute =
     path: '/novo',
     getParentRoute: () => AuthenticatedFinanceiroProcessamentosRoute,
   } as any)
+const AuthenticatedFinanceiroProcessamentosIdRoute =
+  AuthenticatedFinanceiroProcessamentosIdRouteImport.update({
+    id: '/$id',
+    path: '/$id',
+    getParentRoute: () => AuthenticatedFinanceiroProcessamentosRoute,
+  } as any)
 const AuthenticatedCursosIdImportarRoute =
   AuthenticatedCursosIdImportarRouteImport.update({
     id: '/cursos_/$id/importar',
@@ -174,6 +181,7 @@ export interface FileRoutesByFullPath {
   '/formandos/': typeof AuthenticatedFormandosIndexRoute
   '/projetos/': typeof AuthenticatedProjetosIndexRoute
   '/cursos/$id/importar': typeof AuthenticatedCursosIdImportarRoute
+  '/financeiro/processamentos/$id': typeof AuthenticatedFinanceiroProcessamentosIdRoute
   '/financeiro/processamentos/novo': typeof AuthenticatedFinanceiroProcessamentosNovoRoute
 }
 export interface FileRoutesByTo {
@@ -197,6 +205,7 @@ export interface FileRoutesByTo {
   '/formandos': typeof AuthenticatedFormandosIndexRoute
   '/projetos': typeof AuthenticatedProjetosIndexRoute
   '/cursos/$id/importar': typeof AuthenticatedCursosIdImportarRoute
+  '/financeiro/processamentos/$id': typeof AuthenticatedFinanceiroProcessamentosIdRoute
   '/financeiro/processamentos/novo': typeof AuthenticatedFinanceiroProcessamentosNovoRoute
 }
 export interface FileRoutesById {
@@ -222,6 +231,7 @@ export interface FileRoutesById {
   '/_authenticated/formandos/': typeof AuthenticatedFormandosIndexRoute
   '/_authenticated/projetos/': typeof AuthenticatedProjetosIndexRoute
   '/_authenticated/cursos_/$id/importar': typeof AuthenticatedCursosIdImportarRoute
+  '/_authenticated/financeiro/processamentos/$id': typeof AuthenticatedFinanceiroProcessamentosIdRoute
   '/_authenticated/financeiro/processamentos/novo': typeof AuthenticatedFinanceiroProcessamentosNovoRoute
 }
 export interface FileRouteTypes {
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/formandos/'
     | '/projetos/'
     | '/cursos/$id/importar'
+    | '/financeiro/processamentos/$id'
     | '/financeiro/processamentos/novo'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/formandos'
     | '/projetos'
     | '/cursos/$id/importar'
+    | '/financeiro/processamentos/$id'
     | '/financeiro/processamentos/novo'
   id:
     | '__root__'
@@ -294,6 +306,7 @@ export interface FileRouteTypes {
     | '/_authenticated/formandos/'
     | '/_authenticated/projetos/'
     | '/_authenticated/cursos_/$id/importar'
+    | '/_authenticated/financeiro/processamentos/$id'
     | '/_authenticated/financeiro/processamentos/novo'
   fileRoutesById: FileRoutesById
 }
@@ -452,6 +465,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinanceiroProcessamentosNovoRouteImport
       parentRoute: typeof AuthenticatedFinanceiroProcessamentosRoute
     }
+    '/_authenticated/financeiro/processamentos/$id': {
+      id: '/_authenticated/financeiro/processamentos/$id'
+      path: '/$id'
+      fullPath: '/financeiro/processamentos/$id'
+      preLoaderRoute: typeof AuthenticatedFinanceiroProcessamentosIdRouteImport
+      parentRoute: typeof AuthenticatedFinanceiroProcessamentosRoute
+    }
     '/_authenticated/cursos_/$id/importar': {
       id: '/_authenticated/cursos_/$id/importar'
       path: '/cursos/$id/importar'
@@ -463,11 +483,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface AuthenticatedFinanceiroProcessamentosRouteChildren {
+  AuthenticatedFinanceiroProcessamentosIdRoute: typeof AuthenticatedFinanceiroProcessamentosIdRoute
   AuthenticatedFinanceiroProcessamentosNovoRoute: typeof AuthenticatedFinanceiroProcessamentosNovoRoute
 }
 
 const AuthenticatedFinanceiroProcessamentosRouteChildren: AuthenticatedFinanceiroProcessamentosRouteChildren =
   {
+    AuthenticatedFinanceiroProcessamentosIdRoute:
+      AuthenticatedFinanceiroProcessamentosIdRoute,
     AuthenticatedFinanceiroProcessamentosNovoRoute:
       AuthenticatedFinanceiroProcessamentosNovoRoute,
   }

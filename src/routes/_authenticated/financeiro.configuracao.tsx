@@ -114,6 +114,7 @@ function ConfiguracaoPage() {
             <F label="SA por dia (€)"><Input type="number" step="0.01" value={form.valor_sa} onChange={e => setForm({ ...form, valor_sa: Number(e.target.value) })} /></F>
             <F label="Valor por km (€)"><Input type="number" step="0.001" value={form.valor_km} onChange={e => setForm({ ...form, valor_km: Number(e.target.value) })} /></F>
             <F label="Limite km/dia"><Input type="number" value={form.limite_km_dia} onChange={e => setForm({ ...form, limite_km_dia: Number(e.target.value) })} /></F>
+            <F label="Tecto mensal Transporte (€)"><Input type="number" step="0.01" value={form.tr_teto_mensal} onChange={e => setForm({ ...form, tr_teto_mensal: Number(e.target.value) })} /></F>
             <F label="IRS % (retenção padrão)"><Input type="number" step="0.01" value={form.percentagem_irs} onChange={e => setForm({ ...form, percentagem_irs: Number(e.target.value) })} /></F>
             <F label="IVA % (padrão)"><Input type="number" step="0.01" value={form.percentagem_iva} onChange={e => setForm({ ...form, percentagem_iva: Number(e.target.value) })} /></F>
             <F label="SS % (padrão)"><Input type="number" step="0.01" value={form.percentagem_ss} onChange={e => setForm({ ...form, percentagem_ss: Number(e.target.value) })} /></F>

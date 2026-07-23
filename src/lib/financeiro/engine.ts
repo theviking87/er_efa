@@ -104,13 +104,14 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
         .in("curso_formando_id", inscIds).gte("data", first).lte("data", last)
     : { data: [] as any[] };
 
-  // Índices auxiliares
-  const freqByInsc = new Map<string, Set<string>>(); // inscricao -> Set(curso_ufcd frequentada)
+  // Índices auxiliares — presença é assumida por defeito.
+  // Só se exclui uma UC quando existe registo explícito com frequenta=false (ausência).
+  const ausByInsc = new Map<string, Set<string>>(); // inscricao -> Set(curso_ufcd em que está ausente)
   freq.forEach((f: any) => {
-    if (!f.frequenta) return;
-    const s = freqByInsc.get(f.curso_formando_id) ?? new Set<string>();
+    if (f.frequenta !== false) return;
+    const s = ausByInsc.get(f.curso_formando_id) ?? new Set<string>();
     s.add(f.curso_ufcd_id);
-    freqByInsc.set(f.curso_formando_id, s);
+    ausByInsc.set(f.curso_formando_id, s);
   });
 
   const bolsaByFormando = new Map<string, any>();
@@ -120,10 +121,10 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
 
   for (const insc of inscritos) {
     const formandoNome = (insc as any).formando?.nome ?? "—";
-    const ucsFreq = freqByInsc.get(insc.id) ?? new Set<string>();
+    const ucsAus = ausByInsc.get(insc.id) ?? new Set<string>();
 
-    // Sessões elegíveis (UC frequentada por este formando)
-    const minhasSess = sessoes.filter((s: any) => ucsFreq.has(s.curso_ufcd_id));
+    // Sessões elegíveis: todas do curso no mês, excepto UCs em que o formando está ausente.
+    const minhasSess = sessoes.filter((s: any) => !ucsAus.has(s.curso_ufcd_id));
     const horasPrevistas = minhasSess.reduce((a, s: any) => a + Number(s.horas || 0), 0);
 
     // Faltas efetivas (excluir tipo 'ausencia' que já é UC não frequentada)

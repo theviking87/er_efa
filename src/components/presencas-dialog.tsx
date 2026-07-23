@@ -63,20 +63,24 @@ export function PresencasDialog({
 
   const [estados, setEstados] = useState<Record<string, Estado>>({});
   const [obs, setObs] = useState<Record<string, string>>({});
+  const [horasFalta, setHorasFalta] = useState<Record<string, string>>({});
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (!open || !inscritos.data || !faltas.data) return;
     const e: Record<string, Estado> = {};
     const o: Record<string, string> = {};
+    const h: Record<string, string> = {};
     for (const i of inscritos.data) {
       const f = faltas.data.find((x: any) => x.curso_formando_id === i.id);
       e[i.id] = (f?.tipo as Estado) ?? "presente";
       o[i.id] = f?.observacoes ?? "";
+      h[i.id] = String(f?.horas ?? sessao?.horas ?? "");
     }
     setEstados(e);
     setObs(o);
-  }, [open, inscritos.data, faltas.data]);
+    setHorasFalta(h);
+  }, [open, inscritos.data, faltas.data, sessao?.horas]);
 
   async function save() {
     if (!sessao) return;
@@ -88,11 +92,13 @@ export function PresencasDialog({
         const estado = estados[i.id] ?? "presente";
         const obsTxt = (obs[i.id] ?? "").trim();
         if (estado === "presente") continue;
+        const h = Number(horasFalta[i.id] ?? sessao.horas);
+        const horas = Number.isFinite(h) && h > 0 ? Math.min(h, sessao.horas) : sessao.horas;
         aInserir.push({
           curso_formando_id: i.id,
           sessao_id: sessao.id,
           data: sessao.data,
-          horas: sessao.horas,
+          horas,
           tipo: estado,
           observacoes: obsTxt || null,
         });
@@ -155,7 +161,8 @@ export function PresencasDialog({
                   <th className="text-center py-2 font-medium w-[90px]">Presente</th>
                   <th className="text-center py-2 font-medium w-[110px]">Falta just.</th>
                   <th className="text-center py-2 font-medium w-[110px]">Falta injust.</th>
-                  <th className="text-left py-2 font-medium w-[200px]">Observações</th>
+                  <th className="text-center py-2 font-medium w-[80px]">Horas</th>
+                  <th className="text-left py-2 font-medium w-[180px]">Observações</th>
                 </tr>
               </thead>
               <tbody>
@@ -174,6 +181,19 @@ export function PresencasDialog({
                           />
                         </td>
                       ))}
+                      <td className="py-1 px-1">
+                        <Input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max={sessao?.horas ?? undefined}
+                          value={horasFalta[i.id] ?? ""}
+                          onChange={ev => setHorasFalta(s => ({ ...s, [i.id]: ev.target.value }))}
+                          placeholder={String(sessao?.horas ?? "")}
+                          className="h-8 text-xs text-center"
+                          disabled={estado === "presente"}
+                        />
+                      </td>
                       <td className="py-1">
                         <Input
                           value={obs[i.id] ?? ""}

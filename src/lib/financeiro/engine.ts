@@ -169,19 +169,24 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const minhasSess = sessoes.filter((s: any) => ucsInscritas.has(s.curso_ufcd_id));
     const horasPrevistas = minhasSess.reduce((a, s: any) => a + Number(s.horas || 0), 0);
 
-    // Faltas registadas no cronograma descontam horas frequentadas.
+    // Faltas registadas no cronograma:
+    //  · injustificadas descontam horas frequentadas (bolsa/honorários).
+    //  · justificadas NÃO descontam horas — apenas contam para o SA diário.
     const minhasFaltas = (faltas ?? []).filter((f: any) => f.curso_formando_id === insc.id);
-    const horasFalta = minhasFaltas.reduce((a: number, f: any) => a + Number(f.horas || 0), 0);
-    const horasFreq = Math.max(0, horasPrevistas - horasFalta);
+    const horasFaltaInjust = minhasFaltas
+      .filter((f: any) => f.tipo !== "justificada")
+      .reduce((a: number, f: any) => a + Number(f.horas || 0), 0);
+    const horasFreq = Math.max(0, horasPrevistas - horasFaltaInjust);
 
     // Dias = todos os dias do cronograma com formação atribuída nas UCs em que o formando está inscrito.
-    // Faltas não reduzem o nº de dias — apenas descontam horas.
     const diasSet = new Set<string>();
     minhasSess.forEach((s: any) => diasSet.add(s.data));
     const diasPresenca = diasSet.size;
 
-    // Dias elegíveis para SA: apenas dias com ≥ 3h efectivamente frequentadas
-    // (horas do dia nas UCs inscritas/frequentadas menos faltas registadas nesse dia).
+    // Dias elegíveis para SA: dias com ≥ 3h efectivamente frequentadas.
+    // Para o SA contam TODAS as faltas do dia (justificadas + injustificadas):
+    // uma falta justificada mantém as horas para bolsa, mas se a formação
+    // efectiva desse dia ficar abaixo de 3h, o SA não é pago.
     const horasPorDia = new Map<string, number>();
     minhasSess.forEach((s: any) => {
       horasPorDia.set(s.data, (horasPorDia.get(s.data) ?? 0) + Number(s.horas || 0));

@@ -194,11 +194,20 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     r++;
   });
 
+  // Legenda das rubricas
+  ws.mergeCells(`A${r}:G${r}`);
+  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; HN — Honorários";
+  ws.getCell(`A${r}`).font = { italic: true, size: 9, color: { argb: "FF666666" } };
+  ws.getCell(`A${r}`).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
+  ws.getRow(r).height = 32;
+
+
   // Rodapé Pessoas 2030 centrado abaixo dos totais
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
     ws.addImage(id, { tl: { col: 3, row: r + 1 }, ext: { width: 160, height: 55 } });
   }
+
 
 
   const buf = await wb.xlsx.writeBuffer();

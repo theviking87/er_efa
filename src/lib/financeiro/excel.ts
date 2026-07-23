@@ -221,7 +221,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   // Rodapé Pessoas 2030 centrado abaixo dos totais
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
-    ws.addImage(id, { tl: { col: 3, row: r + 1 }, ext: { width: 160, height: 55 } });
+    const s = fit(logoP.w, logoP.h, 200, 70);
+    ws.addImage(id, { tl: { col: 3, row: r + 1 }, ext: s });
   }
 
 

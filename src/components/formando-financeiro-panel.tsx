@@ -20,7 +20,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
   const cfg = useQuery({
     queryKey: ["fin-config"],
     queryFn: async () => {
-      const { data } = await supabase.from("fin_config").select("limite_km_dia, tr_teto_mensal, valor_km").limit(1).maybeSingle();
+      const { data } = await supabase.from("fin_config").select("limite_km_dia, tr_teto_mensal, valor_km, atl_teto_mensal").limit(1).maybeSingle();
       return data;
     },
   });

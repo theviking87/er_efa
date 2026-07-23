@@ -185,13 +185,16 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   const geral = t.BF + t.BFM + t.SA + t.TR + t.HN;
   const totRows: Array<[string, number]> = [];
   const rubricasVis: RubricaFilter[] = rubricasSel ? Array.from(rubricasSel) : ["BF","BFM","SA","TR","HN"];
+  const totalFormandos = (rubricasVis.includes("BF") ? t.BF : 0) + (rubricasVis.includes("BFM") ? t.BFM : 0) + (rubricasVis.includes("SA") ? t.SA : 0) + (rubricasVis.includes("TR") ? t.TR : 0);
+  const totalFormadores = rubricasVis.includes("HN") ? t.HN : 0;
   if (!soFormador) {
     if (rubricasVis.includes("BF")) totRows.push(["Total BF", t.BF]);
     if (rubricasVis.includes("BFM")) totRows.push(["Total BFM", t.BFM]);
     if (rubricasVis.includes("SA")) totRows.push(["Total SA", t.SA]);
     if (rubricasVis.includes("TR")) totRows.push(["Total TR", t.TR]);
+    totRows.push(["Subtotal Formandos (BF+BFM+SA+TR)", totalFormandos]);
   }
-  if (!soFormando && rubricasVis.includes("HN")) totRows.push(["Total HN", t.HN]);
+  if (!soFormando && rubricasVis.includes("HN")) totRows.push(["Subtotal Formadores (HN)", totalFormadores]);
   totRows.push(["TOTAL", geral]);
 
   totRows.forEach(([lab, val], i) => {

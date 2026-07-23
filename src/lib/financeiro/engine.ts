@@ -51,7 +51,7 @@ export type Preview = {
   mes: number;
   formandos: LinhaFormando[];
   formadores: LinhaFormador[];
-  totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; geral: number };
+  totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; ATL: number; geral: number };
   avisos: string[];
 };
 

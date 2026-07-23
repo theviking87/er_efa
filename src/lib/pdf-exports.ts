@@ -141,8 +141,8 @@ function footer(doc: jsPDF) {
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     if (b.logoPessoas) {
-      const logoW = 70, logoH = 22;
-      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), w - 14 - logoW, h - 12 - logoH - 2, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
+      const s = fitBox(doc, b.logoPessoas, 70, 22);
+      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), w - 14 - s.w, h - 14 - s.h, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
     }
 
     doc.setDrawColor(...MUTED);

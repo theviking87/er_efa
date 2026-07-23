@@ -58,23 +58,12 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
         <p className="mt-2 text-sm text-muted-foreground">
           Something went wrong on our end. You can try refreshing or head back home.
         </p>
-        {isElectron && (
+        {isDev && (
           <pre className="mt-4 max-h-56 overflow-auto rounded-md bg-destructive/10 p-3 text-left text-xs text-destructive whitespace-pre-wrap">
             {error?.stack || error?.message || String(error)}
           </pre>
         )}
         <div className="mt-6 flex flex-wrap justify-center gap-2">
-          {isElectron && (
-            <button
-              className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
-              onClick={() => {
-                window.localStorage.setItem("formacao-er-force-import", "1");
-                window.location.reload();
-              }}
-            >
-              Importar backup
-            </button>
-          )}
           <button
             onClick={() => {
               router.invalidate();
@@ -85,7 +74,7 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             Try again
           </button>
           <a
-            href={isElectron ? "#/dashboard" : "/"}
+            href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
             Go home

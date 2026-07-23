@@ -161,7 +161,8 @@ export function PresencasDialog({
                   <th className="text-center py-2 font-medium w-[90px]">Presente</th>
                   <th className="text-center py-2 font-medium w-[110px]">Falta just.</th>
                   <th className="text-center py-2 font-medium w-[110px]">Falta injust.</th>
-                  <th className="text-left py-2 font-medium w-[200px]">Observações</th>
+                  <th className="text-center py-2 font-medium w-[80px]">Horas</th>
+                  <th className="text-left py-2 font-medium w-[180px]">Observações</th>
                 </tr>
               </thead>
               <tbody>
@@ -180,6 +181,19 @@ export function PresencasDialog({
                           />
                         </td>
                       ))}
+                      <td className="py-1 px-1">
+                        <Input
+                          type="number"
+                          step="0.5"
+                          min="0"
+                          max={sessao?.horas ?? undefined}
+                          value={horasFalta[i.id] ?? ""}
+                          onChange={ev => setHorasFalta(s => ({ ...s, [i.id]: ev.target.value }))}
+                          placeholder={String(sessao?.horas ?? "")}
+                          className="h-8 text-xs text-center"
+                          disabled={estado === "presente"}
+                        />
+                      </td>
                       <td className="py-1">
                         <Input
                           value={obs[i.id] ?? ""}

@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { FileSpreadsheet, Lock, LockOpen, Trash2 } from "lucide-react";
+import { FileSpreadsheet, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";
+import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/$id")({
   head: () => ({ meta: [{ title: "Financeiro — Detalhe do processamento" }] }),

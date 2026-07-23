@@ -764,21 +764,13 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
 
-  // Carrega logos + empresa da configuração financeira
+  // Empresa (dados) da configuração — logos vêm do branding cache
   const { data: cfg } = await supabase.from("fin_config")
-    .select("logo_empresa_url, logo_dgert_url, logo_pessoas2030_url, empresa_nome, empresa_nif, empresa_morada")
+    .select("empresa_nome, empresa_nif, empresa_morada")
     .limit(1).maybeSingle();
-  async function fetchDataUrl(url?: string | null): Promise<string | null> {
-    if (!url) return null;
-    try {
-      const r = await fetch(url); if (!r.ok) return null;
-      const blob = await r.blob();
-      return await new Promise<string>(res => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(blob); });
-    } catch { return null; }
-  }
-  const [logoE, logoD] = await Promise.all([
-    fetchDataUrl(cfg?.logo_empresa_url), fetchDataUrl(cfg?.logo_dgert_url),
-  ]);
+  const b = getBrandingSync();
+  const logoE = b.logoEmpresa;
+  const logoD = b.logoDgert;
 
   const doc = newDoc("portrait");
   const w = doc.internal.pageSize.getWidth();
@@ -787,8 +779,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   const logoBandH = 22;
   const logoH = 16, logoW = 32;
   const ly = (logoBandH - logoH) / 2;
-  if (logoE) { try { doc.addImage(logoE, "PNG", 14, ly, logoW, logoH, undefined, "FAST"); } catch { /* noop */ } }
-  if (logoD) { try { doc.addImage(logoD, "PNG", w - 14 - logoW, ly, logoW, logoH, undefined, "FAST"); } catch { /* noop */ } }
+  if (logoE) { try { doc.addImage(logoE, imgFmt(logoE), 14, ly, logoW, logoH, undefined, "NONE"); } catch { /* noop */ } }
+  if (logoD) { try { doc.addImage(logoD, imgFmt(logoD), w - 14 - logoW, ly, logoW, logoH, undefined, "NONE"); } catch { /* noop */ } }
 
 
   // Header azul

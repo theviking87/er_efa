@@ -22,6 +22,7 @@ const NAV = [
   { to: "/relatorios", label: "Relatórios & SIGO", icon: FileBarChart2, section: "Geral" },
   { to: "/financeiro", label: "Painel", icon: Wallet, section: "Financeiro" },
   { to: "/financeiro/processamentos", label: "Processamentos", icon: ClipboardList, section: "Financeiro" },
+  { to: "/nota-honorarios", label: "Nota de Honorários", icon: Receipt, section: "Financeiro" },
   { to: "/financeiro/configuracao", label: "Configuração", icon: Settings2, section: "Financeiro" },
   { to: "/exportar", label: "Exportar / Backup", icon: Download, section: "Sistema" },
   { to: "/perfil", label: "O meu perfil", icon: UserCog, section: "Sistema" },

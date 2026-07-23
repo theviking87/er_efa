@@ -261,7 +261,7 @@ function DetailPage() {
       <Card className="mb-4">
         <CardHeader className="pb-3"><CardTitle className="text-base">Formandos</CardTitle></CardHeader>
         <CardContent className="p-0">
-          <FormandosGrouped linhas={fmds} />
+          <FormandosGrouped linhas={fmds} processamentoId={id} fechado={fechado} tetoAtl={Number((cfg.data as any)?.atl_teto_mensal ?? 0)} />
         </CardContent>
       </Card>
 
@@ -305,7 +305,42 @@ function Stat({ label, v, strong }: { label: string; v: number; strong?: boolean
   );
 }
 
-function FormandosGrouped({ linhas }: { linhas: any[] }) {
+function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linhas: any[]; processamentoId: string; fechado: boolean; tetoAtl: number }) {
+  const qc = useQueryClient();
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  async function saveAtl(linhaId: string) {
+    const raw = edits[linhaId];
+    if (raw === undefined) return;
+    let v = Number(String(raw).replace(",", "."));
+    if (!Number.isFinite(v) || v < 0) v = 0;
+    if (tetoAtl > 0 && v > tetoAtl) v = tetoAtl;
+    setSavingId(linhaId);
+    try {
+      const { error } = await supabase.from("fin_processamento_linha")
+        .update({ valor: v } as never).eq("id", linhaId);
+      if (error) throw error;
+      // Recalcular total_atl e total_geral do processamento
+      const { data: todas } = await supabase.from("fin_processamento_linha")
+        .select("rubrica, valor").eq("processamento_id", processamentoId);
+      const soma = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 } as Record<string, number>;
+      (todas ?? []).forEach((l: any) => { if (soma[l.rubrica] !== undefined) soma[l.rubrica] += Number(l.valor ?? 0); });
+      const geral = soma.BF + soma.BFM + soma.SA + soma.TR + soma.HN + soma.ATL;
+      await supabase.from("fin_processamento")
+        .update({ total_atl: +soma.ATL.toFixed(2), total_geral: +geral.toFixed(2) } as never)
+        .eq("id", processamentoId);
+      toast.success("Valor ATL guardado.");
+      setEdits(prev => { const n = { ...prev }; delete n[linhaId]; return n; });
+      qc.invalidateQueries({ queryKey: ["fin-proc", processamentoId] });
+      qc.invalidateQueries({ queryKey: ["fin-proc-linhas", processamentoId] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   const grupos = useMemo(() => {
     const m = new Map<string, { id: string; nome: string; total: number; linhas: any[] }>();
     for (const l of linhas) {
@@ -367,16 +402,40 @@ function FormandosGrouped({ linhas }: { linhas: any[] }) {
                         <TableHead className="text-right">Valor (€)</TableHead>
                       </TableRow></TableHeader>
                       <TableBody>
-                        {g.linhas.map((l: any) => (
+                        {g.linhas.map((l: any) => {
+                          const isAtl = l.rubrica === "ATL";
+                          const editable = isAtl && !fechado;
+                          const editVal = edits[l.id];
+                          const currentVal = editVal !== undefined ? editVal : String(Number(l.valor ?? 0));
+                          return (
                           <TableRow key={l.id}>
                             <TableCell><Badge variant="outline">{l.rubrica}</Badge></TableCell>
                             <TableCell className="text-right tabular-nums">{Number(l.horas_previstas).toFixed(1)}</TableCell>
                             <TableCell className="text-right tabular-nums">{Number(l.horas_frequentadas).toFixed(1)}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.dias_elegiveis}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.valor_hora ? Number(l.valor_hora).toFixed(4) : "—"}</TableCell>
-                            <TableCell className="text-right tabular-nums font-medium">{Number(l.valor).toFixed(2)}</TableCell>
+                            <TableCell className="text-right tabular-nums font-medium">
+                              {editable ? (
+                                <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                                  <input
+                                    type="number" step="0.01" min="0"
+                                    className="h-7 w-24 rounded-md border bg-background px-2 text-right text-sm"
+                                    value={currentVal}
+                                    onChange={e => setEdits(prev => ({ ...prev, [l.id]: e.target.value }))}
+                                  />
+                                  <Button size="sm" variant="outline" className="h-7 px-2"
+                                    disabled={savingId === l.id || edits[l.id] === undefined}
+                                    onClick={() => saveAtl(l.id)}>
+                                    {savingId === l.id ? "…" : "Guardar"}
+                                  </Button>
+                                </div>
+                              ) : (
+                                Number(l.valor).toFixed(2)
+                              )}
+                            </TableCell>
                           </TableRow>
-                        ))}
+                          );
+                        })}
                       </TableBody>
                     </Table>
                   </TableCell>

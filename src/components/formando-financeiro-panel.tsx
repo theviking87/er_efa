@@ -52,7 +52,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
   const [elegSa, setElegSa] = useState<boolean>(true);
   const [elegTr, setElegTr] = useState<boolean>(false);
   const [kmDia, setKmDia] = useState<number>(0);
-  const [valorAtl, setValorAtl] = useState<number>(0);
+  const [elegAtl, setElegAtl] = useState<boolean>(false);
   useEffect(() => {
     if (bolsa.data) {
       setTipo(bolsa.data.tipo);
@@ -60,7 +60,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
       setElegSa(bolsa.data.elegivel_sa ?? true);
       setElegTr(bolsa.data.elegivel_tr ?? false);
       setKmDia(Number(bolsa.data.km_diario ?? 0));
-      setValorAtl(Number((bolsa.data as any).valor_atl ?? 0));
+      setElegAtl(Boolean((bolsa.data as any).elegivel_atl ?? false));
     }
   }, [bolsa.data]);
 
@@ -68,7 +68,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
     mutationFn: async () => {
       const payload = {
         tipo, valor_mensal: valor, elegivel_sa: elegSa, elegivel_tr: elegTr,
-        km_diario: kmDia, valor_atl: valorAtl,
+        km_diario: kmDia, elegivel_atl: elegAtl,
       };
       if (bolsa.data?.id) {
         const { error } = await supabase.from("fin_bolsa_config")
@@ -124,15 +124,18 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
               </p>
             </div>
           )}
-          <div className="space-y-1.5 pt-2 border-t">
-            <Label>Valor ATL mensal (€)</Label>
-            <Input type="number" step="0.01" value={valorAtl} onChange={e => setValorAtl(Number(e.target.value))} />
-            {Number((cfg.data as any)?.atl_teto_mensal ?? 0) > 0 && (
-              <p className="text-[11px] text-muted-foreground">
-                Tecto mensal ATL: <strong>{Number((cfg.data as any)?.atl_teto_mensal).toFixed(2)} €</strong>. Valores acima são limitados no processamento.
-              </p>
-            )}
+          <div className="flex items-center gap-2 pt-2 border-t">
+            <Checkbox id="atl" checked={elegAtl} onCheckedChange={v => setElegAtl(!!v)} />
+            <Label htmlFor="atl" className="text-sm">Elegível a ATL</Label>
           </div>
+          {elegAtl && (
+            <p className="text-[11px] text-muted-foreground -mt-1">
+              O valor mensal de ATL é definido em cada processamento.
+              {Number((cfg.data as any)?.atl_teto_mensal ?? 0) > 0 && (
+                <> Tecto mensal: <strong>{Number((cfg.data as any)?.atl_teto_mensal).toFixed(2)} €</strong>.</>
+              )}
+            </p>
+          )}
           <div><Button onClick={() => saveBolsa.mutate()} disabled={saveBolsa.isPending}>Guardar</Button></div>
           <p className="text-xs text-muted-foreground">Valor por dia de SA e €/km vêm da Configuração Financeira global.</p>
         </CardContent>

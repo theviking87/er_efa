@@ -251,16 +251,16 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
         memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, regra: "dias com ≥ 3h efectivas (mesmo critério do SA); km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
       });
     }
-    // ATL — valor mensal por formando, com tecto global (se definido)
-    const valorAtlFormando = Number(bolsaCfg?.valor_atl ?? 0);
-    if (valorAtlFormando > 0) {
-      const valor = atlTetoMensal > 0 ? +Math.min(valorAtlFormando, atlTetoMensal).toFixed(2) : +valorAtlFormando.toFixed(2);
+    // ATL — apenas cria a linha se o formando estiver marcado como elegível.
+    // O valor mensal é definido manualmente no ecrã do processamento.
+    const elegAtl = Boolean((bolsaCfg as any)?.elegivel_atl ?? false);
+    if (elegAtl) {
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "ATL", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasPresenca,
-        valor,
-        memoria_calculo: { valor_formando: valorAtlFormando, teto_mensal: atlTetoMensal || null, aplicado_teto: atlTetoMensal > 0 && valorAtlFormando > atlTetoMensal, regra: "valor mensal fixo por formando, limitado pelo tecto global", formula: "min(valor_atl, atl_teto_mensal)" },
+        valor: 0,
+        memoria_calculo: { regra: "valor mensal definido manualmente no processamento", teto_mensal: atlTetoMensal || null },
       });
     }
 
@@ -304,6 +304,30 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
     .maybeSingle();
 
   let processamentoId = existente?.id as string | undefined;
+
+  // Preservar valores manuais de ATL já introduzidos no processamento anterior.
+  if (processamentoId) {
+    const { data: atlAntigas } = await supabase.from("fin_processamento_linha")
+      .select("formando_id, valor")
+      .eq("processamento_id", processamentoId)
+      .eq("rubrica", "ATL");
+    const mapAtl = new Map<string, number>();
+    (atlAntigas ?? []).forEach((l: any) => { if (l.formando_id) mapAtl.set(l.formando_id, Number(l.valor ?? 0)); });
+    preview.formandos.forEach(l => {
+      if (l.rubrica === "ATL") {
+        const v = mapAtl.get(l.formando_id);
+        if (v && v > 0) l.valor = v;
+      }
+    });
+  }
+
+  // Recalcular totais após aplicar ATL preservado.
+  const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0, geral: 0 };
+  preview.formandos.forEach(l => { totais[l.rubrica] += l.valor; totais.geral += l.valor; });
+  preview.formadores.forEach(l => { totais.HN += l.valor; totais.geral += l.valor; });
+  (Object.keys(totais) as (keyof typeof totais)[]).forEach(k => (totais[k] = +totais[k].toFixed(2)));
+  preview.totais = totais;
+
   const payload = {
     projeto_id: projetoId, curso_id: preview.curso_id, ano: preview.ano, mes: preview.mes,
     estado: "rascunho",

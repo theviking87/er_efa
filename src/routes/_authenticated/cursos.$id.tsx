@@ -163,7 +163,10 @@ function EditCursoDialog({ open, onOpenChange, curso }: { open: boolean; onOpenC
       data_inicio: form.data_inicio || null,
       data_fim: form.data_fim || null,
       observacoes: form.observacoes || null,
-    }).eq("id", curso.id);
+      acao: form.acao?.trim() || null,
+      codigo_operacao: form.codigo_operacao?.trim() || null,
+      codigo_sigo: form.codigo_sigo?.trim() || null,
+    } as never).eq("id", curso.id);
     if (error) return toast.error(error.message);
     toast.success("Curso atualizado");
     qc.invalidateQueries({ queryKey: ["curso", curso.id] });

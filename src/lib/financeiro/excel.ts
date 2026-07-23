@@ -3,7 +3,7 @@ import { saveFile } from "@/lib/dom-helpers";
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-export type RubricaFilter = "BF" | "BFM" | "SA" | "TR" | "HN";
+export type RubricaFilter = "BF" | "BFM" | "SA" | "TR" | "HN" | "ATL";
 
 export type ProcessamentoExport = {
   ano: number; mes: number;

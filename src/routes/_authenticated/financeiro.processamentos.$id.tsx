@@ -190,10 +190,14 @@ function DetailPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-6 mb-4">
+      <div className="grid gap-3 sm:grid-cols-6 mb-3">
         <Stat label="BF" v={p.total_bf} /><Stat label="BFM" v={p.total_bfm} />
         <Stat label="SA" v={p.total_sa} /><Stat label="TR" v={p.total_tr} />
         <Stat label="HN" v={p.total_hn} /><Stat label="Total" v={p.total_geral} strong />
+      </div>
+      <div className="grid gap-3 sm:grid-cols-2 mb-4">
+        <Stat label="Total formandos (BF+BFM+SA+TR)" v={Number(p.total_bf) + Number(p.total_bfm) + Number(p.total_sa) + Number(p.total_tr)} />
+        <Stat label="Total formadores (HN)" v={p.total_hn} />
       </div>
 
       <Card className="mb-4">

@@ -30,7 +30,7 @@ function DetailPage() {
     queryKey: ["fin-proc", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("fin_processamento")
-        .select("*, curso:curso_id(codigo, nome)").eq("id", id).single();
+        .select("*, curso:curso_id(codigo, nome, acao, codigo_operacao, codigo_sigo)").eq("id", id).single();
       if (error) throw error; return data;
     },
   });

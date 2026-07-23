@@ -218,6 +218,18 @@ function EditCursoDialog({ open, onOpenChange, curso }: { open: boolean; onOpenC
             </Select>
           </div>
           <div className="sm:col-span-2">
+            <Label>Ação</Label>
+            <Input value={form.acao ?? ""} onChange={(e) => setForm({ ...form, acao: e.target.value })} />
+          </div>
+          <div>
+            <Label>Código da Operação</Label>
+            <Input value={form.codigo_operacao ?? ""} onChange={(e) => setForm({ ...form, codigo_operacao: e.target.value })} />
+          </div>
+          <div>
+            <Label>Código SIGO</Label>
+            <Input value={form.codigo_sigo ?? ""} onChange={(e) => setForm({ ...form, codigo_sigo: e.target.value })} />
+          </div>
+          <div className="sm:col-span-2">
             <Label>Observações</Label>
             <Textarea rows={3} value={form.observacoes ?? ""} onChange={(e) => setForm({ ...form, observacoes: e.target.value })} />
           </div>

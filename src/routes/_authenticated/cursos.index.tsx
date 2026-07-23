@@ -157,6 +157,9 @@ function CursosPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="col-span-2 space-y-1.5"><Label>Ação</Label><Input value={form.acao} onChange={e => setForm({ ...form, acao: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Código da Operação</Label><Input value={form.codigo_operacao} onChange={e => setForm({ ...form, codigo_operacao: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Código SIGO</Label><Input value={form.codigo_sigo} onChange={e => setForm({ ...form, codigo_sigo: e.target.value })} /></div>
           </form>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>

@@ -188,18 +188,21 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       });
     }
 
-    // TR — dias com ≥ 1h frequentada
+    // TR — dias com ≥ 1h frequentada, com tecto mensal por formando
     if (elegTr && kmDia > 0 && valorKm > 0 && diasTr > 0) {
       const km_total = +(diasTr * kmDia).toFixed(2);
-      const valor = +(km_total * valorKm).toFixed(2);
+      const bruto = +(km_total * valorKm).toFixed(2);
+      const teto = Number(bolsaCfg?.tr_teto_mensal ?? 0);
+      const valor = teto > 0 ? +Math.min(bruto, teto).toFixed(2) : bruto;
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasTr,
         km_total, valor,
-        memoria_calculo: { km_dia: kmDia, dias: diasTr, valor_km: valorKm, regra: "dias com ≥ 1h frequentada", formula: "dias(≥1h) × km_dia × valor_km" },
+        memoria_calculo: { km_dia: kmDia, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: teto || null, aplicado_teto: teto > 0 && bruto > teto, regra: "dias com ≥ 1h frequentada; aplicado tecto mensal se definido", formula: "min(dias(≥1h) × km_dia × valor_km, teto_mensal)" },
       });
     }
+
   }
 
 

@@ -288,7 +288,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     });
   });
 
-  const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, geral: 0 };
+  const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0, geral: 0 };
   linhasFormandos.forEach(l => { totais[l.rubrica] += l.valor; totais.geral += l.valor; });
   linhasFormadores.forEach(l => { totais.HN += l.valor; totais.geral += l.valor; });
   (Object.keys(totais) as (keyof typeof totais)[]).forEach(k => (totais[k] = +totais[k].toFixed(2)));
@@ -309,7 +309,8 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
     estado: "rascunho",
     total_bf: preview.totais.BF, total_bfm: preview.totais.BFM,
     total_sa: preview.totais.SA, total_tr: preview.totais.TR,
-    total_hn: preview.totais.HN, total_geral: preview.totais.geral,
+    total_hn: preview.totais.HN, total_atl: preview.totais.ATL,
+    total_geral: preview.totais.geral,
   };
   if (processamentoId) {
     if (existente?.estado === "fechado") throw new Error("Processamento fechado — não pode ser recalculado.");

@@ -84,16 +84,22 @@ function newDoc(orientation: "portrait" | "landscape" = "portrait") {
   return new jsPDF({ orientation, unit: "mm", format: "a4" });
 }
 
+function imgFmt(dataUrl?: string): "PNG" | "JPEG" {
+  if (!dataUrl) return "PNG";
+  if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
+  return "PNG";
+}
+
 function drawLogoBand(doc: jsPDF) {
   const b = getBrandingSync();
   const w = doc.internal.pageSize.getWidth();
   const logoH = 14, logoW = 28;
   const y = (HEADER_LOGO_BAND - logoH) / 2;
   if (b.logoEmpresa) {
-    try { doc.addImage(b.logoEmpresa, "PNG", 14, y, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+    try { doc.addImage(b.logoEmpresa, imgFmt(b.logoEmpresa), 14, y, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
   }
   if (b.logoDgert) {
-    try { doc.addImage(b.logoDgert, "PNG", w - 14 - logoW, y, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+    try { doc.addImage(b.logoDgert, imgFmt(b.logoDgert), w - 14 - logoW, y, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
   }
 }
 
@@ -122,8 +128,8 @@ function footer(doc: jsPDF) {
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     if (b.logoPessoas) {
-      const logoH = 12, logoW = 30;
-      try { doc.addImage(b.logoPessoas, "PNG", (w - logoW) / 2, h - 12 - logoH - 1, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+      const logoH = 14, logoW = 38;
+      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), (w - logoW) / 2, h - 12 - logoH - 1, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
     }
     doc.setDrawColor(...MUTED);
     doc.setLineWidth(0.2);

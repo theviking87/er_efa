@@ -132,16 +132,11 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const horasFalta = minhasFaltas.reduce((a: number, f: any) => a + Number(f.horas || 0), 0);
     const horasFreq = Math.max(0, horasPrevistas - horasFalta);
 
-    // Dias de presença
-    const diasSess = new Map<string, number>(); // data -> horas totais
-    minhasSess.forEach((s: any) => diasSess.set(s.data, (diasSess.get(s.data) ?? 0) + Number(s.horas || 0)));
-    const faltasPorDia = new Map<string, number>();
-    minhasFaltas.forEach((f: any) => faltasPorDia.set(f.data, (faltasPorDia.get(f.data) ?? 0) + Number(f.horas || 0)));
-    let diasPresenca = 0;
-    diasSess.forEach((h, d) => {
-      const falt = faltasPorDia.get(d) ?? 0;
-      if (h - falt > 0) diasPresenca += 1;
-    });
+    // Dias = todos os dias do cronograma com formação atribuída (UCs em que o formando está inscrito).
+    // Faltas não reduzem dias — apenas descontam horas.
+    const diasSet = new Set<string>();
+    minhasSess.forEach((s: any) => diasSet.add(s.data));
+    const diasPresenca = diasSet.size;
 
     const bolsaCfg = bolsaByFormando.get(insc.formando_id);
     const tipoBolsa = bolsaCfg?.tipo as "BF" | "BFM" | "nenhuma" | undefined;

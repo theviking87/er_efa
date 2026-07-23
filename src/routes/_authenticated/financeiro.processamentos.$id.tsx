@@ -90,7 +90,7 @@ function DetailPage() {
 
   const [filtroModo, setFiltroModo] = useState<"tudo" | "formando" | "formador">("tudo");
   const [filtroId, setFiltroId] = useState<string>("");
-  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","HN"]));
+  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","HN","ATL"]));
 
   const fmdsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formando_id), [linhas.data]);
   const fdrsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formador_id), [linhas.data]);

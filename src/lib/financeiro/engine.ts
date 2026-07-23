@@ -127,9 +127,8 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const minhasSess = sessoes.filter((s: any) => !ucsAus.has(s.curso_ufcd_id));
     const horasPrevistas = minhasSess.reduce((a, s: any) => a + Number(s.horas || 0), 0);
 
-    // Faltas efetivas (excluir tipo 'ausencia' que já é UC não frequentada)
-    const minhasFaltas = (faltas ?? []).filter((f: any) =>
-      f.curso_formando_id === insc.id && f.tipo !== "ausencia");
+    // Faltas registadas no cronograma descontam horas frequentadas.
+    const minhasFaltas = (faltas ?? []).filter((f: any) => f.curso_formando_id === insc.id);
     const horasFalta = minhasFaltas.reduce((a: number, f: any) => a + Number(f.horas || 0), 0);
     const horasFreq = Math.max(0, horasPrevistas - horasFalta);
 

@@ -63,6 +63,40 @@ function Dashboard() {
     },
   });
 
+  const faltasAlerta = useQuery({
+    queryKey: ["dashboard-faltas-limite"],
+    queryFn: async () => {
+      const { data: faltas } = await supabase
+        .from("formando_faltas")
+        .select("horas, sessao:sessoes(curso_ufcd_id), curso_formando:curso_formandos(id, formando:formandos(nome), curso:cursos(id, codigo, nome))");
+      const { data: ucs } = await supabase
+        .from("curso_ufcds")
+        .select("id, horas_totais, ufcd:ufcds(codigo, designacao)");
+      const ucMap = new Map((ucs ?? []).map((u: any) => [u.id, u]));
+      // agrupar por (curso_formando_id, curso_ufcd_id)
+      const agg = new Map<string, { horas: number; cf: any; uc: any }>();
+      for (const f of (faltas ?? []) as any[]) {
+        const ucId = f.sessao?.curso_ufcd_id;
+        if (!ucId || !f.curso_formando) continue;
+        const uc = ucMap.get(ucId);
+        if (!uc) continue;
+        const key = `${f.curso_formando.id}::${ucId}`;
+        const cur = agg.get(key) ?? { horas: 0, cf: f.curso_formando, uc };
+        cur.horas += Number(f.horas ?? 0);
+        agg.set(key, cur);
+      }
+      const rows = Array.from(agg.values())
+        .map(r => {
+          const total = Number(r.uc.horas_totais ?? 0);
+          const pct = total > 0 ? (r.horas / total) * 100 : 0;
+          return { ...r, total, pct };
+        })
+        .filter(r => r.pct >= 8)
+        .sort((a, b) => b.pct - a.pct);
+      return rows;
+    },
+  });
+
   return (
     <PageContainer>
       <PageHeader title="Painel" description="Visão geral da atividade. Apenas o essencial." />
@@ -117,6 +151,21 @@ function Dashboard() {
             <CardTitle className="text-base font-semibold flex items-center gap-2"><AlertTriangle className="size-4 text-warning" /> Alertas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
+            {faltasAlerta.data?.length ? (
+              <Alert
+                tone={faltasAlerta.data.some(r => r.pct >= 10) ? "destructive" : "warning"}
+                title={`${faltasAlerta.data.length} formando(s) com faltas ≥ 8% numa UC`}
+              >
+                <ul className="text-xs space-y-0.5 max-h-48 overflow-auto">
+                  {faltasAlerta.data.slice(0, 10).map((r, i) => (
+                    <li key={i} className={r.pct >= 10 ? "text-destructive" : ""}>
+                      · {r.cf.formando?.nome} — {r.uc.ufcd?.codigo} ({r.horas.toFixed(1)}h / {r.total}h · <strong>{r.pct.toFixed(1)}%</strong>)
+                      <span className="text-muted-foreground"> · {r.cf.curso?.codigo}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            ) : null}
             {counts.data?.ccpExpirado?.length ? (
               <Alert tone="destructive" title={`${counts.data.ccpExpirado.length} CCP expirados`}>
                 <ul className="text-xs space-y-0.5">
@@ -127,7 +176,7 @@ function Dashboard() {
             {counts.data?.ccpProximoExpirar?.length ? (
               <Alert tone="warning" title={`${counts.data.ccpProximoExpirar.length} CCP a expirar em 60 dias`} />
             ) : null}
-            {!counts.data?.ccpExpirado?.length && !counts.data?.ccpProximoExpirar?.length && (
+            {!counts.data?.ccpExpirado?.length && !counts.data?.ccpProximoExpirar?.length && !faltasAlerta.data?.length && (
               <div className="text-xs text-muted-foreground">Sem alertas críticos.</div>
             )}
           </CardContent>

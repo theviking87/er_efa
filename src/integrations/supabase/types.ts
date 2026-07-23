@@ -510,12 +510,12 @@ export type Database = {
           horas_frequentadas: number | null
           horas_previstas: number | null
           id: string
-          km_total: number
+          km_total: number | null
           memoria_calculo: Json
           processamento_id: string
           rubrica: string
           valor: number
-          valor_dia: number
+          valor_dia: number | null
           valor_hora: number | null
         }
         Insert: {
@@ -527,12 +527,12 @@ export type Database = {
           horas_frequentadas?: number | null
           horas_previstas?: number | null
           id?: string
-          km_total?: number
+          km_total?: number | null
           memoria_calculo?: Json
           processamento_id: string
           rubrica: string
           valor?: number
-          valor_dia?: number
+          valor_dia?: number | null
           valor_hora?: number | null
         }
         Update: {
@@ -544,12 +544,12 @@ export type Database = {
           horas_frequentadas?: number | null
           horas_previstas?: number | null
           id?: string
-          km_total?: number
+          km_total?: number | null
           memoria_calculo?: Json
           processamento_id?: string
           rubrica?: string
           valor?: number
-          valor_dia?: number
+          valor_dia?: number | null
           valor_hora?: number | null
         }
         Relationships: [

@@ -199,8 +199,9 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     let diasTr = 0;
     horasPorDia.forEach((h, dia) => {
       const efect = Math.max(0, h - (faltasPorDia.get(dia) ?? 0));
-      if (efect >= 3) diasSa += 1;
-      if (efect >= 1) diasTr += 1;
+      // SA e TR partilham o mesmo critério: dia só conta se ≥ 3h efectivas.
+      // Se o dia perde SA, também perde TR.
+      if (efect >= 3) { diasSa += 1; diasTr += 1; }
     });
 
     const bolsaCfg = bolsaByFormando.get(insc.formando_id);

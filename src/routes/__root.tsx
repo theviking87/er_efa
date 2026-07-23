@@ -44,7 +44,7 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
-  const isElectron = typeof window !== "undefined" && Boolean((window as any).electronAPI?.isElectron);
+  const isDev = import.meta.env.DEV;
   useEffect(() => {
     reportLovableError(error, { boundary: "tanstack_root_error_component" });
   }, [error]);

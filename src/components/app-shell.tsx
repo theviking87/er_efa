@@ -3,15 +3,13 @@ import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, HandCoins, Settings2, ClipboardList, Tags, ScrollText, ShieldCheck, Bell, FolderKanban,
+  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, Settings2, ClipboardList, FolderKanban,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { useProjetoAtivo, useProjetosList } from "@/lib/projeto-context";
-
-const LOCAL_FORCE_IMPORT_KEY = "formacao-er-force-import";
 
 const NAV = [
   { to: "/dashboard", label: "Painel", icon: LayoutDashboard, section: "Geral" },
@@ -22,14 +20,9 @@ const NAV = [
   { to: "/cursos", label: "Cursos", icon: BookOpen, section: "Geral" },
   { to: "/ufcds", label: "UFCD", icon: ListChecks, section: "Geral" },
   { to: "/relatorios", label: "Relatórios & SIGO", icon: FileBarChart2, section: "Geral" },
-  { to: "/financeiro", label: "Dashboard", icon: Wallet, section: "Financeiro" },
+  { to: "/financeiro", label: "Painel", icon: Wallet, section: "Financeiro" },
   { to: "/financeiro/processamentos", label: "Processamentos", icon: ClipboardList, section: "Financeiro" },
-  { to: "/financeiro/rubricas", label: "Rubricas Financeiras", icon: Tags, section: "Financeiro" },
-  { to: "/financeiro/regras", label: "Regras Financeiras", icon: ScrollText, section: "Financeiro" },
-  { to: "/financeiro/configuracao", label: "Configuração Global", icon: Settings2, section: "Financeiro" },
-  { to: "/financeiro/honorarios", label: "Honorários", icon: HandCoins, section: "Financeiro" },
-  { to: "/financeiro/auditoria", label: "Auditoria", icon: ShieldCheck, section: "Financeiro" },
-  { to: "/financeiro/alertas", label: "Alertas", icon: Bell, section: "Financeiro" },
+  { to: "/financeiro/configuracao", label: "Configuração", icon: Settings2, section: "Financeiro" },
   { to: "/exportar", label: "Exportar / Backup", icon: Download, section: "Sistema" },
   { to: "/perfil", label: "O meu perfil", icon: UserCog, section: "Sistema" },
 ] as const;
@@ -122,19 +115,6 @@ export function AppShell({ children }: { children: ReactNode }) {
 
 
         <div className="p-3 border-t border-sidebar-border">
-          {typeof window !== "undefined" && Boolean((window as any).electronAPI?.isElectron) && (
-            <Button
-              variant="ghost"
-              size="sm"
-              className="w-full justify-start gap-2 text-white/70 hover:text-white hover:bg-white/10 mb-1"
-              onClick={() => {
-                window.localStorage.setItem(LOCAL_FORCE_IMPORT_KEY, "1");
-                window.location.reload();
-              }}
-            >
-              <Download className="size-4" /> Importar backup
-            </Button>
-          )}
           <Button
             variant="ghost"
             size="sm"

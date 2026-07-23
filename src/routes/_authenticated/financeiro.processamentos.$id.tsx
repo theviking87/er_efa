@@ -163,6 +163,11 @@ function DetailPage() {
         actions={
           <div className="flex gap-2 items-center">
             <Badge variant={fechado ? "default" : "secondary"}>{p.estado}</Badge>
+            {!fechado && (
+              <Button variant="outline" onClick={() => recalcular.mutate()} disabled={recalcular.isPending}>
+                <RefreshCw className="size-4" />{recalcular.isPending ? "A recalcular…" : "Recalcular"}
+              </Button>
+            )}
             {fechado ? (
               <Button variant="outline" onClick={() => toggleEstado.mutate("rascunho")}><LockOpen className="size-4" />Reabrir</Button>
             ) : (

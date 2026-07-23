@@ -322,6 +322,7 @@ export type Database = {
           projeto_id: string | null
           tipo: string
           updated_at: string
+          valor_atl: number
           valor_mensal: number
         }
         Insert: {
@@ -334,6 +335,7 @@ export type Database = {
           projeto_id?: string | null
           tipo: string
           updated_at?: string
+          valor_atl?: number
           valor_mensal?: number
         }
         Update: {
@@ -346,6 +348,7 @@ export type Database = {
           projeto_id?: string | null
           tipo?: string
           updated_at?: string
+          valor_atl?: number
           valor_mensal?: number
         }
         Relationships: [
@@ -367,6 +370,7 @@ export type Database = {
       }
       fin_config: {
         Row: {
+          atl_teto_mensal: number
           created_at: string
           empresa_email: string | null
           empresa_morada: string | null
@@ -388,6 +392,7 @@ export type Database = {
           valor_sa: number
         }
         Insert: {
+          atl_teto_mensal?: number
           created_at?: string
           empresa_email?: string | null
           empresa_morada?: string | null
@@ -409,6 +414,7 @@ export type Database = {
           valor_sa?: number
         }
         Update: {
+          atl_teto_mensal?: number
           created_at?: string
           empresa_email?: string | null
           empresa_morada?: string | null
@@ -442,6 +448,7 @@ export type Database = {
           mes: number
           observacoes: string | null
           projeto_id: string | null
+          total_atl: number
           total_bf: number
           total_bfm: number
           total_geral: number
@@ -460,6 +467,7 @@ export type Database = {
           mes: number
           observacoes?: string | null
           projeto_id?: string | null
+          total_atl?: number
           total_bf?: number
           total_bfm?: number
           total_geral?: number
@@ -478,6 +486,7 @@ export type Database = {
           mes?: number
           observacoes?: string | null
           projeto_id?: string | null
+          total_atl?: number
           total_bf?: number
           total_bfm?: number
           total_geral?: number

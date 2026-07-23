@@ -58,10 +58,10 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   }
   ws.getRow(1).height = 46; ws.getRow(2).height = 20;
 
-  ws.mergeCells("A4:F4");
+  ws.mergeCells("A4:G4");
   ws.getCell("A4").value = `Processamento — ${MESES[p.mes-1]} / ${p.ano}`;
   ws.getCell("A4").font = { size: 14, bold: true };
-  ws.mergeCells("A5:F5");
+  ws.mergeCells("A5:G5");
   ws.getCell("A5").value = `${p.curso?.codigo ?? ""} — ${p.curso?.nome ?? ""}`;
   ws.getCell("A5").font = { size: 11, color: { argb: "FF666666" } };
 
@@ -71,13 +71,13 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     p.curso?.codigo_sigo ? `Cód. SIGO: ${p.curso.codigo_sigo}` : "",
   ].filter(Boolean).join("  •  ");
   if (metaCurso) {
-    ws.mergeCells("A6:F6");
+    ws.mergeCells("A6:G6");
     ws.getCell("A6").value = metaCurso;
     ws.getCell("A6").font = { size: 9, color: { argb: "FF444444" } };
   }
 
   if (p.empresa) {
-    ws.mergeCells("A7:F7");
+    ws.mergeCells("A7:G7");
     ws.getCell("A7").value = `${p.empresa.nome ?? ""} • NIF ${p.empresa.nif ?? "—"} • ${p.empresa.morada ?? ""}`;
     ws.getCell("A7").font = { size: 9, color: { argb: "FF888888" } };
   }

@@ -305,7 +305,42 @@ function Stat({ label, v, strong }: { label: string; v: number; strong?: boolean
   );
 }
 
-function FormandosGrouped({ linhas }: { linhas: any[] }) {
+function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linhas: any[]; processamentoId: string; fechado: boolean; tetoAtl: number }) {
+  const qc = useQueryClient();
+  const [edits, setEdits] = useState<Record<string, string>>({});
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  async function saveAtl(linhaId: string) {
+    const raw = edits[linhaId];
+    if (raw === undefined) return;
+    let v = Number(String(raw).replace(",", "."));
+    if (!Number.isFinite(v) || v < 0) v = 0;
+    if (tetoAtl > 0 && v > tetoAtl) v = tetoAtl;
+    setSavingId(linhaId);
+    try {
+      const { error } = await supabase.from("fin_processamento_linha")
+        .update({ valor: v } as never).eq("id", linhaId);
+      if (error) throw error;
+      // Recalcular total_atl e total_geral do processamento
+      const { data: todas } = await supabase.from("fin_processamento_linha")
+        .select("rubrica, valor").eq("processamento_id", processamentoId);
+      const soma = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 } as Record<string, number>;
+      (todas ?? []).forEach((l: any) => { if (soma[l.rubrica] !== undefined) soma[l.rubrica] += Number(l.valor ?? 0); });
+      const geral = soma.BF + soma.BFM + soma.SA + soma.TR + soma.HN + soma.ATL;
+      await supabase.from("fin_processamento")
+        .update({ total_atl: +soma.ATL.toFixed(2), total_geral: +geral.toFixed(2) } as never)
+        .eq("id", processamentoId);
+      toast.success("Valor ATL guardado.");
+      setEdits(prev => { const n = { ...prev }; delete n[linhaId]; return n; });
+      qc.invalidateQueries({ queryKey: ["fin-proc", processamentoId] });
+      qc.invalidateQueries({ queryKey: ["fin-proc-linhas", processamentoId] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   const grupos = useMemo(() => {
     const m = new Map<string, { id: string; nome: string; total: number; linhas: any[] }>();
     for (const l of linhas) {

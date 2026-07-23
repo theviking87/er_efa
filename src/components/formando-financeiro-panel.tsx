@@ -52,7 +52,6 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
   const [elegSa, setElegSa] = useState<boolean>(true);
   const [elegTr, setElegTr] = useState<boolean>(false);
   const [kmDia, setKmDia] = useState<number>(0);
-  const [trTeto, setTrTeto] = useState<number>(0);
   useEffect(() => {
     if (bolsa.data) {
       setTipo(bolsa.data.tipo);
@@ -60,7 +59,6 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
       setElegSa(bolsa.data.elegivel_sa ?? true);
       setElegTr(bolsa.data.elegivel_tr ?? false);
       setKmDia(Number(bolsa.data.km_diario ?? 0));
-      setTrTeto(Number((bolsa.data as any).tr_teto_mensal ?? 0));
     }
   }, [bolsa.data]);
 
@@ -68,7 +66,7 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
     mutationFn: async () => {
       const payload = {
         tipo, valor_mensal: valor, elegivel_sa: elegSa, elegivel_tr: elegTr,
-        km_diario: kmDia, tr_teto_mensal: trTeto > 0 ? trTeto : null,
+        km_diario: kmDia,
       };
       if (bolsa.data?.id) {
         const { error } = await supabase.from("fin_bolsa_config")

@@ -62,6 +62,22 @@ function DetailPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const recalcular = useMutation({
+    mutationFn: async () => {
+      const p: any = proc.data;
+      if (!p) throw new Error("Sem processamento.");
+      if (p.estado === "fechado") throw new Error("Processamento fechado — reabre antes de recalcular.");
+      const preview = await calcularProcessamento(p.curso_id, p.ano, p.mes);
+      await guardarProcessamento(preview, p.projeto_id ?? null);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-proc", id] });
+      qc.invalidateQueries({ queryKey: ["fin-proc-linhas", id] });
+      toast.success("Processamento recalculado.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const eliminar = useMutation({
     mutationFn: async () => {
       await supabase.from("fin_processamento_linha").delete().eq("processamento_id", id);

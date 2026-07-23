@@ -23,7 +23,7 @@ function Dashboard() {
         supabase.from("ufcds").select("id"),
         supabase.from("projetos").select("id, estado, ativo"),
         supabase.from("formandos").select("id"),
-        supabase.from("financeiro_processamentos").select("id"),
+        supabase.from("fin_processamento").select("id, total_geral"),
       ]);
       return {
         cursosAtivos: (cursos.data ?? []).filter(c => c.estado === "ativo").length,
@@ -35,6 +35,7 @@ function Dashboard() {
         projetosAtivos: (projetos.data ?? []).filter((p: any) => p.ativo && p.estado === "ativo").length,
         formandosTotal: formandos.data?.length ?? 0,
         procsTotal: procs.data?.length ?? 0,
+        procsValor: (procs.data ?? []).reduce((s: number, r: any) => s + Number(r.total_geral ?? 0), 0),
         ccpExpirado: (formadores.data ?? []).filter(f => f.validade_ccp && new Date(f.validade_ccp) < new Date()),
         ccpProximoExpirar: (formadores.data ?? []).filter(f => {
           if (!f.validade_ccp) return false;
@@ -75,7 +76,7 @@ function Dashboard() {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
         <Stat label="UFCD no catálogo" value={counts.data?.ufcdsTotal ?? 0} icon={ListChecks} href="/ufcds" />
         <Stat label="Processamentos" value={counts.data?.procsTotal ?? 0} icon={ClipboardList} href="/financeiro/processamentos" />
-        <Stat label="Valor financeiro" value={"—"} icon={ClipboardList} />
+        <Stat label="Valor processado (€)" value={(counts.data?.procsValor ?? 0).toFixed(2)} icon={ClipboardList} href="/financeiro/processamentos" />
         <Stat label="Próximas 7 dias" value={proximas.data?.length ?? 0} icon={Calendar} />
       </div>
 

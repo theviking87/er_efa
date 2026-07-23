@@ -1,8 +1,8 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { MONTH_NAMES, TIPOLOGIA_LABEL, ESTADO_CURSO_LABEL } from "@/lib/format";
-import { localRows, yieldToBrowser } from "@/lib/offline-sql";
-import { saveFileElectron } from "@/lib/electron-io";
+import { localRows, yieldToBrowser } from "@/lib/dom-helpers";
+import { saveFileElectron } from "@/lib/dom-helpers";
 
 async function downloadWorkbook(wb: XLSX.WorkBook, filename: string) {
   await yieldToBrowser();

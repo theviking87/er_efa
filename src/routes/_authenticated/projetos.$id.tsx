@@ -50,8 +50,8 @@ function ProjetoDetalhe() {
   const processamentos = useQuery({
     queryKey: ["projeto-processamentos", id],
     queryFn: async () => {
-      const { data, error } = await supabase.from("financeiro_processamentos")
-        .select("id, ano, mes, estado, cursos(codigo)")
+      const { data, error } = await supabase.from("fin_processamento")
+        .select("id, ano, mes, estado, total_geral, cursos:curso_id(codigo)")
         .eq("projeto_id", id).order("ano", { ascending: false }).order("mes", { ascending: false });
       if (error) throw error;
       return data ?? [];

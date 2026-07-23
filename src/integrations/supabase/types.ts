@@ -92,18 +92,21 @@ export type Database = {
           created_at: string
           curso_formando_id: string
           curso_ufcd_id: string
+          frequenta: boolean
           id: string
         }
         Insert: {
           created_at?: string
           curso_formando_id: string
           curso_ufcd_id: string
+          frequenta?: boolean
           id?: string
         }
         Update: {
           created_at?: string
           curso_formando_id?: string
           curso_ufcd_id?: string
+          frequenta?: boolean
           id?: string
         }
         Relationships: [
@@ -299,571 +302,44 @@ export type Database = {
           },
         ]
       }
-      fin_auditoria: {
-        Row: {
-          campo_alterado: string | null
-          data_hora: string
-          entidade: string
-          id: string
-          motivo: string | null
-          nome_utilizador: string
-          operacao: string
-          registo_id: string | null
-          utilizador_id: string | null
-          valor_anterior: string | null
-          valor_novo: string | null
-        }
-        Insert: {
-          campo_alterado?: string | null
-          data_hora?: string
-          entidade: string
-          id?: string
-          motivo?: string | null
-          nome_utilizador: string
-          operacao: string
-          registo_id?: string | null
-          utilizador_id?: string | null
-          valor_anterior?: string | null
-          valor_novo?: string | null
-        }
-        Update: {
-          campo_alterado?: string | null
-          data_hora?: string
-          entidade?: string
-          id?: string
-          motivo?: string | null
-          nome_utilizador?: string
-          operacao?: string
-          registo_id?: string | null
-          utilizador_id?: string | null
-          valor_anterior?: string | null
-          valor_novo?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fin_auditoria_utilizador_id_fkey"
-            columns: ["utilizador_id"]
-            isOneToOne: false
-            referencedRelation: "fin_utilizadores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      fin_configuracao_global: {
-        Row: {
-          ativo: boolean
-          casas_decimais: number
-          created_at: string
-          data_inicio: string
-          horas_mes_referencia: number
-          id: string
-          moeda: string
-          observacoes: string | null
-          updated_at: string
-          utilizador_id: string | null
-          utilizador_nome: string | null
-          valor_km: number
-          valor_subsidio_alimentacao: number
-        }
-        Insert: {
-          ativo?: boolean
-          casas_decimais?: number
-          created_at?: string
-          data_inicio?: string
-          horas_mes_referencia?: number
-          id?: string
-          moeda?: string
-          observacoes?: string | null
-          updated_at?: string
-          utilizador_id?: string | null
-          utilizador_nome?: string | null
-          valor_km?: number
-          valor_subsidio_alimentacao?: number
-        }
-        Update: {
-          ativo?: boolean
-          casas_decimais?: number
-          created_at?: string
-          data_inicio?: string
-          horas_mes_referencia?: number
-          id?: string
-          moeda?: string
-          observacoes?: string | null
-          updated_at?: string
-          utilizador_id?: string | null
-          utilizador_nome?: string | null
-          valor_km?: number
-          valor_subsidio_alimentacao?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fin_configuracao_global_utilizador_id_fkey"
-            columns: ["utilizador_id"]
-            isOneToOne: false
-            referencedRelation: "fin_utilizadores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      fin_formador_config: {
-        Row: {
-          artigo_isencao: string | null
-          created_at: string
-          formador_id: string
-          iban: string | null
-          id: string
-          observacoes: string | null
-          percentagem_irs: number
-          percentagem_ss: number | null
-          regime_iva: string
-          retencao_irs: boolean
-          seguranca_social: boolean
-          updated_at: string
-        }
-        Insert: {
-          artigo_isencao?: string | null
-          created_at?: string
-          formador_id: string
-          iban?: string | null
-          id?: string
-          observacoes?: string | null
-          percentagem_irs?: number
-          percentagem_ss?: number | null
-          regime_iva?: string
-          retencao_irs?: boolean
-          seguranca_social?: boolean
-          updated_at?: string
-        }
-        Update: {
-          artigo_isencao?: string | null
-          created_at?: string
-          formador_id?: string
-          iban?: string | null
-          id?: string
-          observacoes?: string | null
-          percentagem_irs?: number
-          percentagem_ss?: number | null
-          regime_iva?: string
-          retencao_irs?: boolean
-          seguranca_social?: boolean
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fin_formador_config_formador_id_fkey"
-            columns: ["formador_id"]
-            isOneToOne: true
-            referencedRelation: "formadores"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      fin_formando_rubricas: {
+      fin_bolsa_config: {
         Row: {
           created_at: string
-          data_fim: string | null
-          data_inicio: string | null
-          elegivel: boolean
           formando_id: string
-          iban: string | null
           id: string
-          limite_especifico: number | null
-          observacoes: string | null
-          rubrica_id: string
-          updated_at: string
-          valor_especifico: number | null
-        }
-        Insert: {
-          created_at?: string
-          data_fim?: string | null
-          data_inicio?: string | null
-          elegivel?: boolean
-          formando_id: string
-          iban?: string | null
-          id?: string
-          limite_especifico?: number | null
-          observacoes?: string | null
-          rubrica_id: string
-          updated_at?: string
-          valor_especifico?: number | null
-        }
-        Update: {
-          created_at?: string
-          data_fim?: string | null
-          data_inicio?: string | null
-          elegivel?: boolean
-          formando_id?: string
-          iban?: string | null
-          id?: string
-          limite_especifico?: number | null
-          observacoes?: string | null
-          rubrica_id?: string
-          updated_at?: string
-          valor_especifico?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fin_formando_rubricas_formando_id_fkey"
-            columns: ["formando_id"]
-            isOneToOne: false
-            referencedRelation: "formandos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "fin_formando_rubricas_rubrica_id_fkey"
-            columns: ["rubrica_id"]
-            isOneToOne: false
-            referencedRelation: "fin_rubricas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      fin_rubrica_regras: {
-        Row: {
-          ativo: boolean
-          created_at: string
-          data_fim: string | null
-          data_inicio: string
-          dias_minimos: number | null
-          horas_referencia: number | null
-          id: string
-          observacoes: string | null
-          permite_edicao_manual: boolean
-          permite_limite: boolean
-          rubrica_id: string
-          updated_at: string
-          valor_maximo: number | null
-          valor_unitario: number | null
-        }
-        Insert: {
-          ativo?: boolean
-          created_at?: string
-          data_fim?: string | null
-          data_inicio?: string
-          dias_minimos?: number | null
-          horas_referencia?: number | null
-          id?: string
-          observacoes?: string | null
-          permite_edicao_manual?: boolean
-          permite_limite?: boolean
-          rubrica_id: string
-          updated_at?: string
-          valor_maximo?: number | null
-          valor_unitario?: number | null
-        }
-        Update: {
-          ativo?: boolean
-          created_at?: string
-          data_fim?: string | null
-          data_inicio?: string
-          dias_minimos?: number | null
-          horas_referencia?: number | null
-          id?: string
-          observacoes?: string | null
-          permite_edicao_manual?: boolean
-          permite_limite?: boolean
-          rubrica_id?: string
-          updated_at?: string
-          valor_maximo?: number | null
-          valor_unitario?: number | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "fin_rubrica_regras_rubrica_id_fkey"
-            columns: ["rubrica_id"]
-            isOneToOne: false
-            referencedRelation: "fin_rubricas"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      fin_rubricas: {
-        Row: {
-          ativo: boolean
-          categoria: string
-          codigo: string
-          created_at: string
-          descricao: string
-          gera_documento: boolean
-          gera_exportacao: boolean
-          id: string
-          observacoes: string | null
-          ordem: number
-          permite_edicao_manual: boolean
-          updated_at: string
-        }
-        Insert: {
-          ativo?: boolean
-          categoria: string
-          codigo: string
-          created_at?: string
-          descricao: string
-          gera_documento?: boolean
-          gera_exportacao?: boolean
-          id?: string
-          observacoes?: string | null
-          ordem?: number
-          permite_edicao_manual?: boolean
-          updated_at?: string
-        }
-        Update: {
-          ativo?: boolean
-          categoria?: string
-          codigo?: string
-          created_at?: string
-          descricao?: string
-          gera_documento?: boolean
-          gera_exportacao?: boolean
-          id?: string
-          observacoes?: string | null
-          ordem?: number
-          permite_edicao_manual?: boolean
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      fin_utilizadores: {
-        Row: {
-          ativo: boolean
-          created_at: string
-          id: string
-          nome: string
-          nome_utilizador: string
-          observacoes: string | null
-          perfil: string
-          updated_at: string
-        }
-        Insert: {
-          ativo?: boolean
-          created_at?: string
-          id?: string
-          nome: string
-          nome_utilizador: string
-          observacoes?: string | null
-          perfil?: string
-          updated_at?: string
-        }
-        Update: {
-          ativo?: boolean
-          created_at?: string
-          id?: string
-          nome?: string
-          nome_utilizador?: string
-          observacoes?: string | null
-          perfil?: string
-          updated_at?: string
-        }
-        Relationships: []
-      }
-      financeiro_bolsas: {
-        Row: {
-          created_at: string
-          editado_manual: boolean
-          formando_id: string
-          horas_frequentadas: number
-          horas_previstas: number
-          id: string
-          memoria_calculo: Json | null
-          observacoes: string | null
-          processamento_id: string
-          teto_aplicado: boolean
-          updated_at: string
-          valor_aprovado: number | null
-          valor_calculado: number
-          valor_final: number
-          valor_hora: number
-        }
-        Insert: {
-          created_at?: string
-          editado_manual?: boolean
-          formando_id: string
-          horas_frequentadas?: number
-          horas_previstas?: number
-          id?: string
-          memoria_calculo?: Json | null
-          observacoes?: string | null
-          processamento_id: string
-          teto_aplicado?: boolean
-          updated_at?: string
-          valor_aprovado?: number | null
-          valor_calculado?: number
-          valor_final?: number
-          valor_hora?: number
-        }
-        Update: {
-          created_at?: string
-          editado_manual?: boolean
-          formando_id?: string
-          horas_frequentadas?: number
-          horas_previstas?: number
-          id?: string
-          memoria_calculo?: Json | null
-          observacoes?: string | null
-          processamento_id?: string
-          teto_aplicado?: boolean
-          updated_at?: string
-          valor_aprovado?: number | null
-          valor_calculado?: number
-          valor_final?: number
-          valor_hora?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "financeiro_bolsas_formando_id_fkey"
-            columns: ["formando_id"]
-            isOneToOne: false
-            referencedRelation: "formandos"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_bolsas_processamento_id_fkey"
-            columns: ["processamento_id"]
-            isOneToOne: false
-            referencedRelation: "financeiro_processamentos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      financeiro_honorarios: {
-        Row: {
-          created_at: string
-          descricao: string | null
-          formador_id: string | null
-          horas: number
-          id: string
-          iva: number
-          memoria_calculo: Json | null
-          processamento_id: string
-          retencao_irs: number
-          seguranca_social: number
-          total: number
-          updated_at: string
-          valor: number
-          valor_aprovado: number | null
-          valor_hora: number
-        }
-        Insert: {
-          created_at?: string
-          descricao?: string | null
-          formador_id?: string | null
-          horas?: number
-          id?: string
-          iva?: number
-          memoria_calculo?: Json | null
-          processamento_id: string
-          retencao_irs?: number
-          seguranca_social?: number
-          total?: number
-          updated_at?: string
-          valor?: number
-          valor_aprovado?: number | null
-          valor_hora?: number
-        }
-        Update: {
-          created_at?: string
-          descricao?: string | null
-          formador_id?: string | null
-          horas?: number
-          id?: string
-          iva?: number
-          memoria_calculo?: Json | null
-          processamento_id?: string
-          retencao_irs?: number
-          seguranca_social?: number
-          total?: number
-          updated_at?: string
-          valor?: number
-          valor_aprovado?: number | null
-          valor_hora?: number
-        }
-        Relationships: [
-          {
-            foreignKeyName: "financeiro_honorarios_formador_id_fkey"
-            columns: ["formador_id"]
-            isOneToOne: false
-            referencedRelation: "formadores"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "financeiro_honorarios_processamento_id_fkey"
-            columns: ["processamento_id"]
-            isOneToOne: false
-            referencedRelation: "financeiro_processamentos"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      financeiro_processamentos: {
-        Row: {
-          ano: number
-          created_at: string
-          curso_id: string
-          data_criacao: string
-          data_fecho: string | null
-          estado: string
-          fechado_por: string | null
-          id: string
-          mes: number
-          observacoes: string | null
           projeto_id: string | null
-          snapshot: Json | null
-          total_bolsas: number
-          total_geral: number
-          total_honorarios: number
-          total_km: number
-          total_subsidios: number
+          tipo: string
           updated_at: string
+          valor_mensal: number
         }
         Insert: {
-          ano: number
           created_at?: string
-          curso_id: string
-          data_criacao?: string
-          data_fecho?: string | null
-          estado?: string
-          fechado_por?: string | null
+          formando_id: string
           id?: string
-          mes: number
-          observacoes?: string | null
           projeto_id?: string | null
-          snapshot?: Json | null
-          total_bolsas?: number
-          total_geral?: number
-          total_honorarios?: number
-          total_km?: number
-          total_subsidios?: number
+          tipo: string
           updated_at?: string
+          valor_mensal?: number
         }
         Update: {
-          ano?: number
           created_at?: string
-          curso_id?: string
-          data_criacao?: string
-          data_fecho?: string | null
-          estado?: string
-          fechado_por?: string | null
+          formando_id?: string
           id?: string
-          mes?: number
-          observacoes?: string | null
           projeto_id?: string | null
-          snapshot?: Json | null
-          total_bolsas?: number
-          total_geral?: number
-          total_honorarios?: number
-          total_km?: number
-          total_subsidios?: number
+          tipo?: string
           updated_at?: string
+          valor_mensal?: number
         }
         Relationships: [
           {
-            foreignKeyName: "financeiro_processamentos_curso_id_fkey"
-            columns: ["curso_id"]
+            foreignKeyName: "fin_bolsa_config_formando_id_fkey"
+            columns: ["formando_id"]
             isOneToOne: false
-            referencedRelation: "cursos"
+            referencedRelation: "formandos"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financeiro_processamentos_projeto_id_fkey"
+            foreignKeyName: "fin_bolsa_config_projeto_id_fkey"
             columns: ["projeto_id"]
             isOneToOne: false
             referencedRelation: "projetos"
@@ -871,119 +347,213 @@ export type Database = {
           },
         ]
       }
-      financeiro_quilometros: {
+      fin_config: {
         Row: {
           created_at: string
-          data: string
-          destino: string | null
-          formando_id: string
+          empresa_email: string | null
+          empresa_morada: string | null
+          empresa_nif: string | null
+          empresa_nome: string | null
+          empresa_telefone: string | null
+          horas_mes_referencia: number
           id: string
-          km: number
-          memoria_calculo: Json | null
-          origem: string | null
-          processamento_id: string
-          total: number
+          limite_km_dia: number
+          logo_dgert_url: string | null
+          logo_empresa_url: string | null
+          logo_pessoas2030_url: string | null
+          percentagem_irs: number
+          percentagem_iva: number
+          percentagem_ss: number
           updated_at: string
-          valor_aprovado: number | null
           valor_km: number
+          valor_sa: number
         }
         Insert: {
           created_at?: string
-          data: string
-          destino?: string | null
-          formando_id: string
+          empresa_email?: string | null
+          empresa_morada?: string | null
+          empresa_nif?: string | null
+          empresa_nome?: string | null
+          empresa_telefone?: string | null
+          horas_mes_referencia?: number
           id?: string
-          km?: number
-          memoria_calculo?: Json | null
-          origem?: string | null
-          processamento_id: string
-          total?: number
+          limite_km_dia?: number
+          logo_dgert_url?: string | null
+          logo_empresa_url?: string | null
+          logo_pessoas2030_url?: string | null
+          percentagem_irs?: number
+          percentagem_iva?: number
+          percentagem_ss?: number
           updated_at?: string
-          valor_aprovado?: number | null
           valor_km?: number
+          valor_sa?: number
         }
         Update: {
           created_at?: string
-          data?: string
-          destino?: string | null
-          formando_id?: string
+          empresa_email?: string | null
+          empresa_morada?: string | null
+          empresa_nif?: string | null
+          empresa_nome?: string | null
+          empresa_telefone?: string | null
+          horas_mes_referencia?: number
           id?: string
-          km?: number
-          memoria_calculo?: Json | null
-          origem?: string | null
-          processamento_id?: string
-          total?: number
+          limite_km_dia?: number
+          logo_dgert_url?: string | null
+          logo_empresa_url?: string | null
+          logo_pessoas2030_url?: string | null
+          percentagem_irs?: number
+          percentagem_iva?: number
+          percentagem_ss?: number
           updated_at?: string
-          valor_aprovado?: number | null
           valor_km?: number
+          valor_sa?: number
+        }
+        Relationships: []
+      }
+      fin_processamento: {
+        Row: {
+          ano: number
+          created_at: string
+          curso_id: string
+          estado: string
+          fechado_em: string | null
+          id: string
+          mes: number
+          observacoes: string | null
+          projeto_id: string | null
+          total_bf: number
+          total_bfm: number
+          total_geral: number
+          total_hn: number
+          total_sa: number
+          total_tr: number
+          updated_at: string
+        }
+        Insert: {
+          ano: number
+          created_at?: string
+          curso_id: string
+          estado?: string
+          fechado_em?: string | null
+          id?: string
+          mes: number
+          observacoes?: string | null
+          projeto_id?: string | null
+          total_bf?: number
+          total_bfm?: number
+          total_geral?: number
+          total_hn?: number
+          total_sa?: number
+          total_tr?: number
+          updated_at?: string
+        }
+        Update: {
+          ano?: number
+          created_at?: string
+          curso_id?: string
+          estado?: string
+          fechado_em?: string | null
+          id?: string
+          mes?: number
+          observacoes?: string | null
+          projeto_id?: string | null
+          total_bf?: number
+          total_bfm?: number
+          total_geral?: number
+          total_hn?: number
+          total_sa?: number
+          total_tr?: number
+          updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "financeiro_quilometros_formando_id_fkey"
-            columns: ["formando_id"]
+            foreignKeyName: "fin_processamento_curso_id_fkey"
+            columns: ["curso_id"]
             isOneToOne: false
-            referencedRelation: "formandos"
+            referencedRelation: "cursos"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financeiro_quilometros_processamento_id_fkey"
-            columns: ["processamento_id"]
+            foreignKeyName: "fin_processamento_projeto_id_fkey"
+            columns: ["projeto_id"]
             isOneToOne: false
-            referencedRelation: "financeiro_processamentos"
+            referencedRelation: "projetos"
             referencedColumns: ["id"]
           },
         ]
       }
-      financeiro_subsidios: {
+      fin_processamento_linha: {
         Row: {
           created_at: string
-          dias: number
-          formando_id: string
+          dias_elegiveis: number
+          formador_id: string | null
+          formando_id: string | null
+          horas_elegiveis: number
+          horas_frequentadas: number
+          horas_previstas: number
           id: string
-          memoria_calculo: Json | null
+          km_total: number
+          memoria_calculo: Json
           processamento_id: string
-          total: number
-          updated_at: string
-          valor_aprovado: number | null
+          rubrica: string
+          valor: number
           valor_dia: number
+          valor_hora: number
         }
         Insert: {
           created_at?: string
-          dias?: number
-          formando_id: string
+          dias_elegiveis?: number
+          formador_id?: string | null
+          formando_id?: string | null
+          horas_elegiveis?: number
+          horas_frequentadas?: number
+          horas_previstas?: number
           id?: string
-          memoria_calculo?: Json | null
+          km_total?: number
+          memoria_calculo?: Json
           processamento_id: string
-          total?: number
-          updated_at?: string
-          valor_aprovado?: number | null
+          rubrica: string
+          valor?: number
           valor_dia?: number
+          valor_hora?: number
         }
         Update: {
           created_at?: string
-          dias?: number
-          formando_id?: string
+          dias_elegiveis?: number
+          formador_id?: string | null
+          formando_id?: string | null
+          horas_elegiveis?: number
+          horas_frequentadas?: number
+          horas_previstas?: number
           id?: string
-          memoria_calculo?: Json | null
+          km_total?: number
+          memoria_calculo?: Json
           processamento_id?: string
-          total?: number
-          updated_at?: string
-          valor_aprovado?: number | null
+          rubrica?: string
+          valor?: number
           valor_dia?: number
+          valor_hora?: number
         }
         Relationships: [
           {
-            foreignKeyName: "financeiro_subsidios_formando_id_fkey"
+            foreignKeyName: "fin_processamento_linha_formador_id_fkey"
+            columns: ["formador_id"]
+            isOneToOne: false
+            referencedRelation: "formadores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_processamento_linha_formando_id_fkey"
             columns: ["formando_id"]
             isOneToOne: false
             referencedRelation: "formandos"
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financeiro_subsidios_processamento_id_fkey"
+            foreignKeyName: "fin_processamento_linha_processamento_id_fkey"
             columns: ["processamento_id"]
             isOneToOne: false
-            referencedRelation: "financeiro_processamentos"
+            referencedRelation: "fin_processamento"
             referencedColumns: ["id"]
           },
         ]

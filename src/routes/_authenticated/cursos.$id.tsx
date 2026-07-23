@@ -25,8 +25,8 @@ import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
-import { localRows, paintBeforeHeavyWork, yieldToBrowser } from "@/lib/offline-sql";
-import { collectDocumentStyles, printHtmlWithFallback, runNativeExcelReport } from "@/lib/electron-io";
+import { localRows, paintBeforeHeavyWork, yieldToBrowser } from "@/lib/dom-helpers";
+import { collectDocumentStyles, printHtmlWithFallback, runNativeExcelReport } from "@/lib/dom-helpers";
 
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({

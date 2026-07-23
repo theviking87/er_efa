@@ -1,0 +1,4 @@
+ALTER TABLE public.cursos
+  ADD COLUMN IF NOT EXISTS acao TEXT,
+  ADD COLUMN IF NOT EXISTS codigo_operacao TEXT,
+  ADD COLUMN IF NOT EXISTS codigo_sigo TEXT;

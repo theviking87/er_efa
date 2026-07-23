@@ -28,7 +28,7 @@ function CursosPage() {
   const [q, setQ] = useState("");
   const [fEstado, setFEstado] = useState<string>("all");
   const [fProjeto, setFProjeto] = useState<string>("all");
-  const [form, setForm] = useState({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "" });
+  const [form, setForm] = useState({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "", acao: "", codigo_operacao: "", codigo_sigo: "" });
 
   const list = useQuery({
     queryKey: ["cursos"],
@@ -51,7 +51,7 @@ function CursosPage() {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["cursos"] });
       setOpen(false);
-      setForm({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "" });
+      setForm({ codigo: "", nome: "", tipologia: "EFA", data_inicio: "", data_fim: "", estado: "planeado", projeto_id: "", acao: "", codigo_operacao: "", codigo_sigo: "" });
       toast.success("Curso criado");
     },
     onError: (e: any) => toast.error("Erro", { description: e.message }),
@@ -157,6 +157,9 @@ function CursosPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="col-span-2 space-y-1.5"><Label>Ação</Label><Input value={form.acao} onChange={e => setForm({ ...form, acao: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Código da Operação</Label><Input value={form.codigo_operacao} onChange={e => setForm({ ...form, codigo_operacao: e.target.value })} /></div>
+            <div className="space-y-1.5"><Label>Código SIGO</Label><Input value={form.codigo_sigo} onChange={e => setForm({ ...form, codigo_sigo: e.target.value })} /></div>
           </form>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>

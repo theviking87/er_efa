@@ -722,7 +722,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     const ufcdIds = uniqueIds(Array.from(cufById.values()).map((c: any) => c.ufcd_id));
     [ufcdById, cursoById] = await Promise.all([
       rowsById("ufcds", "id, codigo, designacao", ufcdIds),
-      rowsById("cursos", "id, codigo, nome", cursoIds),
+      rowsById("cursos", "id, codigo, nome, acao, codigo_operacao, codigo_sigo", cursoIds),
     ]);
 
     if (modo === "ufcd" && ufcdId) {
@@ -861,10 +861,13 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     const body = sess.map(s => {
       const cuf = cufById.get(s.curso_ufcd_id);
       const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
-      const curso = cursoById.get(s.curso_id);
+      const curso: any = cursoById.get(s.curso_id);
+      const cursoTxt = curso
+        ? [curso.codigo, curso.acao ? `Ação ${curso.acao}` : null, curso.codigo_operacao ? `Op ${curso.codigo_operacao}` : null, curso.codigo_sigo ? `SIGO ${curso.codigo_sigo}` : null].filter(Boolean).join("\n")
+        : "";
       return [
         fmtDate(s.data),
-        curso ? `${curso.codigo}` : "",
+        cursoTxt,
         ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : "",
         `${(s.hora_inicio ?? "").slice(0,5)}–${(s.hora_fim ?? "").slice(0,5)}`,
         `${Number(s.horas).toFixed(2)}h`,

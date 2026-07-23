@@ -119,6 +119,9 @@ function CursoDetail() {
             <Field label="Início" value={fmtDate(c.data_inicio)} />
             <Field label="Fim" value={fmtDate(c.data_fim)} />
             <Field label="Estado" value={ESTADO_CURSO_LABEL[c.estado]} />
+            <Field label="Ação" value={(c as any).acao} />
+            <Field label="Código da Operação" value={(c as any).codigo_operacao} />
+            <Field label="Código SIGO" value={(c as any).codigo_sigo} />
             <div className="sm:col-span-2"><Field label="Observações" value={c.observacoes} /></div>
           </CardContent></Card>
         </TabsContent>
@@ -160,7 +163,10 @@ function EditCursoDialog({ open, onOpenChange, curso }: { open: boolean; onOpenC
       data_inicio: form.data_inicio || null,
       data_fim: form.data_fim || null,
       observacoes: form.observacoes || null,
-    }).eq("id", curso.id);
+      acao: form.acao?.trim() || null,
+      codigo_operacao: form.codigo_operacao?.trim() || null,
+      codigo_sigo: form.codigo_sigo?.trim() || null,
+    } as never).eq("id", curso.id);
     if (error) return toast.error(error.message);
     toast.success("Curso atualizado");
     qc.invalidateQueries({ queryKey: ["curso", curso.id] });
@@ -210,6 +216,18 @@ function EditCursoDialog({ open, onOpenChange, curso }: { open: boolean; onOpenC
                 ))}
               </SelectContent>
             </Select>
+          </div>
+          <div className="sm:col-span-2">
+            <Label>Ação</Label>
+            <Input value={form.acao ?? ""} onChange={(e) => setForm({ ...form, acao: e.target.value })} />
+          </div>
+          <div>
+            <Label>Código da Operação</Label>
+            <Input value={form.codigo_operacao ?? ""} onChange={(e) => setForm({ ...form, codigo_operacao: e.target.value })} />
+          </div>
+          <div>
+            <Label>Código SIGO</Label>
+            <Input value={form.codigo_sigo ?? ""} onChange={(e) => setForm({ ...form, codigo_sigo: e.target.value })} />
           </div>
           <div className="sm:col-span-2">
             <Label>Observações</Label>

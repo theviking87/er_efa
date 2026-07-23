@@ -7,7 +7,7 @@ export type RubricaFilter = "BF" | "BFM" | "SA" | "TR" | "HN";
 
 export type ProcessamentoExport = {
   ano: number; mes: number;
-  curso: { codigo?: string | null; nome?: string | null } | null;
+  curso: { codigo?: string | null; nome?: string | null; acao?: string | null; codigo_operacao?: string | null; codigo_sigo?: string | null } | null;
   totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; geral: number };
   formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor: number }>;
   formadores: Array<{ id?: string; nome: string; horas_frequentadas: number; valor_hora: number; valor: number }>;
@@ -65,10 +65,21 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   ws.getCell("A5").value = `${p.curso?.codigo ?? ""} — ${p.curso?.nome ?? ""}`;
   ws.getCell("A5").font = { size: 11, color: { argb: "FF666666" } };
 
-  if (p.empresa) {
+  const metaCurso = [
+    p.curso?.acao ? `Ação: ${p.curso.acao}` : "",
+    p.curso?.codigo_operacao ? `Cód. Operação: ${p.curso.codigo_operacao}` : "",
+    p.curso?.codigo_sigo ? `Cód. SIGO: ${p.curso.codigo_sigo}` : "",
+  ].filter(Boolean).join("  •  ");
+  if (metaCurso) {
     ws.mergeCells("A6:F6");
-    ws.getCell("A6").value = `${p.empresa.nome ?? ""} • NIF ${p.empresa.nif ?? "—"} • ${p.empresa.morada ?? ""}`;
-    ws.getCell("A6").font = { size: 9, color: { argb: "FF888888" } };
+    ws.getCell("A6").value = metaCurso;
+    ws.getCell("A6").font = { size: 9, color: { argb: "FF444444" } };
+  }
+
+  if (p.empresa) {
+    ws.mergeCells("A7:F7");
+    ws.getCell("A7").value = `${p.empresa.nome ?? ""} • NIF ${p.empresa.nif ?? "—"} • ${p.empresa.morada ?? ""}`;
+    ws.getCell("A7").font = { size: 9, color: { argb: "FF888888" } };
   }
 
   const filtro = p.filtro ?? {};

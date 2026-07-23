@@ -119,6 +119,9 @@ function CursoDetail() {
             <Field label="Início" value={fmtDate(c.data_inicio)} />
             <Field label="Fim" value={fmtDate(c.data_fim)} />
             <Field label="Estado" value={ESTADO_CURSO_LABEL[c.estado]} />
+            <Field label="Ação" value={(c as any).acao} />
+            <Field label="Código da Operação" value={(c as any).codigo_operacao} />
+            <Field label="Código SIGO" value={(c as any).codigo_sigo} />
             <div className="sm:col-span-2"><Field label="Observações" value={c.observacoes} /></div>
           </CardContent></Card>
         </TabsContent>

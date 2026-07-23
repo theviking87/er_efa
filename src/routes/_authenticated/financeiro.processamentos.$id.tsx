@@ -302,3 +302,88 @@ function Stat({ label, v, strong }: { label: string; v: number; strong?: boolean
     </CardContent></Card>
   );
 }
+
+function FormandosGrouped({ linhas }: { linhas: any[] }) {
+  const grupos = useMemo(() => {
+    const m = new Map<string, { id: string; nome: string; total: number; linhas: any[] }>();
+    for (const l of linhas) {
+      const g = m.get(l.formando_id) ?? { id: l.formando_id, nome: l.formando?.nome ?? "—", total: 0, linhas: [] };
+      g.linhas.push(l);
+      g.total += Number(l.valor ?? 0);
+      m.set(l.formando_id, g);
+    }
+    return Array.from(m.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  }, [linhas]);
+
+  const [aberto, setAberto] = useState<Set<string>>(new Set());
+  function toggle(id: string) {
+    setAberto(prev => {
+      const n = new Set(prev);
+      if (n.has(id)) n.delete(id); else n.add(id);
+      return n;
+    });
+  }
+
+  if (!grupos.length) return <div className="p-6 text-center text-sm text-muted-foreground">Sem linhas.</div>;
+
+  return (
+    <Table>
+      <TableHeader><TableRow>
+        <TableHead className="w-8"></TableHead>
+        <TableHead>Formando</TableHead>
+        <TableHead>Rubricas</TableHead>
+        <TableHead className="text-right">Total a receber (€)</TableHead>
+      </TableRow></TableHeader>
+      <TableBody>
+        {grupos.map(g => {
+          const isOpen = aberto.has(g.id);
+          return (
+            <>
+              <TableRow key={g.id} className="cursor-pointer hover:bg-muted/50" onClick={() => toggle(g.id)}>
+                <TableCell className="py-2">
+                  {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
+                </TableCell>
+                <TableCell className="font-medium">{g.nome}</TableCell>
+                <TableCell>
+                  <div className="flex flex-wrap gap-1">
+                    {g.linhas.map((l: any) => <Badge key={l.id} variant="secondary">{l.rubrica}</Badge>)}
+                  </div>
+                </TableCell>
+                <TableCell className="text-right tabular-nums font-semibold">{g.total.toFixed(2)}</TableCell>
+              </TableRow>
+              {isOpen && (
+                <TableRow key={`${g.id}-det`} className="bg-muted/30 hover:bg-muted/30">
+                  <TableCell></TableCell>
+                  <TableCell colSpan={3} className="py-2">
+                    <Table>
+                      <TableHeader><TableRow>
+                        <TableHead>Rubrica</TableHead>
+                        <TableHead className="text-right">H. prev.</TableHead>
+                        <TableHead className="text-right">H. freq.</TableHead>
+                        <TableHead className="text-right">Dias</TableHead>
+                        <TableHead className="text-right">€/h</TableHead>
+                        <TableHead className="text-right">Valor (€)</TableHead>
+                      </TableRow></TableHeader>
+                      <TableBody>
+                        {g.linhas.map((l: any) => (
+                          <TableRow key={l.id}>
+                            <TableCell><Badge variant="outline">{l.rubrica}</Badge></TableCell>
+                            <TableCell className="text-right tabular-nums">{Number(l.horas_previstas).toFixed(1)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{Number(l.horas_frequentadas).toFixed(1)}</TableCell>
+                            <TableCell className="text-right tabular-nums">{l.dias_elegiveis}</TableCell>
+                            <TableCell className="text-right tabular-nums">{l.valor_hora ? Number(l.valor_hora).toFixed(4) : "—"}</TableCell>
+                            <TableCell className="text-right tabular-nums font-medium">{Number(l.valor).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </TableCell>
+                </TableRow>
+              )}
+            </>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+}

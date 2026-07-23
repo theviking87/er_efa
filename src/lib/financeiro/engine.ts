@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
  *    faltas >= horas do dia, não conta como presença).
  */
 
-export type Rubrica = "BF" | "BFM" | "SA" | "TR" | "HN";
+export type Rubrica = "BF" | "BFM" | "SA" | "TR" | "HN" | "ATL";
 
 export type LinhaFormando = {
   formando_id: string;

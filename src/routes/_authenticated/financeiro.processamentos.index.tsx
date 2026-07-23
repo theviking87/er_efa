@@ -8,7 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Plus } from "lucide-react";
 import { useProjetoAtivo } from "@/lib/projeto-context";
 
-export const Route = createFileRoute("/_authenticated/financeiro/processamentos")({
+export const Route = createFileRoute("/_authenticated/financeiro/processamentos/")({
   head: () => ({ meta: [{ title: "Financeiro — Processamentos" }] }),
   component: ProcessamentosPage,
 });

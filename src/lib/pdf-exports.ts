@@ -8,6 +8,50 @@ import { saveFileElectron } from "@/lib/dom-helpers";
 const BRAND = [37, 99, 235] as [number, number, number]; // azul
 const MUTED = [100, 116, 139] as [number, number, number];
 
+// ============= Branding (logos institucionais) =============
+type Branding = {
+  logoEmpresa?: string; logoDgert?: string; logoPessoas?: string;
+  empresa_nome?: string; empresa_nif?: string; empresa_morada?: string;
+};
+let brandingCache: Branding | null = null;
+async function _toDataUrl(url?: string | null): Promise<string | undefined> {
+  if (!url) return undefined;
+  try {
+    const r = await fetch(url); if (!r.ok) return undefined;
+    const b = await r.blob();
+    return await new Promise<string>(res => {
+      const fr = new FileReader();
+      fr.onload = () => res(fr.result as string);
+      fr.readAsDataURL(b);
+    });
+  } catch { return undefined; }
+}
+export async function loadBranding(): Promise<Branding> {
+  if (brandingCache) return brandingCache;
+  try {
+    const { data } = await supabase.from("fin_config")
+      .select("logo_empresa_url, logo_dgert_url, logo_pessoas2030_url, empresa_nome, empresa_nif, empresa_morada")
+      .limit(1).maybeSingle();
+    const [e, d, p] = await Promise.all([
+      _toDataUrl(data?.logo_empresa_url),
+      _toDataUrl(data?.logo_dgert_url),
+      _toDataUrl(data?.logo_pessoas2030_url),
+    ]);
+    brandingCache = {
+      logoEmpresa: e, logoDgert: d, logoPessoas: p,
+      empresa_nome: data?.empresa_nome ?? undefined,
+      empresa_nif: data?.empresa_nif ?? undefined,
+      empresa_morada: data?.empresa_morada ?? undefined,
+    };
+  } catch { brandingCache = {}; }
+  return brandingCache;
+}
+export function getBrandingSync(): Branding { return brandingCache ?? {}; }
+
+export const HEADER_LOGO_BAND = 18; // faixa branca com logos
+export const HEADER_BAR = 18;        // faixa azul com título
+export const CONTENT_TOP = HEADER_LOGO_BAND + HEADER_BAR + 8; // = 44
+
 function sanitize(s: string) {
   return s.replace(/[\\/:*?"<>|]/g, "_").trim();
 }
@@ -40,28 +84,47 @@ function newDoc(orientation: "portrait" | "landscape" = "portrait") {
   return new jsPDF({ orientation, unit: "mm", format: "a4" });
 }
 
+function drawLogoBand(doc: jsPDF) {
+  const b = getBrandingSync();
+  const w = doc.internal.pageSize.getWidth();
+  const logoH = 14, logoW = 28;
+  const y = (HEADER_LOGO_BAND - logoH) / 2;
+  if (b.logoEmpresa) {
+    try { doc.addImage(b.logoEmpresa, "PNG", 14, y, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+  }
+  if (b.logoDgert) {
+    try { doc.addImage(b.logoDgert, "PNG", w - 14 - logoW, y, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+  }
+}
+
 function header(doc: jsPDF, titulo: string, subtitulo?: string) {
   const w = doc.internal.pageSize.getWidth();
+  drawLogoBand(doc);
   doc.setFillColor(...BRAND);
-  doc.rect(0, 0, w, 18, "F");
+  doc.rect(0, HEADER_LOGO_BAND, w, HEADER_BAR, "F");
   doc.setTextColor(255, 255, 255);
   doc.setFont("helvetica", "bold");
   doc.setFontSize(13);
-  doc.text(titulo, 14, 11);
+  doc.text(titulo, 14, HEADER_LOGO_BAND + 11);
   if (subtitulo) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(9);
-    doc.text(subtitulo, 14, 15.5);
+    doc.text(subtitulo, 14, HEADER_LOGO_BAND + 15.5);
   }
   doc.setTextColor(0, 0, 0);
 }
 
 function footer(doc: jsPDF) {
+  const b = getBrandingSync();
   const total = doc.getNumberOfPages();
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
+    if (b.logoPessoas) {
+      const logoH = 12, logoW = 30;
+      try { doc.addImage(b.logoPessoas, "PNG", (w - logoW) / 2, h - 12 - logoH - 1, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+    }
     doc.setDrawColor(...MUTED);
     doc.setLineWidth(0.2);
     doc.line(14, h - 12, w - 14, h - 12);
@@ -74,6 +137,7 @@ function footer(doc: jsPDF) {
     doc.text(`Página ${i} de ${total}`, w - 14, h - 7, { align: "right" });
   }
 }
+
 
 const tableTheme = {
   styles: { font: "helvetica", fontSize: 8.5, cellPadding: 2, overflow: "linebreak" as const },

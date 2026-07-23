@@ -24,6 +24,10 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
       return data;
     },
   });
+  // marker
+      return data;
+    },
+  });
   const qc = useQueryClient();
 
   const bolsa = useQuery({

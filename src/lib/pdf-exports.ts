@@ -90,16 +90,29 @@ function imgFmt(dataUrl?: string): "PNG" | "JPEG" {
   return "PNG";
 }
 
+// Ajusta uma imagem à caixa mantendo a proporção original (sem esticar).
+function fitBox(doc: jsPDF, dataUrl: string, maxW: number, maxH: number): { w: number; h: number } {
+  try {
+    const p: any = doc.getImageProperties(dataUrl);
+    const nw = p?.width ?? maxW, nh = p?.height ?? maxH;
+    const r = Math.min(maxW / nw, maxH / nh);
+    return { w: nw * r, h: nh * r };
+  } catch { return { w: maxW, h: maxH }; }
+}
+
 function drawLogoBand(doc: jsPDF) {
   const b = getBrandingSync();
   const w = doc.internal.pageSize.getWidth();
-  const logoH = 14, logoW = 28;
-  const y = (HEADER_LOGO_BAND - logoH) / 2;
+  const maxW = 34, maxH = 16;
   if (b.logoEmpresa) {
-    try { doc.addImage(b.logoEmpresa, imgFmt(b.logoEmpresa), 14, y, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
+    const s = fitBox(doc, b.logoEmpresa, maxW, maxH);
+    const y = (HEADER_LOGO_BAND - s.h) / 2;
+    try { doc.addImage(b.logoEmpresa, imgFmt(b.logoEmpresa), 14, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
   }
   if (b.logoDgert) {
-    try { doc.addImage(b.logoDgert, imgFmt(b.logoDgert), w - 14 - logoW, y, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
+    const s = fitBox(doc, b.logoDgert, maxW, maxH);
+    const y = (HEADER_LOGO_BAND - s.h) / 2;
+    try { doc.addImage(b.logoDgert, imgFmt(b.logoEmpresa), w - 14 - s.w, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
   }
 }
 

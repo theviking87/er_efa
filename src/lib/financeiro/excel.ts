@@ -216,7 +216,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   // Legenda das rubricas
   ws.mergeCells(`A${r}:G${r}`);
-  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; HN — Honorários";
+  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; ATL — Apoio ao Tempo Livre; HN — Honorários";
   ws.getCell(`A${r}`).font = { italic: true, size: 9, color: { argb: "FF666666" } };
   ws.getCell(`A${r}`).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
   ws.getRow(r).height = 32;

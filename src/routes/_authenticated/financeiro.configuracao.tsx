@@ -47,6 +47,7 @@ const DEFAULT: FinConfig = {
   valor_km: 0.4,
   limite_km_dia: 50,
   tr_teto_mensal: 0,
+  atl_teto_mensal: 0,
   percentagem_irs: 23,
   percentagem_iva: 23,
   percentagem_ss: 11,

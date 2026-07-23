@@ -722,7 +722,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     const ufcdIds = uniqueIds(Array.from(cufById.values()).map((c: any) => c.ufcd_id));
     [ufcdById, cursoById] = await Promise.all([
       rowsById("ufcds", "id, codigo, designacao", ufcdIds),
-      rowsById("cursos", "id, codigo, nome", cursoIds),
+      rowsById("cursos", "id, codigo, nome, acao, codigo_operacao, codigo_sigo", cursoIds),
     ]);
 
     if (modo === "ufcd" && ufcdId) {

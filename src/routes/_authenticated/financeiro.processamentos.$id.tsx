@@ -131,7 +131,8 @@ function DetailPage() {
       totais: {
         BF: Number(proc.data.total_bf), BFM: Number(proc.data.total_bfm),
         SA: Number(proc.data.total_sa), TR: Number(proc.data.total_tr),
-        HN: Number(proc.data.total_hn), geral: Number(proc.data.total_geral),
+        HN: Number(proc.data.total_hn), ATL: Number((proc.data as any).total_atl ?? 0),
+        geral: Number(proc.data.total_geral),
       },
       formandos: fmds, formadores: fdrs,
       empresa: cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null,

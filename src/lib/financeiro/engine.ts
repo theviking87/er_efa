@@ -92,6 +92,10 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const bolsas = bolsasRes.data ?? [];
   const formadores = formadoresRes.data ?? [];
 
+  if (!sessoes.length) avisos.push(`Sem sessões neste curso entre ${first} e ${last}. Verifica o curso e o mês/ano escolhidos.`);
+  if (!inscritos.length) avisos.push("Este curso não tem formandos inscritos.");
+  if (!bolsas.length) avisos.push("Nenhum formando tem bolsa configurada (Financeiro › Formandos).");
+
   // Faltas do mês para estas inscrições
   const inscIds = inscritos.map(i => i.id);
   const { data: faltas } = inscIds.length

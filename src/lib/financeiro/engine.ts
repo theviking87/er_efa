@@ -18,7 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
  *    faltas >= horas do dia, não conta como presença).
  */
 
-export type Rubrica = "BF" | "BFM" | "SA" | "TR" | "HN";
+export type Rubrica = "BF" | "BFM" | "SA" | "TR" | "HN" | "ATL";
 
 export type LinhaFormando = {
   formando_id: string;
@@ -51,7 +51,7 @@ export type Preview = {
   mes: number;
   formandos: LinhaFormando[];
   formadores: LinhaFormador[];
-  totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; geral: number };
+  totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; ATL: number; geral: number };
   avisos: string[];
 };
 
@@ -90,6 +90,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const valorKm = Number(cfg?.valor_km ?? 0);
   const limiteKmDia = Number((cfg as any)?.limite_km_dia ?? 0);
   const trTetoMensal = Number((cfg as any)?.tr_teto_mensal ?? 0);
+  const atlTetoMensal = Number((cfg as any)?.atl_teto_mensal ?? 0);
 
   const sessoes = sessRes.data ?? [];
   const inscritos = inscRes.data ?? [];
@@ -250,7 +251,18 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
         memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, regra: "dias com ≥ 3h efectivas (mesmo critério do SA); km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
       });
     }
-
+    // ATL — valor mensal por formando, com tecto global (se definido)
+    const valorAtlFormando = Number(bolsaCfg?.valor_atl ?? 0);
+    if (valorAtlFormando > 0) {
+      const valor = atlTetoMensal > 0 ? +Math.min(valorAtlFormando, atlTetoMensal).toFixed(2) : +valorAtlFormando.toFixed(2);
+      linhasFormandos.push({
+        formando_id: insc.formando_id, formando_nome: formandoNome,
+        rubrica: "ATL", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
+        horas_elegiveis: horasFreq, dias_elegiveis: diasPresenca,
+        valor,
+        memoria_calculo: { valor_formando: valorAtlFormando, teto_mensal: atlTetoMensal || null, aplicado_teto: atlTetoMensal > 0 && valorAtlFormando > atlTetoMensal, regra: "valor mensal fixo por formando, limitado pelo tecto global", formula: "min(valor_atl, atl_teto_mensal)" },
+      });
+    }
 
   }
 
@@ -276,7 +288,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     });
   });
 
-  const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, geral: 0 };
+  const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0, geral: 0 };
   linhasFormandos.forEach(l => { totais[l.rubrica] += l.valor; totais.geral += l.valor; });
   linhasFormadores.forEach(l => { totais.HN += l.valor; totais.geral += l.valor; });
   (Object.keys(totais) as (keyof typeof totais)[]).forEach(k => (totais[k] = +totais[k].toFixed(2)));
@@ -297,7 +309,8 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
     estado: "rascunho",
     total_bf: preview.totais.BF, total_bfm: preview.totais.BFM,
     total_sa: preview.totais.SA, total_tr: preview.totais.TR,
-    total_hn: preview.totais.HN, total_geral: preview.totais.geral,
+    total_hn: preview.totais.HN, total_atl: preview.totais.ATL,
+    total_geral: preview.totais.geral,
   };
   if (processamentoId) {
     if (existente?.estado === "fechado") throw new Error("Processamento fechado — não pode ser recalculado.");

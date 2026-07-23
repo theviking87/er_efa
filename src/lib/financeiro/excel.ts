@@ -3,12 +3,12 @@ import { saveFile } from "@/lib/dom-helpers";
 
 const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
 
-export type RubricaFilter = "BF" | "BFM" | "SA" | "TR" | "HN";
+export type RubricaFilter = "BF" | "BFM" | "SA" | "TR" | "HN" | "ATL";
 
 export type ProcessamentoExport = {
   ano: number; mes: number;
   curso: { codigo?: string | null; nome?: string | null; acao?: string | null; codigo_operacao?: string | null; codigo_sigo?: string | null } | null;
-  totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; geral: number };
+  totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; ATL: number; geral: number };
   formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor_hora?: number; valor: number }>;
   formadores: Array<{ id?: string; nome: string; horas_frequentadas: number; valor_hora: number; valor: number }>;
   empresa?: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
@@ -179,20 +179,21 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   // Totais recalculados sobre linhas filtradas
   r += 2;
-  const t = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0 };
+  const t = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 };
   formandosFiltrados.forEach(l => { const k = l.rubrica as keyof typeof t; if (k in t) t[k] += l.valor; });
   formadoresFiltrados.forEach(l => { t.HN += l.valor; });
-  const geral = t.BF + t.BFM + t.SA + t.TR + t.HN;
+  const geral = t.BF + t.BFM + t.SA + t.TR + t.HN + t.ATL;
   const totRows: Array<[string, number]> = [];
-  const rubricasVis: RubricaFilter[] = rubricasSel ? Array.from(rubricasSel) : ["BF","BFM","SA","TR","HN"];
-  const totalFormandos = (rubricasVis.includes("BF") ? t.BF : 0) + (rubricasVis.includes("BFM") ? t.BFM : 0) + (rubricasVis.includes("SA") ? t.SA : 0) + (rubricasVis.includes("TR") ? t.TR : 0);
+  const rubricasVis: RubricaFilter[] = rubricasSel ? Array.from(rubricasSel) : ["BF","BFM","SA","TR","HN","ATL"];
+  const totalFormandos = (rubricasVis.includes("BF") ? t.BF : 0) + (rubricasVis.includes("BFM") ? t.BFM : 0) + (rubricasVis.includes("SA") ? t.SA : 0) + (rubricasVis.includes("TR") ? t.TR : 0) + (rubricasVis.includes("ATL") ? t.ATL : 0);
   const totalFormadores = rubricasVis.includes("HN") ? t.HN : 0;
   if (!soFormador) {
     if (rubricasVis.includes("BF")) totRows.push(["Total BF", t.BF]);
     if (rubricasVis.includes("BFM")) totRows.push(["Total BFM", t.BFM]);
     if (rubricasVis.includes("SA")) totRows.push(["Total SA", t.SA]);
     if (rubricasVis.includes("TR")) totRows.push(["Total TR", t.TR]);
-    totRows.push(["Subtotal Formandos (BF+BFM+SA+TR)", totalFormandos]);
+    if (rubricasVis.includes("ATL")) totRows.push(["Total ATL", t.ATL]);
+    totRows.push(["Subtotal Formandos (BF+BFM+SA+TR+ATL)", totalFormandos]);
   }
   if (!soFormando && rubricasVis.includes("HN")) totRows.push(["Subtotal Formadores (HN)", totalFormadores]);
   totRows.push(["TOTAL", geral]);
@@ -215,7 +216,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   // Legenda das rubricas
   ws.mergeCells(`A${r}:G${r}`);
-  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; HN — Honorários";
+  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; ATL — Apoio ao Tempo Livre; HN — Honorários";
   ws.getCell(`A${r}`).font = { italic: true, size: 9, color: { argb: "FF666666" } };
   ws.getCell(`A${r}`).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
   ws.getRow(r).height = 32;

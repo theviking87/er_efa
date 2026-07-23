@@ -90,7 +90,7 @@ function DetailPage() {
 
   const [filtroModo, setFiltroModo] = useState<"tudo" | "formando" | "formador">("tudo");
   const [filtroId, setFiltroId] = useState<string>("");
-  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","HN"]));
+  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","HN","ATL"]));
 
   const fmdsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formando_id), [linhas.data]);
   const fdrsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formador_id), [linhas.data]);
@@ -131,7 +131,8 @@ function DetailPage() {
       totais: {
         BF: Number(proc.data.total_bf), BFM: Number(proc.data.total_bfm),
         SA: Number(proc.data.total_sa), TR: Number(proc.data.total_tr),
-        HN: Number(proc.data.total_hn), geral: Number(proc.data.total_geral),
+        HN: Number(proc.data.total_hn), ATL: Number((proc.data as any).total_atl ?? 0),
+        geral: Number(proc.data.total_geral),
       },
       formandos: fmds, formadores: fdrs,
       empresa: cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null,
@@ -153,7 +154,7 @@ function DetailPage() {
   const fechado = p.estado === "fechado";
   const fmds = fmdsList;
   const fdrs = fdrsList;
-  const RUBRICAS: RubricaFilter[] = ["BF","BFM","SA","TR","HN"];
+  const RUBRICAS: RubricaFilter[] = ["BF","BFM","SA","TR","HN","ATL"];
 
   return (
     <PageContainer>
@@ -190,13 +191,14 @@ function DetailPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-6 mb-3">
+      <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-7 mb-3">
         <Stat label="BF" v={p.total_bf} /><Stat label="BFM" v={p.total_bfm} />
         <Stat label="SA" v={p.total_sa} /><Stat label="TR" v={p.total_tr} />
+        <Stat label="ATL" v={p.total_atl ?? 0} />
         <Stat label="HN" v={p.total_hn} /><Stat label="Total" v={p.total_geral} strong />
       </div>
       <div className="grid gap-3 sm:grid-cols-2 mb-4">
-        <Stat label="Total formandos (BF+BFM+SA+TR)" v={Number(p.total_bf) + Number(p.total_bfm) + Number(p.total_sa) + Number(p.total_tr)} />
+        <Stat label="Total formandos (BF+BFM+SA+TR+ATL)" v={Number(p.total_bf) + Number(p.total_bfm) + Number(p.total_sa) + Number(p.total_tr) + Number(p.total_atl ?? 0)} />
         <Stat label="Total formadores (HN)" v={p.total_hn} />
       </div>
 

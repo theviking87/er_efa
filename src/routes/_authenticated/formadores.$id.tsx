@@ -16,7 +16,7 @@ import { toast } from "sonner";
 import { confirmarFimDeSemana } from "@/lib/weekend-check";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { FinanceiroFormadorPanel } from "@/components/financeiro/formador-panel";
+
 
 export const Route = createFileRoute("/_authenticated/formadores/$id")({
   head: () => ({ meta: [{ title: "Formador — Gestão Pedagógica" }] }),
@@ -145,7 +145,9 @@ function FormadorDetail() {
         </TabsContent>
 
         <TabsContent value="financeiro">
-          <FinanceiroFormadorPanel formadorId={id} />
+          <Card><CardContent className="py-6 text-sm text-muted-foreground">
+            Configuração financeira do formador é gerida no módulo <strong>Financeiro → Configuração</strong> (retenções, IVA, IBAN).
+          </CardContent></Card>
         </TabsContent>
       </Tabs>
 

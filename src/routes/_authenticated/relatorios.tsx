@@ -11,17 +11,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { localDateIso } from "@/lib/format";
-import { paintBeforeHeavyWork } from "@/lib/dom-helpers";
-import { runNativeExcelReport, runNativePdfReport } from "@/lib/dom-helpers";
+import { paintBeforeHeavyWork, runNativeExcelReport, runNativePdfReport } from "@/lib/dom-helpers";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios e SIGO — Gestão Pedagógica" }] }),
   component: RelatoriosPage,
 });
-
-// NotaHonorariosCard foi extraído para src/components/financeiro/nota-honorarios-card.tsx (Fase B).
-// Re-export mantido para não partir imports existentes (ex.: financeiro.honorarios.tsx).
-export { NotaHonorariosCard } from "@/components/financeiro/nota-honorarios-card";
 
 
 function RelatoriosPage() {

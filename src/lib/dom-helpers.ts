@@ -39,7 +39,7 @@ export async function saveFile(
   const buffer = bytes instanceof Uint8Array
     ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
     : bytes;
-  const url = URL.createObjectURL(new Blob([buffer]));
+  const url = URL.createObjectURL(new Blob([new Uint8Array(buffer as ArrayBuffer)]));
   const a = document.createElement("a");
   a.href = url;
   a.download = filename;

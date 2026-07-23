@@ -233,7 +233,7 @@ export async function exportSigoCursoPdf(cursoId: string) {
   const doc = newDoc("portrait");
   header(doc, "Relatório SIGO — Curso", `${c.codigo} · ${c.nome}`);
 
-  let y = infoBlock(doc, 26, [
+  let y = infoBlock(doc, CONTENT_TOP, [
     ["Tipologia", TIPOLOGIA_LABEL[c.tipologia] ?? c.tipologia ?? ""],
     ["Estado", ESTADO_CURSO_LABEL[c.estado] ?? c.estado ?? ""],
     ["Data início", c.data_inicio ? fmtDate(c.data_inicio) : ""],
@@ -268,7 +268,7 @@ export async function exportSigoCursoPdf(cursoId: string) {
   header(doc, "Sessões do curso", `${c.codigo} · ${c.nome}`);
   autoTable(doc, {
     ...tableTheme,
-    startY: 26,
+    startY: CONTENT_TOP,
     head: [["Data", "Início", "Fim", "Horas", "UFCD", "Formador"]],
     body: sess.map((s: any) => {
       const cuf = cufById.get(s.curso_ufcd_id) as any;
@@ -344,7 +344,7 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
   const doc = newDoc("portrait");
   header(doc, "Horas por formador", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
 
-  let y = infoBlock(doc, 26, [
+  let y = infoBlock(doc, CONTENT_TOP, [
     ["Sessões", String(rows.length)],
     ["Horas totais", `${totalH}h`],
     ["Formadores", String(agg.size)],
@@ -369,7 +369,7 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
   header(doc, "Sessões — detalhe", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
   autoTable(doc, {
     ...tableTheme,
-    startY: 26,
+    startY: CONTENT_TOP,
     head: [["Data", "Formador", "Curso", "UFCD", "Horas"]],
     body: rows.map((s: any) => {
       const formador = formadorById.get(s.formador_id);
@@ -504,7 +504,7 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
 
     const doc = newDoc("portrait");
     header(doc, "Faltas dos formandos", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
-    let y = infoBlock(doc, 26, [["Registos", String(offline.length)], ["Horas justificadas", `${totJ}h`], ["Horas injustificadas", `${totI}h`]]);
+    let y = infoBlock(doc, CONTENT_TOP, [["Registos", String(offline.length)], ["Horas justificadas", `${totJ}h`], ["Horas injustificadas", `${totI}h`]]);
     y += 3;
     doc.setFont("helvetica", "bold"); doc.setFontSize(10);
     doc.text("Resumo por formando", 14, y);
@@ -521,7 +521,7 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
     header(doc, "Faltas — detalhe", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
     autoTable(doc, {
       ...tableTheme,
-      startY: 26,
+      startY: CONTENT_TOP,
       head: [["Data", "Formando", "Curso", "UFCD", "Hora", "Horas", "Tipo", "Observações"]],
       body: offline.map((f: any) => [fmtDate(f.data), f.formando_nome ?? "", f.curso_codigo ?? "", f.ufcd_codigo ?? "", `${String(f.hora_inicio ?? "").slice(0, 5)}–${String(f.hora_fim ?? "").slice(0, 5)}`, `${f.horas}h`, f.tipo === "justificada" ? "Just." : "Injust.", f.observacoes ?? ""]),
       columnStyles: { 5: { halign: "right" }, 6: { halign: "center" } },
@@ -581,7 +581,7 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
   const doc = newDoc("portrait");
   header(doc, "Faltas dos formandos", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
 
-  let y = infoBlock(doc, 26, [
+  let y = infoBlock(doc, CONTENT_TOP, [
     ["Registos", String(lista.length)],
     ["Horas justificadas", `${totJ}h`],
     ["Horas injustificadas", `${totI}h`],
@@ -604,7 +604,7 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
   header(doc, "Faltas — detalhe", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
   autoTable(doc, {
     ...tableTheme,
-    startY: 26,
+    startY: CONTENT_TOP,
     head: [["Data", "Formando", "Curso", "UFCD", "Hora", "Horas", "Tipo", "Observações"]],
     body: lista.map((f: any) => [
       fmtDate(f.data),

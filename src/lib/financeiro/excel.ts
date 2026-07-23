@@ -25,14 +25,28 @@ export type ProcessamentoExport = {
   };
 };
 
-async function fetchImage(url?: string | null): Promise<{ buf: ArrayBuffer; ext: "png" | "jpeg" } | null> {
+async function fetchImage(url?: string | null): Promise<{ buf: ArrayBuffer; ext: "png" | "jpeg"; w: number; h: number } | null> {
   if (!url) return null;
   try {
     const r = await fetch(url); if (!r.ok) return null;
     const buf = await r.arrayBuffer();
     const ext: "png" | "jpeg" = /\.jpe?g(\?|$)/i.test(url) ? "jpeg" : "png";
-    return { buf, ext };
+    const blob = new Blob([buf], { type: `image/${ext}` });
+    const url2 = URL.createObjectURL(blob);
+    const dims = await new Promise<{ w: number; h: number }>((resolve) => {
+      const img = new Image();
+      img.onload = () => resolve({ w: img.naturalWidth || 1, h: img.naturalHeight || 1 });
+      img.onerror = () => resolve({ w: 1, h: 1 });
+      img.src = url2;
+    });
+    URL.revokeObjectURL(url2);
+    return { buf, ext, w: dims.w, h: dims.h };
   } catch { return null; }
+}
+
+function fit(nw: number, nh: number, maxW: number, maxH: number) {
+  const r = Math.min(maxW / nw, maxH / nh);
+  return { width: Math.round(nw * r), height: Math.round(nh * r) };
 }
 
 export async function exportProcessamentoExcel(p: ProcessamentoExport) {

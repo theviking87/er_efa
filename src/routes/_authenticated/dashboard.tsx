@@ -151,6 +151,21 @@ function Dashboard() {
             <CardTitle className="text-base font-semibold flex items-center gap-2"><AlertTriangle className="size-4 text-warning" /> Alertas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3 text-sm">
+            {faltasAlerta.data?.length ? (
+              <Alert
+                tone={faltasAlerta.data.some(r => r.pct >= 10) ? "destructive" : "warning"}
+                title={`${faltasAlerta.data.length} formando(s) com faltas ≥ 8% numa UC`}
+              >
+                <ul className="text-xs space-y-0.5 max-h-48 overflow-auto">
+                  {faltasAlerta.data.slice(0, 10).map((r, i) => (
+                    <li key={i} className={r.pct >= 10 ? "text-destructive" : ""}>
+                      · {r.cf.formando?.nome} — {r.uc.ufcd?.codigo} ({r.horas.toFixed(1)}h / {r.total}h · <strong>{r.pct.toFixed(1)}%</strong>)
+                      <span className="text-muted-foreground"> · {r.cf.curso?.codigo}</span>
+                    </li>
+                  ))}
+                </ul>
+              </Alert>
+            ) : null}
             {counts.data?.ccpExpirado?.length ? (
               <Alert tone="destructive" title={`${counts.data.ccpExpirado.length} CCP expirados`}>
                 <ul className="text-xs space-y-0.5">

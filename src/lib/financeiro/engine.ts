@@ -106,11 +106,22 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
         .in("curso_formando_id", inscIds).gte("data", first).lte("data", last)
     : { data: [] as any[] };
 
-  // Índices auxiliares — uma UC só conta para o formando se existir inscrição/frequenta=true.
-  // Registos com frequenta=false são ausência e ficam fora do cálculo.
-  const ucsByInsc = new Map<string, Set<string>>(); // inscricao -> Set(curso_ufcd inscritas/frequentadas)
+  // Presença por defeito:
+  //  · frequenta=false → ausência explícita nessa UC (fica fora).
+  //  · frequenta=true  → inscrito nessa UC.
+  //  · sem qualquer linha → assume-se inscrito em TODAS as UCs do curso
+  //    (evita ignorar formandos recém-adicionados sem seleção manual).
+  const ucsCurso = new Set<string>(sessoes.map((s: any) => s.curso_ufcd_id).filter(Boolean));
+  const inscHasRows = new Set<string>();
+  const ucsByInsc = new Map<string, Set<string>>();
+  const ausentesByInsc = new Map<string, Set<string>>();
   freq.forEach((f: any) => {
-    if (f.frequenta === false) return;
+    inscHasRows.add(f.curso_formando_id);
+    if (f.frequenta === false) {
+      const s = ausentesByInsc.get(f.curso_formando_id) ?? new Set<string>();
+      s.add(f.curso_ufcd_id); ausentesByInsc.set(f.curso_formando_id, s);
+      return;
+    }
     const s = ucsByInsc.get(f.curso_formando_id) ?? new Set<string>();
     s.add(f.curso_ufcd_id);
     ucsByInsc.set(f.curso_formando_id, s);

@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
  *  - HN:     horas_ministradas * valor_hora do formador
  *
  * Regras de horas:
- *  - Só contam sessões em UCs que o formando marcou como frequenta=true.
+ *  - Só contam sessões em UCs em que o formando está inscrito/frequenta.
  *  - Faltas do mês (tipo != 'ausencia') descontam nas horas frequentadas.
  *  - Um "dia de presença" = dia com pelo menos uma sessão frequentada
  *    e sem falta que cubra toda a sessão desse dia (heurística: se somaram
@@ -104,14 +104,14 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
         .in("curso_formando_id", inscIds).gte("data", first).lte("data", last)
     : { data: [] as any[] };
 
-  // Índices auxiliares — presença é assumida por defeito.
-  // Só se exclui uma UC quando existe registo explícito com frequenta=false (ausência).
-  const ausByInsc = new Map<string, Set<string>>(); // inscricao -> Set(curso_ufcd em que está ausente)
+  // Índices auxiliares — uma UC só conta para o formando se existir inscrição/frequenta=true.
+  // Registos com frequenta=false são ausência e ficam fora do cálculo.
+  const ucsByInsc = new Map<string, Set<string>>(); // inscricao -> Set(curso_ufcd inscritas/frequentadas)
   freq.forEach((f: any) => {
-    if (f.frequenta !== false) return;
-    const s = ausByInsc.get(f.curso_formando_id) ?? new Set<string>();
+    if (f.frequenta === false) return;
+    const s = ucsByInsc.get(f.curso_formando_id) ?? new Set<string>();
     s.add(f.curso_ufcd_id);
-    ausByInsc.set(f.curso_formando_id, s);
+    ucsByInsc.set(f.curso_formando_id, s);
   });
 
   const bolsaByFormando = new Map<string, any>();
@@ -121,10 +121,10 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
 
   for (const insc of inscritos) {
     const formandoNome = (insc as any).formando?.nome ?? "—";
-    const ucsAus = ausByInsc.get(insc.id) ?? new Set<string>();
+    const ucsInscritas = ucsByInsc.get(insc.id) ?? new Set<string>();
 
-    // Sessões elegíveis: todas do curso no mês, excepto UCs em que o formando está ausente.
-    const minhasSess = sessoes.filter((s: any) => !ucsAus.has(s.curso_ufcd_id));
+    // Sessões elegíveis: só as UC em que o formando está inscrito/frequenta.
+    const minhasSess = sessoes.filter((s: any) => ucsInscritas.has(s.curso_ufcd_id));
     const horasPrevistas = minhasSess.reduce((a, s: any) => a + Number(s.horas || 0), 0);
 
     // Faltas registadas no cronograma descontam horas frequentadas.
@@ -132,14 +132,14 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const horasFalta = minhasFaltas.reduce((a: number, f: any) => a + Number(f.horas || 0), 0);
     const horasFreq = Math.max(0, horasPrevistas - horasFalta);
 
-    // Dias = todos os dias do cronograma com formação atribuída (UCs em que o formando está inscrito).
+    // Dias = todos os dias do cronograma com formação atribuída nas UCs em que o formando está inscrito.
     // Faltas não reduzem o nº de dias — apenas descontam horas.
     const diasSet = new Set<string>();
     minhasSess.forEach((s: any) => diasSet.add(s.data));
     const diasPresenca = diasSet.size;
 
     // Dias elegíveis para SA: apenas dias com ≥ 3h efectivamente frequentadas
-    // (horas do dia nas UCs inscritas menos faltas registadas nesse dia).
+    // (horas do dia nas UCs inscritas/frequentadas menos faltas registadas nesse dia).
     const horasPorDia = new Map<string, number>();
     minhasSess.forEach((s: any) => {
       horasPorDia.set(s.data, (horasPorDia.get(s.data) ?? 0) + Number(s.horas || 0));

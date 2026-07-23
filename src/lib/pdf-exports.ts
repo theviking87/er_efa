@@ -84,16 +84,22 @@ function newDoc(orientation: "portrait" | "landscape" = "portrait") {
   return new jsPDF({ orientation, unit: "mm", format: "a4" });
 }
 
+function imgFmt(dataUrl?: string): "PNG" | "JPEG" {
+  if (!dataUrl) return "PNG";
+  if (dataUrl.startsWith("data:image/jpeg") || dataUrl.startsWith("data:image/jpg")) return "JPEG";
+  return "PNG";
+}
+
 function drawLogoBand(doc: jsPDF) {
   const b = getBrandingSync();
   const w = doc.internal.pageSize.getWidth();
   const logoH = 14, logoW = 28;
   const y = (HEADER_LOGO_BAND - logoH) / 2;
   if (b.logoEmpresa) {
-    try { doc.addImage(b.logoEmpresa, "PNG", 14, y, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+    try { doc.addImage(b.logoEmpresa, imgFmt(b.logoEmpresa), 14, y, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
   }
   if (b.logoDgert) {
-    try { doc.addImage(b.logoDgert, "PNG", w - 14 - logoW, y, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+    try { doc.addImage(b.logoDgert, imgFmt(b.logoDgert), w - 14 - logoW, y, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
   }
 }
 
@@ -122,8 +128,8 @@ function footer(doc: jsPDF) {
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
     if (b.logoPessoas) {
-      const logoH = 12, logoW = 30;
-      try { doc.addImage(b.logoPessoas, "PNG", (w - logoW) / 2, h - 12 - logoH - 1, logoW, logoH, undefined, "FAST"); } catch { /* noop */ }
+      const logoH = 14, logoW = 38;
+      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), (w - logoW) / 2, h - 12 - logoH - 1, logoW, logoH, undefined, "NONE"); } catch { /* noop */ }
     }
     doc.setDrawColor(...MUTED);
     doc.setLineWidth(0.2);
@@ -758,21 +764,13 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
 
-  // Carrega logos + empresa da configuração financeira
+  // Empresa (dados) da configuração — logos vêm do branding cache
   const { data: cfg } = await supabase.from("fin_config")
-    .select("logo_empresa_url, logo_dgert_url, logo_pessoas2030_url, empresa_nome, empresa_nif, empresa_morada")
+    .select("empresa_nome, empresa_nif, empresa_morada")
     .limit(1).maybeSingle();
-  async function fetchDataUrl(url?: string | null): Promise<string | null> {
-    if (!url) return null;
-    try {
-      const r = await fetch(url); if (!r.ok) return null;
-      const blob = await r.blob();
-      return await new Promise<string>(res => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(blob); });
-    } catch { return null; }
-  }
-  const [logoE, logoD] = await Promise.all([
-    fetchDataUrl(cfg?.logo_empresa_url), fetchDataUrl(cfg?.logo_dgert_url),
-  ]);
+  const b = getBrandingSync();
+  const logoE = b.logoEmpresa;
+  const logoD = b.logoDgert;
 
   const doc = newDoc("portrait");
   const w = doc.internal.pageSize.getWidth();
@@ -781,8 +779,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   const logoBandH = 22;
   const logoH = 16, logoW = 32;
   const ly = (logoBandH - logoH) / 2;
-  if (logoE) { try { doc.addImage(logoE, "PNG", 14, ly, logoW, logoH, undefined, "FAST"); } catch { /* noop */ } }
-  if (logoD) { try { doc.addImage(logoD, "PNG", w - 14 - logoW, ly, logoW, logoH, undefined, "FAST"); } catch { /* noop */ } }
+  if (logoE) { try { doc.addImage(logoE, imgFmt(logoE), 14, ly, logoW, logoH, undefined, "NONE"); } catch { /* noop */ } }
+  if (logoD) { try { doc.addImage(logoD, imgFmt(logoD), w - 14 - logoW, ly, logoW, logoH, undefined, "NONE"); } catch { /* noop */ } }
 
 
   // Header azul

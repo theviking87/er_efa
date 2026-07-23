@@ -1,4 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/app-shell";
@@ -7,9 +8,12 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { FileSpreadsheet, Lock, LockOpen, Trash2 } from "lucide-react";
-import { exportProcessamentoExcel } from "@/lib/financeiro/excel";
+import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/$id")({
   head: () => ({ meta: [{ title: "Financeiro — Detalhe do processamento" }] }),
@@ -67,17 +71,44 @@ function DetailPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const [filtroModo, setFiltroModo] = useState<"tudo" | "formando" | "formador">("tudo");
+  const [filtroId, setFiltroId] = useState<string>("");
+  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","HN"]));
+
+  const fmdsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formando_id), [linhas.data]);
+  const fdrsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formador_id), [linhas.data]);
+
+  const opcoesFormandos = useMemo(() => {
+    const m = new Map<string, string>();
+    fmdsList.forEach((l: any) => m.set(l.formando_id, l.formando?.nome ?? "—"));
+    return Array.from(m, ([id, nome]) => ({ id, nome })).sort((a,b) => a.nome.localeCompare(b.nome));
+  }, [fmdsList]);
+  const opcoesFormadores = useMemo(() => {
+    const m = new Map<string, string>();
+    fdrsList.forEach((l: any) => m.set(l.formador_id, l.formador?.nome ?? "—"));
+    return Array.from(m, ([id, nome]) => ({ id, nome })).sort((a,b) => a.nome.localeCompare(b.nome));
+  }, [fdrsList]);
+
+  function toggleRubrica(r: RubricaFilter) {
+    setRubricasSel(prev => {
+      const n = new Set(prev);
+      if (n.has(r)) n.delete(r); else n.add(r);
+      return n;
+    });
+  }
+
   async function exportar() {
     if (!proc.data || !linhas.data) return;
-    const fmds = linhas.data.filter((l: any) => l.formando_id).map((l: any) => ({
-      nome: l.formando?.nome ?? "—", rubrica: l.rubrica,
+    const fmds = fmdsList.map((l: any) => ({
+      id: l.formando_id, nome: l.formando?.nome ?? "—", rubrica: l.rubrica,
       horas_previstas: Number(l.horas_previstas ?? 0), horas_frequentadas: Number(l.horas_frequentadas ?? 0),
       dias_elegiveis: Number(l.dias_elegiveis ?? 0), valor: Number(l.valor ?? 0),
     }));
-    const fdrs = linhas.data.filter((l: any) => l.formador_id).map((l: any) => ({
-      nome: l.formador?.nome ?? "—", horas_frequentadas: Number(l.horas_frequentadas ?? 0),
+    const fdrs = fdrsList.map((l: any) => ({
+      id: l.formador_id, nome: l.formador?.nome ?? "—", horas_frequentadas: Number(l.horas_frequentadas ?? 0),
       valor_hora: Number(l.valor_hora ?? 0), valor: Number(l.valor ?? 0),
     }));
+    if (filtroModo !== "tudo" && !filtroId) { toast.error("Escolhe quem exportar."); return; }
     await exportProcessamentoExcel({
       ano: proc.data.ano, mes: proc.data.mes, curso: proc.data.curso,
       totais: {
@@ -90,6 +121,11 @@ function DetailPage() {
       logoEmpresaUrl: cfg.data?.logo_empresa_url ?? null,
       logoDgertUrl: cfg.data?.logo_dgert_url ?? null,
       logoPessoas2030Url: cfg.data?.logo_pessoas2030_url ?? null,
+      filtro: {
+        formandoId: filtroModo === "formando" ? filtroId : null,
+        formadorId: filtroModo === "formador" ? filtroId : null,
+        rubricas: Array.from(rubricasSel),
+      },
     });
   }
 
@@ -98,8 +134,9 @@ function DetailPage() {
 
   const p = proc.data as any;
   const fechado = p.estado === "fechado";
-  const fmds = (linhas.data ?? []).filter((l: any) => l.formando_id);
-  const fdrs = (linhas.data ?? []).filter((l: any) => l.formador_id);
+  const fmds = fmdsList;
+  const fdrs = fdrsList;
+  const RUBRICAS: RubricaFilter[] = ["BF","BFM","SA","TR","HN"];
 
   return (
     <PageContainer>
@@ -109,7 +146,6 @@ function DetailPage() {
         actions={
           <div className="flex gap-2 items-center">
             <Badge variant={fechado ? "default" : "secondary"}>{p.estado}</Badge>
-            <Button variant="outline" onClick={exportar}><FileSpreadsheet className="size-4" />Excel</Button>
             {fechado ? (
               <Button variant="outline" onClick={() => toggleEstado.mutate("rascunho")}><LockOpen className="size-4" />Reabrir</Button>
             ) : (
@@ -137,6 +173,62 @@ function DetailPage() {
         <Stat label="SA" v={p.total_sa} /><Stat label="TR" v={p.total_tr} />
         <Stat label="HN" v={p.total_hn} /><Stat label="Total" v={p.total_geral} strong />
       </div>
+
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2"><FileSpreadsheet className="size-4" />Exportar Excel</CardTitle>
+        </CardHeader>
+        <CardContent className="grid gap-3 md:grid-cols-4">
+          <div className="space-y-1.5">
+            <Label>Alvo</Label>
+            <Select value={filtroModo} onValueChange={(v: any) => { setFiltroModo(v); setFiltroId(""); }}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="tudo">Todos (formandos + formadores)</SelectItem>
+                <SelectItem value="formando">Apenas um formando</SelectItem>
+                <SelectItem value="formador">Apenas um formador</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          {filtroModo === "formando" && (
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Formando</Label>
+              <Select value={filtroId} onValueChange={setFiltroId}>
+                <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
+                <SelectContent>
+                  {opcoesFormandos.map(o => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {filtroModo === "formador" && (
+            <div className="space-y-1.5 md:col-span-2">
+              <Label>Formador</Label>
+              <Select value={filtroId} onValueChange={setFiltroId}>
+                <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
+                <SelectContent>
+                  {opcoesFormadores.map(o => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          <div className={`space-y-1.5 ${filtroModo === "tudo" ? "md:col-span-3" : ""}`}>
+            <Label>Rubricas</Label>
+            <div className="flex flex-wrap gap-3 items-center pt-1">
+              {RUBRICAS.map(r => (
+                <label key={r} className="flex items-center gap-1.5 text-sm cursor-pointer">
+                  <Checkbox checked={rubricasSel.has(r)} onCheckedChange={() => toggleRubrica(r)} />
+                  <span>{r}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+          <div className="md:col-span-4 flex justify-end">
+            <Button onClick={exportar}><FileSpreadsheet className="size-4" />Gerar Excel</Button>
+          </div>
+        </CardContent>
+      </Card>
+
 
       <Card className="mb-4">
         <CardHeader className="pb-3"><CardTitle className="text-base">Formandos</CardTitle></CardHeader>

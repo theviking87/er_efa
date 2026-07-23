@@ -149,9 +149,11 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       faltasPorDia.set(f.data, (faltasPorDia.get(f.data) ?? 0) + Number(f.horas || 0));
     });
     let diasSa = 0;
+    let diasTr = 0;
     horasPorDia.forEach((h, dia) => {
       const efect = Math.max(0, h - (faltasPorDia.get(dia) ?? 0));
       if (efect >= 3) diasSa += 1;
+      if (efect >= 1) diasTr += 1;
     });
 
     const bolsaCfg = bolsaByFormando.get(insc.formando_id);
@@ -184,19 +186,20 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       });
     }
 
-    // TR — só dias elegíveis (mesma regra ≥ 3h)
-    if (elegTr && kmDia > 0 && valorKm > 0 && diasSa > 0) {
-      const km_total = +(diasSa * kmDia).toFixed(2);
+    // TR — dias com ≥ 1h frequentada
+    if (elegTr && kmDia > 0 && valorKm > 0 && diasTr > 0) {
+      const km_total = +(diasTr * kmDia).toFixed(2);
       const valor = +(km_total * valorKm).toFixed(2);
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
-        horas_elegiveis: horasFreq, dias_elegiveis: diasSa,
+        horas_elegiveis: horasFreq, dias_elegiveis: diasTr,
         km_total, valor,
-        memoria_calculo: { km_dia: kmDia, dias: diasSa, valor_km: valorKm, regra: "dias com ≥ 3h frequentadas", formula: "dias(≥3h) × km_dia × valor_km" },
+        memoria_calculo: { km_dia: kmDia, dias: diasTr, valor_km: valorKm, regra: "dias com ≥ 1h frequentada", formula: "dias(≥1h) × km_dia × valor_km" },
       });
     }
   }
+
 
 
   // Honorários por formador — soma horas de sessões do mês por formador

@@ -314,6 +314,7 @@ export type Database = {
       fin_bolsa_config: {
         Row: {
           created_at: string
+          elegivel_atl: boolean
           elegivel_sa: boolean
           elegivel_tr: boolean
           formando_id: string
@@ -327,6 +328,7 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          elegivel_atl?: boolean
           elegivel_sa?: boolean
           elegivel_tr?: boolean
           formando_id: string
@@ -340,6 +342,7 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          elegivel_atl?: boolean
           elegivel_sa?: boolean
           elegivel_tr?: boolean
           formando_id?: string

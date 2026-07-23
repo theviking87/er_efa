@@ -757,7 +757,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   if (formador.iban) { doc.text(`IBAN: ${formador.iban}`, 14, y); y += 4; }
 
   // Destinatário (lado direito)
-  let yr = 32;
+  let yr = logoBandH + 32;
   doc.setFont("helvetica","bold"); doc.setFontSize(10);
   doc.text("DESTINATÁRIO", w/2 + 5, yr);
   doc.setFont("helvetica","normal"); doc.setFontSize(9);

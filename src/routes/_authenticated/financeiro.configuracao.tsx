@@ -27,6 +27,7 @@ type FinConfig = {
   valor_km: number;
   limite_km_dia: number;
   tr_teto_mensal: number;
+  atl_teto_mensal: number;
   percentagem_irs: number;
   percentagem_iva: number;
   percentagem_ss: number;

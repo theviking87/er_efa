@@ -90,6 +90,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const valorKm = Number(cfg?.valor_km ?? 0);
   const limiteKmDia = Number((cfg as any)?.limite_km_dia ?? 0);
   const trTetoMensal = Number((cfg as any)?.tr_teto_mensal ?? 0);
+  const atlTetoMensal = Number((cfg as any)?.atl_teto_mensal ?? 0);
 
   const sessoes = sessRes.data ?? [];
   const inscritos = inscRes.data ?? [];

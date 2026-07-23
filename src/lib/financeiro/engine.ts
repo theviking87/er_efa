@@ -133,6 +133,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const linhasFormandos: LinhaFormando[] = [];
 
   for (const insc of inscritos) {
+    const formandoNome = (insc as any).formando?.nome ?? "—";
     const ausentes = ausentesByInsc.get(insc.id) ?? new Set<string>();
     const ucsInscritas = inscHasRows.has(insc.id)
       ? (ucsByInsc.get(insc.id) ?? new Set<string>())

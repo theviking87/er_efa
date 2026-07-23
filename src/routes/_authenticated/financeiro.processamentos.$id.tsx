@@ -12,8 +12,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { FileSpreadsheet, Lock, LockOpen, Trash2 } from "lucide-react";
+import { FileSpreadsheet, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";
+import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/$id")({
   head: () => ({ meta: [{ title: "Financeiro — Detalhe do processamento" }] }),
@@ -58,6 +59,22 @@ function DetailPage() {
       if (error) throw error;
     },
     onSuccess: () => { qc.invalidateQueries({ queryKey: ["fin-proc", id] }); toast.success("Estado atualizado."); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const recalcular = useMutation({
+    mutationFn: async () => {
+      const p: any = proc.data;
+      if (!p) throw new Error("Sem processamento.");
+      if (p.estado === "fechado") throw new Error("Processamento fechado — reabre antes de recalcular.");
+      const preview = await calcularProcessamento(p.curso_id, p.ano, p.mes);
+      await guardarProcessamento(preview, p.projeto_id ?? null);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-proc", id] });
+      qc.invalidateQueries({ queryKey: ["fin-proc-linhas", id] });
+      toast.success("Processamento recalculado.");
+    },
     onError: (e: any) => toast.error(e.message),
   });
 
@@ -146,6 +163,11 @@ function DetailPage() {
         actions={
           <div className="flex gap-2 items-center">
             <Badge variant={fechado ? "default" : "secondary"}>{p.estado}</Badge>
+            {!fechado && (
+              <Button variant="outline" onClick={() => recalcular.mutate()} disabled={recalcular.isPending}>
+                <RefreshCw className="size-4" />{recalcular.isPending ? "A recalcular…" : "Recalcular"}
+              </Button>
+            )}
             {fechado ? (
               <Button variant="outline" onClick={() => toggleEstado.mutate("rascunho")}><LockOpen className="size-4" />Reabrir</Button>
             ) : (

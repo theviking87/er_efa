@@ -111,18 +111,16 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
             <Label htmlFor="tr" className="text-sm">Elegível a Transporte</Label>
           </div>
           {elegTr && (
-            <>
-              <div className="space-y-1.5">
-                <Label>Tecto mensal de transporte (€)</Label>
-                <Input type="number" step="0.01" value={trTeto} onChange={e => setTrTeto(Number(e.target.value))} />
-                <p className="text-[11px] text-muted-foreground">Valor máximo mensal a pagar ao formando. Deixa 0 para sem tecto.</p>
-              </div>
-              <div className="space-y-1.5">
-                <Label>Km diários (nota informativa)</Label>
-                <Input type="number" step="0.1" value={kmDia} onChange={e => setKmDia(Number(e.target.value))} />
-                <p className="text-[11px] text-muted-foreground">Registo informativo (ida + volta). O cálculo mensal usa o tecto acima.</p>
-              </div>
-            </>
+            <div className="space-y-1.5">
+              <Label>Km diários (ida + volta)</Label>
+              <Input type="number" step="0.1" value={kmDia} onChange={e => setKmDia(Number(e.target.value))} />
+              <p className="text-[11px] text-muted-foreground">
+                Máximo de <strong>{Number((cfg.data as any)?.limite_km_dia ?? 50)} km/dia</strong> aplicado pela Configuração Financeira.
+                {Number((cfg.data as any)?.tr_teto_mensal ?? 0) > 0 && (
+                  <> Tecto mensal de transporte: <strong>{Number((cfg.data as any)?.tr_teto_mensal).toFixed(2)} €</strong>.</>
+                )}
+              </p>
+            </div>
           )}
           <div><Button onClick={() => saveBolsa.mutate()} disabled={saveBolsa.isPending}>Guardar</Button></div>
           <p className="text-xs text-muted-foreground">Valor por dia de SA e €/km vêm da Configuração Financeira global.</p>

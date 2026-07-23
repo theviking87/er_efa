@@ -689,21 +689,60 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
 
+  // Carrega logos + empresa da configuração financeira
+  const { data: cfg } = await supabase.from("fin_config")
+    .select("logo_empresa_url, logo_dgert_url, logo_pessoas2030_url, empresa_nome, empresa_nif, empresa_morada")
+    .limit(1).maybeSingle();
+  async function fetchDataUrl(url?: string | null): Promise<string | null> {
+    if (!url) return null;
+    try {
+      const r = await fetch(url); if (!r.ok) return null;
+      const blob = await r.blob();
+      return await new Promise<string>(res => { const fr = new FileReader(); fr.onload = () => res(fr.result as string); fr.readAsDataURL(blob); });
+    } catch { return null; }
+  }
+  const [logoE, logoD, logoP] = await Promise.all([
+    fetchDataUrl(cfg?.logo_empresa_url), fetchDataUrl(cfg?.logo_dgert_url), fetchDataUrl(cfg?.logo_pessoas2030_url),
+  ]);
+
   const doc = newDoc("portrait");
   const w = doc.internal.pageSize.getWidth();
 
-  // Header
+  // Faixa de logotipos (topo)
+  const logoBandH = 22;
+  const logos = [logoE, logoD, logoP].filter(Boolean) as string[];
+  if (logos.length) {
+    const logoH = 16;
+    const logoW = 32;
+    const gap = 6;
+    const totalW = logos.length * logoW + (logos.length - 1) * gap;
+    let lx = (w - totalW) / 2;
+    const ly = (logoBandH - logoH) / 2;
+    for (const src of logos) {
+      try { doc.addImage(src, "PNG", lx, ly, logoW, logoH, undefined, "FAST"); } catch { /* ignore */ }
+      lx += logoW + gap;
+    }
+  }
+
+  // Header azul
   doc.setFillColor(...BRAND);
-  doc.rect(0, 0, w, 22, "F");
+  doc.rect(0, logoBandH, w, 22, "F");
   doc.setTextColor(255,255,255);
   doc.setFont("helvetica","bold"); doc.setFontSize(16);
-  doc.text("NOTA DE HONORÁRIOS", 14, 13);
+  doc.text("NOTA DE HONORÁRIOS", 14, logoBandH + 13);
   doc.setFont("helvetica","normal"); doc.setFontSize(9);
-  doc.text(`Nº ${numero}`, 14, 19);
+  doc.text(`Nº ${numero}`, 14, logoBandH + 19);
+  if (cfg?.empresa_nome) {
+    doc.setFont("helvetica","bold"); doc.setFontSize(10);
+    doc.text(cfg.empresa_nome, w - 14, logoBandH + 12, { align: "right" });
+    doc.setFont("helvetica","normal"); doc.setFontSize(8);
+    const linha2 = [cfg.empresa_nif ? `NIF ${cfg.empresa_nif}` : "", cfg.empresa_morada ?? ""].filter(Boolean).join(" • ");
+    if (linha2) doc.text(linha2, w - 14, logoBandH + 18, { align: "right" });
+  }
   doc.setTextColor(0,0,0);
 
   // Emitente
-  let y = 32;
+  let y = logoBandH + 32;
   doc.setFont("helvetica","bold"); doc.setFontSize(10);
   doc.text("EMITENTE", 14, y);
   doc.setFont("helvetica","normal"); doc.setFontSize(9);
@@ -718,7 +757,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   if (formador.iban) { doc.text(`IBAN: ${formador.iban}`, 14, y); y += 4; }
 
   // Destinatário (lado direito)
-  let yr = 32;
+  let yr = logoBandH + 32;
   doc.setFont("helvetica","bold"); doc.setFontSize(10);
   doc.text("DESTINATÁRIO", w/2 + 5, yr);
   doc.setFont("helvetica","normal"); doc.setFontSize(9);

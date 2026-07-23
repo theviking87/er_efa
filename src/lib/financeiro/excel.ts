@@ -41,7 +41,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
 
   const ws = wb.addWorksheet("Processamento", { pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.5, right: 0.5, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } } });
   ws.columns = [
-    { width: 32 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 8 }, { width: 14 },
+    { width: 32 }, { width: 10 }, { width: 12 }, { width: 12 }, { width: 8 }, { width: 10 }, { width: 14 },
   ];
 
   // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo

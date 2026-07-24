@@ -634,7 +634,7 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
                       {tipoLabel[r.tipo] ?? r.tipo}
                     </span>
                   </td>
-                  <td className="py-2 text-xs text-muted-foreground">{r.observacoes || "—"}</td>
+                  <td className="py-2 text-xs text-muted-foreground">{r.tipo === "online" ? (r.observacoes ? `Sessão online — ${r.observacoes}` : "Sessão online") : (r.observacoes || "—")}</td>
                 </tr>
               );
             })}

@@ -128,7 +128,11 @@ function FormandoDetail() {
                       <Link to="/cursos/$id" params={{ id: i.curso.id }} className="font-medium hover:underline truncate block">
                         {i.curso.codigo} — {i.curso.nome}
                       </Link>
-                      <div className="text-xs text-muted-foreground">Inscrito a {fmtDate(i.data_inscricao)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Inscrito a {fmtDate(i.data_inscricao)}
+                        {i.data_desistencia && ` · Desistência a ${fmtDate(i.data_desistencia)}`}
+                        {i.data_conclusao && ` · Concluído a ${fmtDate(i.data_conclusao)}`}
+                      </div>
                     </div>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{INSCRICAO_ESTADO_LABEL[i.estado] ?? i.estado}</span>
                   </li>

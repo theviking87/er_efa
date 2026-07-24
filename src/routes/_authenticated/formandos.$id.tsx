@@ -162,6 +162,12 @@ function FormandoDetail() {
           </CardContent></Card>
         </TabsContent>
 
+        <TabsContent value="faltas">
+          <Card><CardContent className="p-6">
+            <FaltasFormando inscricoes={q.data.inscricoes} />
+          </CardContent></Card>
+        </TabsContent>
+
         <TabsContent value="financeiro">
           <FormandoFinanceiroPanel formandoId={id} />
         </TabsContent>

@@ -5,12 +5,32 @@ const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Ag
 
 export type RubricaFilter = "BF" | "BFM" | "SA" | "TR" | "HN" | "ATL";
 
+export type PresencaRow = {
+  data: string; // ISO
+  hora_inicio: string;
+  hora_fim: string;
+  ufcd: string;
+  formador: string;
+  horas_sessao: number;
+  horas_falta: number;
+  horas_efetivas: number;
+  tipo_falta?: string | null;
+  observacoes?: string | null;
+};
+
+export type PresencaFormando = {
+  formandoId: string;
+  formandoNome: string;
+  rows: PresencaRow[];
+};
+
 export type ProcessamentoExport = {
   ano: number; mes: number;
   curso: { codigo?: string | null; nome?: string | null; acao?: string | null; codigo_operacao?: string | null; codigo_sigo?: string | null } | null;
   totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; ATL: number; geral: number };
   formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor_hora?: number; valor_dia?: number; km_total?: number; valor: number; memoria_calculo?: Record<string, unknown> | null }>;
   formadores: Array<{ id?: string; nome: string; horas_frequentadas: number; valor_hora: number; valor: number; memoria_calculo?: Record<string, unknown> | null }>;
+  presencas?: PresencaFormando[];
   empresa?: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
   logoEmpresaUrl?: string | null;
   logoDgertUrl?: string | null;

@@ -95,6 +95,7 @@ function FormandoDetail() {
           <TabsTrigger value="inscricoes">Inscrições</TabsTrigger>
           <TabsTrigger value="pra">PRA</TabsTrigger>
           <TabsTrigger value="horas">Horas</TabsTrigger>
+          <TabsTrigger value="faltas">Faltas</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
         </TabsList>
 

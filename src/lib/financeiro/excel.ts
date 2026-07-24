@@ -86,15 +86,15 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   ]);
   if (logoE) {
     const id = wb.addImage({ buffer: logoE.buf as any, extension: logoE.ext });
-    const s = fit(logoE.w, logoE.h, 160, 60);
-    ws.addImage(id, { tl: { col: 0.2, row: 0.2 } as any, ext: s, editAs: "oneCell" } as any);
+    const s = fit(logoE.w, logoE.h, 120, 45);
+    ws.addImage(id, { tl: { col: 0.1, row: 0.1 } as any, ext: s, editAs: "oneCell" } as any);
   }
   if (logoD) {
     const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
-    const s = fit(logoD.w, logoD.h, 160, 60);
-    ws.addImage(id, { tl: { col: 7, row: 0.2 } as any, ext: s, editAs: "oneCell" } as any);
+    const s = fit(logoD.w, logoD.h, 120, 45);
+    ws.addImage(id, { tl: { col: 7.2, row: 0.1 } as any, ext: s, editAs: "oneCell" } as any);
   }
-  ws.getRow(1).height = 46; ws.getRow(2).height = 20;
+  ws.getRow(1).height = 38; ws.getRow(2).height = 16;
 
   ws.mergeCells(`A4:${LAST_COL}4`);
   ws.getCell("A4").value = `Processamento — ${MESES[p.mes-1]} / ${p.ano}`;

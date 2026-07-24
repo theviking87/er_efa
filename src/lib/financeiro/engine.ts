@@ -166,8 +166,16 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       ? (ucsByInsc.get(insc.id) ?? new Set<string>())
       : new Set<string>([...ucsCurso].filter(u => !ausentes.has(u)));
 
+    // Data limite da inscrição: min(desistência, conclusão). Sessões e faltas
+    // posteriores a esta data não contam para este formando neste curso.
+    const dDes = (insc as any).data_desistencia as string | null | undefined;
+    const dCon = (insc as any).data_conclusao as string | null | undefined;
+    const dataLimite = [dDes, dCon].filter(Boolean).sort()[0] as string | undefined;
+
     // Sessões elegíveis: só as UC em que o formando está inscrito/frequenta.
-    const minhasSess = sessoes.filter((s: any) => ucsInscritas.has(s.curso_ufcd_id));
+    const minhasSess = sessoes
+      .filter((s: any) => ucsInscritas.has(s.curso_ufcd_id))
+      .filter((s: any) => !dataLimite || s.data <= dataLimite);
     const horasPrevistas = minhasSess.reduce((a, s: any) => a + Number(s.horas || 0), 0);
 
     // Faltas registadas no cronograma:

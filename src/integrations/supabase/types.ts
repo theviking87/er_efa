@@ -1139,7 +1139,7 @@ export type Database = {
         | "suspenso"
         | "cancelado"
       curso_tipologia: "EFA" | "ERFA" | "MFA" | "OUTRO"
-      falta_tipo: "justificada" | "injustificada" | "ausencia"
+      falta_tipo: "justificada" | "injustificada" | "ausencia" | "online"
       formador_estado:
         | "ativo"
         | "inativo"
@@ -1279,7 +1279,7 @@ export const Constants = {
     Enums: {
       curso_estado: ["planeado", "ativo", "concluido", "suspenso", "cancelado"],
       curso_tipologia: ["EFA", "ERFA", "MFA", "OUTRO"],
-      falta_tipo: ["justificada", "injustificada", "ausencia"],
+      falta_tipo: ["justificada", "injustificada", "ausencia", "online"],
       formador_estado: [
         "ativo",
         "inativo",

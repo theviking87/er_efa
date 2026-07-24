@@ -34,7 +34,7 @@ function FormandoDetail() {
       const [f, ins] = await Promise.all([
         supabase.from("formandos").select("*").eq("id", id).maybeSingle(),
         supabase.from("curso_formandos")
-          .select("id, data_inscricao, estado, curso:cursos(id, nome, codigo, estado)")
+          .select("id, data_inscricao, data_desistencia, data_conclusao, estado, curso:cursos(id, nome, codigo, estado)")
           .eq("formando_id", id).order("data_inscricao", { ascending: false }),
       ]);
       if (f.error) throw f.error;
@@ -128,7 +128,11 @@ function FormandoDetail() {
                       <Link to="/cursos/$id" params={{ id: i.curso.id }} className="font-medium hover:underline truncate block">
                         {i.curso.codigo} — {i.curso.nome}
                       </Link>
-                      <div className="text-xs text-muted-foreground">Inscrito a {fmtDate(i.data_inscricao)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        Inscrito a {fmtDate(i.data_inscricao)}
+                        {i.data_desistencia && ` · Desistência a ${fmtDate(i.data_desistencia)}`}
+                        {i.data_conclusao && ` · Concluído a ${fmtDate(i.data_conclusao)}`}
+                      </div>
                     </div>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{INSCRICAO_ESTADO_LABEL[i.estado] ?? i.estado}</span>
                   </li>

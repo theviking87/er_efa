@@ -71,7 +71,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       .select("id, data, horas, curso_ufcd_id, formador_id")
       .eq("curso_id", cursoId).gte("data", first).lte("data", last),
     supabase.from("curso_formandos")
-      .select("id, formando_id, formando:formandos(id, nome)")
+      .select("id, formando_id, data_desistencia, data_conclusao, formando:formandos(id, nome)")
       .eq("curso_id", cursoId),
     supabase.from("formadores").select("id, nome, valor_hora"),
   ]);
@@ -166,8 +166,16 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       ? (ucsByInsc.get(insc.id) ?? new Set<string>())
       : new Set<string>([...ucsCurso].filter(u => !ausentes.has(u)));
 
+    // Data limite da inscrição: min(desistência, conclusão). Sessões e faltas
+    // posteriores a esta data não contam para este formando neste curso.
+    const dDes = (insc as any).data_desistencia as string | null | undefined;
+    const dCon = (insc as any).data_conclusao as string | null | undefined;
+    const dataLimite = [dDes, dCon].filter(Boolean).sort()[0] as string | undefined;
+
     // Sessões elegíveis: só as UC em que o formando está inscrito/frequenta.
-    const minhasSess = sessoes.filter((s: any) => ucsInscritas.has(s.curso_ufcd_id));
+    const minhasSess = sessoes
+      .filter((s: any) => ucsInscritas.has(s.curso_ufcd_id))
+      .filter((s: any) => !dataLimite || s.data <= dataLimite);
     const horasPrevistas = minhasSess.reduce((a, s: any) => a + Number(s.horas || 0), 0);
 
     // Faltas registadas no cronograma:
@@ -175,7 +183,9 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     //  · justificadas NÃO descontam horas — apenas contam para o SA diário.
     //  · online = formando em sessão remota; não é falta, não desconta horas
     //    nem SA, mas retira o direito a TR nesse dia.
-    const minhasFaltas = (faltas ?? []).filter((f: any) => f.curso_formando_id === insc.id);
+    const minhasFaltas = (faltas ?? [])
+      .filter((f: any) => f.curso_formando_id === insc.id)
+      .filter((f: any) => !dataLimite || f.data <= dataLimite);
     const horasFaltaInjust = minhasFaltas
       .filter((f: any) => f.tipo !== "justificada" && f.tipo !== "online")
       .reduce((a: number, f: any) => a + Number(f.horas || 0), 0);

@@ -884,7 +884,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
       const curso: any = cursoById.get(s.curso_id);
       const cursoTxt = curso
-        ? [curso.codigo, curso.acao ? `Ação ${curso.acao}` : null, curso.codigo_operacao ? `Op ${curso.codigo_operacao}` : null, curso.codigo_sigo ? `SIGO ${curso.codigo_sigo}` : null].filter(Boolean).join("\n")
+        ? [curso.nome, curso.acao ? `Ação ${curso.acao}` : null, curso.codigo_operacao ? `Op ${curso.codigo_operacao}` : null, curso.codigo_sigo ? `SIGO ${curso.codigo_sigo}` : null].filter(Boolean).join("\n")
         : "";
       return [
         fmtDate(s.data),

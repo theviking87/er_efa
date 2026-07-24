@@ -536,3 +536,117 @@ function HorasCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso
     </div>
   );
 }
+
+function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
+  const ids = inscricoes.map(i => i.id);
+  const cursoById = new Map(inscricoes.map(i => [i.id, i.curso]));
+
+  const q = useQuery({
+    queryKey: ["faltas-formando", ids.sort().join(",")],
+    enabled: ids.length > 0,
+    queryFn: async () => {
+      const { data: faltas, error } = await supabase
+        .from("formando_faltas")
+        .select("id, curso_formando_id, data, horas, tipo, observacoes, sessao_id")
+        .in("curso_formando_id", ids)
+        .order("data", { ascending: false });
+      if (error) throw error;
+      const sessaoIds = Array.from(new Set((faltas ?? []).map((f: any) => f.sessao_id).filter(Boolean)));
+      let sessMap = new Map<string, any>();
+      if (sessaoIds.length) {
+        const { data: sess } = await supabase
+          .from("sessoes")
+          .select("id, hora_inicio, hora_fim, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao))")
+          .in("id", sessaoIds);
+        sessMap = new Map(((sess ?? []) as any[]).map(s => [s.id, s]));
+      }
+      return (faltas ?? []).map((f: any) => ({ ...f, sessao: sessMap.get(f.sessao_id) ?? null }));
+    },
+  });
+
+  if (ids.length === 0) return <div className="text-sm text-muted-foreground text-center py-8">Sem inscrições.</div>;
+  if (q.isLoading) return <div className="text-sm text-muted-foreground text-center py-8">A carregar…</div>;
+  const rows = q.data ?? [];
+  if (rows.length === 0) return <div className="text-sm text-muted-foreground text-center py-8">Sem faltas registadas.</div>;
+
+  const totais = rows.reduce((acc: any, r: any) => {
+    acc.total += Number(r.horas ?? 0);
+    if (r.tipo === "justificada") acc.just += Number(r.horas ?? 0);
+    else if (r.tipo === "injustificada") acc.inj += Number(r.horas ?? 0);
+    else acc.aus += Number(r.horas ?? 0);
+    return acc;
+  }, { total: 0, just: 0, inj: 0, aus: 0 });
+
+  const tipoLabel: Record<string, string> = { justificada: "Justificada", injustificada: "Injustificada", ausencia: "Ausência" };
+  const tipoCls: Record<string, string> = {
+    justificada: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+    injustificada: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30",
+    ausencia: "bg-muted text-muted-foreground border-border",
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+        <StatMini label="Total horas" value={totais.total.toFixed(1) + "h"} />
+        <StatMini label="Justificadas" value={totais.just.toFixed(1) + "h"} />
+        <StatMini label="Injustificadas" value={totais.inj.toFixed(1) + "h"} />
+        <StatMini label="Ausências" value={totais.aus.toFixed(1) + "h"} />
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead className="text-xs text-muted-foreground border-b">
+            <tr>
+              <th className="text-left py-2 font-medium">Data</th>
+              <th className="text-left py-2 font-medium">Horário</th>
+              <th className="text-left py-2 font-medium">Curso</th>
+              <th className="text-left py-2 font-medium">UFCD</th>
+              <th className="text-center py-2 font-medium">Horas</th>
+              <th className="text-left py-2 font-medium">Tipo</th>
+              <th className="text-left py-2 font-medium">Observações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r: any) => {
+              const curso: any = cursoById.get(r.curso_formando_id);
+              const uf = r.sessao?.curso_ufcd?.ufcd;
+              return (
+                <tr key={r.id} className="border-b last:border-0">
+                  <td className="py-2 pr-2 whitespace-nowrap">{fmtDate(r.data)}</td>
+                  <td className="py-2 pr-2 whitespace-nowrap text-xs text-muted-foreground">
+                    {r.sessao ? `${r.sessao.hora_inicio?.slice(0,5)}–${r.sessao.hora_fim?.slice(0,5)}` : "—"}
+                  </td>
+                  <td className="py-2 pr-2 text-xs">
+                    {curso ? (
+                      <Link to="/cursos/$id" params={{ id: curso.id }} className="hover:underline">
+                        {curso.codigo}
+                      </Link>
+                    ) : "—"}
+                  </td>
+                  <td className="py-2 pr-2 text-xs">
+                    {uf ? <span><span className="font-mono">{uf.codigo}</span> — {uf.designacao}</span> : <span className="text-muted-foreground">—</span>}
+                  </td>
+                  <td className="py-2 pr-2 text-center">{Number(r.horas ?? 0).toFixed(1)}</td>
+                  <td className="py-2 pr-2">
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full border ${tipoCls[r.tipo] ?? ""}`}>
+                      {tipoLabel[r.tipo] ?? r.tipo}
+                    </span>
+                  </td>
+                  <td className="py-2 text-xs text-muted-foreground">{r.observacoes || "—"}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
+
+function StatMini({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-md border px-3 py-2">
+      <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
+      <div className="text-lg font-semibold tracking-tight mt-0.5">{value}</div>
+    </div>
+  );
+}

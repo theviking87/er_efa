@@ -71,7 +71,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       .select("id, data, horas, curso_ufcd_id, formador_id")
       .eq("curso_id", cursoId).gte("data", first).lte("data", last),
     supabase.from("curso_formandos")
-      .select("id, formando_id, formando:formandos(id, nome)")
+      .select("id, formando_id, data_desistencia, data_conclusao, formando:formandos(id, nome)")
       .eq("curso_id", cursoId),
     supabase.from("formadores").select("id, nome, valor_hora"),
   ]);

@@ -168,7 +168,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       const mem = (l.memoria_calculo ?? {}) as Record<string, unknown>;
       const kmDiaAplicado = Number(mem["km_dia_aplicado"] ?? 0);
       const valorKm = Number(mem["valor_km"] ?? 0);
-      const aplicouTeto = Boolean(mem["aplicado_teto"]);
+      const tetoMensalTR = Number(mem["tr_teto_mensal"] ?? mem["teto_mensal"] ?? 152.78);
       // Km column
       if (rub === "TR" && kmDiaAplicado > 0) {
         ws.getCell(r, 6).value = { formula: `E${r}*${kmDiaAplicado}`, result: l.km_total ?? 0 } as any;
@@ -189,8 +189,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
         vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
       } else if (temTaxa && rub === "SA") {
         vc.value = { formula: `E${r}*G${r}`, result: l.valor } as any;
-      } else if (rub === "TR" && valorKm > 0 && !aplicouTeto) {
-        vc.value = { formula: `F${r}*H${r}`, result: l.valor } as any;
+      } else if (rub === "TR" && valorKm > 0) {
+        vc.value = { formula: `MIN(F${r}*H${r},${tetoMensalTR})`, result: l.valor } as any;
       } else {
         vc.value = l.valor;
       }

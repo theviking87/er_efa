@@ -183,7 +183,9 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     //  · justificadas NÃO descontam horas — apenas contam para o SA diário.
     //  · online = formando em sessão remota; não é falta, não desconta horas
     //    nem SA, mas retira o direito a TR nesse dia.
-    const minhasFaltas = (faltas ?? []).filter((f: any) => f.curso_formando_id === insc.id);
+    const minhasFaltas = (faltas ?? [])
+      .filter((f: any) => f.curso_formando_id === insc.id)
+      .filter((f: any) => !dataLimite || f.data <= dataLimite);
     const horasFaltaInjust = minhasFaltas
       .filter((f: any) => f.tipo !== "justificada" && f.tipo !== "online")
       .reduce((a: number, f: any) => a + Number(f.horas || 0), 0);

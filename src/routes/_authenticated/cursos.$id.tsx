@@ -2393,7 +2393,7 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
     queryKey: ["curso-formandos", cursoId],
     queryFn: async () => {
       const { data, error } = await supabase.from("curso_formandos")
-        .select("id, data_inscricao, estado, observacoes, formando:formandos(id, nome, email, telemovel, nif, estado)")
+        .select("id, data_inscricao, data_desistencia, data_conclusao, estado, observacoes, formando:formandos(id, nome, email, telemovel, nif, estado)")
         .eq("curso_id", cursoId).order("data_inscricao", { ascending: false });
       if (error) throw error;
       return data ?? [];
@@ -2407,8 +2407,18 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
     qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
   }
 
-  async function setEstado(id: string, estado: string) {
-    const { error } = await supabase.from("curso_formandos").update({ estado } as never).eq("id", id);
+  async function setEstado(id: string, estado: string, atual: any) {
+    const patch: any = { estado };
+    const hoje = new Date().toISOString().slice(0, 10);
+    if (estado === "desistente" && !atual.data_desistencia) patch.data_desistencia = hoje;
+    if (estado === "concluido" && !atual.data_conclusao) patch.data_conclusao = hoje;
+    const { error } = await supabase.from("curso_formandos").update(patch as never).eq("id", id);
+    if (error) return toast.error(error.message);
+    qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
+  }
+
+  async function setData(id: string, campo: "data_desistencia" | "data_conclusao", valor: string) {
+    const { error } = await supabase.from("curso_formandos").update({ [campo]: valor || null } as never).eq("id", id);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
   }

@@ -128,6 +128,82 @@ function DetailPage() {
       valor_hora: Number(l.valor_hora ?? 0), valor: Number(l.valor ?? 0), memoria_calculo: l.memoria_calculo ?? null,
     }));
     if (filtroModo !== "tudo" && !filtroId) { toast.error("Escolhe quem exportar."); return; }
+
+    // ---- Registo de presenças (para a segunda folha do Excel) ----
+    const p: any = proc.data;
+    const ano = p.ano as number, mes = p.mes as number;
+    const first = `${ano}-${String(mes).padStart(2, "0")}-01`;
+    const lastDay = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+    const last = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+
+    let presencas: import("@/lib/financeiro/excel").PresencaFormando[] = [];
+    if (filtroModo !== "formador") {
+      const formandoIdsAlvo = filtroModo === "formando" ? [filtroId] : opcoesFormandos.map(o => o.id);
+      if (formandoIdsAlvo.length) {
+        const [sessRes, cfRes] = await Promise.all([
+          supabase.from("sessoes")
+            .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao)), formador:formadores(nome, abreviatura)")
+            .eq("curso_id", p.curso_id).gte("data", first).lte("data", last),
+          supabase.from("curso_formandos")
+            .select("id, formando_id, formando:formandos(nome), curso_formando_ufcds(curso_ufcd_id, frequenta)")
+            .eq("curso_id", p.curso_id).in("formando_id", formandoIdsAlvo),
+        ]);
+        const sess = (sessRes.data ?? []) as any[];
+        const cfs = (cfRes.data ?? []) as any[];
+        const cfIds = cfs.map(c => c.id);
+        const faltasRes = cfIds.length ? await supabase.from("formando_faltas")
+          .select("curso_formando_id, sessao_id, data, horas, tipo, observacoes")
+          .in("curso_formando_id", cfIds).gte("data", first).lte("data", last) : { data: [] as any[] };
+        const faltas = (faltasRes.data ?? []) as any[];
+
+        presencas = cfs.map(cf => {
+          const ufcdsFreq = new Set<string>((cf.curso_formando_ufcds ?? [])
+            .filter((x: any) => x.frequenta !== false)
+            .map((x: any) => x.curso_ufcd_id));
+          const faltasCf = faltas.filter(f => f.curso_formando_id === cf.id);
+          const faltaBySessao = new Map<string, any>();
+          const faltasByData = new Map<string, any[]>();
+          faltasCf.forEach(f => {
+            if (f.sessao_id) faltaBySessao.set(f.sessao_id, f);
+            const arr = faltasByData.get(f.data) ?? [];
+            arr.push(f); faltasByData.set(f.data, arr);
+          });
+          const rows = sess
+            .filter(s => ufcdsFreq.has(s.curso_ufcd_id))
+            .map(s => {
+              const fs = faltaBySessao.get(s.id);
+              const horasSess = Number(s.horas ?? 0);
+              let horasFalta = 0, tipo: string | null = null, obs: string | null = null;
+              if (fs) {
+                horasFalta = Math.min(horasSess, Number(fs.horas ?? horasSess));
+                tipo = fs.tipo; obs = fs.observacoes ?? null;
+              } else {
+                // sem sessao_id: consumir do saldo diário
+                const arr = faltasByData.get(s.data);
+                if (arr && arr.length) {
+                  const f0 = arr[0];
+                  horasFalta = Math.min(horasSess, Number(f0.horas ?? horasSess));
+                  tipo = f0.tipo; obs = f0.observacoes ?? null;
+                }
+              }
+              const ufcd = s.curso_ufcd?.ufcd
+                ? `${s.curso_ufcd.ufcd.codigo ?? ""} — ${s.curso_ufcd.ufcd.designacao ?? ""}`.trim()
+                : "—";
+              const formador = s.formador?.abreviatura || s.formador?.nome || "—";
+              return {
+                data: s.data, hora_inicio: s.hora_inicio, hora_fim: s.hora_fim,
+                ufcd, formador,
+                horas_sessao: horasSess,
+                horas_falta: horasFalta,
+                horas_efetivas: Math.max(horasSess - horasFalta, 0),
+                tipo_falta: tipo, observacoes: obs,
+              };
+            });
+          return { formandoId: cf.formando_id, formandoNome: cf.formando?.nome ?? "—", rows };
+        }).sort((a, b) => a.formandoNome.localeCompare(b.formandoNome));
+      }
+    }
+
     await exportProcessamentoExcel({
       ano: proc.data.ano, mes: proc.data.mes, curso: proc.data.curso,
       totais: {
@@ -137,6 +213,7 @@ function DetailPage() {
         geral: Number(proc.data.total_geral),
       },
       formandos: fmds, formadores: fdrs,
+      presencas,
       empresa: cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null,
       logoEmpresaUrl: cfg.data?.logo_empresa_url ?? null,
       logoDgertUrl: cfg.data?.logo_dgert_url ?? null,

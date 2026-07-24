@@ -250,7 +250,6 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     ws.getCell(r, 1).value = lab;
     ws.getCell(r, 1).alignment = { horizontal: "right" };
     ws.getCell(r, 1).font = { bold: isTotal };
-    ws.mergeCells(r, 8, r, 9);
     ws.getCell(r, 8).value = val; ws.getCell(r, 8).numFmt = "#,##0.00 €";
     ws.getCell(r, 8).font = { bold: isTotal, size: isTotal ? 12 : 11 };
     if (isTotal) {

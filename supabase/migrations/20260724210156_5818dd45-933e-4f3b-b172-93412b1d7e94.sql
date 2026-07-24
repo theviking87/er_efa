@@ -1,0 +1,1 @@
+ALTER TYPE public.falta_tipo ADD VALUE IF NOT EXISTS 'online';

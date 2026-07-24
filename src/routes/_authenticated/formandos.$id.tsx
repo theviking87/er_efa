@@ -570,27 +570,30 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
   if (rows.length === 0) return <div className="text-sm text-muted-foreground text-center py-8">Sem faltas registadas.</div>;
 
   const totais = rows.reduce((acc: any, r: any) => {
+    if (r.tipo === "online") { acc.online += 1; return acc; }
     acc.total += Number(r.horas ?? 0);
     if (r.tipo === "justificada") acc.just += Number(r.horas ?? 0);
     else if (r.tipo === "injustificada") acc.inj += Number(r.horas ?? 0);
     else acc.aus += Number(r.horas ?? 0);
     return acc;
-  }, { total: 0, just: 0, inj: 0, aus: 0 });
+  }, { total: 0, just: 0, inj: 0, aus: 0, online: 0 });
 
-  const tipoLabel: Record<string, string> = { justificada: "Justificada", injustificada: "Injustificada", ausencia: "Ausência" };
+  const tipoLabel: Record<string, string> = { justificada: "Justificada", injustificada: "Injustificada", ausencia: "Ausência", online: "Online" };
   const tipoCls: Record<string, string> = {
     justificada: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
     injustificada: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30",
     ausencia: "bg-muted text-muted-foreground border-border",
+    online: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30",
   };
 
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-sm">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
         <StatMini label="Total horas" value={totais.total.toFixed(1) + "h"} />
         <StatMini label="Justificadas" value={totais.just.toFixed(1) + "h"} />
         <StatMini label="Injustificadas" value={totais.inj.toFixed(1) + "h"} />
         <StatMini label="Ausências" value={totais.aus.toFixed(1) + "h"} />
+        <StatMini label="Sessões online" value={String(totais.online)} />
       </div>
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
@@ -631,7 +634,7 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
                       {tipoLabel[r.tipo] ?? r.tipo}
                     </span>
                   </td>
-                  <td className="py-2 text-xs text-muted-foreground">{r.observacoes || "—"}</td>
+                  <td className="py-2 text-xs text-muted-foreground">{r.tipo === "online" ? (r.observacoes ? `Sessão online — ${r.observacoes}` : "Sessão online") : (r.observacoes || "—")}</td>
                 </tr>
               );
             })}

@@ -190,13 +190,15 @@ function DetailPage() {
                 ? `${s.curso_ufcd.ufcd.codigo ?? ""} — ${s.curso_ufcd.ufcd.designacao ?? ""}`.trim()
                 : "—";
               const formador = s.formador?.abreviatura || s.formador?.nome || "—";
+              const isOnline = tipo === "online";
               return {
                 data: s.data, hora_inicio: s.hora_inicio, hora_fim: s.hora_fim,
                 ufcd, formador,
                 horas_sessao: horasSess,
-                horas_falta: horasFalta,
-                horas_efetivas: Math.max(horasSess - horasFalta, 0),
-                tipo_falta: tipo, observacoes: obs,
+                horas_falta: isOnline ? 0 : horasFalta,
+                horas_efetivas: Math.max(horasSess - (isOnline ? 0 : horasFalta), 0),
+                tipo_falta: isOnline ? "online" : tipo,
+                observacoes: isOnline ? (obs ? `Sessão online — ${obs}` : "Sessão online") : obs,
               };
             });
           return { formandoId: cf.formando_id, formandoNome: cf.formando?.nome ?? "—", rows };

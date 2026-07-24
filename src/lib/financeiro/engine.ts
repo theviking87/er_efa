@@ -173,9 +173,11 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     // Faltas registadas no cronograma:
     //  · injustificadas descontam horas frequentadas (bolsa/honorários).
     //  · justificadas NÃO descontam horas — apenas contam para o SA diário.
+    //  · online = formando em sessão remota; não é falta, não desconta horas
+    //    nem SA, mas retira o direito a TR nesse dia.
     const minhasFaltas = (faltas ?? []).filter((f: any) => f.curso_formando_id === insc.id);
     const horasFaltaInjust = minhasFaltas
-      .filter((f: any) => f.tipo !== "justificada")
+      .filter((f: any) => f.tipo !== "justificada" && f.tipo !== "online")
       .reduce((a: number, f: any) => a + Number(f.horas || 0), 0);
     const horasFreq = Math.max(0, horasPrevistas - horasFaltaInjust);
 
@@ -184,25 +186,37 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     minhasSess.forEach((s: any) => diasSet.add(s.data));
     const diasPresenca = diasSet.size;
 
+    // Dias em que o formando teve pelo menos uma sessão marcada como online → sem TR.
+    const diasOnline = new Set<string>(
+      minhasFaltas.filter((f: any) => f.tipo === "online").map((f: any) => f.data),
+    );
+
     // Dias elegíveis para SA: dias com ≥ 3h efectivamente frequentadas.
     // Para o SA contam TODAS as faltas do dia (justificadas + injustificadas):
     // uma falta justificada mantém as horas para bolsa, mas se a formação
-    // efectiva desse dia ficar abaixo de 3h, o SA não é pago.
+    // efectiva desse dia ficar abaixo de 3h, o SA não é pago. Sessões online
+    // contam para o SA (o formando esteve em formação, ainda que remota).
     const horasPorDia = new Map<string, number>();
     minhasSess.forEach((s: any) => {
       horasPorDia.set(s.data, (horasPorDia.get(s.data) ?? 0) + Number(s.horas || 0));
     });
     const faltasPorDia = new Map<string, number>();
     minhasFaltas.forEach((f: any) => {
+      if (f.tipo === "online") return; // online não é falta
       faltasPorDia.set(f.data, (faltasPorDia.get(f.data) ?? 0) + Number(f.horas || 0));
     });
     let diasSa = 0;
     let diasTr = 0;
+    let diasTrExcluidosOnline = 0;
     horasPorDia.forEach((h, dia) => {
       const efect = Math.max(0, h - (faltasPorDia.get(dia) ?? 0));
-      // SA e TR partilham o mesmo critério: dia só conta se ≥ 3h efectivas.
-      // Se o dia perde SA, também perde TR.
-      if (efect >= 3) { diasSa += 1; diasTr += 1; }
+      // SA e TR partilham o critério de ≥ 3h efectivas. Além disso, TR é
+      // retirado nos dias em que o formando teve sessão online.
+      if (efect >= 3) {
+        diasSa += 1;
+        if (diasOnline.has(dia)) diasTrExcluidosOnline += 1;
+        else diasTr += 1;
+      }
     });
 
     const bolsaCfg = bolsaByFormando.get(insc.formando_id);
@@ -237,18 +251,30 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       });
     }
 
-    // TR — dias com ≥ 1h frequentada; km/dia limitado; tecto mensal global.
+    // TR — dias com ≥ 3h efectivas; km/dia limitado; tecto mensal; exclui dias online.
     if (elegTr && kmDia > 0 && valorKm > 0 && diasTr > 0) {
       const kmDiaAplicado = limiteKmDia > 0 ? Math.min(kmDia, limiteKmDia) : kmDia;
       const km_total = +(diasTr * kmDiaAplicado).toFixed(2);
       const bruto = +(km_total * valorKm).toFixed(2);
       const valor = trTetoMensal > 0 ? +Math.min(bruto, trTetoMensal).toFixed(2) : bruto;
+      const nota = diasTrExcluidosOnline > 0
+        ? `Formando com ${diasTrExcluidosOnline} dia(s) em sessão online — TR não pago nesses dias.`
+        : undefined;
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasTr,
         km_total, valor,
-        memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, regra: "dias com ≥ 3h efectivas (mesmo critério do SA); km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
+        memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, dias_online_excluidos: diasTrExcluidosOnline, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, nota, regra: "dias com ≥ 3h efectivas, excluindo dias em sessão online; km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h, presenciais) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
+      });
+    } else if (elegTr && kmDia > 0 && valorKm > 0 && diasTrExcluidosOnline > 0) {
+      // Todos os dias elegíveis foram online — regista linha zero com nota explicativa.
+      linhasFormandos.push({
+        formando_id: insc.formando_id, formando_nome: formandoNome,
+        rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
+        horas_elegiveis: horasFreq, dias_elegiveis: 0,
+        km_total: 0, valor: 0,
+        memoria_calculo: { km_dia: kmDia, dias: 0, dias_online_excluidos: diasTrExcluidosOnline, valor_km: valorKm, valor: 0, nota: `Todos os dias elegíveis (${diasTrExcluidosOnline}) foram em sessão online — sem TR.`, regra: "TR não pago em dias de sessão online" },
       });
     }
     // ATL — apenas cria a linha se o formando estiver marcado como elegível.

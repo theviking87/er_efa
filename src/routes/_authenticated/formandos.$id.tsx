@@ -34,7 +34,7 @@ function FormandoDetail() {
       const [f, ins] = await Promise.all([
         supabase.from("formandos").select("*").eq("id", id).maybeSingle(),
         supabase.from("curso_formandos")
-          .select("id, data_inscricao, estado, curso:cursos(id, nome, codigo, estado)")
+          .select("id, data_inscricao, data_desistencia, data_conclusao, estado, curso:cursos(id, nome, codigo, estado)")
           .eq("formando_id", id).order("data_inscricao", { ascending: false }),
       ]);
       if (f.error) throw f.error;

@@ -74,25 +74,25 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   wb.creator = "Gestão de Formação"; wb.created = new Date();
 
   const ws = wb.addWorksheet("Processamento", { pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } } });
-  // 8 colunas: Nome, Rubrica, H.prev, H.freq, Dias, Km, €/hora ou €/dia, Valor (fórmula)
+  // 9 colunas: Nome, Rubrica, H.prev, H.freq, Dias, Km, €/hora ou €/dia, €/Km, Valor (fórmula)
   ws.columns = [
-    { width: 30 }, { width: 9 }, { width: 10 }, { width: 11 }, { width: 7 }, { width: 8 }, { width: 13 }, { width: 15 },
+    { width: 30 }, { width: 9 }, { width: 10 }, { width: 11 }, { width: 7 }, { width: 8 }, { width: 13 }, { width: 10 }, { width: 15 },
   ];
-  const LAST_COL = "H"; // 8
+  const LAST_COL = "I"; // 9
 
-  // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo
+  // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo. Respeitar aspect ratio real.
   const [logoE, logoD, logoP] = await Promise.all([
     fetchImage(p.logoEmpresaUrl), fetchImage(p.logoDgertUrl), fetchImage(p.logoPessoas2030Url),
   ]);
   if (logoE) {
     const id = wb.addImage({ buffer: logoE.buf as any, extension: logoE.ext });
-    const s = fit(logoE.w, logoE.h, 150, 55);
-    ws.addImage(id, { tl: { col: 0, row: 0 }, ext: s });
+    const s = fit(logoE.w, logoE.h, 160, 60);
+    ws.addImage(id, { tl: { col: 0.2, row: 0.2 } as any, ext: s, editAs: "oneCell" } as any);
   }
   if (logoD) {
     const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
-    const s = fit(logoD.w, logoD.h, 150, 55);
-    ws.addImage(id, { tl: { col: 6, row: 0 }, ext: s });
+    const s = fit(logoD.w, logoD.h, 160, 60);
+    ws.addImage(id, { tl: { col: 7, row: 0.2 } as any, ext: s, editAs: "oneCell" } as any);
   }
   ws.getRow(1).height = 46; ws.getRow(2).height = 20;
 
@@ -139,6 +139,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   });
 
   let r = 8;
+  let formandosFirstRow = 0, formandosLastRow = 0;
+  let formadoresFirstRow = 0, formadoresLastRow = 0;
 
   if (!soFormador) {
     ws.mergeCells(`A${r}:${LAST_COL}${r}`);
@@ -147,7 +149,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       : "Formandos";
     ws.getCell(`A${r}`).value = tituloF; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora ou €/dia", "Valor (€)"];
+    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora ou €/dia", "€/Km", "Valor (€)"];
     headFormandos.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
       c.alignment = { horizontal: i < 2 ? "left" : "right", vertical: "middle", wrapText: true };
@@ -155,22 +157,40 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       c.border = { bottom: { style: "thin", color: { argb: "FFCCCCCC" } } };
     });
     r++;
+    formandosFirstRow = r;
     formandosFiltrados.forEach(l => {
       ws.getCell(r, 1).value = l.nome;
       ws.getCell(r, 2).value = l.rubrica;
       ws.getCell(r, 3).value = l.horas_previstas; ws.getCell(r, 3).numFmt = "0.0";
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 5).value = l.dias_elegiveis;
-      if (l.km_total && l.km_total > 0) { ws.getCell(r, 6).value = l.km_total; ws.getCell(r, 6).numFmt = "0.0"; }
       const rub = l.rubrica;
+      const mem = (l.memoria_calculo ?? {}) as Record<string, unknown>;
+      const kmDiaAplicado = Number(mem["km_dia_aplicado"] ?? 0);
+      const valorKm = Number(mem["valor_km"] ?? 0);
+      const aplicouTeto = Boolean(mem["aplicado_teto"]);
+      // Km column
+      if (rub === "TR" && kmDiaAplicado > 0) {
+        ws.getCell(r, 6).value = { formula: `E${r}*${kmDiaAplicado}`, result: l.km_total ?? 0 } as any;
+        ws.getCell(r, 6).numFmt = "0.0";
+      } else if (l.km_total && l.km_total > 0) {
+        ws.getCell(r, 6).value = l.km_total; ws.getCell(r, 6).numFmt = "0.0";
+      }
+      // Taxa €/h ou €/d
       let temTaxa = false;
       if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.0000 €"; temTaxa = true; }
       else if (l.valor_dia && l.valor_dia > 0) { ws.getCell(r, 7).value = l.valor_dia; ws.getCell(r, 7).numFmt = "#,##0.00 €"; temTaxa = true; }
-      const vc = ws.getCell(r, 8);
+      // €/Km
+      if (rub === "TR" && valorKm > 0) {
+        ws.getCell(r, 8).value = valorKm; ws.getCell(r, 8).numFmt = "#,##0.0000 €";
+      }
+      const vc = ws.getCell(r, 9);
       if (temTaxa && (rub === "BF" || rub === "BFM")) {
         vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
       } else if (temTaxa && rub === "SA") {
         vc.value = { formula: `E${r}*G${r}`, result: l.valor } as any;
+      } else if (rub === "TR" && valorKm > 0 && !aplicouTeto) {
+        vc.value = { formula: `F${r}*H${r}`, result: l.valor } as any;
       } else {
         vc.value = l.valor;
       }
@@ -181,6 +201,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       }
       r++;
     });
+    formandosLastRow = r - 1;
     if (!formandosFiltrados.length) {
       ws.mergeCells(`A${r}:${LAST_COL}${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
@@ -196,18 +217,19 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       : "Honorários — Formadores";
     ws.getCell(`A${r}`).value = tituloH; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "Valor (€)"];
+    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "", "Valor (€)"];
     headForm.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
       c.alignment = { horizontal: i === 0 ? "left" : "right", wrapText: true, vertical: "middle" };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
     });
     r++;
+    formadoresFirstRow = r;
     formadoresFiltrados.forEach(l => {
       ws.getCell(r, 1).value = l.nome;
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.00 €";
-      const vc = ws.getCell(r, 8);
+      const vc = ws.getCell(r, 9);
       vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
       vc.numFmt = "#,##0.00 €";
       const memo = memoriaToStr(l.memoria_calculo);
@@ -216,6 +238,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       }
       r++;
     });
+    formadoresLastRow = r - 1;
     if (!formadoresFiltrados.length) {
       ws.mergeCells(`A${r}:${LAST_COL}${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
@@ -223,56 +246,97 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     }
   }
 
-  // Totais recalculados sobre linhas filtradas
+  // Totais recalculados sobre linhas filtradas — usar fórmulas (SUMIF sobre coluna Rubrica)
   r += 2;
   const t = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 };
   formandosFiltrados.forEach(l => { const k = l.rubrica as keyof typeof t; if (k in t) t[k] += l.valor; });
   formadoresFiltrados.forEach(l => { t.HN += l.valor; });
   const geral = t.BF + t.BFM + t.SA + t.TR + t.HN + t.ATL;
-  const totRows: Array<[string, number]> = [];
   const rubricasVis: RubricaFilter[] = rubricasSel ? Array.from(rubricasSel) : ["BF","BFM","SA","TR","HN","ATL"];
-  const totalFormandos = (rubricasVis.includes("BF") ? t.BF : 0) + (rubricasVis.includes("BFM") ? t.BFM : 0) + (rubricasVis.includes("SA") ? t.SA : 0) + (rubricasVis.includes("TR") ? t.TR : 0) + (rubricasVis.includes("ATL") ? t.ATL : 0);
-  const totalFormadores = rubricasVis.includes("HN") ? t.HN : 0;
-  if (!soFormador) {
-    if (rubricasVis.includes("BF")) totRows.push(["Total BF", t.BF]);
-    if (rubricasVis.includes("BFM")) totRows.push(["Total BFM", t.BFM]);
-    if (rubricasVis.includes("SA")) totRows.push(["Total SA", t.SA]);
-    if (rubricasVis.includes("TR")) totRows.push(["Total TR", t.TR]);
-    if (rubricasVis.includes("ATL")) totRows.push(["Total ATL", t.ATL]);
-    totRows.push(["Subtotal Formandos (BF+BFM+SA+TR+ATL)", totalFormandos]);
-  }
-  if (!soFormando && rubricasVis.includes("HN")) totRows.push(["Subtotal Formadores (HN)", totalFormadores]);
-  totRows.push(["TOTAL", geral]);
+  const hasFormRange = formandosFirstRow > 0 && formandosLastRow >= formandosFirstRow;
+  const hasHnRange = formadoresFirstRow > 0 && formadoresLastRow >= formadoresFirstRow;
+  const fRange = hasFormRange ? `B${formandosFirstRow}:B${formandosLastRow}` : "";
+  const fSum = hasFormRange ? `I${formandosFirstRow}:I${formandosLastRow}` : "";
+  const hSum = hasHnRange ? `I${formadoresFirstRow}:I${formadoresLastRow}` : "";
 
-  totRows.forEach(([lab, val], i) => {
-    const isTotal = i === totRows.length - 1;
-    ws.mergeCells(r, 1, r, 7);
-    ws.getCell(r, 1).value = lab;
+  const totRows: Array<{ label: string; result: number; formula?: string }> = [];
+  const subtotalRowRefs: number[] = [];
+
+  if (!soFormador) {
+    const push = (rub: RubricaFilter, label: string, val: number) => {
+      if (!rubricasVis.includes(rub)) return;
+      totRows.push({ label, result: val, formula: hasFormRange ? `SUMIF(${fRange},"${rub}",${fSum})` : undefined });
+    };
+    push("BF", "Total BF", t.BF);
+    push("BFM", "Total BFM", t.BFM);
+    push("SA", "Total SA", t.SA);
+    push("TR", "Total TR", t.TR);
+    push("ATL", "Total ATL", t.ATL);
+  }
+
+  // Escrever primeiro os "Total X" para conseguir referenciar depois no subtotal.
+  const detailStartRow = r;
+  totRows.forEach((tr) => {
+    ws.mergeCells(r, 1, r, 8);
+    ws.getCell(r, 1).value = tr.label;
     ws.getCell(r, 1).alignment = { horizontal: "right" };
-    ws.getCell(r, 1).font = { bold: isTotal };
-    ws.getCell(r, 8).value = val; ws.getCell(r, 8).numFmt = "#,##0.00 €";
-    ws.getCell(r, 8).font = { bold: isTotal, size: isTotal ? 12 : 11 };
-    if (isTotal) {
-      ws.getCell(r, 1).fill = ws.getCell(r, 8).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111827" } };
-      ws.getCell(r, 1).font = { bold: true, color: { argb: "FFFFFFFF" } };
-      ws.getCell(r, 8).font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
-    }
+    const vc = ws.getCell(r, 9);
+    vc.value = tr.formula ? ({ formula: tr.formula, result: tr.result } as any) : tr.result;
+    vc.numFmt = "#,##0.00 €";
+    r++;
+  });
+  const detailEndRow = r - 1;
+
+  const subtotalRows: Array<{ label: string; result: number; formula?: string }> = [];
+  if (!soFormador) {
+    const totalFormandos = (rubricasVis.includes("BF") ? t.BF : 0) + (rubricasVis.includes("BFM") ? t.BFM : 0) + (rubricasVis.includes("SA") ? t.SA : 0) + (rubricasVis.includes("TR") ? t.TR : 0) + (rubricasVis.includes("ATL") ? t.ATL : 0);
+    const formula = detailEndRow >= detailStartRow ? `SUM(I${detailStartRow}:I${detailEndRow})` : undefined;
+    subtotalRows.push({ label: "Subtotal Formandos (BF+BFM+SA+TR+ATL)", result: totalFormandos, formula });
+  }
+  if (!soFormando && rubricasVis.includes("HN")) {
+    subtotalRows.push({ label: "Subtotal Formadores (HN)", result: t.HN, formula: hasHnRange ? `SUM(${hSum})` : undefined });
+  }
+  subtotalRows.forEach((sr) => {
+    ws.mergeCells(r, 1, r, 8);
+    ws.getCell(r, 1).value = sr.label;
+    ws.getCell(r, 1).alignment = { horizontal: "right" };
+    ws.getCell(r, 1).font = { bold: true };
+    const vc = ws.getCell(r, 9);
+    vc.value = sr.formula ? ({ formula: sr.formula, result: sr.result } as any) : sr.result;
+    vc.numFmt = "#,##0.00 €";
+    vc.font = { bold: true };
+    subtotalRowRefs.push(r);
     r++;
   });
 
+  // TOTAL — soma dos subtotais
+  const totalFormula = subtotalRowRefs.length
+    ? `SUM(${subtotalRowRefs.map(rr => `I${rr}`).join(",")})`
+    : undefined;
+  ws.mergeCells(r, 1, r, 8);
+  ws.getCell(r, 1).value = "TOTAL";
+  ws.getCell(r, 1).alignment = { horizontal: "right" };
+  const tvc = ws.getCell(r, 9);
+  tvc.value = totalFormula ? ({ formula: totalFormula, result: geral } as any) : geral;
+  tvc.numFmt = "#,##0.00 €";
+  ws.getCell(r, 1).fill = tvc.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF111827" } };
+  ws.getCell(r, 1).font = { bold: true, color: { argb: "FFFFFFFF" } };
+  tvc.font = { bold: true, color: { argb: "FFFFFFFF" }, size: 12 };
+  r++;
+
   // Legenda das rubricas
   ws.mergeCells(`A${r}:${LAST_COL}${r}`);
-  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; ATL — Apoio ao Tempo Livre; HN — Honorários. Coluna Km aplica-se ao TR (dias × km/dia aplicado).";
+  ws.getCell(`A${r}`).value = "Legenda: BF — Bolsa de Formação; BFM — Bolsa de Formação Modular; SA — Subsídio de Alimentação; TR — Subsídio de Transporte; ATL — Apoio ao Tempo Livre; HN — Honorários. Coluna Km aplica-se ao TR (dias × km/dia aplicado); Valor TR = Km × €/Km (limitado pelo tecto mensal se aplicável).";
   ws.getCell(`A${r}`).font = { italic: true, size: 9, color: { argb: "FF666666" } };
   ws.getCell(`A${r}`).alignment = { horizontal: "left", vertical: "middle", wrapText: true };
   ws.getRow(r).height = 32;
 
 
-  // Rodapé Pessoas 2030 centrado abaixo dos totais
+  // Rodapé Pessoas 2030 centrado abaixo dos totais — respeita aspect ratio.
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
-    const s = fit(logoP.w, logoP.h, 200, 70);
-    ws.addImage(id, { tl: { col: 4, row: r + 1 }, ext: s });
+    const s = fit(logoP.w, logoP.h, 220, 80);
+    ws.addImage(id, { tl: { col: 4, row: r + 1 } as any, ext: s, editAs: "oneCell" } as any);
   }
 
 

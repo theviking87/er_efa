@@ -139,6 +139,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   });
 
   let r = 8;
+  let formandosFirstRow = 0, formandosLastRow = 0;
+  let formadoresFirstRow = 0, formadoresLastRow = 0;
 
   if (!soFormador) {
     ws.mergeCells(`A${r}:${LAST_COL}${r}`);
@@ -147,7 +149,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       : "Formandos";
     ws.getCell(`A${r}`).value = tituloF; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora ou €/dia", "Valor (€)"];
+    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora ou €/dia", "€/Km", "Valor (€)"];
     headFormandos.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
       c.alignment = { horizontal: i < 2 ? "left" : "right", vertical: "middle", wrapText: true };
@@ -155,22 +157,40 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       c.border = { bottom: { style: "thin", color: { argb: "FFCCCCCC" } } };
     });
     r++;
+    formandosFirstRow = r;
     formandosFiltrados.forEach(l => {
       ws.getCell(r, 1).value = l.nome;
       ws.getCell(r, 2).value = l.rubrica;
       ws.getCell(r, 3).value = l.horas_previstas; ws.getCell(r, 3).numFmt = "0.0";
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 5).value = l.dias_elegiveis;
-      if (l.km_total && l.km_total > 0) { ws.getCell(r, 6).value = l.km_total; ws.getCell(r, 6).numFmt = "0.0"; }
       const rub = l.rubrica;
+      const mem = (l.memoria_calculo ?? {}) as Record<string, unknown>;
+      const kmDiaAplicado = Number(mem["km_dia_aplicado"] ?? 0);
+      const valorKm = Number(mem["valor_km"] ?? 0);
+      const aplicouTeto = Boolean(mem["aplicado_teto"]);
+      // Km column
+      if (rub === "TR" && kmDiaAplicado > 0) {
+        ws.getCell(r, 6).value = { formula: `E${r}*${kmDiaAplicado}`, result: l.km_total ?? 0 } as any;
+        ws.getCell(r, 6).numFmt = "0.0";
+      } else if (l.km_total && l.km_total > 0) {
+        ws.getCell(r, 6).value = l.km_total; ws.getCell(r, 6).numFmt = "0.0";
+      }
+      // Taxa €/h ou €/d
       let temTaxa = false;
       if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.0000 €"; temTaxa = true; }
       else if (l.valor_dia && l.valor_dia > 0) { ws.getCell(r, 7).value = l.valor_dia; ws.getCell(r, 7).numFmt = "#,##0.00 €"; temTaxa = true; }
-      const vc = ws.getCell(r, 8);
+      // €/Km
+      if (rub === "TR" && valorKm > 0) {
+        ws.getCell(r, 8).value = valorKm; ws.getCell(r, 8).numFmt = "#,##0.0000 €";
+      }
+      const vc = ws.getCell(r, 9);
       if (temTaxa && (rub === "BF" || rub === "BFM")) {
         vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
       } else if (temTaxa && rub === "SA") {
         vc.value = { formula: `E${r}*G${r}`, result: l.valor } as any;
+      } else if (rub === "TR" && valorKm > 0 && !aplicouTeto) {
+        vc.value = { formula: `F${r}*H${r}`, result: l.valor } as any;
       } else {
         vc.value = l.valor;
       }
@@ -181,6 +201,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       }
       r++;
     });
+    formandosLastRow = r - 1;
     if (!formandosFiltrados.length) {
       ws.mergeCells(`A${r}:${LAST_COL}${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };
@@ -196,18 +217,19 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       : "Honorários — Formadores";
     ws.getCell(`A${r}`).value = tituloH; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "Valor (€)"];
+    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "", "Valor (€)"];
     headForm.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
       c.alignment = { horizontal: i === 0 ? "left" : "right", wrapText: true, vertical: "middle" };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
     });
     r++;
+    formadoresFirstRow = r;
     formadoresFiltrados.forEach(l => {
       ws.getCell(r, 1).value = l.nome;
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.00 €";
-      const vc = ws.getCell(r, 8);
+      const vc = ws.getCell(r, 9);
       vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
       vc.numFmt = "#,##0.00 €";
       const memo = memoriaToStr(l.memoria_calculo);
@@ -216,6 +238,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       }
       r++;
     });
+    formadoresLastRow = r - 1;
     if (!formadoresFiltrados.length) {
       ws.mergeCells(`A${r}:${LAST_COL}${r}`); ws.getCell(`A${r}`).value = "Sem linhas.";
       ws.getCell(`A${r}`).font = { italic: true, color: { argb: "FF999999" } };

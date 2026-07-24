@@ -251,18 +251,30 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       });
     }
 
-    // TR — dias com ≥ 1h frequentada; km/dia limitado; tecto mensal global.
+    // TR — dias com ≥ 3h efectivas; km/dia limitado; tecto mensal; exclui dias online.
     if (elegTr && kmDia > 0 && valorKm > 0 && diasTr > 0) {
       const kmDiaAplicado = limiteKmDia > 0 ? Math.min(kmDia, limiteKmDia) : kmDia;
       const km_total = +(diasTr * kmDiaAplicado).toFixed(2);
       const bruto = +(km_total * valorKm).toFixed(2);
       const valor = trTetoMensal > 0 ? +Math.min(bruto, trTetoMensal).toFixed(2) : bruto;
+      const nota = diasTrExcluidosOnline > 0
+        ? `Formando com ${diasTrExcluidosOnline} dia(s) em sessão online — TR não pago nesses dias.`
+        : undefined;
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasTr,
         km_total, valor,
-        memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, regra: "dias com ≥ 3h efectivas (mesmo critério do SA); km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
+        memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, dias_online_excluidos: diasTrExcluidosOnline, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, nota, regra: "dias com ≥ 3h efectivas, excluindo dias em sessão online; km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h, presenciais) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
+      });
+    } else if (elegTr && kmDia > 0 && valorKm > 0 && diasTrExcluidosOnline > 0) {
+      // Todos os dias elegíveis foram online — regista linha zero com nota explicativa.
+      linhasFormandos.push({
+        formando_id: insc.formando_id, formando_nome: formandoNome,
+        rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
+        horas_elegiveis: horasFreq, dias_elegiveis: 0,
+        km_total: 0, valor: 0,
+        memoria_calculo: { km_dia: kmDia, dias: 0, dias_online_excluidos: diasTrExcluidosOnline, valor_km: valorKm, valor: 0, nota: `Todos os dias elegíveis (${diasTrExcluidosOnline}) foram em sessão online — sem TR.`, regra: "TR não pago em dias de sessão online" },
       });
     }
     // ATL — apenas cria a linha se o formando estiver marcado como elegível.

@@ -8,7 +8,7 @@ import { toast } from "sonner";
 import { fmtDate } from "@/lib/format";
 import { localRows } from "@/lib/dom-helpers";
 
-type Estado = "presente" | "justificada" | "injustificada";
+type Estado = "presente" | "online" | "justificada" | "injustificada";
 
 export function PresencasDialog({
   open, onOpenChange, sessao,

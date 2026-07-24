@@ -163,20 +163,22 @@ export function PresencasDialog({
               <thead className="text-xs text-muted-foreground sticky top-0 bg-background">
                 <tr className="border-b">
                   <th className="text-left py-2 font-medium">Formando</th>
-                  <th className="text-center py-2 font-medium w-[90px]">Presente</th>
-                  <th className="text-center py-2 font-medium w-[110px]">Falta just.</th>
-                  <th className="text-center py-2 font-medium w-[110px]">Falta injust.</th>
+                  <th className="text-center py-2 font-medium w-[80px]">Presente</th>
+                  <th className="text-center py-2 font-medium w-[80px]" title="Sessão remota — sem falta, mas sem TR nesse dia">Online</th>
+                  <th className="text-center py-2 font-medium w-[100px]">Falta just.</th>
+                  <th className="text-center py-2 font-medium w-[100px]">Falta injust.</th>
                   <th className="text-center py-2 font-medium w-[80px]">Horas</th>
-                  <th className="text-left py-2 font-medium w-[180px]">Observações</th>
+                  <th className="text-left py-2 font-medium w-[170px]">Observações</th>
                 </tr>
               </thead>
               <tbody>
                 {(inscritos.data ?? []).map((i: any) => {
                   const estado = estados[i.id] ?? "presente";
+                  const isFalta = estado === "justificada" || estado === "injustificada";
                   return (
                     <tr key={i.id} className="border-b last:border-0">
                       <td className="py-2 pr-2">{i.formando.nome}</td>
-                      {(["presente", "justificada", "injustificada"] as Estado[]).map(e => (
+                      {(["presente", "online", "justificada", "injustificada"] as Estado[]).map(e => (
                         <td key={e} className="text-center">
                           <input
                             type="radio"
@@ -196,14 +198,14 @@ export function PresencasDialog({
                           onChange={ev => setHorasFalta(s => ({ ...s, [i.id]: ev.target.value }))}
                           placeholder={String(sessao?.horas ?? "")}
                           className="h-8 text-xs text-center"
-                          disabled={estado === "presente"}
+                          disabled={!isFalta}
                         />
                       </td>
                       <td className="py-1">
                         <Input
                           value={obs[i.id] ?? ""}
                           onChange={ev => setObs(s => ({ ...s, [i.id]: ev.target.value }))}
-                          placeholder="—"
+                          placeholder={estado === "online" ? "Sessão online" : "—"}
                           className="h-8 text-xs"
                           disabled={estado === "presente"}
                         />

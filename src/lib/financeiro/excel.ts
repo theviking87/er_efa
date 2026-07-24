@@ -74,25 +74,25 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   wb.creator = "Gestão de Formação"; wb.created = new Date();
 
   const ws = wb.addWorksheet("Processamento", { pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } } });
-  // 8 colunas: Nome, Rubrica, H.prev, H.freq, Dias, Km, €/hora ou €/dia, Valor (fórmula)
+  // 9 colunas: Nome, Rubrica, H.prev, H.freq, Dias, Km, €/hora ou €/dia, €/Km, Valor (fórmula)
   ws.columns = [
-    { width: 30 }, { width: 9 }, { width: 10 }, { width: 11 }, { width: 7 }, { width: 8 }, { width: 13 }, { width: 15 },
+    { width: 30 }, { width: 9 }, { width: 10 }, { width: 11 }, { width: 7 }, { width: 8 }, { width: 13 }, { width: 10 }, { width: 15 },
   ];
-  const LAST_COL = "H"; // 8
+  const LAST_COL = "I"; // 9
 
-  // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo
+  // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo. Respeitar aspect ratio real.
   const [logoE, logoD, logoP] = await Promise.all([
     fetchImage(p.logoEmpresaUrl), fetchImage(p.logoDgertUrl), fetchImage(p.logoPessoas2030Url),
   ]);
   if (logoE) {
     const id = wb.addImage({ buffer: logoE.buf as any, extension: logoE.ext });
-    const s = fit(logoE.w, logoE.h, 150, 55);
-    ws.addImage(id, { tl: { col: 0, row: 0 }, ext: s });
+    const s = fit(logoE.w, logoE.h, 160, 60);
+    ws.addImage(id, { tl: { col: 0.2, row: 0.2 } as any, ext: s, editAs: "oneCell" } as any);
   }
   if (logoD) {
     const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
-    const s = fit(logoD.w, logoD.h, 150, 55);
-    ws.addImage(id, { tl: { col: 6, row: 0 }, ext: s });
+    const s = fit(logoD.w, logoD.h, 160, 60);
+    ws.addImage(id, { tl: { col: 7, row: 0.2 } as any, ext: s, editAs: "oneCell" } as any);
   }
   ws.getRow(1).height = 46; ws.getRow(2).height = 20;
 

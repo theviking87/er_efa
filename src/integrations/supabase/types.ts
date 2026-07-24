@@ -130,6 +130,8 @@ export type Database = {
         Row: {
           created_at: string
           curso_id: string
+          data_conclusao: string | null
+          data_desistencia: string | null
           data_inscricao: string
           estado: Database["public"]["Enums"]["inscricao_estado"]
           formando_id: string
@@ -139,6 +141,8 @@ export type Database = {
         Insert: {
           created_at?: string
           curso_id: string
+          data_conclusao?: string | null
+          data_desistencia?: string | null
           data_inscricao?: string
           estado?: Database["public"]["Enums"]["inscricao_estado"]
           formando_id: string
@@ -148,6 +152,8 @@ export type Database = {
         Update: {
           created_at?: string
           curso_id?: string
+          data_conclusao?: string | null
+          data_desistencia?: string | null
           data_inscricao?: string
           estado?: Database["public"]["Enums"]["inscricao_estado"]
           formando_id?: string

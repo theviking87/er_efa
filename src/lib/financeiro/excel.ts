@@ -74,11 +74,11 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   wb.creator = "Gestão de Formação"; wb.created = new Date();
 
   const ws = wb.addWorksheet("Processamento", { pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } } });
-  // 9 colunas: Nome, Rubrica, H.prev, H.freq, Dias, Km, €/hora, Valor, Cálculo
+  // 8 colunas: Nome, Rubrica, H.prev, H.freq, Dias, Km, €/hora ou €/dia, Valor (fórmula)
   ws.columns = [
-    { width: 30 }, { width: 9 }, { width: 10 }, { width: 11 }, { width: 7 }, { width: 8 }, { width: 11 }, { width: 13 }, { width: 55 },
+    { width: 30 }, { width: 9 }, { width: 10 }, { width: 11 }, { width: 7 }, { width: 8 }, { width: 13 }, { width: 15 },
   ];
-  const LAST_COL = "I"; // 9
+  const LAST_COL = "H"; // 8
 
   // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo
   const [logoE, logoD, logoP] = await Promise.all([
@@ -92,7 +92,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   if (logoD) {
     const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
     const s = fit(logoD.w, logoD.h, 150, 55);
-    ws.addImage(id, { tl: { col: 7, row: 0 }, ext: s });
+    ws.addImage(id, { tl: { col: 6, row: 0 }, ext: s });
   }
   ws.getRow(1).height = 46; ws.getRow(2).height = 20;
 
@@ -147,10 +147,10 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       : "Formandos";
     ws.getCell(`A${r}`).value = tituloF; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora", "Valor (€)", "Cálculo"];
+    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora ou €/dia", "Valor (€)"];
     headFormandos.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
-      c.alignment = { horizontal: i < 2 || i === 8 ? "left" : "right", vertical: "middle", wrapText: true };
+      c.alignment = { horizontal: i < 2 ? "left" : "right", vertical: "middle", wrapText: true };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
       c.border = { bottom: { style: "thin", color: { argb: "FFCCCCCC" } } };
     });
@@ -162,14 +162,22 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 5).value = l.dias_elegiveis;
       if (l.km_total && l.km_total > 0) { ws.getCell(r, 6).value = l.km_total; ws.getCell(r, 6).numFmt = "0.0"; }
-      if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.0000 €"; }
-      else if (l.valor_dia && l.valor_dia > 0) { ws.getCell(r, 7).value = l.valor_dia; ws.getCell(r, 7).numFmt = "#,##0.00 €/dia"; }
-      ws.getCell(r, 8).value = l.valor; ws.getCell(r, 8).numFmt = "#,##0.00 €";
+      const rub = l.rubrica;
+      let temTaxa = false;
+      if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.0000 €"; temTaxa = true; }
+      else if (l.valor_dia && l.valor_dia > 0) { ws.getCell(r, 7).value = l.valor_dia; ws.getCell(r, 7).numFmt = "#,##0.00 €"; temTaxa = true; }
+      const vc = ws.getCell(r, 8);
+      if (temTaxa && (rub === "BF" || rub === "BFM")) {
+        vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
+      } else if (temTaxa && rub === "SA") {
+        vc.value = { formula: `E${r}*G${r}`, result: l.valor } as any;
+      } else {
+        vc.value = l.valor;
+      }
+      vc.numFmt = "#,##0.00 €";
       const memo = memoriaToStr(l.memoria_calculo);
       if (memo) {
-        ws.getCell(r, 9).value = memo;
-        ws.getCell(r, 9).alignment = { wrapText: true, vertical: "top" };
-        ws.getCell(r, 9).font = { size: 9, color: { argb: "FF555555" } };
+        vc.note = { texts: [{ text: memo }], margins: { insetmode: "auto" } } as any;
       }
       r++;
     });
@@ -188,10 +196,10 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       : "Honorários — Formadores";
     ws.getCell(`A${r}`).value = tituloH; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "Valor (€)", "Cálculo"];
+    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "Valor (€)"];
     headForm.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
-      c.alignment = { horizontal: i === 0 || i === 8 ? "left" : "right", wrapText: true, vertical: "middle" };
+      c.alignment = { horizontal: i === 0 ? "left" : "right", wrapText: true, vertical: "middle" };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
     });
     r++;
@@ -199,12 +207,12 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       ws.getCell(r, 1).value = l.nome;
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.00 €";
-      ws.getCell(r, 8).value = l.valor; ws.getCell(r, 8).numFmt = "#,##0.00 €";
+      const vc = ws.getCell(r, 8);
+      vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
+      vc.numFmt = "#,##0.00 €";
       const memo = memoriaToStr(l.memoria_calculo);
       if (memo) {
-        ws.getCell(r, 9).value = memo;
-        ws.getCell(r, 9).alignment = { wrapText: true, vertical: "top" };
-        ws.getCell(r, 9).font = { size: 9, color: { argb: "FF555555" } };
+        vc.note = { texts: [{ text: memo }], margins: { insetmode: "auto" } } as any;
       }
       r++;
     });
@@ -242,7 +250,6 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
     ws.getCell(r, 1).value = lab;
     ws.getCell(r, 1).alignment = { horizontal: "right" };
     ws.getCell(r, 1).font = { bold: isTotal };
-    ws.mergeCells(r, 8, r, 9);
     ws.getCell(r, 8).value = val; ws.getCell(r, 8).numFmt = "#,##0.00 €";
     ws.getCell(r, 8).font = { bold: isTotal, size: isTotal ? 12 : 11 };
     if (isTotal) {

@@ -5,12 +5,32 @@ const MESES = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Ag
 
 export type RubricaFilter = "BF" | "BFM" | "SA" | "TR" | "HN" | "ATL";
 
+export type PresencaRow = {
+  data: string; // ISO
+  hora_inicio: string;
+  hora_fim: string;
+  ufcd: string;
+  formador: string;
+  horas_sessao: number;
+  horas_falta: number;
+  horas_efetivas: number;
+  tipo_falta?: string | null;
+  observacoes?: string | null;
+};
+
+export type PresencaFormando = {
+  formandoId: string;
+  formandoNome: string;
+  rows: PresencaRow[];
+};
+
 export type ProcessamentoExport = {
   ano: number; mes: number;
   curso: { codigo?: string | null; nome?: string | null; acao?: string | null; codigo_operacao?: string | null; codigo_sigo?: string | null } | null;
   totais: { BF: number; BFM: number; SA: number; TR: number; HN: number; ATL: number; geral: number };
   formandos: Array<{ id?: string; nome: string; rubrica: string; horas_previstas: number; horas_frequentadas: number; dias_elegiveis: number; valor_hora?: number; valor_dia?: number; km_total?: number; valor: number; memoria_calculo?: Record<string, unknown> | null }>;
   formadores: Array<{ id?: string; nome: string; horas_frequentadas: number; valor_hora: number; valor: number; memoria_calculo?: Record<string, unknown> | null }>;
+  presencas?: PresencaFormando[];
   empresa?: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
   logoEmpresaUrl?: string | null;
   logoDgertUrl?: string | null;
@@ -340,6 +360,85 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   }
 
 
+
+  // Segunda folha — Presenças por formando (comprovativo de dias/horas frequentadas)
+  const presencasList = (p.presencas ?? []).filter(pf => {
+    if (soFormador) return false;
+    if (soFormando) return pf.formandoId === filtro.formandoId;
+    return true;
+  });
+  if (presencasList.length) {
+    const ws2 = wb.addWorksheet("Presenças", { pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } } });
+    ws2.columns = [
+      { width: 12 }, { width: 12 }, { width: 30 }, { width: 22 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 12 }, { width: 30 },
+    ];
+    const LAST2 = "I";
+    ws2.mergeCells(`A1:${LAST2}1`);
+    ws2.getCell("A1").value = `Registo de presenças — ${MESES[p.mes-1]} / ${p.ano}`;
+    ws2.getCell("A1").font = { size: 14, bold: true };
+    ws2.mergeCells(`A2:${LAST2}2`);
+    ws2.getCell("A2").value = `${p.curso?.codigo ?? ""} — ${p.curso?.nome ?? ""}`;
+    ws2.getCell("A2").font = { size: 11, color: { argb: "FF666666" } };
+
+    let rr = 4;
+    presencasList.forEach((pf) => {
+      ws2.mergeCells(`A${rr}:${LAST2}${rr}`);
+      ws2.getCell(`A${rr}`).value = `Formando: ${pf.formandoNome}`;
+      ws2.getCell(`A${rr}`).font = { bold: true, size: 12 };
+      ws2.getCell(`A${rr}`).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFEEF2FF" } };
+      rr++;
+      const head = ["Data", "Horário", "UFCD", "Formador", "H. Sessão", "H. Falta", "H. Efetivas", "Tipo falta", "Observações"];
+      head.forEach((h, i) => {
+        const c = ws2.getCell(rr, i+1); c.value = h; c.font = { bold: true };
+        c.alignment = { horizontal: i >= 4 && i <= 6 ? "right" : "left", vertical: "middle", wrapText: true };
+        c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
+        c.border = { bottom: { style: "thin", color: { argb: "FFCCCCCC" } } };
+      });
+      rr++;
+      const firstRow = rr;
+      const rowsOrdenadas = [...pf.rows].sort((a, b) => (a.data + a.hora_inicio).localeCompare(b.data + b.hora_inicio));
+      rowsOrdenadas.forEach((row) => {
+        const [y, m, d] = row.data.split("-");
+        ws2.getCell(rr, 1).value = `${d}/${m}/${y}`;
+        ws2.getCell(rr, 2).value = `${row.hora_inicio?.slice(0,5) ?? ""}–${row.hora_fim?.slice(0,5) ?? ""}`;
+        ws2.getCell(rr, 3).value = row.ufcd;
+        ws2.getCell(rr, 4).value = row.formador;
+        ws2.getCell(rr, 5).value = row.horas_sessao; ws2.getCell(rr, 5).numFmt = "0.00";
+        ws2.getCell(rr, 6).value = row.horas_falta; ws2.getCell(rr, 6).numFmt = "0.00";
+        ws2.getCell(rr, 7).value = { formula: `MAX(E${rr}-F${rr},0)`, result: row.horas_efetivas } as any;
+        ws2.getCell(rr, 7).numFmt = "0.00";
+        ws2.getCell(rr, 8).value = row.tipo_falta ?? "";
+        ws2.getCell(rr, 9).value = row.observacoes ?? "";
+        rr++;
+      });
+      const lastRow = rr - 1;
+      if (!rowsOrdenadas.length) {
+        ws2.mergeCells(`A${rr}:${LAST2}${rr}`);
+        ws2.getCell(`A${rr}`).value = "Sem sessões registadas para este formando no mês.";
+        ws2.getCell(`A${rr}`).font = { italic: true, color: { argb: "FF999999" } };
+        rr++;
+      } else {
+        // Totais por formando
+        ws2.mergeCells(rr, 1, rr, 4);
+        ws2.getCell(rr, 1).value = "Totais"; ws2.getCell(rr, 1).font = { bold: true };
+        ws2.getCell(rr, 1).alignment = { horizontal: "right" };
+        ws2.getCell(rr, 5).value = { formula: `SUM(E${firstRow}:E${lastRow})` } as any;
+        ws2.getCell(rr, 5).numFmt = "0.00"; ws2.getCell(rr, 5).font = { bold: true };
+        ws2.getCell(rr, 6).value = { formula: `SUM(F${firstRow}:F${lastRow})` } as any;
+        ws2.getCell(rr, 6).numFmt = "0.00"; ws2.getCell(rr, 6).font = { bold: true };
+        ws2.getCell(rr, 7).value = { formula: `SUM(G${firstRow}:G${lastRow})` } as any;
+        ws2.getCell(rr, 7).numFmt = "0.00"; ws2.getCell(rr, 7).font = { bold: true };
+        // Dias distintos com presença efetiva
+        const diasSet = new Set<string>();
+        rowsOrdenadas.forEach(r0 => { if (r0.horas_efetivas > 0) diasSet.add(r0.data); });
+        ws2.mergeCells(rr, 8, rr, 9);
+        ws2.getCell(rr, 8).value = `${diasSet.size} dia(s) com presença`;
+        ws2.getCell(rr, 8).font = { italic: true, color: { argb: "FF444444" } };
+        rr++;
+      }
+      rr += 1;
+    });
+  }
 
   const buf = await wb.xlsx.writeBuffer();
   const alvo = soFormando

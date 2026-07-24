@@ -86,15 +86,15 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   ]);
   if (logoE) {
     const id = wb.addImage({ buffer: logoE.buf as any, extension: logoE.ext });
-    const s = fit(logoE.w, logoE.h, 160, 60);
-    ws.addImage(id, { tl: { col: 0.2, row: 0.2 } as any, ext: s, editAs: "oneCell" } as any);
+    const s = fit(logoE.w, logoE.h, 120, 45);
+    ws.addImage(id, { tl: { col: 0.1, row: 0.1 } as any, ext: s, editAs: "oneCell" } as any);
   }
   if (logoD) {
     const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
-    const s = fit(logoD.w, logoD.h, 160, 60);
-    ws.addImage(id, { tl: { col: 7, row: 0.2 } as any, ext: s, editAs: "oneCell" } as any);
+    const s = fit(logoD.w, logoD.h, 120, 45);
+    ws.addImage(id, { tl: { col: 7.2, row: 0.1 } as any, ext: s, editAs: "oneCell" } as any);
   }
-  ws.getRow(1).height = 46; ws.getRow(2).height = 20;
+  ws.getRow(1).height = 38; ws.getRow(2).height = 16;
 
   ws.mergeCells(`A4:${LAST_COL}4`);
   ws.getCell("A4").value = `Processamento — ${MESES[p.mes-1]} / ${p.ano}`;
@@ -168,7 +168,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       const mem = (l.memoria_calculo ?? {}) as Record<string, unknown>;
       const kmDiaAplicado = Number(mem["km_dia_aplicado"] ?? 0);
       const valorKm = Number(mem["valor_km"] ?? 0);
-      const aplicouTeto = Boolean(mem["aplicado_teto"]);
+      const tetoMensalTR = Number(mem["tr_teto_mensal"] ?? mem["teto_mensal"] ?? 152.78);
       // Km column
       if (rub === "TR" && kmDiaAplicado > 0) {
         ws.getCell(r, 6).value = { formula: `E${r}*${kmDiaAplicado}`, result: l.km_total ?? 0 } as any;
@@ -189,8 +189,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
         vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
       } else if (temTaxa && rub === "SA") {
         vc.value = { formula: `E${r}*G${r}`, result: l.valor } as any;
-      } else if (rub === "TR" && valorKm > 0 && !aplicouTeto) {
-        vc.value = { formula: `F${r}*H${r}`, result: l.valor } as any;
+      } else if (rub === "TR" && valorKm > 0) {
+        vc.value = { formula: `MIN(F${r}*H${r},${tetoMensalTR})`, result: l.valor } as any;
       } else {
         vc.value = l.valor;
       }
@@ -335,8 +335,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   // Rodapé Pessoas 2030 centrado abaixo dos totais — respeita aspect ratio.
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
-    const s = fit(logoP.w, logoP.h, 220, 80);
-    ws.addImage(id, { tl: { col: 4, row: r + 1 } as any, ext: s, editAs: "oneCell" } as any);
+    const s = fit(logoP.w, logoP.h, 180, 60);
+    ws.addImage(id, { tl: { col: 3.5, row: r + 1 } as any, ext: s, editAs: "oneCell" } as any);
   }
 
 

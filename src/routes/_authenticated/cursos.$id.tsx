@@ -2443,12 +2443,21 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
                   {[i.formando.email, i.formando.telemovel, i.formando.nif && `NIF ${i.formando.nif}`].filter(Boolean).join(" · ") || "Sem contacto"}
                 </div>
               </div>
-              <Select value={i.estado} onValueChange={(v) => setEstado(i.id, v)}>
+              <Select value={i.estado} onValueChange={(v) => setEstado(i.id, v, i)}>
                 <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(INSCRICAO_ESTADO_LABEL).map(([v, l]) => <SelectItem key={v} value={v}>{l}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {(i.estado === "desistente" || i.estado === "concluido") && (
+                <Input
+                  type="date"
+                  className="h-8 w-[140px] text-xs"
+                  title={i.estado === "desistente" ? "Data de desistência" : "Data de conclusão"}
+                  value={(i.estado === "desistente" ? i.data_desistencia : i.data_conclusao) ?? ""}
+                  onChange={(e) => setData(i.id, i.estado === "desistente" ? "data_desistencia" : "data_conclusao", e.target.value)}
+                />
+              )}
               <div className="text-xs text-muted-foreground w-20 text-right">{fmtDate(i.data_inscricao)}</div>
               <Button variant="ghost" size="sm" onClick={() => del(i.id)}><Trash2 className="size-3.5" /></Button>
             </div>

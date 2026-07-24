@@ -147,10 +147,10 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       : "Formandos";
     ws.getCell(`A${r}`).value = tituloF; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora", "Valor (€)", "Cálculo"];
+    const headFormandos = ["Formando", "Rubrica", "H. previstas", "H. frequentadas", "Dias", "Km", "€/hora ou €/dia", "Valor (€)"];
     headFormandos.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
-      c.alignment = { horizontal: i < 2 || i === 8 ? "left" : "right", vertical: "middle", wrapText: true };
+      c.alignment = { horizontal: i < 2 ? "left" : "right", vertical: "middle", wrapText: true };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
       c.border = { bottom: { style: "thin", color: { argb: "FFCCCCCC" } } };
     });
@@ -162,14 +162,22 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 5).value = l.dias_elegiveis;
       if (l.km_total && l.km_total > 0) { ws.getCell(r, 6).value = l.km_total; ws.getCell(r, 6).numFmt = "0.0"; }
-      if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.0000 €"; }
-      else if (l.valor_dia && l.valor_dia > 0) { ws.getCell(r, 7).value = l.valor_dia; ws.getCell(r, 7).numFmt = "#,##0.00 €/dia"; }
-      ws.getCell(r, 8).value = l.valor; ws.getCell(r, 8).numFmt = "#,##0.00 €";
+      const rub = l.rubrica;
+      let temTaxa = false;
+      if (l.valor_hora && l.valor_hora > 0) { ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.0000 €"; temTaxa = true; }
+      else if (l.valor_dia && l.valor_dia > 0) { ws.getCell(r, 7).value = l.valor_dia; ws.getCell(r, 7).numFmt = "#,##0.00 €"; temTaxa = true; }
+      const vc = ws.getCell(r, 8);
+      if (temTaxa && (rub === "BF" || rub === "BFM")) {
+        vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
+      } else if (temTaxa && rub === "SA") {
+        vc.value = { formula: `E${r}*G${r}`, result: l.valor } as any;
+      } else {
+        vc.value = l.valor;
+      }
+      vc.numFmt = "#,##0.00 €";
       const memo = memoriaToStr(l.memoria_calculo);
       if (memo) {
-        ws.getCell(r, 9).value = memo;
-        ws.getCell(r, 9).alignment = { wrapText: true, vertical: "top" };
-        ws.getCell(r, 9).font = { size: 9, color: { argb: "FF555555" } };
+        vc.note = { texts: [{ text: memo }], margins: { insetmode: "auto" } } as any;
       }
       r++;
     });

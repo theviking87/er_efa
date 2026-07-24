@@ -92,8 +92,13 @@ export function PresencasDialog({
         const estado = estados[i.id] ?? "presente";
         const obsTxt = (obs[i.id] ?? "").trim();
         if (estado === "presente") continue;
-        const h = Number(horasFalta[i.id] ?? sessao.horas);
-        const horas = Number.isFinite(h) && h > 0 ? Math.min(h, sessao.horas) : sessao.horas;
+        // Online: marcador de sessão remota — 0h de falta, apenas retira TR.
+        const horas = estado === "online"
+          ? 0
+          : (() => {
+              const h = Number(horasFalta[i.id] ?? sessao.horas);
+              return Number.isFinite(h) && h > 0 ? Math.min(h, sessao.horas) : sessao.horas;
+            })();
         aInserir.push({
           curso_formando_id: i.id,
           sessao_id: sessao.id,

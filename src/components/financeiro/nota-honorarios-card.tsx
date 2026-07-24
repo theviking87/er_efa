@@ -401,7 +401,7 @@ export function NotaHonorariosCard() {
                         return (
                           <tr key={i} className="border-t border-emerald-700/10">
                             <td className="px-2 py-1">{fmtDate(s.data)}</td>
-                            <td className="px-2 py-1">{curso?.codigo ?? ""}</td>
+                            <td className="px-2 py-1">{curso?.nome ?? ""}</td>
                             <td className="px-2 py-1 truncate max-w-[180px]">{ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : ""}</td>
                             <td className="px-2 py-1">{(s.hora_inicio ?? "").slice(0,5)}–{(s.hora_fim ?? "").slice(0,5)}</td>
                             <td className="px-2 py-1 text-right">{Number(s.horas).toFixed(2)}h</td>

@@ -196,10 +196,10 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       : "Honorários — Formadores";
     ws.getCell(`A${r}`).value = tituloH; ws.getCell(`A${r}`).font = { bold: true, size: 12 };
     r++;
-    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "Valor (€)", "Cálculo"];
+    const headForm = ["Formador", "", "", "Horas", "", "", "€/hora", "Valor (€)"];
     headForm.forEach((h, i) => {
       const c = ws.getCell(r, i+1); c.value = h; c.font = { bold: true };
-      c.alignment = { horizontal: i === 0 || i === 8 ? "left" : "right", wrapText: true, vertical: "middle" };
+      c.alignment = { horizontal: i === 0 ? "left" : "right", wrapText: true, vertical: "middle" };
       c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFF3F4F6" } };
     });
     r++;
@@ -207,12 +207,12 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
       ws.getCell(r, 1).value = l.nome;
       ws.getCell(r, 4).value = l.horas_frequentadas; ws.getCell(r, 4).numFmt = "0.0";
       ws.getCell(r, 7).value = l.valor_hora; ws.getCell(r, 7).numFmt = "#,##0.00 €";
-      ws.getCell(r, 8).value = l.valor; ws.getCell(r, 8).numFmt = "#,##0.00 €";
+      const vc = ws.getCell(r, 8);
+      vc.value = { formula: `D${r}*G${r}`, result: l.valor } as any;
+      vc.numFmt = "#,##0.00 €";
       const memo = memoriaToStr(l.memoria_calculo);
       if (memo) {
-        ws.getCell(r, 9).value = memo;
-        ws.getCell(r, 9).alignment = { wrapText: true, vertical: "top" };
-        ws.getCell(r, 9).font = { size: 9, color: { argb: "FF555555" } };
+        vc.note = { texts: [{ text: memo }], margins: { insetmode: "auto" } } as any;
       }
       r++;
     });

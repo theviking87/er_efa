@@ -8,13 +8,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Pencil, Trash2, Download, Upload } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Download, Upload, Plus } from "lucide-react";
 import { EstadoFormandoBadge } from "./formandos.index";
 import { FormandoDialog } from "@/components/formando-dialog";
-import { fmtDate, INSCRICAO_ESTADO_LABEL } from "@/lib/format";
+import { fmtDate, INSCRICAO_ESTADO_LABEL, MONTH_NAMES } from "@/lib/format";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormandoFinanceiroPanel } from "@/components/formando-financeiro-panel";
 
 export const Route = createFileRoute("/_authenticated/formandos/$id")({

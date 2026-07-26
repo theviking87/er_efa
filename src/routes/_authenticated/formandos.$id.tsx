@@ -8,13 +8,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Pencil, Trash2, Download, Upload } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Download, Upload, Plus } from "lucide-react";
 import { EstadoFormandoBadge } from "./formandos.index";
 import { FormandoDialog } from "@/components/formando-dialog";
-import { fmtDate, INSCRICAO_ESTADO_LABEL } from "@/lib/format";
+import { fmtDate, INSCRICAO_ESTADO_LABEL, MONTH_NAMES } from "@/lib/format";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormandoFinanceiroPanel } from "@/components/formando-financeiro-panel";
 
 export const Route = createFileRoute("/_authenticated/formandos/$id")({
@@ -542,8 +543,10 @@ function HorasCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso
 }
 
 function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
+  const qc = useQueryClient();
   const ids = inscricoes.map(i => i.id);
   const cursoById = new Map(inscricoes.map(i => [i.id, i.curso]));
+  const [marcar, setMarcar] = useState(false);
 
   const q = useQuery({
     queryKey: ["faltas-formando", ids.sort().join(",")],
@@ -568,10 +571,25 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
     },
   });
 
+  async function removerFalta(id: string) {
+    const { error } = await supabase.from("formando_faltas").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Falta removida");
+    qc.invalidateQueries({ queryKey: ["faltas-formando"] });
+  }
+
   if (ids.length === 0) return <div className="text-sm text-muted-foreground text-center py-8">Sem inscrições.</div>;
-  if (q.isLoading) return <div className="text-sm text-muted-foreground text-center py-8">A carregar…</div>;
+
+  const inscricoesAtivas = inscricoes.filter(i => i.estado === "inscrito" || i.estado === "em_formacao");
+
   const rows = q.data ?? [];
-  if (rows.length === 0) return <div className="text-sm text-muted-foreground text-center py-8">Sem faltas registadas.</div>;
+  const tipoLabel: Record<string, string> = { justificada: "Justificada", injustificada: "Injustificada", ausencia: "Ausência", online: "Online" };
+  const tipoCls: Record<string, string> = {
+    justificada: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+    injustificada: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30",
+    ausencia: "bg-muted text-muted-foreground border-border",
+    online: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30",
+  };
 
   const totais = rows.reduce((acc: any, r: any) => {
     if (r.tipo === "online") { acc.online += 1; return acc; }
@@ -582,23 +600,30 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
     return acc;
   }, { total: 0, just: 0, inj: 0, aus: 0, online: 0 });
 
-  const tipoLabel: Record<string, string> = { justificada: "Justificada", injustificada: "Injustificada", ausencia: "Ausência", online: "Online" };
-  const tipoCls: Record<string, string> = {
-    justificada: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
-    injustificada: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30",
-    ausencia: "bg-muted text-muted-foreground border-border",
-    online: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30",
-  };
-
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
-        <StatMini label="Total horas" value={totais.total.toFixed(1) + "h"} />
-        <StatMini label="Justificadas" value={totais.just.toFixed(1) + "h"} />
-        <StatMini label="Injustificadas" value={totais.inj.toFixed(1) + "h"} />
-        <StatMini label="Ausências" value={totais.aus.toFixed(1) + "h"} />
-        <StatMini label="Sessões online" value={String(totais.online)} />
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm flex-1">
+          <StatMini label="Total horas" value={totais.total.toFixed(1) + "h"} />
+          <StatMini label="Justificadas" value={totais.just.toFixed(1) + "h"} />
+          <StatMini label="Injustificadas" value={totais.inj.toFixed(1) + "h"} />
+          <StatMini label="Ausências" value={totais.aus.toFixed(1) + "h"} />
+          <StatMini label="Sessões online" value={String(totais.online)} />
+        </div>
+        <Button
+          onClick={() => setMarcar(true)}
+          disabled={inscricoesAtivas.length === 0}
+          title={inscricoesAtivas.length === 0 ? "Sem inscrições ativas" : undefined}
+        >
+          <Plus className="size-4" /> Marcar falta
+        </Button>
       </div>
+
+      {q.isLoading ? (
+        <div className="text-sm text-muted-foreground text-center py-8">A carregar…</div>
+      ) : rows.length === 0 ? (
+        <div className="text-sm text-muted-foreground text-center py-8">Sem faltas registadas.</div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground border-b">
@@ -639,12 +664,23 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
                     </span>
                   </td>
                   <td className="py-2 text-xs text-muted-foreground">{r.tipo === "online" ? (r.observacoes ? `Sessão online — ${r.observacoes}` : "Sessão online") : (r.observacoes || "—")}</td>
+                  <td className="py-2 pr-2 text-right">
+                    <Button variant="ghost" size="sm" onClick={() => removerFalta(r.id)} title="Remover"><Trash2 className="size-3.5" /></Button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      )}
+
+      <MarcarFaltaDialog
+        open={marcar}
+        onOpenChange={setMarcar}
+        inscricoes={inscricoesAtivas}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["faltas-formando"] })}
+      />
     </div>
   );
 }
@@ -655,5 +691,213 @@ function StatMini({ label, value }: { label: string; value: string }) {
       <div className="text-xs text-muted-foreground uppercase tracking-wide">{label}</div>
       <div className="text-lg font-semibold tracking-tight mt-0.5">{value}</div>
     </div>
+  );
+}
+
+type TipoFalta = "justificada" | "injustificada" | "ausencia" | "online";
+
+function MarcarFaltaDialog({
+  open, onOpenChange, inscricoes, onSaved,
+}: {
+  open: boolean;
+  onOpenChange: (v: boolean) => void;
+  inscricoes: any[];
+  onSaved: () => void;
+}) {
+  const [mes, setMes] = useState<string>(() => new Date().toISOString().slice(0, 7));
+  const [selected, setSelected] = useState<any | null>(null);
+  const [tipo, setTipo] = useState<TipoFalta>("injustificada");
+  const [horas, setHoras] = useState<string>("");
+  const [obs, setObs] = useState<string>("");
+  const [saving, setSaving] = useState(false);
+
+  // month options
+  const monthOpts: string[] = [];
+  const now = new Date();
+  for (let i = -18; i <= 6; i++) {
+    const d = new Date(now.getFullYear(), now.getMonth() + i, 1);
+    monthOpts.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+
+  const cursoIds = Array.from(new Set(inscricoes.map(i => i.curso.id)));
+  const inscByCurso = new Map(inscricoes.map(i => [i.curso.id, i]));
+
+  const q = useQuery({
+    queryKey: ["marcar-falta-sessoes", cursoIds.sort().join(","), mes, inscricoes.map(i => i.id).sort().join(",")],
+    enabled: open && cursoIds.length > 0,
+    queryFn: async () => {
+      const [ano, m] = mes.split("-").map(Number);
+      const first = `${mes}-01`;
+      const nextMonth = new Date(ano, m, 1);
+      const last = `${nextMonth.getFullYear()}-${String(nextMonth.getMonth() + 1).padStart(2, "0")}-01`;
+      const { data: sess, error } = await supabase
+        .from("sessoes")
+        .select("id, curso_id, data, hora_inicio, hora_fim, horas, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao))")
+        .in("curso_id", cursoIds)
+        .gte("data", first).lt("data", last)
+        .order("data", { ascending: true });
+      if (error) throw error;
+      const sessaoIds = (sess ?? []).map((s: any) => s.id);
+      const inscIds = inscricoes.map(i => i.id);
+      let faltasMap = new Map<string, any>();
+      if (sessaoIds.length && inscIds.length) {
+        const { data: fx } = await supabase
+          .from("formando_faltas")
+          .select("id, sessao_id, curso_formando_id, tipo, horas, observacoes")
+          .in("sessao_id", sessaoIds)
+          .in("curso_formando_id", inscIds);
+        faltasMap = new Map(((fx ?? []) as any[]).map(f => [f.sessao_id, f]));
+      }
+      return (sess ?? []).map((s: any) => {
+        const insc: any = inscByCurso.get(s.curso_id);
+        const dataLimite = insc ? (insc.data_desistencia && insc.data_conclusao ? (insc.data_desistencia < insc.data_conclusao ? insc.data_desistencia : insc.data_conclusao) : (insc.data_desistencia || insc.data_conclusao || null)) : null;
+        const foraDoPeriodo = dataLimite ? s.data > dataLimite : false;
+        return { ...s, insc, foraDoPeriodo, falta: faltasMap.get(s.id) ?? null };
+      });
+    },
+  });
+
+  function openSessao(s: any) {
+    setSelected(s);
+    setTipo((s.falta?.tipo as TipoFalta) ?? "injustificada");
+    setHoras(String(s.falta?.horas ?? s.horas ?? ""));
+    setObs(s.falta?.observacoes ?? "");
+  }
+
+  async function save() {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      const h = tipo === "online" ? 0 : Math.max(0, Math.min(Number(horas) || Number(selected.horas), Number(selected.horas)));
+      const payload = {
+        curso_formando_id: selected.insc.id,
+        sessao_id: selected.id,
+        data: selected.data,
+        horas: h,
+        tipo,
+        observacoes: obs.trim() || null,
+      };
+      if (selected.falta) {
+        const { error } = await supabase.from("formando_faltas").update(payload as never).eq("id", selected.falta.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("formando_faltas").insert(payload as never);
+        if (error) throw error;
+      }
+      toast.success("Falta registada");
+      setSelected(null);
+      onSaved();
+    } catch (e: any) {
+      toast.error("Erro a guardar", { description: e.message });
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const monthLabel = (k: string) => {
+    const [y, mm] = k.split("-");
+    return `${MONTH_NAMES[Number(mm) - 1]} ${y}`;
+  };
+
+  const sessoes = (q.data ?? []).filter((s: any) => !s.foraDoPeriodo);
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-2xl">
+        <DialogHeader>
+          <DialogTitle>Marcar falta</DialogTitle>
+        </DialogHeader>
+
+        <div className="flex items-center gap-2">
+          <label className="text-sm text-muted-foreground">Mês:</label>
+          <select
+            value={mes}
+            onChange={e => { setMes(e.target.value); setSelected(null); }}
+            className="h-9 rounded-md border bg-background px-2 text-sm"
+          >
+            {monthOpts.map(o => <option key={o} value={o}>{monthLabel(o)}</option>)}
+          </select>
+        </div>
+
+        {q.isLoading ? (
+          <div className="text-sm text-muted-foreground text-center py-6">A carregar…</div>
+        ) : sessoes.length === 0 ? (
+          <div className="text-sm text-muted-foreground text-center py-6">Sem sessões nos cursos inscritos neste mês.</div>
+        ) : (
+          <div className="max-h-[45vh] overflow-y-auto -mx-6 px-6">
+            <table className="w-full text-sm">
+              <thead className="text-xs text-muted-foreground sticky top-0 bg-background border-b">
+                <tr>
+                  <th className="text-left py-2 font-medium">Data</th>
+                  <th className="text-left py-2 font-medium">Horário</th>
+                  <th className="text-left py-2 font-medium">Curso</th>
+                  <th className="text-left py-2 font-medium">UFCD</th>
+                  <th className="text-center py-2 font-medium">Horas</th>
+                  <th className="text-left py-2 font-medium">Estado</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sessoes.map((s: any) => {
+                  const uf = s.curso_ufcd?.ufcd;
+                  const isSel = selected?.id === s.id;
+                  return (
+                    <tr
+                      key={s.id}
+                      onClick={() => openSessao(s)}
+                      className={`border-b last:border-0 cursor-pointer hover:bg-muted/40 ${isSel ? "bg-primary/10" : ""}`}
+                    >
+                      <td className="py-2 pr-2 whitespace-nowrap">{fmtDate(s.data)}</td>
+                      <td className="py-2 pr-2 whitespace-nowrap text-xs text-muted-foreground">{s.hora_inicio?.slice(0,5)}–{s.hora_fim?.slice(0,5)}</td>
+                      <td className="py-2 pr-2 text-xs">{s.insc?.curso?.codigo ?? "—"}</td>
+                      <td className="py-2 pr-2 text-xs">{uf ? <span><span className="font-mono">{uf.codigo}</span> — {uf.designacao}</span> : "—"}</td>
+                      <td className="py-2 pr-2 text-center">{Number(s.horas ?? 0)}</td>
+                      <td className="py-2 text-xs">
+                        {s.falta ? <span className="text-amber-600">Falta registada</span> : <span className="text-muted-foreground">—</span>}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+
+        {selected && (
+          <div className="rounded-md border p-3 space-y-3 bg-muted/20">
+            <div className="text-sm font-medium">
+              {fmtDate(selected.data)} · {selected.hora_inicio?.slice(0,5)}–{selected.hora_fim?.slice(0,5)} · {selected.insc?.curso?.codigo}
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+              {(["justificada","injustificada","ausencia","online"] as TipoFalta[]).map(t => (
+                <label key={t} className="flex items-center gap-2 text-sm border rounded-md px-2 py-1.5 cursor-pointer hover:bg-background">
+                  <input type="radio" name="tipo-falta" checked={tipo === t} onChange={() => setTipo(t)} />
+                  <span className="capitalize">{t}</span>
+                </label>
+              ))}
+            </div>
+            <div className="flex items-center gap-2">
+              <label className="text-xs text-muted-foreground w-16">Horas</label>
+              <Input
+                type="number" step="0.5" min="0" max={selected.horas}
+                value={horas} onChange={e => setHoras(e.target.value)}
+                disabled={tipo === "online"}
+                placeholder={String(selected.horas)}
+                className="h-8 w-24"
+              />
+              <span className="text-xs text-muted-foreground">de {selected.horas}h</span>
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground">Observações</label>
+              <Input value={obs} onChange={e => setObs(e.target.value)} className="h-8" />
+            </div>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Fechar</Button>
+          <Button onClick={save} disabled={!selected || saving}>{saving ? "A guardar…" : "Guardar falta"}</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -23,22 +23,33 @@ export function PresencasDialog({
     queryKey: ["presencas-inscritos", sessao?.curso_id],
     enabled: !!sessao && open,
     queryFn: async () => {
+      const sessaoData = sessao!.data;
       const offline = await localRows<any>(`
-        SELECT cf.id, cf.estado, f.id AS formando_id, f.nome AS formando_nome
+        SELECT cf.id, cf.estado, cf.data_desistencia, cf.data_conclusao, f.id AS formando_id, f.nome AS formando_nome
           FROM curso_formandos cf
           JOIN formandos f ON f.id = cf.formando_id
          WHERE cf.curso_id = $1
-           AND cf.estado IN ('inscrito', 'em_formacao')
+           AND cf.estado IN ('inscrito', 'em_formacao', 'desistente', 'concluido')
          ORDER BY f.nome ASC
       `, [sessao!.curso_id]);
-      if (offline) return offline.map((r: any) => ({ id: r.id, estado: r.estado, formando: { id: r.formando_id, nome: r.formando_nome } }));
-      const { data, error } = await supabase
-        .from("curso_formandos")
-        .select("id, estado, formando:formandos(id, nome)")
-        .eq("curso_id", sessao!.curso_id)
-        .in("estado", ["inscrito", "em_formacao"]);
-      if (error) throw error;
-      return (data ?? []).filter((i: any) => i.formando);
+      const rows = offline
+        ? offline.map((r: any) => ({ id: r.id, estado: r.estado, data_desistencia: r.data_desistencia, data_conclusao: r.data_conclusao, formando: { id: r.formando_id, nome: r.formando_nome } }))
+        : await (async () => {
+            const { data, error } = await supabase
+              .from("curso_formandos")
+              .select("id, estado, data_desistencia, data_conclusao, formando:formandos(id, nome)")
+              .eq("curso_id", sessao!.curso_id);
+            if (error) throw error;
+            return (data ?? []).filter((i: any) => i.formando);
+          })();
+      // Ativos na data da sessão: inclui inscritos/em_formação, e ex-inscritos cuja desistência/conclusão só ocorreu depois desta sessão.
+      return rows.filter((r: any) => {
+        if (r.data_desistencia && r.data_desistencia <= sessaoData) return false;
+        if (r.data_conclusao && r.data_conclusao < sessaoData) return false;
+        if (r.estado === "desistente" && !r.data_desistencia) return false;
+        if (r.estado === "concluido" && !r.data_conclusao) return false;
+        return true;
+      }).sort((a: any, b: any) => a.formando.nome.localeCompare(b.formando.nome));
     },
   });
 

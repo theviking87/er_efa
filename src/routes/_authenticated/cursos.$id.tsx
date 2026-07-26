@@ -2529,6 +2529,45 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const [exportingFaltas, setExportingFaltas] = useState(false);
   const [savingFaltas, setSavingFaltas] = useState(false);
   const [faltasDraft, setFaltasDraft] = useState<Record<string, { horas: number; tipo: "justificada" | "injustificada" }>>({});
+  const [mesFalta, setMesFalta] = useState(() => { const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() }; });
+
+  const faltasDoMes = useQuery({
+    queryKey: ["faltas-do-mes", cursoId, mesFalta.ano, mesFalta.mes],
+    queryFn: async () => {
+      const ini = dateOnlyIso(mesFalta.ano, mesFalta.mes, 1);
+      const fim = dateOnlyIso(mesFalta.ano, mesFalta.mes + 1, 0);
+      const { data: cfs, error: e1 } = await supabase.from("curso_formandos")
+        .select("id, formando:formandos(id, nome)")
+        .eq("curso_id", cursoId);
+      if (e1) throw e1;
+      const ids = (cfs ?? []).map((c: any) => c.id);
+      if (ids.length === 0) return [] as any[];
+      const nomeById = new Map((cfs ?? []).map((c: any) => [c.id, (c.formando as any)?.nome ?? "—"]));
+      const { data: fs, error: e2 } = await supabase.from("formando_faltas")
+        .select("id, curso_formando_id, sessao_id, data, horas, tipo, observacoes")
+        .in("curso_formando_id", ids)
+        .gte("data", ini).lte("data", fim)
+        .order("data", { ascending: true });
+      if (e2) throw e2;
+      const sessIds = Array.from(new Set((fs ?? []).map((f: any) => f.sessao_id).filter(Boolean)));
+      const sessMap = new Map<string, any>();
+      if (sessIds.length) {
+        const { data: ss } = await supabase.from("sessoes")
+          .select("id, hora_inicio, hora_fim, curso_ufcd_id").in("id", sessIds as string[]);
+        const cufIds = Array.from(new Set((ss ?? []).map((s: any) => s.curso_ufcd_id).filter(Boolean)));
+        const { data: cufs } = cufIds.length
+          ? await supabase.from("curso_ufcds").select("id, ufcd:ufcds(codigo, designacao)").in("id", cufIds as string[])
+          : { data: [] as any[] };
+        const cufMap = new Map((cufs ?? []).map((c: any) => [c.id, c]));
+        (ss ?? []).forEach((s: any) => sessMap.set(s.id, { ...s, curso_ufcd: cufMap.get(s.curso_ufcd_id) }));
+      }
+      return (fs ?? []).map((f: any) => ({
+        ...f,
+        formando_nome: nomeById.get(f.curso_formando_id) ?? "—",
+        sessao: sessMap.get(f.sessao_id),
+      })).sort((a: any, b: any) => (a.data === b.data ? String(a.formando_nome).localeCompare(String(b.formando_nome)) : a.data.localeCompare(b.data)));
+    },
+  });
 
   const inscritos = useQuery({
     queryKey: ["curso-formandos-faltas", cursoId],

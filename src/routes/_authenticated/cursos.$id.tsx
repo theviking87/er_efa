@@ -2529,6 +2529,45 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
   const [exportingFaltas, setExportingFaltas] = useState(false);
   const [savingFaltas, setSavingFaltas] = useState(false);
   const [faltasDraft, setFaltasDraft] = useState<Record<string, { horas: number; tipo: "justificada" | "injustificada" }>>({});
+  const [mesFalta, setMesFalta] = useState(() => { const d = new Date(); return { ano: d.getFullYear(), mes: d.getMonth() }; });
+
+  const faltasDoMes = useQuery({
+    queryKey: ["faltas-do-mes", cursoId, mesFalta.ano, mesFalta.mes],
+    queryFn: async () => {
+      const ini = dateOnlyIso(mesFalta.ano, mesFalta.mes, 1);
+      const fim = dateOnlyIso(mesFalta.ano, mesFalta.mes + 1, 0);
+      const { data: cfs, error: e1 } = await supabase.from("curso_formandos")
+        .select("id, formando:formandos(id, nome)")
+        .eq("curso_id", cursoId);
+      if (e1) throw e1;
+      const ids = (cfs ?? []).map((c: any) => c.id);
+      if (ids.length === 0) return [] as any[];
+      const nomeById = new Map((cfs ?? []).map((c: any) => [c.id, (c.formando as any)?.nome ?? "—"]));
+      const { data: fs, error: e2 } = await supabase.from("formando_faltas")
+        .select("id, curso_formando_id, sessao_id, data, horas, tipo, observacoes")
+        .in("curso_formando_id", ids)
+        .gte("data", ini).lte("data", fim)
+        .order("data", { ascending: true });
+      if (e2) throw e2;
+      const sessIds = Array.from(new Set((fs ?? []).map((f: any) => f.sessao_id).filter(Boolean)));
+      const sessMap = new Map<string, any>();
+      if (sessIds.length) {
+        const { data: ss } = await supabase.from("sessoes")
+          .select("id, hora_inicio, hora_fim, curso_ufcd_id").in("id", sessIds as string[]);
+        const cufIds = Array.from(new Set((ss ?? []).map((s: any) => s.curso_ufcd_id).filter(Boolean)));
+        const { data: cufs } = cufIds.length
+          ? await supabase.from("curso_ufcds").select("id, ufcd:ufcds(codigo, designacao)").in("id", cufIds as string[])
+          : { data: [] as any[] };
+        const cufMap = new Map((cufs ?? []).map((c: any) => [c.id, c]));
+        (ss ?? []).forEach((s: any) => sessMap.set(s.id, { ...s, curso_ufcd: cufMap.get(s.curso_ufcd_id) }));
+      }
+      return (fs ?? []).map((f: any) => ({
+        ...f,
+        formando_nome: nomeById.get(f.curso_formando_id) ?? "—",
+        sessao: sessMap.get(f.sessao_id),
+      })).sort((a: any, b: any) => (a.data === b.data ? String(a.formando_nome).localeCompare(String(b.formando_nome)) : a.data.localeCompare(b.data)));
+    },
+  });
 
   const inscritos = useQuery({
     queryKey: ["curso-formandos-faltas", cursoId],
@@ -2739,8 +2778,16 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
     }
   }
 
+  const tipoLabel = (t: string) => (FALTA_TIPO_LABEL as any)[t] ?? (t === "online" ? "Online" : t === "ausencia" ? "Ausência" : t);
+
   return (
     <div className="space-y-4">
+    <Tabs defaultValue="por-sessao" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="por-sessao">Por sessão</TabsTrigger>
+        <TabsTrigger value="por-mes">Por mês</TabsTrigger>
+      </TabsList>
+      <TabsContent value="por-sessao" className="space-y-4">
       <Card><CardContent className="p-6 space-y-4">
         <div className="flex items-end gap-3">
           <div className="flex-1 max-w-md">
@@ -2836,6 +2883,48 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
           })}
         </div>
       </CardContent></Card>
+      </TabsContent>
+
+      <TabsContent value="por-mes" className="space-y-4">
+        <Card><CardContent className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setMesFalta(m => { const d = new Date(m.ano, m.mes - 1, 1); return { ano: d.getFullYear(), mes: d.getMonth() }; })}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <div className="font-semibold text-sm min-w-[170px] text-center">{MONTH_NAMES[mesFalta.mes]} {mesFalta.ano}</div>
+            <Button variant="outline" size="icon" onClick={() => setMesFalta(m => { const d = new Date(m.ano, m.mes + 1, 1); return { ano: d.getFullYear(), mes: d.getMonth() }; })}>
+              <ChevronRight className="size-4" />
+            </Button>
+            <div className="ml-auto text-xs text-muted-foreground">
+              {faltasDoMes.data?.length ?? 0} registo(s) · {fmtHoras((faltasDoMes.data ?? []).reduce((s: number, f: any) => s + Number(f.horas ?? 0), 0))}
+            </div>
+          </div>
+
+          <div className="border rounded-md divide-y">
+            <div className="grid grid-cols-[100px_1fr_1fr_140px_80px_1fr] gap-3 px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground bg-muted/40">
+              <div>Data</div><div>Formando</div><div>UFCD</div><div>Tipo</div><div>Horas</div><div>Observações</div>
+            </div>
+            {faltasDoMes.isLoading && <div className="px-4 py-6 text-xs text-muted-foreground text-center">A carregar…</div>}
+            {!faltasDoMes.isLoading && (faltasDoMes.data ?? []).length === 0 && (
+              <div className="px-4 py-6 text-xs text-muted-foreground text-center">Sem faltas registadas neste mês.</div>
+            )}
+            {(faltasDoMes.data ?? []).map((f: any) => {
+              const ufcd = f.sessao?.curso_ufcd?.ufcd;
+              return (
+                <div key={f.id} className="grid grid-cols-[100px_1fr_1fr_140px_80px_1fr] gap-3 px-4 py-2 items-center text-sm">
+                  <div className="tabular-nums">{fmtDate(f.data)}{f.sessao ? <div className="text-[10px] text-muted-foreground">{f.sessao.hora_inicio?.slice(0,5)}–{f.sessao.hora_fim?.slice(0,5)}</div> : null}</div>
+                  <div className="truncate">{f.formando_nome}</div>
+                  <div className="truncate text-xs">{ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : "—"}</div>
+                  <div><Badge variant={f.tipo === "justificada" ? "secondary" : f.tipo === "online" ? "outline" : "destructive"}>{tipoLabel(f.tipo)}</Badge></div>
+                  <div>{fmtHoras(Number(f.horas ?? 0))}</div>
+                  <div className="truncate text-xs text-muted-foreground">{f.observacoes ?? ""}</div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent></Card>
+      </TabsContent>
+    </Tabs>
     </div>
   );
 }

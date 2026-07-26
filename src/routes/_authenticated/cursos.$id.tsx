@@ -2778,8 +2778,16 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
     }
   }
 
+  const tipoLabel = (t: string) => (FALTA_TIPO_LABEL as any)[t] ?? (t === "online" ? "Online" : t === "ausencia" ? "Ausência" : t);
+
   return (
     <div className="space-y-4">
+    <Tabs defaultValue="por-sessao" className="space-y-4">
+      <TabsList>
+        <TabsTrigger value="por-sessao">Por sessão</TabsTrigger>
+        <TabsTrigger value="por-mes">Por mês</TabsTrigger>
+      </TabsList>
+      <TabsContent value="por-sessao" className="space-y-4">
       <Card><CardContent className="p-6 space-y-4">
         <div className="flex items-end gap-3">
           <div className="flex-1 max-w-md">

@@ -2883,6 +2883,48 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
           })}
         </div>
       </CardContent></Card>
+      </TabsContent>
+
+      <TabsContent value="por-mes" className="space-y-4">
+        <Card><CardContent className="p-6 space-y-4">
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="icon" onClick={() => setMesFalta(m => { const d = new Date(m.ano, m.mes - 1, 1); return { ano: d.getFullYear(), mes: d.getMonth() }; })}>
+              <ChevronLeft className="size-4" />
+            </Button>
+            <div className="font-semibold text-sm min-w-[170px] text-center">{MONTH_NAMES[mesFalta.mes]} {mesFalta.ano}</div>
+            <Button variant="outline" size="icon" onClick={() => setMesFalta(m => { const d = new Date(m.ano, m.mes + 1, 1); return { ano: d.getFullYear(), mes: d.getMonth() }; })}>
+              <ChevronRight className="size-4" />
+            </Button>
+            <div className="ml-auto text-xs text-muted-foreground">
+              {faltasDoMes.data?.length ?? 0} registo(s) · {fmtHoras((faltasDoMes.data ?? []).reduce((s: number, f: any) => s + Number(f.horas ?? 0), 0))}
+            </div>
+          </div>
+
+          <div className="border rounded-md divide-y">
+            <div className="grid grid-cols-[100px_1fr_1fr_140px_80px_1fr] gap-3 px-4 py-2 text-xs uppercase tracking-wide text-muted-foreground bg-muted/40">
+              <div>Data</div><div>Formando</div><div>UFCD</div><div>Tipo</div><div>Horas</div><div>Observações</div>
+            </div>
+            {faltasDoMes.isLoading && <div className="px-4 py-6 text-xs text-muted-foreground text-center">A carregar…</div>}
+            {!faltasDoMes.isLoading && (faltasDoMes.data ?? []).length === 0 && (
+              <div className="px-4 py-6 text-xs text-muted-foreground text-center">Sem faltas registadas neste mês.</div>
+            )}
+            {(faltasDoMes.data ?? []).map((f: any) => {
+              const ufcd = f.sessao?.curso_ufcd?.ufcd;
+              return (
+                <div key={f.id} className="grid grid-cols-[100px_1fr_1fr_140px_80px_1fr] gap-3 px-4 py-2 items-center text-sm">
+                  <div className="tabular-nums">{fmtDate(f.data)}{f.sessao ? <div className="text-[10px] text-muted-foreground">{f.sessao.hora_inicio?.slice(0,5)}–{f.sessao.hora_fim?.slice(0,5)}</div> : null}</div>
+                  <div className="truncate">{f.formando_nome}</div>
+                  <div className="truncate text-xs">{ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : "—"}</div>
+                  <div><Badge variant={f.tipo === "justificada" ? "secondary" : f.tipo === "online" ? "outline" : "destructive"}>{tipoLabel(f.tipo)}</Badge></div>
+                  <div>{fmtHoras(Number(f.horas ?? 0))}</div>
+                  <div className="truncate text-xs text-muted-foreground">{f.observacoes ?? ""}</div>
+                </div>
+              );
+            })}
+          </div>
+        </CardContent></Card>
+      </TabsContent>
+    </Tabs>
     </div>
   );
 }

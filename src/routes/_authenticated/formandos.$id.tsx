@@ -664,12 +664,23 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
                     </span>
                   </td>
                   <td className="py-2 text-xs text-muted-foreground">{r.tipo === "online" ? (r.observacoes ? `Sessão online — ${r.observacoes}` : "Sessão online") : (r.observacoes || "—")}</td>
+                  <td className="py-2 pr-2 text-right">
+                    <Button variant="ghost" size="sm" onClick={() => removerFalta(r.id)} title="Remover"><Trash2 className="size-3.5" /></Button>
+                  </td>
                 </tr>
               );
             })}
           </tbody>
         </table>
       </div>
+      )}
+
+      <MarcarFaltaDialog
+        open={marcar}
+        onOpenChange={setMarcar}
+        inscricoes={inscricoesAtivas}
+        onSaved={() => qc.invalidateQueries({ queryKey: ["faltas-formando"] })}
+      />
     </div>
   );
 }

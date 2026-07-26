@@ -543,8 +543,10 @@ function HorasCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso
 }
 
 function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
+  const qc = useQueryClient();
   const ids = inscricoes.map(i => i.id);
   const cursoById = new Map(inscricoes.map(i => [i.id, i.curso]));
+  const [marcar, setMarcar] = useState(false);
 
   const q = useQuery({
     queryKey: ["faltas-formando", ids.sort().join(",")],
@@ -569,10 +571,25 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
     },
   });
 
+  async function removerFalta(id: string) {
+    const { error } = await supabase.from("formando_faltas").delete().eq("id", id);
+    if (error) return toast.error(error.message);
+    toast.success("Falta removida");
+    qc.invalidateQueries({ queryKey: ["faltas-formando"] });
+  }
+
   if (ids.length === 0) return <div className="text-sm text-muted-foreground text-center py-8">Sem inscrições.</div>;
-  if (q.isLoading) return <div className="text-sm text-muted-foreground text-center py-8">A carregar…</div>;
+
+  const inscricoesAtivas = inscricoes.filter(i => i.estado === "inscrito" || i.estado === "em_formacao");
+
   const rows = q.data ?? [];
-  if (rows.length === 0) return <div className="text-sm text-muted-foreground text-center py-8">Sem faltas registadas.</div>;
+  const tipoLabel: Record<string, string> = { justificada: "Justificada", injustificada: "Injustificada", ausencia: "Ausência", online: "Online" };
+  const tipoCls: Record<string, string> = {
+    justificada: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
+    injustificada: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30",
+    ausencia: "bg-muted text-muted-foreground border-border",
+    online: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30",
+  };
 
   const totais = rows.reduce((acc: any, r: any) => {
     if (r.tipo === "online") { acc.online += 1; return acc; }
@@ -583,23 +600,30 @@ function FaltasFormando({ inscricoes }: { inscricoes: any[] }) {
     return acc;
   }, { total: 0, just: 0, inj: 0, aus: 0, online: 0 });
 
-  const tipoLabel: Record<string, string> = { justificada: "Justificada", injustificada: "Injustificada", ausencia: "Ausência", online: "Online" };
-  const tipoCls: Record<string, string> = {
-    justificada: "bg-amber-500/10 text-amber-700 dark:text-amber-400 border-amber-500/30",
-    injustificada: "bg-red-500/10 text-red-700 dark:text-red-400 border-red-500/30",
-    ausencia: "bg-muted text-muted-foreground border-border",
-    online: "bg-sky-500/10 text-sky-700 dark:text-sky-400 border-sky-500/30",
-  };
-
   return (
     <div className="space-y-4">
-      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm">
-        <StatMini label="Total horas" value={totais.total.toFixed(1) + "h"} />
-        <StatMini label="Justificadas" value={totais.just.toFixed(1) + "h"} />
-        <StatMini label="Injustificadas" value={totais.inj.toFixed(1) + "h"} />
-        <StatMini label="Ausências" value={totais.aus.toFixed(1) + "h"} />
-        <StatMini label="Sessões online" value={String(totais.online)} />
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 text-sm flex-1">
+          <StatMini label="Total horas" value={totais.total.toFixed(1) + "h"} />
+          <StatMini label="Justificadas" value={totais.just.toFixed(1) + "h"} />
+          <StatMini label="Injustificadas" value={totais.inj.toFixed(1) + "h"} />
+          <StatMini label="Ausências" value={totais.aus.toFixed(1) + "h"} />
+          <StatMini label="Sessões online" value={String(totais.online)} />
+        </div>
+        <Button
+          onClick={() => setMarcar(true)}
+          disabled={inscricoesAtivas.length === 0}
+          title={inscricoesAtivas.length === 0 ? "Sem inscrições ativas" : undefined}
+        >
+          <Plus className="size-4" /> Marcar falta
+        </Button>
       </div>
+
+      {q.isLoading ? (
+        <div className="text-sm text-muted-foreground text-center py-8">A carregar…</div>
+      ) : rows.length === 0 ? (
+        <div className="text-sm text-muted-foreground text-center py-8">Sem faltas registadas.</div>
+      ) : (
       <div className="overflow-x-auto">
         <table className="w-full text-sm">
           <thead className="text-xs text-muted-foreground border-b">

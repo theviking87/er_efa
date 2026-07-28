@@ -538,6 +538,7 @@ export type Database = {
           valor: number
           valor_dia: number | null
           valor_hora: number | null
+          valor_manual: number | null
         }
         Insert: {
           created_at?: string
@@ -555,6 +556,7 @@ export type Database = {
           valor?: number
           valor_dia?: number | null
           valor_hora?: number | null
+          valor_manual?: number | null
         }
         Update: {
           created_at?: string
@@ -572,6 +574,7 @@ export type Database = {
           valor?: number
           valor_dia?: number | null
           valor_hora?: number | null
+          valor_manual?: number | null
         }
         Relationships: [
           {
@@ -763,6 +766,7 @@ export type Database = {
       formadores: {
         Row: {
           abreviatura: string | null
+          aplica_iva: boolean
           cc: string | null
           ccp: string | null
           codigo_postal: string | null
@@ -774,11 +778,14 @@ export type Database = {
           habilitacoes: string | null
           iban: string | null
           id: string
+          iva_percentagem: number
           localidade: string | null
           morada: string | null
           nif: string | null
           nome: string
           observacoes: string | null
+          retencao_percentagem: number
+          sem_retencao: boolean
           telemovel: string | null
           updated_at: string
           validade_cc: string | null
@@ -787,6 +794,7 @@ export type Database = {
         }
         Insert: {
           abreviatura?: string | null
+          aplica_iva?: boolean
           cc?: string | null
           ccp?: string | null
           codigo_postal?: string | null
@@ -798,11 +806,14 @@ export type Database = {
           habilitacoes?: string | null
           iban?: string | null
           id?: string
+          iva_percentagem?: number
           localidade?: string | null
           morada?: string | null
           nif?: string | null
           nome: string
           observacoes?: string | null
+          retencao_percentagem?: number
+          sem_retencao?: boolean
           telemovel?: string | null
           updated_at?: string
           validade_cc?: string | null
@@ -811,6 +822,7 @@ export type Database = {
         }
         Update: {
           abreviatura?: string | null
+          aplica_iva?: boolean
           cc?: string | null
           ccp?: string | null
           codigo_postal?: string | null
@@ -822,11 +834,14 @@ export type Database = {
           habilitacoes?: string | null
           iban?: string | null
           id?: string
+          iva_percentagem?: number
           localidade?: string | null
           morada?: string | null
           nif?: string | null
           nome?: string
           observacoes?: string | null
+          retencao_percentagem?: number
+          sem_retencao?: boolean
           telemovel?: string | null
           updated_at?: string
           validade_cc?: string | null

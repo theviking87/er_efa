@@ -1317,24 +1317,28 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   }, [sessoes.data]);
 
 
-  // Para a impressão: formadores do mês × UFCD em curso × horas em falta (já com o corrente mês contabilizado)
+  // Para a impressão: apenas as UFCD que cada formador efetivamente lecionou no mês (bate certo com o cronograma)
   const printFooter = useMemo(() => {
-    const rows: { formador: string; cor: string; ufcd: string; horas_totais: number; realizadas: number; em_falta: number }[] = [];
+    const rows: { formador: string; cor: string; ufcd: string; horas_totais: number; realizadas: number; em_falta: number; horas_mes: number }[] = [];
+    const cargaByCodigo = new Map<string, any>();
+    (cargaCurso.data ?? []).forEach((u: any) => {
+      if (u?.ufcd?.codigo) cargaByCodigo.set(u.ufcd.codigo, u);
+    });
     resumoMes.forEach(r => {
-      // UFCD onde este formador está atribuído neste curso
-      (cargaCurso.data ?? []).forEach((u: any) => {
-        const tem = (u.formadores ?? []).some((ff: any) => ff.formador?.id === r.id);
-        if (!tem) return;
-        // Mostrar só UFCD ainda não fechadas (em falta > 0) — "a decorrer"
-        if (u.horas_em_falta <= 0) return;
-        rows.push({
-          formador: r.nome, cor: r.cor,
-          ufcd: `${u.ufcd.codigo} — ${u.ufcd.designacao}`,
-          horas_totais: u.horas_totais,
-          realizadas: u.horas_realizadas,
-          em_falta: u.horas_em_falta,
+      Array.from(r.porUfcd.entries())
+        .sort((a, b) => compareUfcdCodigo(a[0], b[0]))
+        .forEach(([codigo, horasMes]) => {
+          const u = cargaByCodigo.get(codigo);
+          rows.push({
+            formador: r.nome,
+            cor: r.cor,
+            ufcd: u ? `${u.ufcd.codigo} — ${u.ufcd.designacao}` : codigo,
+            horas_totais: u?.horas_totais ?? 0,
+            realizadas: u?.horas_realizadas ?? 0,
+            em_falta: u?.horas_em_falta ?? 0,
+            horas_mes: horasMes,
+          });
         });
-      });
     });
     return rows;
   }, [resumoMes, cargaCurso.data]);
@@ -1738,13 +1742,14 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
             <div className="font-semibold text-lg leading-tight">{cursoNome}</div>
             <div className="text-sm">Gestão de horas · {MONTH_NAMES[mes.mes]} {mes.ano}</div>
           </div>
-          <div className="font-semibold mb-1">Formadores deste mês — UFCD em curso e horas em falta (inclui {MONTH_NAMES[mes.mes]})</div>
+          <div className="font-semibold mb-1">Formadores deste mês — UFCD lecionadas em {MONTH_NAMES[mes.mes]} e horas em falta</div>
 
           <table className="w-full border-collapse text-[9px]">
             <thead>
               <tr>
                 <th className="border border-gray-400 bg-gray-100 p-1 text-left">Formador</th>
-                <th className="border border-gray-400 bg-gray-100 p-1 text-left">UFCD em curso</th>
+                <th className="border border-gray-400 bg-gray-100 p-1 text-left">UFCD lecionada no mês</th>
+                <th className="border border-gray-400 bg-gray-100 p-1 text-right w-[60px]">Horas mês</th>
                 <th className="border border-gray-400 bg-gray-100 p-1 text-right w-[60px]">Carga</th>
                 <th className="border border-gray-400 bg-gray-100 p-1 text-right w-[60px]">Dadas</th>
                 <th className="border border-gray-400 bg-gray-100 p-1 text-right w-[60px]">Faltam</th>
@@ -1752,15 +1757,16 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
             </thead>
             <tbody>
               {printFooter.length === 0 && (
-                <tr><td colSpan={5} className="border border-gray-400 p-1 text-center text-gray-500">Sem UFCD em curso para os formadores deste mês.</td></tr>
+                <tr><td colSpan={6} className="border border-gray-400 p-1 text-center text-gray-500">Sem sessões no mês.</td></tr>
               )}
               {printFooter.map((r, i) => (
                 <tr key={i}>
                   <td className="border border-gray-400 p-1">{r.formador}</td>
                   <td className="border border-gray-400 p-1">{r.ufcd}</td>
+                  <td className="border border-gray-400 p-1 text-right tabular-nums font-semibold">{r.horas_mes}h</td>
                   <td className="border border-gray-400 p-1 text-right tabular-nums">{r.horas_totais}h</td>
                   <td className="border border-gray-400 p-1 text-right tabular-nums">{r.realizadas}h</td>
-                  <td className="border border-gray-400 p-1 text-right tabular-nums font-semibold">{r.em_falta}h</td>
+                  <td className="border border-gray-400 p-1 text-right tabular-nums">{r.em_falta}h</td>
                 </tr>
               ))}
             </tbody>

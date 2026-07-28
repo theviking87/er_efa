@@ -1317,24 +1317,28 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
   }, [sessoes.data]);
 
 
-  // Para a impressão: formadores do mês × UFCD em curso × horas em falta (já com o corrente mês contabilizado)
+  // Para a impressão: apenas as UFCD que cada formador efetivamente lecionou no mês (bate certo com o cronograma)
   const printFooter = useMemo(() => {
-    const rows: { formador: string; cor: string; ufcd: string; horas_totais: number; realizadas: number; em_falta: number }[] = [];
+    const rows: { formador: string; cor: string; ufcd: string; horas_totais: number; realizadas: number; em_falta: number; horas_mes: number }[] = [];
+    const cargaByCodigo = new Map<string, any>();
+    (cargaCurso.data ?? []).forEach((u: any) => {
+      if (u?.ufcd?.codigo) cargaByCodigo.set(u.ufcd.codigo, u);
+    });
     resumoMes.forEach(r => {
-      // UFCD onde este formador está atribuído neste curso
-      (cargaCurso.data ?? []).forEach((u: any) => {
-        const tem = (u.formadores ?? []).some((ff: any) => ff.formador?.id === r.id);
-        if (!tem) return;
-        // Mostrar só UFCD ainda não fechadas (em falta > 0) — "a decorrer"
-        if (u.horas_em_falta <= 0) return;
-        rows.push({
-          formador: r.nome, cor: r.cor,
-          ufcd: `${u.ufcd.codigo} — ${u.ufcd.designacao}`,
-          horas_totais: u.horas_totais,
-          realizadas: u.horas_realizadas,
-          em_falta: u.horas_em_falta,
+      Array.from(r.porUfcd.entries())
+        .sort((a, b) => compareUfcdCodigo(a[0], b[0]))
+        .forEach(([codigo, horasMes]) => {
+          const u = cargaByCodigo.get(codigo);
+          rows.push({
+            formador: r.nome,
+            cor: r.cor,
+            ufcd: u ? `${u.ufcd.codigo} — ${u.ufcd.designacao}` : codigo,
+            horas_totais: u?.horas_totais ?? 0,
+            realizadas: u?.horas_realizadas ?? 0,
+            em_falta: u?.horas_em_falta ?? 0,
+            horas_mes: horasMes,
+          });
         });
-      });
     });
     return rows;
   }, [resumoMes, cargaCurso.data]);

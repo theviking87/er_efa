@@ -272,16 +272,48 @@ function DetailPage() {
         }
       />
 
-      <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-7 mb-3">
-        <Stat label="BF" v={p.total_bf} /><Stat label="BFM" v={p.total_bfm} />
-        <Stat label="SA" v={p.total_sa} /><Stat label="TR" v={p.total_tr} />
-        <Stat label="ATL" v={p.total_atl ?? 0} />
-        <Stat label="HN" v={p.total_hn} /><Stat label="Total" v={p.total_geral} strong />
-      </div>
-      <div className="grid gap-3 sm:grid-cols-2 mb-4">
-        <Stat label="Total formandos (BF+BFM+SA+TR+ATL)" v={Number(p.total_bf) + Number(p.total_bfm) + Number(p.total_sa) + Number(p.total_tr) + Number(p.total_atl ?? 0)} />
-        <Stat label="Total formadores (HN)" v={p.total_hn} />
-      </div>
+      {(() => {
+        const rubs = ["BF","BFM","SA","TR","HN","ATL"] as const;
+        const totDif: Record<string, number> = { BF:0, BFM:0, SA:0, TR:0, HN:0, ATL:0 };
+        (linhas.data ?? []).forEach((l: any) => {
+          if (totDif[l.rubrica] === undefined) return;
+          const primario = Number(l.valor ?? 0);
+          const manual = l.valor_manual != null ? Number(l.valor_manual) : null;
+          totDif[l.rubrica] += manual != null && manual > 0 ? manual : primario;
+        });
+        const geralDif = rubs.reduce((s, r) => s + totDif[r], 0);
+        const geral = Number(p.total_geral ?? 0);
+        const diff = +(geralDif - geral).toFixed(2);
+        const fmdDif = totDif.BF + totDif.BFM + totDif.SA + totDif.TR + totDif.ATL;
+        const fdrDif = totDif.HN;
+        const fmd = Number(p.total_bf) + Number(p.total_bfm) + Number(p.total_sa) + Number(p.total_tr) + Number(p.total_atl ?? 0);
+        const hasDif = Math.abs(diff) > 0.005;
+        return (
+          <>
+            <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-7 mb-3">
+              <Stat label="BF" v={p.total_bf} /><Stat label="BFM" v={p.total_bfm} />
+              <Stat label="SA" v={p.total_sa} /><Stat label="TR" v={p.total_tr} />
+              <Stat label="ATL" v={p.total_atl ?? 0} />
+              <Stat label="HN" v={p.total_hn} /><Stat label="Total" v={p.total_geral} strong />
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 mb-3">
+              <Stat label="Total formandos (BF+BFM+SA+TR+ATL)" v={fmd} />
+              <Stat label="Total formadores (HN)" v={p.total_hn} />
+            </div>
+            <div className={`grid gap-3 sm:grid-cols-4 lg:grid-cols-4 mb-4 rounded-md border p-3 ${hasDif ? "border-orange-300 bg-orange-50 dark:bg-orange-950/20" : "border-border"}`}>
+              <Stat label="Total Dif. formandos" v={fmdDif} />
+              <Stat label="Total Dif. formadores" v={fdrDif} />
+              <Stat label="Total Dif. geral" v={geralDif} strong />
+              <Card><CardContent className="p-3">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Diferença (Dif. − Real)</div>
+                <div className={`mt-1 tabular-nums text-lg font-semibold ${hasDif ? "text-orange-700 dark:text-orange-300" : ""}`}>
+                  {diff > 0 ? "+" : ""}{diff.toFixed(2)} €
+                </div>
+              </CardContent></Card>
+            </div>
+          </>
+        );
+      })()}
 
       <Card className="mb-4">
         <CardHeader className="pb-3">

@@ -24,6 +24,10 @@ type Formador = {
   email?: string | null;
   iban?: string | null;
   valor_hora?: number | null;
+  sem_retencao?: boolean;
+  retencao_percentagem?: number | null;
+  aplica_iva?: boolean;
+  iva_percentagem?: number | null;
   habilitacoes?: string | null;
   ccp?: string | null;
   validade_ccp?: string | null;

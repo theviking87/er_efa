@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,6 +56,15 @@ export function NotaHonorariosCard() {
     queryKey: ["formador-det", formadorId],
     queryFn: async () => (await supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle()).data,
   });
+
+  useEffect(() => {
+    const d: any = formadorDet.data;
+    if (!d) return;
+    if (d.valor_hora != null && Number(d.valor_hora) > 0) setValorHora(String(d.valor_hora));
+    setRetencao(d.sem_retencao ? "0" : String(d.retencao_percentagem ?? 23));
+    setAplicarIva(!!d.aplica_iva);
+    setIva(String(d.iva_percentagem ?? 23));
+  }, [formadorDet.data]);
 
   const preview = useQuery({
     enabled: tipoFormador === "registado" && !!formadorId && (modo === "mes" || !!ufcdId),

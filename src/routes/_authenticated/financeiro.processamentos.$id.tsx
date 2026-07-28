@@ -389,7 +389,19 @@ function Stat({ label, v, strong }: { label: string; v: number; strong?: boolean
 function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linhas: any[]; processamentoId: string; fechado: boolean; tetoAtl: number }) {
   const qc = useQueryClient();
   const [edits, setEdits] = useState<Record<string, string>>({});
+  const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+
+  async function refreshTotais() {
+    const { data: todas } = await supabase.from("fin_processamento_linha")
+      .select("rubrica, valor").eq("processamento_id", processamentoId);
+    const soma = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 } as Record<string, number>;
+    (todas ?? []).forEach((l: any) => { if (soma[l.rubrica] !== undefined) soma[l.rubrica] += Number(l.valor ?? 0); });
+    const geral = soma.BF + soma.BFM + soma.SA + soma.TR + soma.HN + soma.ATL;
+    await supabase.from("fin_processamento")
+      .update({ total_atl: +soma.ATL.toFixed(2), total_geral: +geral.toFixed(2) } as never)
+      .eq("id", processamentoId);
+  }
 
   async function saveAtl(linhaId: string) {
     const raw = edits[linhaId];
@@ -402,15 +414,7 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
       const { error } = await supabase.from("fin_processamento_linha")
         .update({ valor: v } as never).eq("id", linhaId);
       if (error) throw error;
-      // Recalcular total_atl e total_geral do processamento
-      const { data: todas } = await supabase.from("fin_processamento_linha")
-        .select("rubrica, valor").eq("processamento_id", processamentoId);
-      const soma = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 } as Record<string, number>;
-      (todas ?? []).forEach((l: any) => { if (soma[l.rubrica] !== undefined) soma[l.rubrica] += Number(l.valor ?? 0); });
-      const geral = soma.BF + soma.BFM + soma.SA + soma.TR + soma.HN + soma.ATL;
-      await supabase.from("fin_processamento")
-        .update({ total_atl: +soma.ATL.toFixed(2), total_geral: +geral.toFixed(2) } as never)
-        .eq("id", processamentoId);
+      await refreshTotais();
       toast.success("Valor ATL guardado.");
       setEdits(prev => { const n = { ...prev }; delete n[linhaId]; return n; });
       qc.invalidateQueries({ queryKey: ["fin-proc", processamentoId] });
@@ -422,12 +426,42 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
     }
   }
 
+  async function saveManual(linhaId: string) {
+    const raw = manualEdits[linhaId];
+    if (raw === undefined) return;
+    const trimmed = String(raw).trim();
+    let payload: number | null;
+    if (trimmed === "") {
+      payload = null;
+    } else {
+      const v = Number(trimmed.replace(",", "."));
+      if (!Number.isFinite(v) || v < 0) { toast.error("Valor inválido."); return; }
+      payload = v;
+    }
+    setSavingId(linhaId);
+    try {
+      const { error } = await supabase.from("fin_processamento_linha")
+        .update({ valor_manual: payload } as never).eq("id", linhaId);
+      if (error) throw error;
+      toast.success(payload == null ? "Override removido." : "Valor Dif. guardado.");
+      setManualEdits(prev => { const n = { ...prev }; delete n[linhaId]; return n; });
+      qc.invalidateQueries({ queryKey: ["fin-proc-linhas", processamentoId] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
   const grupos = useMemo(() => {
-    const m = new Map<string, { id: string; nome: string; total: number; linhas: any[] }>();
+    const m = new Map<string, { id: string; nome: string; total: number; totalDif: number; linhas: any[] }>();
     for (const l of linhas) {
-      const g = m.get(l.formando_id) ?? { id: l.formando_id, nome: l.formando?.nome ?? "—", total: 0, linhas: [] as any[] };
+      const g = m.get(l.formando_id) ?? { id: l.formando_id, nome: l.formando?.nome ?? "—", total: 0, totalDif: 0, linhas: [] as any[] };
       g.linhas.push(l);
-      g.total += Number(l.valor ?? 0);
+      const primario = Number(l.valor ?? 0);
+      const manual = l.valor_manual != null ? Number(l.valor_manual) : null;
+      g.total += primario;
+      g.totalDif += manual != null && manual > 0 ? manual : primario;
       m.set(l.formando_id, g);
     }
     return Array.from(m.values()).sort((a, b) => a.nome.localeCompare(b.nome));
@@ -450,29 +484,40 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
         <TableHead className="w-8"></TableHead>
         <TableHead>Formando</TableHead>
         <TableHead>Rubricas</TableHead>
-        <TableHead className="text-right">Total a receber (€)</TableHead>
+        <TableHead className="text-right">Total (€)</TableHead>
+        <TableHead className="text-right">Total Dif. (€)</TableHead>
       </TableRow></TableHeader>
       <TableBody>
         {grupos.map(g => {
           const isOpen = aberto.has(g.id);
+          const dif = +(g.totalDif - g.total).toFixed(2);
+          const difClass = Math.abs(dif) > 0.005 ? "bg-orange-50 dark:bg-orange-950/30" : "";
           return (
             <>
-              <TableRow key={g.id} className="cursor-pointer hover:bg-muted/50" onClick={() => toggle(g.id)}>
+              <TableRow key={g.id} className={`cursor-pointer hover:bg-muted/50 ${difClass}`} onClick={() => toggle(g.id)}>
                 <TableCell className="py-2">
                   {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 </TableCell>
-                <TableCell className="font-medium">{g.nome}</TableCell>
+                <TableCell className="font-medium">
+                  {g.nome}
+                  {Math.abs(dif) > 0.005 && (
+                    <div className="text-[11px] font-normal text-orange-700 dark:text-orange-300 mt-0.5">
+                      Diferença: {dif > 0 ? "+" : ""}{dif.toFixed(2)} €
+                    </div>
+                  )}
+                </TableCell>
                 <TableCell>
                   <div className="flex flex-wrap gap-1">
                     {g.linhas.map((l: any) => <Badge key={l.id} variant="secondary">{l.rubrica}</Badge>)}
                   </div>
                 </TableCell>
                 <TableCell className="text-right tabular-nums font-semibold">{g.total.toFixed(2)}</TableCell>
+                <TableCell className={`text-right tabular-nums font-semibold ${Math.abs(dif) > 0.005 ? "text-orange-700 dark:text-orange-300" : ""}`}>{g.totalDif.toFixed(2)}</TableCell>
               </TableRow>
               {isOpen && (
                 <TableRow key={`${g.id}-det`} className="bg-muted/30 hover:bg-muted/30">
                   <TableCell></TableCell>
-                  <TableCell colSpan={3} className="py-2">
+                  <TableCell colSpan={4} className="py-2">
                     <Table>
                       <TableHeader><TableRow>
                         <TableHead>Rubrica</TableHead>
@@ -481,6 +526,7 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                         <TableHead className="text-right">Dias</TableHead>
                         <TableHead className="text-right">€/h</TableHead>
                         <TableHead className="text-right">Valor (€)</TableHead>
+                        <TableHead className="text-right">Valor Dif. (€)</TableHead>
                       </TableRow></TableHeader>
                       <TableBody>
                         {g.linhas.map((l: any) => {
@@ -488,6 +534,9 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                           const editable = isAtl && !fechado;
                           const editVal = edits[l.id];
                           const currentVal = editVal !== undefined ? editVal : String(Number(l.valor ?? 0));
+                          const manualStored = l.valor_manual != null ? String(l.valor_manual) : "";
+                          const manualEdit = manualEdits[l.id];
+                          const manualCurrent = manualEdit !== undefined ? manualEdit : manualStored;
                           return (
                           <TableRow key={l.id}>
                             <TableCell><Badge variant="outline">{l.rubrica}</Badge></TableCell>
@@ -512,6 +561,25 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                                 </div>
                               ) : (
                                 Number(l.valor).toFixed(2)
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {fechado ? (
+                                l.valor_manual != null ? Number(l.valor_manual).toFixed(2) : "—"
+                              ) : (
+                                <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                                  <input
+                                    type="number" step="0.01" min="0" placeholder="—"
+                                    className="h-7 w-24 rounded-md border bg-background px-2 text-right text-sm"
+                                    value={manualCurrent}
+                                    onChange={e => setManualEdits(prev => ({ ...prev, [l.id]: e.target.value }))}
+                                  />
+                                  <Button size="sm" variant="outline" className="h-7 px-2"
+                                    disabled={savingId === l.id || manualEdits[l.id] === undefined}
+                                    onClick={() => saveManual(l.id)}>
+                                    {savingId === l.id ? "…" : "Guardar"}
+                                  </Button>
+                                </div>
                               )}
                             </TableCell>
                           </TableRow>

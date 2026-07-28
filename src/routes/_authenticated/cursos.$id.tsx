@@ -2421,12 +2421,15 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
     const { error } = await supabase.from("curso_formandos").update(patch as never).eq("id", id);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
+    qc.invalidateQueries({ queryKey: ["formando", atual.formando?.id] });
+    qc.invalidateQueries({ queryKey: ["formandos"] });
   }
 
-  async function setData(id: string, campo: "data_desistencia" | "data_conclusao", valor: string) {
+  async function setData(id: string, campo: "data_desistencia" | "data_conclusao", valor: string, atual: any) {
     const { error } = await supabase.from("curso_formandos").update({ [campo]: valor || null } as never).eq("id", id);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
+    qc.invalidateQueries({ queryKey: ["formando", atual.formando?.id] });
   }
 
   return (
@@ -2461,7 +2464,7 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
                   className="h-8 w-[140px] text-xs"
                   title={i.estado === "desistente" ? "Data de desistência" : "Data de conclusão"}
                   value={(i.estado === "desistente" ? i.data_desistencia : i.data_conclusao) ?? ""}
-                  onChange={(e) => setData(i.id, i.estado === "desistente" ? "data_desistencia" : "data_conclusao", e.target.value)}
+                  onChange={(e) => setData(i.id, i.estado === "desistente" ? "data_desistencia" : "data_conclusao", e.target.value, i)}
                 />
               )}
               <div className="text-xs text-muted-foreground w-20 text-right">{fmtDate(i.data_inscricao)}</div>

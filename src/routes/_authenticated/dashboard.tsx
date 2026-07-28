@@ -78,6 +78,7 @@ function Dashboard() {
       for (const f of (faltas ?? []) as any[]) {
         const ucId = f.sessao?.curso_ufcd_id;
         if (!ucId || !f.curso_formando) continue;
+        if (f.curso_formando.estado === "desistente") continue;
         const uc = ucMap.get(ucId);
         if (!uc) continue;
         const key = `${f.curso_formando.id}::${ucId}`;

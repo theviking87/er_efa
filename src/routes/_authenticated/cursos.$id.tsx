@@ -2421,12 +2421,15 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
     const { error } = await supabase.from("curso_formandos").update(patch as never).eq("id", id);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
+    qc.invalidateQueries({ queryKey: ["formando", atual.formando?.id] });
+    qc.invalidateQueries({ queryKey: ["formandos"] });
   }
 
-  async function setData(id: string, campo: "data_desistencia" | "data_conclusao", valor: string) {
+  async function setData(id: string, campo: "data_desistencia" | "data_conclusao", valor: string, atual: any) {
     const { error } = await supabase.from("curso_formandos").update({ [campo]: valor || null } as never).eq("id", id);
     if (error) return toast.error(error.message);
     qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
+    qc.invalidateQueries({ queryKey: ["formando", atual.formando?.id] });
   }
 
   return (

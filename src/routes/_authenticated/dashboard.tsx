@@ -68,7 +68,7 @@ function Dashboard() {
     queryFn: async () => {
       const { data: faltas } = await supabase
         .from("formando_faltas")
-        .select("horas, sessao:sessoes(curso_ufcd_id), curso_formando:curso_formandos(id, formando:formandos(nome), curso:cursos(id, codigo, nome))");
+        .select("horas, sessao:sessoes(curso_ufcd_id), curso_formando:curso_formandos(id, estado, data_desistencia, formando:formandos(nome), curso:cursos(id, codigo, nome))");
       const { data: ucs } = await supabase
         .from("curso_ufcds")
         .select("id, horas_totais, ufcd:ufcds(codigo, designacao)");
@@ -78,6 +78,7 @@ function Dashboard() {
       for (const f of (faltas ?? []) as any[]) {
         const ucId = f.sessao?.curso_ufcd_id;
         if (!ucId || !f.curso_formando) continue;
+        if (f.curso_formando.estado === "desistente") continue;
         const uc = ucMap.get(ucId);
         if (!uc) continue;
         const key = `${f.curso_formando.id}::${ucId}`;

@@ -2464,7 +2464,7 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
                   className="h-8 w-[140px] text-xs"
                   title={i.estado === "desistente" ? "Data de desistência" : "Data de conclusão"}
                   value={(i.estado === "desistente" ? i.data_desistencia : i.data_conclusao) ?? ""}
-                  onChange={(e) => setData(i.id, i.estado === "desistente" ? "data_desistencia" : "data_conclusao", e.target.value)}
+                  onChange={(e) => setData(i.id, i.estado === "desistente" ? "data_desistencia" : "data_conclusao", e.target.value, i)}
                 />
               )}
               <div className="text-xs text-muted-foreground w-20 text-right">{fmtDate(i.data_inscricao)}</div>

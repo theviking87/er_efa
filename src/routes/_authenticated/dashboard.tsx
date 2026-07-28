@@ -68,7 +68,7 @@ function Dashboard() {
     queryFn: async () => {
       const { data: faltas } = await supabase
         .from("formando_faltas")
-        .select("horas, sessao:sessoes(curso_ufcd_id), curso_formando:curso_formandos(id, formando:formandos(nome), curso:cursos(id, codigo, nome))");
+        .select("horas, sessao:sessoes(curso_ufcd_id), curso_formando:curso_formandos(id, estado, data_desistencia, formando:formandos(nome), curso:cursos(id, codigo, nome))");
       const { data: ucs } = await supabase
         .from("curso_ufcds")
         .select("id, horas_totais, ufcd:ufcds(codigo, designacao)");

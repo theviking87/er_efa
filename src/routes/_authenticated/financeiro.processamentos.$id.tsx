@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, FileSpreadsheet, FileText, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";

@@ -12,9 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, FileSpreadsheet, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronRight, FileSpreadsheet, FileText, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";
 import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
+import { exportNotaHonorariosPdf } from "@/lib/pdf-exports";
+
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/$id")({
   head: () => ({ meta: [{ title: "Financeiro — Detalhe do processamento" }] }),
@@ -40,11 +42,12 @@ function DetailPage() {
     queryKey: ["fin-proc-linhas", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("fin_processamento_linha")
-        .select("*, formando:formando_id(nome), formador:formador_id(nome)")
+        .select("*, formando:formando_id(nome), formador:formador_id(id, nome, nif, morada, codigo_postal, localidade, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem)")
         .eq("processamento_id", id);
       if (error) throw error; return data ?? [];
     },
   });
+
 
   const cfg = useQuery({
     queryKey: ["fin-config"],
@@ -88,9 +91,9 @@ function DetailPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const [filtroModo, setFiltroModo] = useState<"tudo" | "formando" | "formador">("tudo");
+  const [filtroModo, setFiltroModo] = useState<"tudo" | "formando">("tudo");
   const [filtroId, setFiltroId] = useState<string>("");
-  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","HN","ATL"]));
+  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","ATL"]));
 
   const fmdsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formando_id), [linhas.data]);
   const fdrsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formador_id), [linhas.data]);
@@ -100,11 +103,6 @@ function DetailPage() {
     fmdsList.forEach((l: any) => m.set(l.formando_id, l.formando?.nome ?? "—"));
     return Array.from(m, ([id, nome]) => ({ id, nome })).sort((a,b) => a.nome.localeCompare(b.nome));
   }, [fmdsList]);
-  const opcoesFormadores = useMemo(() => {
-    const m = new Map<string, string>();
-    fdrsList.forEach((l: any) => m.set(l.formador_id, l.formador?.nome ?? "—"));
-    return Array.from(m, ([id, nome]) => ({ id, nome })).sort((a,b) => a.nome.localeCompare(b.nome));
-  }, [fdrsList]);
 
   function toggleRubrica(r: RubricaFilter) {
     setRubricasSel(prev => {
@@ -114,119 +112,118 @@ function DetailPage() {
     });
   }
 
+
+  async function buildPresencas(alvoIds: string[]) {
+    const p: any = proc.data;
+    const ano = p.ano as number, mes = p.mes as number;
+    const first = `${ano}-${String(mes).padStart(2, "0")}-01`;
+    const lastDay = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
+    const last = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    if (!alvoIds.length) return [] as import("@/lib/financeiro/excel").PresencaFormando[];
+    const [sessRes, cfRes] = await Promise.all([
+      supabase.from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao)), formador:formadores(nome, abreviatura)")
+        .eq("curso_id", p.curso_id).gte("data", first).lte("data", last),
+      supabase.from("curso_formandos")
+        .select("id, formando_id, formando:formandos(nome), curso_formando_ufcds(curso_ufcd_id, frequenta)")
+        .eq("curso_id", p.curso_id).in("formando_id", alvoIds),
+    ]);
+    const sess = (sessRes.data ?? []) as any[];
+    const cfs = (cfRes.data ?? []) as any[];
+    const cfIds = cfs.map(c => c.id);
+    const faltasRes = cfIds.length ? await supabase.from("formando_faltas")
+      .select("curso_formando_id, sessao_id, data, horas, tipo, observacoes")
+      .in("curso_formando_id", cfIds).gte("data", first).lte("data", last) : { data: [] as any[] };
+    const faltas = (faltasRes.data ?? []) as any[];
+    return cfs.map(cf => {
+      const ufcdsFreq = new Set<string>((cf.curso_formando_ufcds ?? [])
+        .filter((x: any) => x.frequenta !== false)
+        .map((x: any) => x.curso_ufcd_id));
+      const faltasCf = faltas.filter(f => f.curso_formando_id === cf.id);
+      const faltaBySessao = new Map<string, any>();
+      const faltasByData = new Map<string, any[]>();
+      faltasCf.forEach(f => {
+        if (f.sessao_id) faltaBySessao.set(f.sessao_id, f);
+        const arr = faltasByData.get(f.data) ?? [];
+        arr.push(f); faltasByData.set(f.data, arr);
+      });
+      const rows = sess
+        .filter(s => ufcdsFreq.has(s.curso_ufcd_id))
+        .map(s => {
+          const fs = faltaBySessao.get(s.id);
+          const horasSess = Number(s.horas ?? 0);
+          let horasFalta = 0, tipo: string | null = null, obs: string | null = null;
+          if (fs) {
+            horasFalta = Math.min(horasSess, Number(fs.horas ?? horasSess));
+            tipo = fs.tipo; obs = fs.observacoes ?? null;
+          } else {
+            const arr = faltasByData.get(s.data);
+            if (arr && arr.length) {
+              const f0 = arr[0];
+              horasFalta = Math.min(horasSess, Number(f0.horas ?? horasSess));
+              tipo = f0.tipo; obs = f0.observacoes ?? null;
+            }
+          }
+          const ufcd = s.curso_ufcd?.ufcd
+            ? `${s.curso_ufcd.ufcd.codigo ?? ""} — ${s.curso_ufcd.ufcd.designacao ?? ""}`.trim()
+            : "—";
+          const formador = s.formador?.abreviatura || s.formador?.nome || "—";
+          const isOnline = tipo === "online";
+          return {
+            data: s.data, hora_inicio: s.hora_inicio, hora_fim: s.hora_fim,
+            ufcd, formador,
+            horas_sessao: horasSess,
+            horas_falta: isOnline ? 0 : horasFalta,
+            horas_efetivas: Math.max(horasSess - (isOnline ? 0 : horasFalta), 0),
+            tipo_falta: isOnline ? "online" : tipo,
+            observacoes: isOnline ? (obs ? `Sessão online — ${obs}` : "Sessão online") : obs,
+          };
+        });
+      return { formandoId: cf.formando_id, formandoNome: cf.formando?.nome ?? "—", rows };
+    }).sort((a, b) => a.formandoNome.localeCompare(b.formandoNome));
+  }
+
   async function exportar() {
     if (!proc.data || !linhas.data) return;
-    const fmds = fmdsList.map((l: any) => ({
+    if (filtroModo === "formando" && !filtroId) { toast.error("Escolhe o formando."); return; }
+    if (!rubricasSel.size) { toast.error("Escolhe pelo menos uma rubrica."); return; }
+
+    const fmdsAll = fmdsList.map((l: any) => ({
       id: l.formando_id, nome: l.formando?.nome ?? "—", rubrica: l.rubrica,
       horas_previstas: Number(l.horas_previstas ?? 0), horas_frequentadas: Number(l.horas_frequentadas ?? 0),
       dias_elegiveis: Number(l.dias_elegiveis ?? 0), valor_hora: Number(l.valor_hora ?? 0),
       valor_dia: Number(l.valor_dia ?? 0), km_total: Number(l.km_total ?? 0),
       valor: Number(l.valor ?? 0), memoria_calculo: l.memoria_calculo ?? null,
     }));
-    const fdrs = fdrsList.map((l: any) => ({
-      id: l.formador_id, nome: l.formador?.nome ?? "—", horas_frequentadas: Number(l.horas_frequentadas ?? 0),
-      valor_hora: Number(l.valor_hora ?? 0), valor: Number(l.valor ?? 0), memoria_calculo: l.memoria_calculo ?? null,
-    }));
-    if (filtroModo !== "tudo" && !filtroId) { toast.error("Escolhe quem exportar."); return; }
 
-    // ---- Registo de presenças (para a segunda folha do Excel) ----
-    const p: any = proc.data;
-    const ano = p.ano as number, mes = p.mes as number;
-    const first = `${ano}-${String(mes).padStart(2, "0")}-01`;
-    const lastDay = new Date(Date.UTC(ano, mes, 0)).getUTCDate();
-    const last = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
+    const alvoFormandoIds = filtroModo === "formando" ? [filtroId] : opcoesFormandos.map(o => o.id);
+    const alvoRubricas = Array.from(rubricasSel).filter(r => r !== "HN");
+    if (!alvoRubricas.length) { toast.error("As rubricas de formadores (HN) já não são exportadas aqui — usa a secção Honorários."); return; }
 
-    let presencas: import("@/lib/financeiro/excel").PresencaFormando[] = [];
-    if (filtroModo !== "formador") {
-      const formandoIdsAlvo = filtroModo === "formando" ? [filtroId] : opcoesFormandos.map(o => o.id);
-      if (formandoIdsAlvo.length) {
-        const [sessRes, cfRes] = await Promise.all([
-          supabase.from("sessoes")
-            .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao)), formador:formadores(nome, abreviatura)")
-            .eq("curso_id", p.curso_id).gte("data", first).lte("data", last),
-          supabase.from("curso_formandos")
-            .select("id, formando_id, formando:formandos(nome), curso_formando_ufcds(curso_ufcd_id, frequenta)")
-            .eq("curso_id", p.curso_id).in("formando_id", formandoIdsAlvo),
-        ]);
-        const sess = (sessRes.data ?? []) as any[];
-        const cfs = (cfRes.data ?? []) as any[];
-        const cfIds = cfs.map(c => c.id);
-        const faltasRes = cfIds.length ? await supabase.from("formando_faltas")
-          .select("curso_formando_id, sessao_id, data, horas, tipo, observacoes")
-          .in("curso_formando_id", cfIds).gte("data", first).lte("data", last) : { data: [] as any[] };
-        const faltas = (faltasRes.data ?? []) as any[];
-
-        presencas = cfs.map(cf => {
-          const ufcdsFreq = new Set<string>((cf.curso_formando_ufcds ?? [])
-            .filter((x: any) => x.frequenta !== false)
-            .map((x: any) => x.curso_ufcd_id));
-          const faltasCf = faltas.filter(f => f.curso_formando_id === cf.id);
-          const faltaBySessao = new Map<string, any>();
-          const faltasByData = new Map<string, any[]>();
-          faltasCf.forEach(f => {
-            if (f.sessao_id) faltaBySessao.set(f.sessao_id, f);
-            const arr = faltasByData.get(f.data) ?? [];
-            arr.push(f); faltasByData.set(f.data, arr);
-          });
-          const rows = sess
-            .filter(s => ufcdsFreq.has(s.curso_ufcd_id))
-            .map(s => {
-              const fs = faltaBySessao.get(s.id);
-              const horasSess = Number(s.horas ?? 0);
-              let horasFalta = 0, tipo: string | null = null, obs: string | null = null;
-              if (fs) {
-                horasFalta = Math.min(horasSess, Number(fs.horas ?? horasSess));
-                tipo = fs.tipo; obs = fs.observacoes ?? null;
-              } else {
-                // sem sessao_id: consumir do saldo diário
-                const arr = faltasByData.get(s.data);
-                if (arr && arr.length) {
-                  const f0 = arr[0];
-                  horasFalta = Math.min(horasSess, Number(f0.horas ?? horasSess));
-                  tipo = f0.tipo; obs = f0.observacoes ?? null;
-                }
-              }
-              const ufcd = s.curso_ufcd?.ufcd
-                ? `${s.curso_ufcd.ufcd.codigo ?? ""} — ${s.curso_ufcd.ufcd.designacao ?? ""}`.trim()
-                : "—";
-              const formador = s.formador?.abreviatura || s.formador?.nome || "—";
-              const isOnline = tipo === "online";
-              return {
-                data: s.data, hora_inicio: s.hora_inicio, hora_fim: s.hora_fim,
-                ufcd, formador,
-                horas_sessao: horasSess,
-                horas_falta: isOnline ? 0 : horasFalta,
-                horas_efetivas: Math.max(horasSess - (isOnline ? 0 : horasFalta), 0),
-                tipo_falta: isOnline ? "online" : tipo,
-                observacoes: isOnline ? (obs ? `Sessão online — ${obs}` : "Sessão online") : obs,
-              };
-            });
-          return { formandoId: cf.formando_id, formandoNome: cf.formando?.nome ?? "—", rows };
-        }).sort((a, b) => a.formandoNome.localeCompare(b.formandoNome));
+    // Um ficheiro por (formando × rubrica).
+    for (const fid of alvoFormandoIds) {
+      const presencas = await buildPresencas([fid]);
+      for (const rub of alvoRubricas) {
+        const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 } as Record<string, number>;
+        fmdsAll.filter(f => f.id === fid && f.rubrica === rub)
+          .forEach(f => { totais[rub] += f.valor; });
+        await exportProcessamentoExcel({
+          ano: proc.data.ano, mes: proc.data.mes, curso: proc.data.curso,
+          totais: { BF: totais.BF, BFM: totais.BFM, SA: totais.SA, TR: totais.TR, HN: 0, ATL: totais.ATL, geral: totais[rub] },
+          formandos: fmdsAll,
+          formadores: [],
+          presencas,
+          empresa: cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null,
+          logoEmpresaUrl: cfg.data?.logo_empresa_url ?? null,
+          logoDgertUrl: cfg.data?.logo_dgert_url ?? null,
+          logoPessoas2030Url: cfg.data?.logo_pessoas2030_url ?? null,
+          filtro: { formandoId: fid, formadorId: null, rubricas: [rub] },
+        });
       }
     }
-
-    await exportProcessamentoExcel({
-      ano: proc.data.ano, mes: proc.data.mes, curso: proc.data.curso,
-      totais: {
-        BF: Number(proc.data.total_bf), BFM: Number(proc.data.total_bfm),
-        SA: Number(proc.data.total_sa), TR: Number(proc.data.total_tr),
-        HN: Number(proc.data.total_hn), ATL: Number((proc.data as any).total_atl ?? 0),
-        geral: Number(proc.data.total_geral),
-      },
-      formandos: fmds, formadores: fdrs,
-      presencas,
-      empresa: cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null,
-      logoEmpresaUrl: cfg.data?.logo_empresa_url ?? null,
-      logoDgertUrl: cfg.data?.logo_dgert_url ?? null,
-      logoPessoas2030Url: cfg.data?.logo_pessoas2030_url ?? null,
-      filtro: {
-        formandoId: filtroModo === "formando" ? filtroId : null,
-        formadorId: filtroModo === "formador" ? filtroId : null,
-        rubricas: Array.from(rubricasSel),
-      },
-    });
+    toast.success(`Gerados ${alvoFormandoIds.length * alvoRubricas.length} ficheiro(s).`);
   }
+
 
   if (proc.isLoading) return <PageContainer><div className="text-sm text-muted-foreground">A carregar…</div></PageContainer>;
   if (!proc.data) return <PageContainer><div className="text-sm">Processamento não encontrado.</div></PageContainer>;
@@ -320,9 +317,8 @@ function DetailPage() {
             <Select value={filtroModo} onValueChange={(v: any) => { setFiltroModo(v); setFiltroId(""); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="tudo">Todos (formandos + formadores)</SelectItem>
-                <SelectItem value="formando">Apenas um formando</SelectItem>
-                <SelectItem value="formador">Apenas um formador</SelectItem>
+                <SelectItem value="tudo">Todos os formandos (um ficheiro por formando × rubrica)</SelectItem>
+                <SelectItem value="formando">Apenas um formando (um ficheiro por rubrica)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -337,27 +333,17 @@ function DetailPage() {
               </Select>
             </div>
           )}
-          {filtroModo === "formador" && (
-            <div className="space-y-1.5 md:col-span-2">
-              <Label>Formador</Label>
-              <Select value={filtroId} onValueChange={setFiltroId}>
-                <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
-                <SelectContent>
-                  {opcoesFormadores.map(o => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div className={`space-y-1.5 ${filtroModo === "tudo" ? "md:col-span-3" : ""}`}>
-            <Label>Rubricas</Label>
+            <Label>Rubricas de formandos</Label>
             <div className="flex flex-wrap gap-3 items-center pt-1">
-              {RUBRICAS.map(r => (
+              {RUBRICAS.filter(r => r !== "HN").map(r => (
                 <label key={r} className="flex items-center gap-1.5 text-sm cursor-pointer">
                   <Checkbox checked={rubricasSel.has(r)} onCheckedChange={() => toggleRubrica(r)} />
                   <span>{r}</span>
                 </label>
               ))}
             </div>
+            <p className="text-[11px] text-muted-foreground">Rubricas de formadores (HN) são emitidas via nota de honorários abaixo.</p>
           </div>
           <div className="md:col-span-4 flex justify-end">
             <Button onClick={exportar}><FileSpreadsheet className="size-4" />Gerar Excel</Button>
@@ -373,8 +359,17 @@ function DetailPage() {
         </CardContent>
       </Card>
 
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Notas de Honorários — Formadores</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <HonorariosFormadores linhas={fdrs} ano={p.ano} mes={p.mes} cursoNome={p.curso?.nome} cursoCodigo={p.curso?.codigo} empresa={cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null} />
+        </CardContent>
+      </Card>
+
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Honorários — Formadores</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Honorários — Formadores (resumo)</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
@@ -397,6 +392,7 @@ function DetailPage() {
           </Table>
         </CardContent>
       </Card>
+
 
     </PageContainer>
   );
@@ -618,6 +614,97 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                 </TableRow>
               )}
             </>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+}
+
+function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empresa }: {
+  linhas: any[]; ano: number; mes: number; cursoNome?: string; cursoCodigo?: string;
+  empresa: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
+}) {
+  const [gerandoId, setGerandoId] = useState<string | null>(null);
+
+  // Um formador pode ter várias linhas (várias UFCDs); agrupamos por formador.
+  const grupos = useMemo(() => {
+    const m = new Map<string, { formador: any; horas: number; valorHora: number; valor: number }>();
+    for (const l of linhas) {
+      const fid = l.formador_id;
+      const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0 };
+      g.horas += Number(l.horas_frequentadas ?? 0);
+      g.valor += Number(l.valor ?? 0);
+      // valorHora estável (mesmo €/h em todas as linhas do formador)
+      if (!g.valorHora) g.valorHora = Number(l.valor_hora ?? 0);
+      m.set(fid, g);
+    }
+    return Array.from(m.entries()).map(([fid, g]) => ({ fid, ...g }))
+      .sort((a,b) => (a.formador?.nome ?? "").localeCompare(b.formador?.nome ?? ""));
+  }, [linhas]);
+
+  async function emitir(g: any) {
+    if (!g.formador) { toast.error("Sem dados do formador."); return; }
+    setGerandoId(g.fid);
+    try {
+      const f = g.formador;
+      await exportNotaHonorariosPdf({
+        modo: "mes",
+        formadorId: f.id ?? g.fid,
+        ano, mes,
+        valorHora: g.valorHora,
+        retencaoIrs: f.sem_retencao ? 0 : Number(f.retencao_percentagem ?? 23),
+        aplicarIva: !!f.aplica_iva,
+        iva: f.aplica_iva ? Number(f.iva_percentagem ?? 23) : 0,
+        destinatario: empresa ? { nome: empresa.nome ?? undefined, nif: empresa.nif ?? undefined, morada: empresa.morada ?? undefined } : undefined,
+        observacoes: `Curso: ${cursoNome ?? cursoCodigo ?? ""}`,
+      });
+      toast.success("Nota de honorários gerada.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro a gerar PDF.");
+    } finally {
+      setGerandoId(null);
+    }
+  }
+
+  if (!grupos.length) return <div className="p-6 text-center text-sm text-muted-foreground">Sem formadores neste processamento.</div>;
+
+  return (
+    <Table>
+      <TableHeader><TableRow>
+        <TableHead>Formador</TableHead>
+        <TableHead className="text-right">Horas</TableHead>
+        <TableHead className="text-right">€/h</TableHead>
+        <TableHead className="text-right">Valor (€)</TableHead>
+        <TableHead className="text-center">Retenção IRS</TableHead>
+        <TableHead className="text-center">IVA</TableHead>
+        <TableHead className="text-right w-32"></TableHead>
+      </TableRow></TableHeader>
+      <TableBody>
+        {grupos.map(g => {
+          const f = g.formador ?? {};
+          const semRet = !!f.sem_retencao;
+          const retPct = Number(f.retencao_percentagem ?? 23);
+          const aplicaIva = !!f.aplica_iva;
+          const ivaPct = Number(f.iva_percentagem ?? 23);
+          return (
+            <TableRow key={g.fid}>
+              <TableCell className="font-medium">{f.nome ?? "—"}{f.nif ? <span className="text-xs text-muted-foreground ml-2">NIF {f.nif}</span> : null}</TableCell>
+              <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
+              <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
+              <TableCell className="text-right tabular-nums font-semibold">{g.valor.toFixed(2)}</TableCell>
+              <TableCell className="text-center">
+                {semRet ? <Badge variant="secondary">Não tem</Badge> : <Badge variant="outline">{retPct.toFixed(0)}%</Badge>}
+              </TableCell>
+              <TableCell className="text-center">
+                {aplicaIva ? <Badge variant="outline">{ivaPct.toFixed(0)}%</Badge> : <Badge variant="secondary">Isento</Badge>}
+              </TableCell>
+              <TableCell className="text-right">
+                <Button size="sm" variant="outline" onClick={() => emitir(g)} disabled={gerandoId === g.fid}>
+                  <FileText className="size-4" />{gerandoId === g.fid ? "…" : "Emitir PDF"}
+                </Button>
+              </TableCell>
+            </TableRow>
           );
         })}
       </TableBody>

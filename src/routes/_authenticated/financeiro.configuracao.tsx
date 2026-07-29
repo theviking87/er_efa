@@ -132,6 +132,11 @@ function ConfiguracaoPage() {
             <LogoField label="Pessoas 2030" url={form.logo_pessoas2030_url} onChange={u => setForm({ ...form, logo_pessoas2030_url: u })} />
           </CardContent>
         </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader><CardTitle className="text-base">Categorias de despesas</CardTitle></CardHeader>
+          <CardContent><CategoriasDespesas /></CardContent>
+        </Card>
       </div>
 
       <div className="mt-6 flex justify-end">

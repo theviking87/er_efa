@@ -89,9 +89,9 @@ function DetailPage() {
     onError: (e: any) => toast.error(e.message),
   });
 
-  const [filtroModo, setFiltroModo] = useState<"tudo" | "formando" | "formador">("tudo");
+  const [filtroModo, setFiltroModo] = useState<"tudo" | "formando">("tudo");
   const [filtroId, setFiltroId] = useState<string>("");
-  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","HN","ATL"]));
+  const [rubricasSel, setRubricasSel] = useState<Set<RubricaFilter>>(new Set(["BF","BFM","SA","TR","ATL"]));
 
   const fmdsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formando_id), [linhas.data]);
   const fdrsList = useMemo(() => (linhas.data ?? []).filter((l: any) => l.formador_id), [linhas.data]);
@@ -101,11 +101,6 @@ function DetailPage() {
     fmdsList.forEach((l: any) => m.set(l.formando_id, l.formando?.nome ?? "—"));
     return Array.from(m, ([id, nome]) => ({ id, nome })).sort((a,b) => a.nome.localeCompare(b.nome));
   }, [fmdsList]);
-  const opcoesFormadores = useMemo(() => {
-    const m = new Map<string, string>();
-    fdrsList.forEach((l: any) => m.set(l.formador_id, l.formador?.nome ?? "—"));
-    return Array.from(m, ([id, nome]) => ({ id, nome })).sort((a,b) => a.nome.localeCompare(b.nome));
-  }, [fdrsList]);
 
   function toggleRubrica(r: RubricaFilter) {
     setRubricasSel(prev => {
@@ -114,6 +109,7 @@ function DetailPage() {
       return n;
     });
   }
+
 
   async function exportar() {
     if (!proc.data || !linhas.data) return;

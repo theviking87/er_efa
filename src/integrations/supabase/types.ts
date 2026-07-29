@@ -317,6 +317,103 @@ export type Database = {
           },
         ]
       }
+      despesa_categorias: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      despesas: {
+        Row: {
+          anexo_storage_path: string | null
+          categoria_id: string
+          created_at: string
+          curso_id: string | null
+          data: string
+          descricao: string
+          fornecedor: string | null
+          id: string
+          nif: string | null
+          observacoes: string | null
+          projeto_id: string | null
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          anexo_storage_path?: string | null
+          categoria_id: string
+          created_at?: string
+          curso_id?: string | null
+          data?: string
+          descricao: string
+          fornecedor?: string | null
+          id?: string
+          nif?: string | null
+          observacoes?: string | null
+          projeto_id?: string | null
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          anexo_storage_path?: string | null
+          categoria_id?: string
+          created_at?: string
+          curso_id?: string | null
+          data?: string
+          descricao?: string
+          fornecedor?: string | null
+          id?: string
+          nif?: string | null
+          observacoes?: string | null
+          projeto_id?: string | null
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "despesas_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "despesa_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "despesas_curso_id_fkey"
+            columns: ["curso_id"]
+            isOneToOne: false
+            referencedRelation: "cursos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "despesas_projeto_id_fkey"
+            columns: ["projeto_id"]
+            isOneToOne: false
+            referencedRelation: "projetos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_bolsa_config: {
         Row: {
           created_at: string

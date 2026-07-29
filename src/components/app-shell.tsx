@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, Settings2, ClipboardList, FolderKanban, Receipt,
+  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, Settings2, ClipboardList, FolderKanban, Receipt, ShoppingCart,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,7 +22,8 @@ const NAV = [
   { to: "/relatorios", label: "Relatórios & SIGO", icon: FileBarChart2, section: "Geral" },
   { to: "/financeiro", label: "Painel", icon: Wallet, section: "Financeiro" },
   { to: "/financeiro/processamentos", label: "Processamentos", icon: ClipboardList, section: "Financeiro" },
-  { to: "/nota-honorarios", label: "Nota de Honorários", icon: Receipt, section: "Financeiro" },
+  { to: "/financeiro/despesas", label: "Despesas", icon: ShoppingCart, section: "Financeiro" },
+  { to: "/nota-honorarios", label: "Nota de Honorários (avulso)", icon: Receipt, section: "Financeiro" },
   { to: "/financeiro/configuracao", label: "Configuração", icon: Settings2, section: "Financeiro" },
   { to: "/exportar", label: "Exportar / Backup", icon: Download, section: "Sistema" },
   { to: "/perfil", label: "O meu perfil", icon: UserCog, section: "Sistema" },

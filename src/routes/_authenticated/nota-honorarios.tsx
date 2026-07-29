@@ -19,10 +19,13 @@ function NotaHonorariosPage() {
   return (
     <div className="p-4 md:p-6 max-w-5xl mx-auto space-y-4">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Nota de Honorários</h1>
-        <p className="text-sm text-muted-foreground">Emite um recibo de honorários com dados e logótipos institucionais.</p>
+        <h1 className="text-2xl font-bold tracking-tight">Nota de Honorários (Avulso)</h1>
+        <p className="text-sm text-muted-foreground">
+          Emissão de notas de honorários para formadores <strong>externos</strong> — prestações únicas que não fazem parte da base de dados.
+          Para formadores registados, emita a partir da página de <strong>Processamento</strong> mensal.
+        </p>
       </div>
-      <NotaHonorariosCard />
+      <NotaHonorariosCard soloExterno />
     </div>
   );
 }

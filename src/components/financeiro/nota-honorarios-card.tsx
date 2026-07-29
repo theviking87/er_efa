@@ -12,8 +12,8 @@ import { fmtDate } from "@/lib/format";
 import { paintBeforeHeavyWork } from "@/lib/dom-helpers";
 
 
-export function NotaHonorariosCard() {
-  const [tipoFormador, setTipoFormador] = useState<"registado" | "externo">("registado");
+export function NotaHonorariosCard({ soloExterno = false }: { soloExterno?: boolean } = {}) {
+  const [tipoFormador, setTipoFormador] = useState<"registado" | "externo">(soloExterno ? "externo" : "registado");
   const [formadorId, setFormadorId] = useState("");
   const now = new Date();
   const [modo, setModo] = useState<"mes" | "ufcd">("mes");
@@ -191,12 +191,14 @@ export function NotaHonorariosCard() {
           Gera um PDF de nota de honorários. Escolha um <strong>formador registado</strong> (agrega sessões da base de dados) ou um <strong>formador externo</strong> (prestação única, sem histórico). Os logótipos e dados da empresa vêm da <em>Configuração Financeira</em>.
         </p>
 
-        <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-sm">
-          <button type="button" onClick={() => setTipoFormador("registado")}
-            className={`px-3 py-1.5 rounded ${tipoFormador === "registado" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>Formador registado</button>
-          <button type="button" onClick={() => setTipoFormador("externo")}
-            className={`px-3 py-1.5 rounded ${tipoFormador === "externo" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>Formador externo (prestação única)</button>
-        </div>
+        {!soloExterno && (
+          <div className="inline-flex rounded-md border border-input bg-background p-0.5 text-sm">
+            <button type="button" onClick={() => setTipoFormador("registado")}
+              className={`px-3 py-1.5 rounded ${tipoFormador === "registado" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>Formador registado</button>
+            <button type="button" onClick={() => setTipoFormador("externo")}
+              className={`px-3 py-1.5 rounded ${tipoFormador === "externo" ? "bg-primary text-primary-foreground" : "text-muted-foreground hover:text-foreground"}`}>Formador externo (prestação única)</button>
+          </div>
+        )}
 
         {tipoFormador === "externo" ? (
           <div className="grid gap-3 md:grid-cols-4 rounded-md border p-3 bg-muted/20">

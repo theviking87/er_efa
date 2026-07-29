@@ -315,9 +315,8 @@ function DetailPage() {
             <Select value={filtroModo} onValueChange={(v: any) => { setFiltroModo(v); setFiltroId(""); }}>
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="tudo">Todos (formandos + formadores)</SelectItem>
-                <SelectItem value="formando">Apenas um formando</SelectItem>
-                <SelectItem value="formador">Apenas um formador</SelectItem>
+                <SelectItem value="tudo">Todos os formandos (um ficheiro por formando × rubrica)</SelectItem>
+                <SelectItem value="formando">Apenas um formando (um ficheiro por rubrica)</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -332,27 +331,17 @@ function DetailPage() {
               </Select>
             </div>
           )}
-          {filtroModo === "formador" && (
-            <div className="space-y-1.5 md:col-span-2">
-              <Label>Formador</Label>
-              <Select value={filtroId} onValueChange={setFiltroId}>
-                <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
-                <SelectContent>
-                  {opcoesFormadores.map(o => <SelectItem key={o.id} value={o.id}>{o.nome}</SelectItem>)}
-                </SelectContent>
-              </Select>
-            </div>
-          )}
           <div className={`space-y-1.5 ${filtroModo === "tudo" ? "md:col-span-3" : ""}`}>
-            <Label>Rubricas</Label>
+            <Label>Rubricas de formandos</Label>
             <div className="flex flex-wrap gap-3 items-center pt-1">
-              {RUBRICAS.map(r => (
+              {RUBRICAS.filter(r => r !== "HN").map(r => (
                 <label key={r} className="flex items-center gap-1.5 text-sm cursor-pointer">
                   <Checkbox checked={rubricasSel.has(r)} onCheckedChange={() => toggleRubrica(r)} />
                   <span>{r}</span>
                 </label>
               ))}
             </div>
+            <p className="text-[11px] text-muted-foreground">Rubricas de formadores (HN) são emitidas via nota de honorários abaixo.</p>
           </div>
           <div className="md:col-span-4 flex justify-end">
             <Button onClick={exportar}><FileSpreadsheet className="size-4" />Gerar Excel</Button>
@@ -368,8 +357,17 @@ function DetailPage() {
         </CardContent>
       </Card>
 
+      <Card className="mb-4">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Notas de Honorários — Formadores</CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <HonorariosFormadores linhas={fdrs} ano={p.ano} mes={p.mes} cursoNome={p.curso?.nome} cursoCodigo={p.curso?.codigo} empresa={cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null} />
+        </CardContent>
+      </Card>
+
       <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Honorários — Formadores</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Honorários — Formadores (resumo)</CardTitle></CardHeader>
         <CardContent className="p-0">
           <Table>
             <TableHeader><TableRow>
@@ -392,6 +390,7 @@ function DetailPage() {
           </Table>
         </CardContent>
       </Card>
+
 
     </PageContainer>
   );

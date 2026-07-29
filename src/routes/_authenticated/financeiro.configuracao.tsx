@@ -8,7 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Upload, X } from "lucide-react";
+import { Upload, X, Plus, Trash2 } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated/financeiro/configuracao")({
   head: () => ({ meta: [{ title: "Financeiro — Configuração" }] }),
@@ -152,6 +152,99 @@ function F({ label, children }: { label: string; children: React.ReactNode }) {
 
 function LogoField({ label, url, onChange }: { label: string; url: string | null; onChange: (u: string | null) => void }) {
   const [uploading, setUploading] = useState(false);
+  async function upload(file: File) {
+    setUploading(true);
+    try {
+      const key = `${label.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now()}-${file.name}`;
+      const { error } = await supabase.storage.from("empresa-logos").upload(key, file, { upsert: true });
+      if (error) throw error;
+      const { data: signed } = await supabase.storage.from("empresa-logos").createSignedUrl(key, 60 * 60 * 24 * 365);
+      onChange(signed?.signedUrl ?? key);
+      toast.success(`Logo ${label} carregado`);
+    } catch (e: any) { toast.error(e.message); }
+    finally { setUploading(false); }
+  }
+  return (
+    <div className="space-y-2">
+      <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
+      <div className="border rounded-md p-3 h-32 flex items-center justify-center bg-muted/30">
+        {url ? <img src={url} alt={label} className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-muted-foreground">Sem imagem</span>}
+      </div>
+      <div className="flex gap-2">
+        <label className="flex-1">
+          <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); }} />
+          <Button asChild size="sm" variant="outline" className="w-full cursor-pointer" disabled={uploading}>
+            <span><Upload className="size-3" /> {uploading ? "…" : "Carregar"}</span>
+          </Button>
+        </label>
+        {url && <Button size="sm" variant="ghost" onClick={() => onChange(null)}><X className="size-3" /></Button>}
+      </div>
+    </div>
+  );
+}
+
+function CategoriasDespesas() {
+  const qc = useQueryClient();
+  const cats = useQuery({
+    queryKey: ["despesa-categorias-cfg"],
+    queryFn: async () => (await supabase.from("despesa_categorias").select("*").order("ordem")).data ?? [],
+  });
+  const [novoNome, setNovoNome] = useState("");
+  const invalidar = () => qc.invalidateQueries({ queryKey: ["despesa-categorias-cfg"] });
+
+  const criar = useMutation({
+    mutationFn: async () => {
+      const nome = novoNome.trim(); if (!nome) throw new Error("Nome obrigatório");
+      const ordem = (cats.data?.length ?? 0) + 1;
+      const { error } = await supabase.from("despesa_categorias").insert({ nome, ordem } as never);
+      if (error) throw error;
+    },
+    onSuccess: () => { setNovoNome(""); invalidar(); toast.success("Categoria adicionada"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const alterar = useMutation({
+    mutationFn: async (p: { id: string; nome?: string; ativo?: boolean }) => {
+      const { id, ...patch } = p;
+      const { error } = await supabase.from("despesa_categorias").update(patch as never).eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: invalidar,
+    onError: (e: any) => toast.error(e.message),
+  });
+  const eliminar = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("despesa_categorias").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { invalidar(); toast.success("Eliminada"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-muted-foreground">Categorias usadas ao registar despesas. Categorias inativas ficam ocultas em novos registos mas mantêm-se nas despesas existentes.</p>
+      <div className="flex gap-2">
+        <Input placeholder="Nova categoria…" value={novoNome} onChange={e => setNovoNome(e.target.value)} onKeyDown={e => { if (e.key === "Enter") criar.mutate(); }} />
+        <Button onClick={() => criar.mutate()} disabled={criar.isPending || !novoNome.trim()}><Plus className="size-4" />Adicionar</Button>
+      </div>
+      <ul className="divide-y border rounded-md">
+        {(cats.data ?? []).map((c: any) => (
+          <li key={c.id} className="flex items-center gap-2 px-3 py-2">
+            <Input className="flex-1 h-8" defaultValue={c.nome} onBlur={e => { const v = e.target.value.trim(); if (v && v !== c.nome) alterar.mutate({ id: c.id, nome: v }); }} />
+            <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+              <input type="checkbox" className="size-3.5" checked={c.ativo} onChange={e => alterar.mutate({ id: c.id, ativo: e.target.checked })} />
+              Ativa
+            </label>
+            <Button size="icon" variant="ghost" onClick={() => { if (confirm(`Eliminar categoria "${c.nome}"?`)) eliminar.mutate(c.id); }}>
+              <Trash2 className="size-4" />
+            </Button>
+          </li>
+        ))}
+        {!(cats.data ?? []).length && <li className="p-3 text-xs text-muted-foreground text-center">Sem categorias.</li>}
+      </ul>
+    </div>
+  );
+}
   async function upload(file: File) {
     setUploading(true);
     try {

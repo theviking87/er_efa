@@ -620,3 +620,94 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
     </Table>
   );
 }
+
+function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empresa }: {
+  linhas: any[]; ano: number; mes: number; cursoNome?: string; cursoCodigo?: string;
+  empresa: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
+}) {
+  const [gerandoId, setGerandoId] = useState<string | null>(null);
+
+  // Um formador pode ter várias linhas (várias UFCDs); agrupamos por formador.
+  const grupos = useMemo(() => {
+    const m = new Map<string, { formador: any; horas: number; valorHora: number; valor: number }>();
+    for (const l of linhas) {
+      const fid = l.formador_id;
+      const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0 };
+      g.horas += Number(l.horas_frequentadas ?? 0);
+      g.valor += Number(l.valor ?? 0);
+      // valorHora estável (mesmo €/h em todas as linhas do formador)
+      if (!g.valorHora) g.valorHora = Number(l.valor_hora ?? 0);
+      m.set(fid, g);
+    }
+    return Array.from(m.entries()).map(([fid, g]) => ({ fid, ...g }))
+      .sort((a,b) => (a.formador?.nome ?? "").localeCompare(b.formador?.nome ?? ""));
+  }, [linhas]);
+
+  async function emitir(g: any) {
+    if (!g.formador) { toast.error("Sem dados do formador."); return; }
+    setGerandoId(g.fid);
+    try {
+      const f = g.formador;
+      await exportNotaHonorariosPdf({
+        modo: "mes",
+        formadorId: f.id ?? g.fid,
+        ano, mes,
+        valorHora: g.valorHora,
+        retencaoIrs: f.sem_retencao ? 0 : Number(f.retencao_percentagem ?? 23),
+        aplicarIva: !!f.aplica_iva,
+        iva: f.aplica_iva ? Number(f.iva_percentagem ?? 23) : 0,
+        destinatario: empresa ? { nome: empresa.nome ?? undefined, nif: empresa.nif ?? undefined, morada: empresa.morada ?? undefined } : undefined,
+        observacoes: `Curso: ${cursoNome ?? cursoCodigo ?? ""}`,
+      });
+      toast.success("Nota de honorários gerada.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro a gerar PDF.");
+    } finally {
+      setGerandoId(null);
+    }
+  }
+
+  if (!grupos.length) return <div className="p-6 text-center text-sm text-muted-foreground">Sem formadores neste processamento.</div>;
+
+  return (
+    <Table>
+      <TableHeader><TableRow>
+        <TableHead>Formador</TableHead>
+        <TableHead className="text-right">Horas</TableHead>
+        <TableHead className="text-right">€/h</TableHead>
+        <TableHead className="text-right">Valor (€)</TableHead>
+        <TableHead className="text-center">Retenção IRS</TableHead>
+        <TableHead className="text-center">IVA</TableHead>
+        <TableHead className="text-right w-32"></TableHead>
+      </TableRow></TableHeader>
+      <TableBody>
+        {grupos.map(g => {
+          const f = g.formador ?? {};
+          const semRet = !!f.sem_retencao;
+          const retPct = Number(f.retencao_percentagem ?? 23);
+          const aplicaIva = !!f.aplica_iva;
+          const ivaPct = Number(f.iva_percentagem ?? 23);
+          return (
+            <TableRow key={g.fid}>
+              <TableCell className="font-medium">{f.nome ?? "—"}{f.nif ? <span className="text-xs text-muted-foreground ml-2">NIF {f.nif}</span> : null}</TableCell>
+              <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
+              <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
+              <TableCell className="text-right tabular-nums font-semibold">{g.valor.toFixed(2)}</TableCell>
+              <TableCell className="text-center">
+                {semRet ? <Badge variant="secondary">Não tem</Badge> : <Badge variant="outline">{retPct.toFixed(0)}%</Badge>}
+              </TableCell>
+              <TableCell className="text-center">
+                {aplicaIva ? <Badge variant="outline">{ivaPct.toFixed(0)}%</Badge> : <Badge variant="secondary">Isento</Badge>}
+              </TableCell>
+              <TableCell className="text-right">
+                <Button size="sm" variant="outline" onClick={() => emitir(g)} disabled={gerandoId === g.fid}>
+                  <FileText className="size-4" />{gerandoId === g.fid ? "…" : "Emitir PDF"}
+                </Button>
+              </TableCell>
+            </TableRow>
+          );
+        })}
+      </TableBody>
+    </Table>
+  );
+}

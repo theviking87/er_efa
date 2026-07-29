@@ -709,7 +709,9 @@ function HonorariosFormadores({ linhas, ano, mes, cursoId, cursoNome, cursoCodig
         modo: "mes",
         formadorId: f.id ?? g.fid,
         ano, mes,
+        cursoId: cursoId ?? null,
         valorHora: g.valorHora,
+
         retencaoIrs: t.semRet ? 0 : t.retPct,
         aplicarIva: t.aplicaIva,
         iva: t.aplicaIva ? t.ivaPct : 0,

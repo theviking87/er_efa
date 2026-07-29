@@ -658,8 +658,9 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
   );
 }
 
-function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empresa }: {
-  linhas: any[]; ano: number; mes: number; cursoNome?: string; cursoCodigo?: string;
+function HonorariosFormadores({ linhas, ano, mes, cursoId, cursoNome, cursoCodigo, empresa }: {
+  linhas: any[]; ano: number; mes: number; cursoId?: string | null; cursoNome?: string; cursoCodigo?: string;
+
   empresa: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
 }) {
   const [gerandoId, setGerandoId] = useState<string | null>(null);

@@ -55,10 +55,11 @@ export function FormadorDialog({
   open, onOpenChange, initial,
 }: { open: boolean; onOpenChange: (v: boolean) => void; initial?: Formador }) {
   const qc = useQueryClient();
-  const [f, setF] = useState<Formador>(initial ?? { nome: "", estado: "ativo", cor: COLORS[0] });
+  const defaults = (): Formador => ({ nome: "", estado: "ativo", cor: COLORS[Math.floor(Math.random() * COLORS.length)], sem_retencao: true, aplica_iva: false });
+  const [f, setF] = useState<Formador>(initial ?? defaults());
 
   useEffect(() => {
-    if (open) setF(initial ?? { nome: "", estado: "ativo", cor: COLORS[Math.floor(Math.random() * COLORS.length)] });
+    if (open) setF(initial ?? defaults());
   }, [open, initial]);
 
   const save = useMutation({

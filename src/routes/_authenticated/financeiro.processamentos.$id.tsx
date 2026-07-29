@@ -749,12 +749,12 @@ function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empres
               <TableCell>
                 <div className="flex items-center gap-1.5 justify-center">
                   <label className="flex items-center gap-1 text-xs">
-                    <input type="checkbox" className="size-3.5" checked={t.semRet}
-                      onChange={e => updateTax(g.fid, { semRet: e.target.checked })} />
-                    Sem
+                    <input type="checkbox" className="size-3.5" checked={!t.semRet}
+                      onChange={e => updateTax(g.fid, { semRet: !e.target.checked })} />
+                    Faz
                   </label>
                   <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
-                    disabled={t.semRet} value={t.retPct}
+                    disabled={t.semRet} value={t.semRet ? 0 : t.retPct}
                     onChange={e => updateTax(g.fid, { retPct: Number(e.target.value) })} />
                   <span className="text-xs text-muted-foreground">%</span>
                 </div>

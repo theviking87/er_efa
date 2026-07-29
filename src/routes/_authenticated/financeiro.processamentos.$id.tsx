@@ -366,7 +366,7 @@ function DetailPage() {
           <CardTitle className="text-base">Notas de Honorários — Formadores</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <HonorariosFormadores linhas={fdrs} ano={p.ano} mes={p.mes} cursoNome={p.curso?.nome} cursoCodigo={p.curso?.codigo} empresa={cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null} />
+          <HonorariosFormadores linhas={fdrs} ano={p.ano} mes={p.mes} cursoId={p.curso_id} cursoNome={p.curso?.nome} cursoCodigo={p.curso?.codigo} empresa={cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null} />
         </CardContent>
       </Card>
 
@@ -658,8 +658,9 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
   );
 }
 
-function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empresa }: {
-  linhas: any[]; ano: number; mes: number; cursoNome?: string; cursoCodigo?: string;
+function HonorariosFormadores({ linhas, ano, mes, cursoId, cursoNome, cursoCodigo, empresa }: {
+  linhas: any[]; ano: number; mes: number; cursoId?: string | null; cursoNome?: string; cursoCodigo?: string;
+
   empresa: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
 }) {
   const [gerandoId, setGerandoId] = useState<string | null>(null);
@@ -708,7 +709,9 @@ function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empres
         modo: "mes",
         formadorId: f.id ?? g.fid,
         ano, mes,
+        cursoId: cursoId ?? null,
         valorHora: g.valorHora,
+
         retencaoIrs: t.semRet ? 0 : t.retPct,
         aplicarIva: t.aplicaIva,
         iva: t.aplicaIva ? t.ivaPct : 0,

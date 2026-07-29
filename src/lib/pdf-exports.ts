@@ -686,6 +686,8 @@ export interface NotaHonorariosOpts {
   ano?: number;
   mes?: number; // 1-12
   ufcdId?: string | null;
+  cursoId?: string | null; // se definido em modo "mes", restringe às sessões desse curso
+
   valorHora: number;
   numero?: string;
   destinatario?: {
@@ -749,7 +751,9 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       const fimDate = new Date(ano!, mes!, 0);
       const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
       query = query.gte("data", inicio).lte("data", fim);
+      if (opts.cursoId) query = query.eq("curso_id", opts.cursoId);
     }
+
 
     const [formadorRes, sessoesRes] = await Promise.all([
       supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle(),

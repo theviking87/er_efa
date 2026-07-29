@@ -683,9 +683,9 @@ function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empres
   function currentTax(g: any) {
     const f = g.formador ?? {};
     const base = {
-      semRet: !!f.sem_retencao,
+      semRet: true,
       retPct: Number(f.retencao_percentagem ?? 23),
-      aplicaIva: !!f.aplica_iva,
+      aplicaIva: false,
       ivaPct: Number(f.iva_percentagem ?? 23),
     };
     return overrides[g.fid] ?? base;

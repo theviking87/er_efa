@@ -390,7 +390,39 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
   const qc = useQueryClient();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
+  const [obsEdits, setObsEdits] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingObsId, setSavingObsId] = useState<string | null>(null);
+
+  const obsQuery = useQuery({
+    queryKey: ["fin-proc-obs", processamentoId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("fin_processamento_obs")
+        .select("formando_id, texto").eq("processamento_id", processamentoId);
+      if (error) throw error;
+      const m: Record<string, string> = {};
+      (data ?? []).forEach((r: any) => { m[r.formando_id] = r.texto ?? ""; });
+      return m;
+    },
+  });
+
+  async function saveObs(formandoId: string) {
+    const raw = obsEdits[formandoId];
+    if (raw === undefined) return;
+    setSavingObsId(formandoId);
+    try {
+      const { error } = await (supabase as any).from("fin_processamento_obs")
+        .upsert({ processamento_id: processamentoId, formando_id: formandoId, texto: raw }, { onConflict: "processamento_id,formando_id" });
+      if (error) throw error;
+      toast.success("Observação guardada.");
+      setObsEdits(prev => { const n = { ...prev }; delete n[formandoId]; return n; });
+      qc.invalidateQueries({ queryKey: ["fin-proc-obs", processamentoId] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingObsId(null);
+    }
+  }
 
   async function refreshTotais() {
     const { data: todas } = await supabase.from("fin_processamento_linha")

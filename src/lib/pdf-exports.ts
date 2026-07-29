@@ -686,6 +686,8 @@ export interface NotaHonorariosOpts {
   ano?: number;
   mes?: number; // 1-12
   ufcdId?: string | null;
+  cursoId?: string | null; // se definido em modo "mes", restringe às sessões desse curso
+
   valorHora: number;
   numero?: string;
   destinatario?: {

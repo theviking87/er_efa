@@ -767,7 +767,7 @@ function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empres
                     Aplica
                   </label>
                   <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
-                    disabled={!t.aplicaIva} value={t.ivaPct}
+                    disabled={!t.aplicaIva} value={t.aplicaIva ? t.ivaPct : 0}
                     onChange={e => updateTax(g.fid, { ivaPct: Number(e.target.value) })} />
                   <span className="text-xs text-muted-foreground">%</span>
                 </div>

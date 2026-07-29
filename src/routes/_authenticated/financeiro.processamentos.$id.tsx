@@ -11,6 +11,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, FileSpreadsheet, FileText, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";
@@ -389,7 +390,39 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
   const qc = useQueryClient();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
+  const [obsEdits, setObsEdits] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [savingObsId, setSavingObsId] = useState<string | null>(null);
+
+  const obsQuery = useQuery({
+    queryKey: ["fin-proc-obs", processamentoId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any).from("fin_processamento_obs")
+        .select("formando_id, texto").eq("processamento_id", processamentoId);
+      if (error) throw error;
+      const m: Record<string, string> = {};
+      (data ?? []).forEach((r: any) => { m[r.formando_id] = r.texto ?? ""; });
+      return m;
+    },
+  });
+
+  async function saveObs(formandoId: string) {
+    const raw = obsEdits[formandoId];
+    if (raw === undefined) return;
+    setSavingObsId(formandoId);
+    try {
+      const { error } = await (supabase as any).from("fin_processamento_obs")
+        .upsert({ processamento_id: processamentoId, formando_id: formandoId, texto: raw }, { onConflict: "processamento_id,formando_id" });
+      if (error) throw error;
+      toast.success("Observação guardada.");
+      setObsEdits(prev => { const n = { ...prev }; delete n[formandoId]; return n; });
+      qc.invalidateQueries({ queryKey: ["fin-proc-obs", processamentoId] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingObsId(null);
+    }
+  }
 
   async function refreshTotais() {
     const { data: todas } = await supabase.from("fin_processamento_linha")
@@ -586,6 +619,33 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                         })}
                       </TableBody>
                     </Table>
+                    <div className="mt-3 pt-3 border-t" onClick={e => e.stopPropagation()}>
+                      <Label className="text-xs font-medium text-muted-foreground">Observações</Label>
+                      {(() => {
+                        const stored = obsQuery.data?.[g.id] ?? "";
+                        const edited = obsEdits[g.id];
+                        const current = edited !== undefined ? edited : stored;
+                        const dirty = edited !== undefined && edited !== stored;
+                        return (
+                          <div className="mt-1.5 space-y-2">
+                            <Textarea
+                              value={current}
+                              readOnly={fechado}
+                              placeholder="Notas/registos manuais para este formando neste processamento…"
+                              rows={2}
+                              onChange={e => setObsEdits(prev => ({ ...prev, [g.id]: e.target.value }))}
+                            />
+                            {!fechado && (
+                              <div className="flex justify-end">
+                                <Button size="sm" variant="outline" disabled={!dirty || savingObsId === g.id} onClick={() => saveObs(g.id)}>
+                                  {savingObsId === g.id ? "A guardar…" : "Guardar observações"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

@@ -697,6 +697,41 @@ export type Database = {
           },
         ]
       }
+      fin_processamento_obs: {
+        Row: {
+          created_at: string
+          formando_id: string
+          id: string
+          processamento_id: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          formando_id: string
+          id?: string
+          processamento_id: string
+          texto?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          formando_id?: string
+          id?: string
+          processamento_id?: string
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_processamento_obs_processamento_id_fkey"
+            columns: ["processamento_id"]
+            isOneToOne: false
+            referencedRelation: "fin_processamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formador_disponibilidades: {
         Row: {
           created_at: string

@@ -40,11 +40,12 @@ function DetailPage() {
     queryKey: ["fin-proc-linhas", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("fin_processamento_linha")
-        .select("*, formando:formando_id(nome), formador:formador_id(nome)")
+        .select("*, formando:formando_id(nome), formador:formador_id(id, nome, nif, morada, codigo_postal, localidade, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem)")
         .eq("processamento_id", id);
       if (error) throw error; return data ?? [];
     },
   });
+
 
   const cfg = useQuery({
     queryKey: ["fin-config"],

@@ -163,26 +163,27 @@ function footerNotaHonorarios(doc: jsPDF) {
   const total = doc.getNumberOfPages();
   const w = doc.internal.pageSize.getWidth();
   const h = doc.internal.pageSize.getHeight();
-  const footerH = 26; // reserva de espaço para o rodapé da NH
+  const footerH = 26;
   for (let i = 1; i <= total; i++) {
     doc.setPage(i);
 
     doc.setDrawColor(...MUTED);
     doc.setLineWidth(0.2);
-    doc.line(14, h - footerH + 8, w - 14, h - footerH + 8);
-
-    if (b.logoPessoas) {
-      const s = fitBox(doc, b.logoPessoas, 80, 22);
-      const x = (w - s.w) / 2;
-      const y = h - footerH + 11 + (18 - s.h) / 2;
-      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), x, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
-    }
+    doc.line(14, h - footerH + 4, w - 14, h - footerH + 4);
 
     doc.setTextColor(...MUTED);
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
-    doc.text("Gestão Pedagógica", 14, h - 5);
-    doc.text(`Página ${i} de ${total}`, w - 14, h - 5, { align: "right" });
+    doc.text("Gestão Pedagógica", 14, h - footerH + 1);
+    doc.text(`Página ${i} de ${total}`, w - 14, h - footerH + 1, { align: "right" });
+    doc.setTextColor(0, 0, 0);
+
+    if (b.logoPessoas) {
+      const s = fitBox(doc, b.logoPessoas, 80, 20);
+      const x = (w - s.w) / 2;
+      const y = h - 4 - s.h;
+      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), x, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+    }
   }
 }
 

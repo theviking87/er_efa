@@ -368,30 +368,6 @@ function DetailPage() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader className="pb-3"><CardTitle className="text-base">Honorários — Formadores (resumo)</CardTitle></CardHeader>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader><TableRow>
-              <TableHead>Formador</TableHead>
-              <TableHead className="text-right">Horas</TableHead>
-              <TableHead className="text-right">€/h</TableHead>
-              <TableHead className="text-right">Valor (€)</TableHead>
-            </TableRow></TableHeader>
-            <TableBody>
-              {fdrs.map((l: any) => (
-                <TableRow key={l.id}>
-                  <TableCell>{l.formador?.nome}</TableCell>
-                  <TableCell className="text-right tabular-nums">{Number(l.horas_frequentadas).toFixed(1)}</TableCell>
-                  <TableCell className="text-right tabular-nums">{Number(l.valor_hora).toFixed(2)}</TableCell>
-                  <TableCell className="text-right tabular-nums font-medium">{Number(l.valor).toFixed(2)}</TableCell>
-                </TableRow>
-              ))}
-              {!fdrs.length && <TableRow><TableCell colSpan={4} className="text-center text-sm text-muted-foreground">Sem linhas.</TableCell></TableRow>}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
 
 
     </PageContainer>

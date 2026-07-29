@@ -2420,10 +2420,25 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
     if (estado === "concluido" && !atual.data_conclusao) patch.data_conclusao = hoje;
     const { error } = await supabase.from("curso_formandos").update(patch as never).eq("id", id);
     if (error) return toast.error(error.message);
+    // Propagar estado para a ficha do formando
+    const formandoId = atual.formando?.id;
+    if (formandoId) {
+      const mapa: Record<string, string> = {
+        inscrito: "ativo",
+        em_formacao: "ativo",
+        desistente: "desistente",
+        concluido: "concluido",
+      };
+      const estadoFormando = mapa[estado];
+      if (estadoFormando) {
+        await supabase.from("formandos").update({ estado: estadoFormando } as never).eq("id", formandoId);
+      }
+    }
     qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
-    qc.invalidateQueries({ queryKey: ["formando", atual.formando?.id] });
+    qc.invalidateQueries({ queryKey: ["formando", formandoId] });
     qc.invalidateQueries({ queryKey: ["formandos"] });
   }
+
 
   async function setData(id: string, campo: "data_desistencia" | "data_conclusao", valor: string, atual: any) {
     const { error } = await supabase.from("curso_formandos").update({ [campo]: valor || null } as never).eq("id", id);

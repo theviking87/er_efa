@@ -245,33 +245,4 @@ function CategoriasDespesas() {
     </div>
   );
 }
-  async function upload(file: File) {
-    setUploading(true);
-    try {
-      const key = `${label.toLowerCase().replace(/[^a-z0-9]/g, "-")}-${Date.now()}-${file.name}`;
-      const { error } = await supabase.storage.from("empresa-logos").upload(key, file, { upsert: true });
-      if (error) throw error;
-      const { data: signed } = await supabase.storage.from("empresa-logos").createSignedUrl(key, 60 * 60 * 24 * 365);
-      onChange(signed?.signedUrl ?? key);
-      toast.success(`Logo ${label} carregado`);
-    } catch (e: any) { toast.error(e.message); }
-    finally { setUploading(false); }
-  }
-  return (
-    <div className="space-y-2">
-      <Label className="text-xs uppercase tracking-wide text-muted-foreground">{label}</Label>
-      <div className="border rounded-md p-3 h-32 flex items-center justify-center bg-muted/30">
-        {url ? <img src={url} alt={label} className="max-h-full max-w-full object-contain" /> : <span className="text-xs text-muted-foreground">Sem imagem</span>}
-      </div>
-      <div className="flex gap-2">
-        <label className="flex-1">
-          <input type="file" accept="image/*" className="hidden" disabled={uploading} onChange={e => { const f = e.target.files?.[0]; if (f) upload(f); }} />
-          <Button asChild size="sm" variant="outline" className="w-full cursor-pointer" disabled={uploading}>
-            <span><Upload className="size-3" /> {uploading ? "…" : "Carregar"}</span>
-          </Button>
-        </label>
-        {url && <Button size="sm" variant="ghost" onClick={() => onChange(null)}><X className="size-3" /></Button>}
-      </div>
-    </div>
-  );
-}
+

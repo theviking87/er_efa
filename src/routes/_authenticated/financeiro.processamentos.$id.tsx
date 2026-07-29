@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { ChevronDown, ChevronRight, FileSpreadsheet, FileText, Lock, LockOpen, RefreshCw, Trash2 } from "lucide-react";
 import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";
@@ -662,6 +663,7 @@ function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empres
   empresa: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
 }) {
   const [gerandoId, setGerandoId] = useState<string | null>(null);
+  const [overrides, setOverrides] = useState<Record<string, { semRet: boolean; retPct: number; aplicaIva: boolean; ivaPct: number }>>({});
 
   // Um formador pode ter várias linhas (várias UFCDs); agrupamos por formador.
   const grupos = useMemo(() => {
@@ -671,7 +673,6 @@ function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empres
       const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0 };
       g.horas += Number(l.horas_frequentadas ?? 0);
       g.valor += Number(l.valor ?? 0);
-      // valorHora estável (mesmo €/h em todas as linhas do formador)
       if (!g.valorHora) g.valorHora = Number(l.valor_hora ?? 0);
       m.set(fid, g);
     }
@@ -679,19 +680,38 @@ function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empres
       .sort((a,b) => (a.formador?.nome ?? "").localeCompare(b.formador?.nome ?? ""));
   }, [linhas]);
 
+  function currentTax(g: any) {
+    const f = g.formador ?? {};
+    const base = {
+      semRet: !!f.sem_retencao,
+      retPct: Number(f.retencao_percentagem ?? 23),
+      aplicaIva: !!f.aplica_iva,
+      ivaPct: Number(f.iva_percentagem ?? 23),
+    };
+    return overrides[g.fid] ?? base;
+  }
+  function updateTax(fid: string, patch: Partial<{ semRet: boolean; retPct: number; aplicaIva: boolean; ivaPct: number }>) {
+    setOverrides(prev => {
+      const g = grupos.find(x => x.fid === fid);
+      const cur = prev[fid] ?? currentTax(g);
+      return { ...prev, [fid]: { ...cur, ...patch } };
+    });
+  }
+
   async function emitir(g: any) {
     if (!g.formador) { toast.error("Sem dados do formador."); return; }
     setGerandoId(g.fid);
     try {
       const f = g.formador;
+      const t = currentTax(g);
       await exportNotaHonorariosPdf({
         modo: "mes",
         formadorId: f.id ?? g.fid,
         ano, mes,
         valorHora: g.valorHora,
-        retencaoIrs: f.sem_retencao ? 0 : Number(f.retencao_percentagem ?? 23),
-        aplicarIva: !!f.aplica_iva,
-        iva: f.aplica_iva ? Number(f.iva_percentagem ?? 23) : 0,
+        retencaoIrs: t.semRet ? 0 : t.retPct,
+        aplicarIva: t.aplicaIva,
+        iva: t.aplicaIva ? t.ivaPct : 0,
         destinatario: empresa ? { nome: empresa.nome ?? undefined, nif: empresa.nif ?? undefined, morada: empresa.morada ?? undefined } : undefined,
         observacoes: `Curso: ${cursoNome ?? cursoCodigo ?? ""}`,
       });
@@ -712,28 +732,45 @@ function HonorariosFormadores({ linhas, ano, mes, cursoNome, cursoCodigo, empres
         <TableHead className="text-right">Horas</TableHead>
         <TableHead className="text-right">€/h</TableHead>
         <TableHead className="text-right">Valor (€)</TableHead>
-        <TableHead className="text-center">Retenção IRS</TableHead>
-        <TableHead className="text-center">IVA</TableHead>
+        <TableHead className="text-center w-44">Retenção IRS</TableHead>
+        <TableHead className="text-center w-40">IVA</TableHead>
         <TableHead className="text-right w-32"></TableHead>
       </TableRow></TableHeader>
       <TableBody>
         {grupos.map(g => {
+          const t = currentTax(g);
           const f = g.formador ?? {};
-          const semRet = !!f.sem_retencao;
-          const retPct = Number(f.retencao_percentagem ?? 23);
-          const aplicaIva = !!f.aplica_iva;
-          const ivaPct = Number(f.iva_percentagem ?? 23);
           return (
             <TableRow key={g.fid}>
               <TableCell className="font-medium">{f.nome ?? "—"}{f.nif ? <span className="text-xs text-muted-foreground ml-2">NIF {f.nif}</span> : null}</TableCell>
               <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
               <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
               <TableCell className="text-right tabular-nums font-semibold">{g.valor.toFixed(2)}</TableCell>
-              <TableCell className="text-center">
-                {semRet ? <Badge variant="secondary">Não tem</Badge> : <Badge variant="outline">{retPct.toFixed(0)}%</Badge>}
+              <TableCell>
+                <div className="flex items-center gap-1.5 justify-center">
+                  <label className="flex items-center gap-1 text-xs">
+                    <input type="checkbox" className="size-3.5" checked={t.semRet}
+                      onChange={e => updateTax(g.fid, { semRet: e.target.checked })} />
+                    Sem
+                  </label>
+                  <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
+                    disabled={t.semRet} value={t.retPct}
+                    onChange={e => updateTax(g.fid, { retPct: Number(e.target.value) })} />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
               </TableCell>
-              <TableCell className="text-center">
-                {aplicaIva ? <Badge variant="outline">{ivaPct.toFixed(0)}%</Badge> : <Badge variant="secondary">Isento</Badge>}
+              <TableCell>
+                <div className="flex items-center gap-1.5 justify-center">
+                  <label className="flex items-center gap-1 text-xs">
+                    <input type="checkbox" className="size-3.5" checked={t.aplicaIva}
+                      onChange={e => updateTax(g.fid, { aplicaIva: e.target.checked })} />
+                    Aplica
+                  </label>
+                  <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
+                    disabled={!t.aplicaIva} value={t.ivaPct}
+                    onChange={e => updateTax(g.fid, { ivaPct: Number(e.target.value) })} />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
               </TableCell>
               <TableCell className="text-right">
                 <Button size="sm" variant="outline" onClick={() => emitir(g)} disabled={gerandoId === g.fid}>

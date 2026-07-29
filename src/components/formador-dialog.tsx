@@ -126,9 +126,9 @@ export function FormadorDialog({
           <div className="col-span-2 grid grid-cols-2 gap-3 rounded-md border p-3 bg-muted/20">
             <div className="col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fiscalidade (nota de honorários)</div>
             <div className="col-span-2 flex items-center gap-2">
-              <input id="sem-ret" type="checkbox" className="size-4" checked={!!f.sem_retencao}
-                onChange={e => setF({ ...f, sem_retencao: e.target.checked })} />
-              <Label htmlFor="sem-ret" className="cursor-pointer font-normal">Sem retenção IRS (com visto)</Label>
+              <input id="faz-ret" type="checkbox" className="size-4" checked={!f.sem_retencao}
+                onChange={e => setF({ ...f, sem_retencao: !e.target.checked })} />
+              <Label htmlFor="faz-ret" className="cursor-pointer font-normal">Faz retenção IRS</Label>
             </div>
             <div className="space-y-1.5">
               <Label>Retenção IRS (%)</Label>

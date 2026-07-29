@@ -125,26 +125,26 @@ export function FormadorDialog({
 
           <div className="col-span-2 grid grid-cols-2 gap-3 rounded-md border p-3 bg-muted/20">
             <div className="col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fiscalidade (nota de honorários)</div>
-            <div className="col-span-2 flex items-center gap-2">
-              <input id="faz-ret" type="checkbox" className="size-4" checked={!f.sem_retencao}
-                onChange={e => setF({ ...f, sem_retencao: !e.target.checked })} />
-              <Label htmlFor="faz-ret" className="cursor-pointer font-normal">Faz retenção IRS</Label>
-            </div>
             <div className="space-y-1.5">
+              <div className="flex items-center gap-2 h-6">
+                <input id="faz-ret" type="checkbox" className="size-4" checked={!f.sem_retencao}
+                  onChange={e => setF({ ...f, sem_retencao: !e.target.checked })} />
+                <Label htmlFor="faz-ret" className="cursor-pointer font-normal">Faz retenção IRS</Label>
+              </div>
               <Label>Retenção IRS (%)</Label>
               <Input type="number" step="0.01" min="0" max="100" disabled={!!f.sem_retencao}
-                value={f.retencao_percentagem ?? 23}
+                value={f.sem_retencao ? 0 : (f.retencao_percentagem ?? 23)}
                 onChange={e => setF({ ...f, retencao_percentagem: Number(e.target.value) })} />
             </div>
-            <div className="flex items-center gap-2 pt-6">
-              <input id="apl-iva" type="checkbox" className="size-4" checked={!!f.aplica_iva}
-                onChange={e => setF({ ...f, aplica_iva: e.target.checked })} />
-              <Label htmlFor="apl-iva" className="cursor-pointer font-normal">Acrescer IVA</Label>
-            </div>
-            <div className="space-y-1.5 col-span-2">
+            <div className="space-y-1.5">
+              <div className="flex items-center gap-2 h-6">
+                <input id="apl-iva" type="checkbox" className="size-4" checked={!!f.aplica_iva}
+                  onChange={e => setF({ ...f, aplica_iva: e.target.checked })} />
+                <Label htmlFor="apl-iva" className="cursor-pointer font-normal">Acrescer IVA</Label>
+              </div>
               <Label>IVA (%)</Label>
               <Input type="number" step="0.01" min="0" max="100" disabled={!f.aplica_iva}
-                value={f.iva_percentagem ?? 23}
+                value={f.aplica_iva ? (f.iva_percentagem ?? 23) : 0}
                 onChange={e => setF({ ...f, iva_percentagem: Number(e.target.value) })} />
             </div>
           </div>

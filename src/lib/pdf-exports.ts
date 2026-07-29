@@ -942,13 +942,33 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   let yEnd = (doc as any).lastAutoTable.finalY + 6;
 
+  // Estima altura necessária para totais + observações + nota legal + rodapé.
+  const pageH = doc.internal.pageSize.getHeight();
+  const footerH = 26;
+  const rowsNormal =
+    (!(avulsoTotal !== null && totalHoras === 0) ? 1 : 0) + // total horas
+    1 + // subtotal
+    1 + // IVA (sempre)
+    1;  // Retenção (sempre)
+  const totalsHeight = rowsNormal * 5 + 2 /* linha */ + 7 /* TOTAL */;
+  const obsLines = opts.observacoes ? doc.splitTextToSize(opts.observacoes, doc.internal.pageSize.getWidth() - 28).length : 0;
+  const obsHeight = opts.observacoes ? 4 + 4 * obsLines + 6 : 0;
+  const legalHeight = 10 + 4;
+  const needed = totalsHeight + obsHeight + legalHeight;
+
+  if (yEnd + needed > pageH - footerH - 6) {
+    doc.addPage();
+    yEnd = 20;
+  }
+
   // Totais
-  const boxX = w - 90;
+  const w2 = doc.internal.pageSize.getWidth();
+  const boxX = w2 - 90;
   const drawRow = (label: string, value: string, bold = false) => {
     doc.setFont("helvetica", bold ? "bold" : "normal");
     doc.setFontSize(bold ? 11 : 9);
     doc.text(label, boxX, yEnd);
-    doc.text(value, w - 14, yEnd, { align: "right" });
+    doc.text(value, w2 - 14, yEnd, { align: "right" });
     yEnd += bold ? 7 : 5;
   };
   if (!(avulsoTotal !== null && totalHoras === 0)) drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
@@ -958,7 +978,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   if (retencaoPct > 0) drawRow(`Retenção IRS (${retencaoPct}%):`, `- ${fmtEUR(retencao)}`);
   else if (retencaoPct === 0) drawRow("Retenção IRS:", "Regime de isenção");
   doc.setDrawColor(...BRAND); doc.setLineWidth(0.5);
-  doc.line(boxX, yEnd - 2, w - 14, yEnd - 2);
+  doc.line(boxX, yEnd - 2, w2 - 14, yEnd - 2);
   yEnd += 2;
   drawRow("TOTAL A PAGAR:", fmtEUR(total), true);
 
@@ -969,7 +989,7 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     doc.text("Observações", 14, yEnd);
     doc.setFont("helvetica","normal");
     yEnd += 4;
-    const lines = doc.splitTextToSize(opts.observacoes, w - 28);
+    const lines = doc.splitTextToSize(opts.observacoes, w2 - 28);
     doc.text(lines, 14, yEnd);
     yEnd += 4 * lines.length;
   }
@@ -981,12 +1001,6 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   doc.text("Documento sem valor fiscal. Emitido para efeitos de processamento de honorários.", 14, yEnd);
   doc.setTextColor(0,0,0);
 
-  // Garante espaço para o rodapé centrado com o logótipo Pessoas 2030
-  const h = doc.internal.pageSize.getHeight();
-  const footerH = 26;
-  if (yEnd > h - footerH - 10) {
-    doc.addPage();
-  }
 
   footerNotaHonorarios(doc);
   const fnameSuffix = modo === "mes"

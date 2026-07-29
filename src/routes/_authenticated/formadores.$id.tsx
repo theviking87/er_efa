@@ -148,7 +148,7 @@ function FormadorDetail() {
           <Card><CardContent className="p-6 grid sm:grid-cols-2 gap-x-8 gap-y-3 text-sm">
             <Field label="Valor / hora" value={f.valor_hora != null ? `${Number(f.valor_hora).toFixed(2)} €` : null} />
             <Field label="IBAN" value={f.iban} />
-            <Field label="Retenção IRS" value={(f as any).sem_retencao ? "Sem retenção (com visto)" : `${Number((f as any).retencao_percentagem ?? 23)}%`} />
+            <Field label="Retenção IRS" value={(f as any).sem_retencao ? "Sem retenção" : `${Number((f as any).retencao_percentagem ?? 23)}%`} />
             <Field label="IVA" value={(f as any).aplica_iva ? `Acresce ${Number((f as any).iva_percentagem ?? 23)}%` : "Isento / não aplica"} />
             <div className="sm:col-span-2 text-xs text-muted-foreground pt-2 border-t">
               Estes valores são usados automaticamente na <strong>Nota de honorários</strong> ao escolher este formador. Para editar, use o botão <strong>Editar</strong> no topo.

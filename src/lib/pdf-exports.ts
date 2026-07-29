@@ -182,11 +182,10 @@ function footerNotaHonorarios(doc: jsPDF) {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(7.5);
     doc.text("Gestão Pedagógica", 14, h - 5);
-    const ts = new Date().toLocaleString("pt-PT");
-    doc.text(ts, w / 2, h - 5, { align: "center" });
     doc.text(`Página ${i} de ${total}`, w - 14, h - 5, { align: "right" });
   }
 }
+
 
 
 const tableTheme = {

@@ -619,6 +619,33 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                         })}
                       </TableBody>
                     </Table>
+                    <div className="mt-3 pt-3 border-t" onClick={e => e.stopPropagation()}>
+                      <Label className="text-xs font-medium text-muted-foreground">Observações</Label>
+                      {(() => {
+                        const stored = obsQuery.data?.[g.id] ?? "";
+                        const edited = obsEdits[g.id];
+                        const current = edited !== undefined ? edited : stored;
+                        const dirty = edited !== undefined && edited !== stored;
+                        return (
+                          <div className="mt-1.5 space-y-2">
+                            <Textarea
+                              value={current}
+                              readOnly={fechado}
+                              placeholder="Notas/registos manuais para este formando neste processamento…"
+                              rows={2}
+                              onChange={e => setObsEdits(prev => ({ ...prev, [g.id]: e.target.value }))}
+                            />
+                            {!fechado && (
+                              <div className="flex justify-end">
+                                <Button size="sm" variant="outline" disabled={!dirty || savingObsId === g.id} onClick={() => saveObs(g.id)}>
+                                  {savingObsId === g.id ? "A guardar…" : "Guardar observações"}
+                                </Button>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

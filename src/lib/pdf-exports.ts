@@ -981,7 +981,14 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   doc.text("Documento sem valor fiscal. Emitido para efeitos de processamento de honorários.", 14, yEnd);
   doc.setTextColor(0,0,0);
 
-  footer(doc);
+  // Garante espaço para o rodapé centrado com o logótipo Pessoas 2030
+  const h = doc.internal.pageSize.getHeight();
+  const footerH = 26;
+  if (yEnd > h - footerH - 10) {
+    doc.addPage();
+  }
+
+  footerNotaHonorarios(doc);
   const fnameSuffix = modo === "mes"
     ? `${ano}-${String(mes).padStart(2,"0")}`
     : modo === "ufcd"

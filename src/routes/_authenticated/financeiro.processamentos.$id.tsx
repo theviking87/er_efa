@@ -403,7 +403,7 @@ function DetailPage() {
       <Card className="mb-4">
         <CardHeader className="pb-3"><CardTitle className="text-base">Formandos</CardTitle></CardHeader>
         <CardContent className="p-0">
-          <FormandosGrouped linhas={fmds} processamentoId={id} fechado={fechado} tetoAtl={Number((cfg.data as any)?.atl_teto_mensal ?? 0)} />
+          <FormandosGrouped linhas={fmds} processamentoId={id} cursoId={p.curso_id} fechado={fechado} tetoAtl={Number((cfg.data as any)?.atl_teto_mensal ?? 0)} />
         </CardContent>
       </Card>
 

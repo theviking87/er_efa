@@ -18,6 +18,7 @@ import { ChevronDown, ChevronRight, FileSpreadsheet, FileText, Lock, LockOpen, R
 import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";
 import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
 import { exportNotaHonorariosPdf } from "@/lib/pdf-exports";
+import { saveFile } from "@/lib/dom-helpers";
 
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/$id")({

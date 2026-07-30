@@ -89,7 +89,7 @@ function memoriaToStr(m?: Record<string, unknown> | null): string {
   return partes.join("  •  ");
 }
 
-export async function exportProcessamentoExcel(p: ProcessamentoExport) {
+export async function exportProcessamentoExcel(p: ProcessamentoExport, opts?: { returnFile?: boolean }) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Gestão de Formação"; wb.created = new Date();
 

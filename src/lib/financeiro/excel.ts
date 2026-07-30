@@ -376,8 +376,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   // Rodapé Pessoas 2030 centrado abaixo dos totais — respeita aspect ratio.
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
-    const s = fit(logoP.w, logoP.h, 180, 60);
-    ws.addImage(id, { tl: { col: 3.5, row: r + 1 } as any, ext: s, editAs: "oneCell" } as any);
+    const s = fit(logoP.w, logoP.h, 240, 80);
+    ws.addImage(id, { tl: { col: pxToCol(Math.max(0, (totalPx - s.width) / 2)), row: r + 1 } as any, ext: s, editAs: "oneCell" } as any);
   }
 
 

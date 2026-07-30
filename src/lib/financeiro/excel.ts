@@ -462,12 +462,16 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   }
 
   const buf = await wb.xlsx.writeBuffer();
-  const alvo = soFormando
-    ? `_form_${(formandosFiltrados[0]?.nome ?? "").replace(/\W+/g,"_").slice(0,30)}`
+  // Nome legível: "Mapa Processamento BF Nome Formando.xlsx" (mantém acentos, remove só caracteres inválidos)
+  const limpar = (s: string) => s.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  const rubTxt = rubricasSel ? Array.from(rubricasSel).join("+") : "";
+  const pessoa = soFormando
+    ? (formandosFiltrados[0]?.nome ?? "")
     : soFormador
-      ? `_hnr_${(formadoresFiltrados[0]?.nome ?? "").replace(/\W+/g,"_").slice(0,30)}`
+      ? (formadoresFiltrados[0]?.nome ?? "")
       : "";
-  const rubSfx = rubricasSel ? `_${Array.from(rubricasSel).join("-")}` : "";
-  const name = `processamento_${p.ano}-${String(p.mes).padStart(2, "0")}_${(p.curso?.codigo ?? "curso").replace(/\W+/g, "_")}${alvo}${rubSfx}.xlsx`;
+  const partes = ["Mapa Processamento", rubTxt, pessoa].filter(Boolean).map(limpar).filter(Boolean);
+  if (!pessoa) partes.push(`${String(p.mes).padStart(2, "0")}-${p.ano}`);
+  const name = `${partes.join(" ")}.xlsx`;
   await saveFile(name, buf as ArrayBuffer);
 }

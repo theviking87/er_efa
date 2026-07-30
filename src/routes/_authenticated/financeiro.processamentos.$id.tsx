@@ -506,35 +506,83 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
   }
 
   // Acerto manual de horas frequentadas (só formandos desistentes).
-  // Nas bolsas (BF/BFM) o valor é recalculado proporcionalmente, com tecto no valor mensal.
-  async function saveHoras(l: any) {
-    const raw = horasEdits[l.id];
-    if (raw === undefined) return;
-    const h = Number(String(raw).replace(",", "."));
-    if (!Number.isFinite(h) || h < 0) { toast.error("Horas inválidas."); return; }
+  // Regra: 1 dia = 7 horas; o dia parcial só conta (SA/TR) se tiver ≥ 3h.
+  // As restantes rubricas do formando são recalculadas a partir das novas horas.
+  function diasDeHoras(h: number) {
+    const inteiros = Math.floor(h / 7);
+    const resto = h - inteiros * 7;
+    return inteiros + (resto >= 3 ? 1 : 0);
+  }
+
+  function patchLinha(l: any, h: number, dias: number): Record<string, unknown> {
     const mc = (l.memoria_calculo ?? {}) as any;
-    const patch: Record<string, unknown> = { horas_frequentadas: h, horas_elegiveis: h };
+    const base: Record<string, unknown> = { horas_frequentadas: h, horas_elegiveis: h };
+    const nota = "Recalculado a partir do acerto manual de horas (1 dia = 7h; dia parcial conta com ≥ 3h).";
+
     if (l.rubrica === "BF" || l.rubrica === "BFM") {
       const valorMensal = Number(mc.valor_mensal ?? 0);
       const horasRef = Number(mc.horas_mes_ref ?? 0);
       const taxa = horasRef > 0 ? valorMensal / horasRef : Number(l.valor_hora ?? 0);
       const bruto = +(taxa * h).toFixed(2);
-      const valor = valorMensal > 0 ? Math.min(bruto, valorMensal) : bruto;
-      patch.valor = valor;
-      patch.memoria_calculo = {
-        ...mc, horas_freq: h, valor_bruto: bruto,
-        limitado_pelo_tecto: valorMensal > 0 && bruto > valorMensal,
-        acerto_manual_horas: true,
-        nota_acerto: "Horas frequentadas acertadas manualmente (formando desistente).",
-      };
+      base.valor = valorMensal > 0 ? Math.min(bruto, valorMensal) : bruto;
+      base.dias_elegiveis = dias;
+      base.memoria_calculo = { ...mc, horas_freq: h, valor_bruto: bruto, dias, limitado_pelo_tecto: valorMensal > 0 && bruto > valorMensal, acerto_manual_horas: true, nota_acerto: nota };
+      return base;
     }
+
+    if (l.rubrica === "SA") {
+      const valorDia = Number(l.valor_dia ?? mc.valor_dia ?? 0);
+      base.dias_elegiveis = dias;
+      base.valor = +(dias * valorDia).toFixed(2);
+      base.memoria_calculo = { ...mc, dias, valor_dia: valorDia, acerto_manual_horas: true, nota_acerto: nota };
+      return base;
+    }
+
+    if (l.rubrica === "TR") {
+      const teto = Number(mc.teto_mensal ?? 0);
+      if (mc.modo === "passe") {
+        const passe = Number(mc.valor_passe ?? 0);
+        const bruto = dias > 0 ? +passe.toFixed(2) : 0;
+        base.valor = teto > 0 ? +Math.min(bruto, teto).toFixed(2) : bruto;
+        base.dias_elegiveis = dias;
+        base.km_total = 0;
+        base.memoria_calculo = { ...mc, dias, bruto, acerto_manual_horas: true, nota_acerto: nota };
+      } else {
+        const kmDia = Number(mc.km_dia_aplicado ?? mc.km_dia ?? 0);
+        const valorKm = Number(mc.valor_km ?? 0);
+        const kmTotal = +(dias * kmDia).toFixed(2);
+        const bruto = +(kmTotal * valorKm).toFixed(2);
+        base.valor = teto > 0 ? +Math.min(bruto, teto).toFixed(2) : bruto;
+        base.dias_elegiveis = dias;
+        base.km_total = kmTotal;
+        base.memoria_calculo = { ...mc, dias, km_total: kmTotal, bruto, acerto_manual_horas: true, nota_acerto: nota };
+      }
+      return base;
+    }
+
+    // ATL e outras rubricas: só actualiza horas/dias, valor mantém-se (manual).
+    base.dias_elegiveis = dias;
+    base.memoria_calculo = { ...mc, dias, acerto_manual_horas: true, nota_acerto: nota };
+    return base;
+  }
+
+  async function saveHoras(l: any) {
+    const raw = horasEdits[l.id];
+    if (raw === undefined) return;
+    const h = Number(String(raw).replace(",", "."));
+    if (!Number.isFinite(h) || h < 0) { toast.error("Horas inválidas."); return; }
+    const dias = diasDeHoras(h);
+    const irmas = (linhas ?? []).filter((x: any) => x.formando_id === l.formando_id);
+
     setSavingId(l.id);
     try {
-      const { error } = await supabase.from("fin_processamento_linha")
-        .update(patch as never).eq("id", l.id);
-      if (error) throw error;
+      for (const linha of irmas) {
+        const { error } = await supabase.from("fin_processamento_linha")
+          .update(patchLinha(linha, h, dias) as never).eq("id", linha.id);
+        if (error) throw error;
+      }
       await refreshTotais();
-      toast.success("Horas atualizadas.");
+      toast.success(`Horas atualizadas — ${dias} dia(s) elegível(eis).`);
       setHorasEdits(prev => { const n = { ...prev }; delete n[l.id]; return n; });
       qc.invalidateQueries({ queryKey: ["fin-proc", processamentoId] });
       qc.invalidateQueries({ queryKey: ["fin-proc-linhas", processamentoId] });
@@ -544,6 +592,7 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
       setSavingId(null);
     }
   }
+
 
 
   async function saveAtl(linhaId: string) {

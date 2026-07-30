@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
  * Motor de cálculo financeiro — mensal, por curso.
  *
  * Rubricas:
- *  - BF/BFM: bolsa mensal proporcional às horas frequentadas
- *      valor = bolsa_mensal * (horas_freq / horas_mes_referencia)
+ *  - BF/BFM: bolsa proporcional às horas, limitada ao valor mensal da ficha (tecto)
+ *      valor = min(bolsa_mensal * (horas_freq / horas_mes_referencia), bolsa_mensal)
  *  - SA:     dias_presenca * valor_sa       (se elegivel_sa)
  *  - TR:     dias_presenca * km_diario * valor_km  (se elegivel_tr)
  *  - HN:     horas_ministradas * valor_hora do formador

@@ -113,17 +113,13 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
             <Label htmlFor="tr" className="text-sm">Elegível a Transporte</Label>
           </div>
           {elegTr && (
-            <div className="space-y-1.5">
-              <Label>Km diários (ida + volta)</Label>
-              <Input type="number" step="0.1" value={kmDia} onChange={e => setKmDia(Number(e.target.value))} />
-              <p className="text-[11px] text-muted-foreground">
-                Máximo de <strong>{Number((cfg.data as any)?.limite_km_dia ?? 50)} km/dia</strong> aplicado pela Configuração Financeira.
-                {Number((cfg.data as any)?.tr_teto_mensal ?? 0) > 0 && (
-                  <> Tecto mensal de transporte: <strong>{Number((cfg.data as any)?.tr_teto_mensal).toFixed(2)} €</strong>.</>
-                )}
-              </p>
-            </div>
+            <TransporteHistorico
+              formandoId={formandoId}
+              limiteKmDia={Number((cfg.data as any)?.limite_km_dia ?? 50)}
+              tetoMensal={Number((cfg.data as any)?.tr_teto_mensal ?? 0)}
+            />
           )}
+
           <div className="flex items-center gap-2 pt-2 border-t">
             <Checkbox id="atl" checked={elegAtl} onCheckedChange={v => setElegAtl(!!v)} />
             <Label htmlFor="atl" className="text-sm">Elegível a ATL</Label>

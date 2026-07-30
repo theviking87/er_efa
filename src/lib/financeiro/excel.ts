@@ -473,5 +473,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   const partes = ["Mapa Processamento", rubTxt, pessoa].filter(Boolean).map(limpar).filter(Boolean);
   if (!pessoa) partes.push(`${String(p.mes).padStart(2, "0")}-${p.ano}`);
   const name = `${partes.join(" ")}.xlsx`;
+  if (opts?.returnFile) return { name, buf: buf as ArrayBuffer };
   await saveFile(name, buf as ArrayBuffer);
+  return { name, buf: buf as ArrayBuffer };
 }

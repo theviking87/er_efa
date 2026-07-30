@@ -25,6 +25,7 @@ type Formando = {
   habilitacoes?: string | null;
   situacao_emprego?: string | null;
   niss?: string | null;
+  iban?: string | null;
   observacoes?: string | null;
   estado?: string;
 };
@@ -85,6 +86,7 @@ export function FormandoDialog({
           <div className="space-y-1.5"><Label>Localidade</Label><Input value={form.localidade ?? ""} onChange={e => set("localidade", e.target.value)} /></div>
           <div className="col-span-2 space-y-1.5"><Label>Habilitações</Label><Input value={form.habilitacoes ?? ""} onChange={e => set("habilitacoes", e.target.value)} /></div>
           <div className="col-span-2 space-y-1.5"><Label>Situação face ao emprego</Label><Input value={form.situacao_emprego ?? ""} onChange={e => set("situacao_emprego", e.target.value)} placeholder="Empregado, Desempregado, Estudante…" /></div>
+          <div className="col-span-2 space-y-1.5"><Label>IBAN</Label><Input value={form.iban ?? ""} onChange={e => set("iban", e.target.value)} placeholder="PT50 0000 0000 0000 0000 0000 0" /></div>
           <div className="col-span-2 space-y-1.5"><Label>Observações</Label><Textarea rows={3} value={form.observacoes ?? ""} onChange={e => set("observacoes", e.target.value)} /></div>
         </div>
         <DialogFooter>

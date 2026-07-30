@@ -1123,6 +1123,7 @@ export type Database = {
           email: string | null
           estado: Database["public"]["Enums"]["formando_estado"]
           habilitacoes: string | null
+          iban: string | null
           id: string
           localidade: string | null
           morada: string | null
@@ -1143,6 +1144,7 @@ export type Database = {
           email?: string | null
           estado?: Database["public"]["Enums"]["formando_estado"]
           habilitacoes?: string | null
+          iban?: string | null
           id?: string
           localidade?: string | null
           morada?: string | null
@@ -1163,6 +1165,7 @@ export type Database = {
           email?: string | null
           estado?: Database["public"]["Enums"]["formando_estado"]
           habilitacoes?: string | null
+          iban?: string | null
           id?: string
           localidade?: string | null
           morada?: string | null

@@ -1052,12 +1052,13 @@ export async function exportPagamentosContabilidadePdf(opts: {
   for (const l of (linhas ?? []) as any[]) {
     const v = l.valor_manual != null ? Number(l.valor_manual) : Number(l.valor ?? 0);
     if (!v) continue;
-    const r = map.get(l.formando_id) ?? {
+    const r: Reg = map.get(l.formando_id) ?? {
       nome: l.formando?.nome ?? "—",
       iban: l.formando?.iban ?? "",
       nif: l.formando?.nif ?? "",
-      rubricas: {}, total: 0,
+      rubricas: {} as Record<string, number>, total: 0,
     };
+
     r.rubricas[l.rubrica] = (r.rubricas[l.rubrica] ?? 0) + v;
     r.total += v;
     map.set(l.formando_id, r);

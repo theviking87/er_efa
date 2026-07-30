@@ -1018,3 +1018,99 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   await savePdf(doc, fname);
 }
 
+
+// ============= Mapa de pagamentos para contabilidade =============
+const RUBRICA_NOME: Record<string, string> = {
+  BF: "Bolsa de Formação",
+  BFM: "Bolsa de Formação Modular",
+  SA: "Subsídio de Alimentação",
+  TR: "Subsídio de Transporte",
+  ATL: "Apoio ao Tempo Livre",
+  HN: "Honorários",
+};
+const RUBRICA_ORDEM = ["BF", "BFM", "SA", "TR", "ATL"];
+
+export async function exportPagamentosContabilidadePdf(opts: {
+  processamentoId: string;
+  cursoNome: string;
+  ano: number;
+  mes: number;
+}) {
+  await loadBranding();
+  const MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const periodo = `${MESES_PT[opts.mes - 1]} ${opts.ano}`;
+
+  const { data: linhas, error } = await (supabase as any)
+    .from("fin_processamento_linha")
+    .select("formando_id, rubrica, valor, valor_manual, formando:formando_id(nome, iban, nif)")
+    .eq("processamento_id", opts.processamentoId)
+    .not("formando_id", "is", null);
+  if (error) throw error;
+
+  type Reg = { nome: string; iban: string; nif: string; rubricas: Record<string, number>; total: number };
+  const map = new Map<string, Reg>();
+  for (const l of (linhas ?? []) as any[]) {
+    const v = l.valor_manual != null ? Number(l.valor_manual) : Number(l.valor ?? 0);
+    if (!v) continue;
+    const r: Reg = map.get(l.formando_id) ?? {
+      nome: l.formando?.nome ?? "—",
+      iban: l.formando?.iban ?? "",
+      nif: l.formando?.nif ?? "",
+      rubricas: {} as Record<string, number>, total: 0,
+    };
+
+    r.rubricas[l.rubrica] = (r.rubricas[l.rubrica] ?? 0) + v;
+    r.total += v;
+    map.set(l.formando_id, r);
+  }
+  const regs = Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
+  if (!regs.length) throw new Error("Sem valores para exportar.");
+
+  const rubricasPresentes = RUBRICA_ORDEM.filter(r => regs.some(x => (x.rubricas[r] ?? 0) > 0));
+  const eur = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
+
+  const doc = newDoc("landscape");
+  header(doc, "Mapa de Pagamentos — Contabilidade", `${opts.cursoNome} · ${periodo}`);
+
+  const body = regs.map(r => [
+    r.nome,
+    r.iban || "—",
+    r.nif || "—",
+    ...rubricasPresentes.map(rb => (r.rubricas[rb] ? eur(r.rubricas[rb]) : "—")),
+    eur(r.total),
+  ]);
+
+  const totaisRub = rubricasPresentes.map(rb => regs.reduce((s, r) => s + (r.rubricas[rb] ?? 0), 0));
+  const totalGeral = regs.reduce((s, r) => s + r.total, 0);
+
+  autoTable(doc, {
+    ...tableTheme,
+    startY: CONTENT_TOP,
+    head: [["Nome completo", "IBAN", "NIF", ...rubricasPresentes, "Total"]],
+    body,
+    foot: [["TOTAIS", "", "", ...totaisRub.map(eur), eur(totalGeral)]],
+    footStyles: { fillColor: [226, 232, 240], textColor: 20, fontStyle: "bold" },
+    columnStyles: {
+      0: { cellWidth: 62 },
+      1: { cellWidth: 52 },
+      2: { cellWidth: 22 },
+      ...Object.fromEntries(rubricasPresentes.map((_, i) => [i + 3, { halign: "right" as const }])),
+      [rubricasPresentes.length + 3]: { halign: "right" as const, fontStyle: "bold" as const },
+    },
+  });
+
+  let y = (doc as any).lastAutoTable.finalY + 8;
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(...MUTED);
+  doc.text(
+    `Legenda: ${rubricasPresentes.map(r => `${r} — ${RUBRICA_NOME[r]}`).join("; ")}.`,
+    14, y, { maxWidth: doc.internal.pageSize.getWidth() - 28 },
+  );
+  y += 5;
+  doc.text(`Total de formandos: ${regs.length} · Total a pagar: ${eur(totalGeral)}`, 14, y);
+  doc.setTextColor(0, 0, 0);
+
+  footer(doc);
+  await savePdf(doc, `Pagamentos Contabilidade ${opts.cursoNome} ${periodo}.pdf`);
+}

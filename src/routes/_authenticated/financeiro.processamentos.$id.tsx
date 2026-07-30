@@ -375,11 +375,29 @@ function DetailPage() {
             </div>
             <p className="text-[11px] text-muted-foreground">Rubricas de formadores (HN) são emitidas via nota de honorários abaixo.</p>
           </div>
-          <div className="md:col-span-4 flex justify-end">
+          <div className="md:col-span-4 flex justify-end gap-2">
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const { exportPagamentosContabilidadePdf } = await import("@/lib/pdf-exports");
+                  await exportPagamentosContabilidadePdf({
+                    processamentoId: id,
+                    cursoNome: (proc.data as any)?.curso?.nome ?? "Curso",
+                    ano: (proc.data as any)?.ano,
+                    mes: (proc.data as any)?.mes,
+                  });
+                } catch (e: any) { toast.error(e.message); }
+              }}
+            >
+              <FileText className="size-4" />PDF Contabilidade
+            </Button>
             <Button onClick={exportar}><FileSpreadsheet className="size-4" />Gerar Excel</Button>
           </div>
         </CardContent>
       </Card>
+
+
 
 
       <Card className="mb-4">

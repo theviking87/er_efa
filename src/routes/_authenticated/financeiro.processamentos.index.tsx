@@ -33,6 +33,8 @@ function ProcessamentosPage() {
   // Agrupar por curso, à semelhança da listagem de formandos.
   const grupos = useMemo(() => {
     const map = new Map<string, { key: string; label: string; cursoId: string | null; procs: any[]; total: number }>();
+    const push = (g: { key: string; label: string; cursoId: string | null; procs: any[]; total: number }, p: any) => { g.procs.push(p); };
+
     for (const p of (q.data ?? []) as any[]) {
       const key = p.curso?.id ?? "__sem_curso__";
       const label = p.curso ? `${p.curso.codigo} · ${p.curso.nome}` : "Sem curso associado";

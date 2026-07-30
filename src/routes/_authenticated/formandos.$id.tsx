@@ -113,6 +113,7 @@ function FormandoDetail() {
             <Field label="Código Postal" value={[f.codigo_postal, f.localidade].filter(Boolean).join(" ")} />
             <Field label="Habilitações" value={f.habilitacoes} />
             <Field label="Situação face ao emprego" value={f.situacao_emprego} />
+            <Field label="IBAN" value={f.iban} />
             <div className="sm:col-span-2"><Field label="Observações" value={f.observacoes} /></div>
           </CardContent></Card>
         </TabsContent>

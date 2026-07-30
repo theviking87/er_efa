@@ -117,10 +117,10 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   };
 
   const topLogos: Array<{ img: NonNullable<Awaited<ReturnType<typeof fetchImage>>>; size: { width: number; height: number } }> = [];
-  if (logoE) topLogos.push({ img: logoE, size: fit(logoE.w, logoE.h, 220, 80) });
-  if (logoD) topLogos.push({ img: logoD, size: fit(logoD.w, logoD.h, 200, 70) });
+  if (logoE) topLogos.push({ img: logoE, size: fit(logoE.w, logoE.h, 378, 76) }); // ~10 cm × 2 cm
+  if (logoD) topLogos.push({ img: logoD, size: fit(logoD.w, logoD.h, 180, 63) });
   if (topLogos.length) {
-    const gap = 60;
+    const gap = 80;
     const blockW = topLogos.reduce((a, l) => a + l.size.width, 0) + gap * (topLogos.length - 1);
     let x = Math.max(0, (totalPx - blockW) / 2);
     const maxH = Math.max(...topLogos.map(l => l.size.height));

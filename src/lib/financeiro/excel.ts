@@ -89,7 +89,7 @@ function memoriaToStr(m?: Record<string, unknown> | null): string {
   return partes.join("  •  ");
 }
 
-export async function exportProcessamentoExcel(p: ProcessamentoExport) {
+export async function exportProcessamentoExcel(p: ProcessamentoExport, opts?: { returnFile?: boolean }) {
   const wb = new ExcelJS.Workbook();
   wb.creator = "Gestão de Formação"; wb.created = new Date();
 
@@ -473,5 +473,7 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   const partes = ["Mapa Processamento", rubTxt, pessoa].filter(Boolean).map(limpar).filter(Boolean);
   if (!pessoa) partes.push(`${String(p.mes).padStart(2, "0")}-${p.ano}`);
   const name = `${partes.join(" ")}.xlsx`;
+  if (opts?.returnFile) return { name, buf: buf as ArrayBuffer };
   await saveFile(name, buf as ArrayBuffer);
+  return { name, buf: buf as ArrayBuffer };
 }

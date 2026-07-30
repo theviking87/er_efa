@@ -18,6 +18,7 @@ import { ChevronDown, ChevronRight, FileSpreadsheet, FileText, Lock, LockOpen, R
 import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/excel";
 import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
 import { exportNotaHonorariosPdf } from "@/lib/pdf-exports";
+import { saveFile } from "@/lib/dom-helpers";
 
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/$id")({
@@ -203,7 +204,8 @@ function DetailPage() {
     if (!alvoRubricas.length) { toast.error("As rubricas de formadores (HN) já não são exportadas aqui — usa a secção Honorários."); return; }
 
     // Um ficheiro por (formando × rubrica) — só rubricas com valor para esse formando.
-    let gerados = 0;
+    // Todos são reunidos num único .zip para garantir que nenhum download é bloqueado.
+    const ficheiros: { name: string; buf: ArrayBuffer }[] = [];
     for (const fid of alvoFormandoIds) {
       const rubsComValor = alvoRubricas.filter(rub =>
         fmdsAll.some(f => f.id === fid && f.rubrica === rub && Math.abs(f.valor) > 0.005),
@@ -214,7 +216,7 @@ function DetailPage() {
         const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 } as Record<string, number>;
         fmdsAll.filter(f => f.id === fid && f.rubrica === rub)
           .forEach(f => { totais[rub] += f.valor; });
-        await exportProcessamentoExcel({
+        const file = await exportProcessamentoExcel({
           ano: proc.data.ano, mes: proc.data.mes, curso: proc.data.curso,
           totais: { BF: totais.BF, BFM: totais.BFM, SA: totais.SA, TR: totais.TR, HN: 0, ATL: totais.ATL, geral: totais[rub] },
           formandos: fmdsAll,
@@ -225,13 +227,31 @@ function DetailPage() {
           logoDgertUrl: cfg.data?.logo_dgert_url ?? null,
           logoPessoas2030Url: cfg.data?.logo_pessoas2030_url ?? null,
           filtro: { formandoId: fid, formadorId: null, rubricas: [rub] },
-        });
-        gerados++;
+        }, { returnFile: true });
+        ficheiros.push(file);
       }
     }
-    if (!gerados) { toast.error("Nenhuma rubrica com valor para exportar."); return; }
-    toast.success(`Gerados ${gerados} ficheiro(s).`);
+    if (!ficheiros.length) { toast.error("Nenhuma rubrica com valor para exportar."); return; }
 
+    if (ficheiros.length === 1) {
+      await saveFile(ficheiros[0].name, ficheiros[0].buf);
+      toast.success("Ficheiro gerado.");
+      return;
+    }
+
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    const usados = new Map<string, number>();
+    for (const f of ficheiros) {
+      const n = usados.get(f.name) ?? 0;
+      usados.set(f.name, n + 1);
+      zip.file(n ? f.name.replace(/\.xlsx$/, ` (${n + 1}).xlsx`) : f.name, f.buf);
+    }
+    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+    const cursoTxt = String(proc.data.curso?.nome ?? proc.data.curso?.codigo ?? "").replace(/[\\/:*?"<>|]/g, " ").trim();
+    const zipName = `Mapas Processamento ${cursoTxt} ${String(proc.data.mes).padStart(2, "0")}-${proc.data.ano}.zip`.replace(/\s+/g, " ");
+    await saveFile(zipName, await blob.arrayBuffer());
+    toast.success(`Gerados ${ficheiros.length} ficheiros num .zip.`);
   }
 
 

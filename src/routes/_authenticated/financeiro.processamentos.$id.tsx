@@ -565,6 +565,7 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                         <TableHead className="text-right">H. prev.</TableHead>
                         <TableHead className="text-right">H. freq.</TableHead>
                         <TableHead className="text-right">Dias</TableHead>
+                        <TableHead className="text-right">Km</TableHead>
                         <TableHead className="text-right">€/h</TableHead>
                         <TableHead className="text-right">Valor (€)</TableHead>
                         <TableHead className="text-right">Valor Dif. (€)</TableHead>
@@ -584,6 +585,7 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                             <TableCell className="text-right tabular-nums">{Number(l.horas_previstas).toFixed(1)}</TableCell>
                             <TableCell className="text-right tabular-nums">{Number(l.horas_frequentadas).toFixed(1)}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.dias_elegiveis}</TableCell>
+                            <TableCell className="text-right tabular-nums">{l.rubrica === "TR" && Number(l.km_total ?? 0) > 0 ? Number(l.km_total).toFixed(2) : "—"}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.valor_hora ? Number(l.valor_hora).toFixed(4) : "—"}</TableCell>
                             <TableCell className="text-right tabular-nums font-medium">
                               {editable ? (

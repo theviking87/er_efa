@@ -189,6 +189,10 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const dCon = (insc as any).data_conclusao as string | null | undefined;
     const dataLimite = [dDes, dCon].filter(Boolean).sort()[0] as string | undefined;
 
+    // Se a desistência/conclusão ocorreu antes do mês processado, o formando
+    // não entra de todo neste processamento (nem sequer com linhas a zero).
+    if (dataLimite && dataLimite < first) continue;
+
     // Sessões elegíveis: só as UC em que o formando está inscrito/frequenta.
     const minhasSess = sessoes
       .filter((s: any) => ucsInscritas.has(s.curso_ufcd_id))

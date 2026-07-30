@@ -679,8 +679,36 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
                           const horasEditavel = !fechado && desistentes.has(l.formando_id);
                           const horasEdit = horasEdits[l.id];
                           const horasCurrent = horasEdit !== undefined ? horasEdit : String(Number(l.horas_frequentadas ?? 0));
-
+                          const manualStored = l.valor_manual != null ? String(l.valor_manual) : "";
+                          const manualEdit = manualEdits[l.id];
+                          const manualCurrent = manualEdit !== undefined ? manualEdit : manualStored;
+                          const editVal = edits[l.id];
+                          const currentVal = editVal !== undefined ? editVal : String(Number(l.valor ?? 0));
+                          return (
+                          <TableRow key={l.id}>
+                            <TableCell><Badge variant="outline">{l.rubrica}</Badge></TableCell>
+                            <TableCell className="text-right tabular-nums">{Number(l.horas_previstas).toFixed(1)}</TableCell>
+                            <TableCell className="text-right tabular-nums">
+                              {horasEditavel ? (
+                                <div className="flex items-center justify-end gap-1.5" onClick={e => e.stopPropagation()}>
+                                  <input
+                                    type="number" step="0.5" min="0"
+                                    className="h-7 w-20 rounded-md border bg-background px-2 text-right text-sm"
+                                    value={horasCurrent}
+                                    onChange={e => setHorasEdits(prev => ({ ...prev, [l.id]: e.target.value }))}
+                                  />
+                                  <Button size="sm" variant="outline" className="h-7 px-2"
+                                    disabled={savingId === l.id || horasEdits[l.id] === undefined}
+                                    onClick={() => saveHoras(l)}>
+                                    {savingId === l.id ? "…" : "OK"}
+                                  </Button>
+                                </div>
+                              ) : (
+                                Number(l.horas_frequentadas).toFixed(1)
+                              )}
+                            </TableCell>
                             <TableCell className="text-right tabular-nums">{l.dias_elegiveis}</TableCell>
+
                             <TableCell className="text-right tabular-nums">{l.rubrica === "TR" && Number(l.km_total ?? 0) > 0 ? Number(l.km_total).toFixed(2) : "—"}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.valor_hora ? Number(l.valor_hora).toFixed(4) : "—"}</TableCell>
                             <TableCell className="text-right tabular-nums font-medium">

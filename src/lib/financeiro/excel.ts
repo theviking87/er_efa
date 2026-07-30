@@ -100,21 +100,42 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   ];
   const LAST_COL = "I"; // 9
 
-  // Logos — Empresa e DGERT no topo, Pessoas 2030 no fundo. Respeitar aspect ratio real.
+  // Logos — Empresa e DGERT no topo (centrados), Pessoas 2030 no fundo (centrado). Aspect ratio original.
   const [logoE, logoD, logoP] = await Promise.all([
     fetchImage(p.logoEmpresaUrl), fetchImage(p.logoDgertUrl), fetchImage(p.logoPessoas2030Url),
   ]);
-  if (logoE) {
-    const id = wb.addImage({ buffer: logoE.buf as any, extension: logoE.ext });
-    const s = fit(logoE.w, logoE.h, 120, 45);
-    ws.addImage(id, { tl: { col: 0.1, row: 0.1 } as any, ext: s, editAs: "oneCell" } as any);
+  const colWidths = [30, 9, 10, 11, 7, 8, 13, 10, 15];
+  const colPx = colWidths.map(w => w * 7);
+  const totalPx = colPx.reduce((a, b) => a + b, 0);
+  const pxToCol = (px: number) => {
+    let acc = 0;
+    for (let i = 0; i < colPx.length; i++) {
+      if (px < acc + colPx[i]) return i + (px - acc) / colPx[i];
+      acc += colPx[i];
+    }
+    return colPx.length - 1;
+  };
+
+  const topLogos: Array<{ img: NonNullable<Awaited<ReturnType<typeof fetchImage>>>; size: { width: number; height: number } }> = [];
+  if (logoE) topLogos.push({ img: logoE, size: fit(logoE.w, logoE.h, 220, 80) });
+  if (logoD) topLogos.push({ img: logoD, size: fit(logoD.w, logoD.h, 200, 70) });
+  if (topLogos.length) {
+    const gap = 60;
+    const blockW = topLogos.reduce((a, l) => a + l.size.width, 0) + gap * (topLogos.length - 1);
+    let x = Math.max(0, (totalPx - blockW) / 2);
+    const maxH = Math.max(...topLogos.map(l => l.size.height));
+    topLogos.forEach(l => {
+      const id = wb.addImage({ buffer: l.img.buf as any, extension: l.img.ext });
+      ws.addImage(id, { tl: { col: pxToCol(x), row: 0.1 } as any, ext: l.size, editAs: "oneCell" } as any);
+      x += l.size.width + gap;
+    });
+    ws.getRow(1).height = Math.max(38, maxH * 0.78);
+  } else {
+    ws.getRow(1).height = 38;
   }
-  if (logoD) {
-    const id = wb.addImage({ buffer: logoD.buf as any, extension: logoD.ext });
-    const s = fit(logoD.w, logoD.h, 120, 45);
-    ws.addImage(id, { tl: { col: 7.2, row: 0.1 } as any, ext: s, editAs: "oneCell" } as any);
-  }
-  ws.getRow(1).height = 38; ws.getRow(2).height = 16;
+  ws.getRow(2).height = 16;
+
+
 
   ws.mergeCells(`A4:${LAST_COL}4`);
   ws.getCell("A4").value = `Processamento — ${MESES[p.mes-1]} / ${p.ano}`;
@@ -355,8 +376,8 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   // Rodapé Pessoas 2030 centrado abaixo dos totais — respeita aspect ratio.
   if (logoP) {
     const id = wb.addImage({ buffer: logoP.buf as any, extension: logoP.ext });
-    const s = fit(logoP.w, logoP.h, 180, 60);
-    ws.addImage(id, { tl: { col: 3.5, row: r + 1 } as any, ext: s, editAs: "oneCell" } as any);
+    const s = fit(logoP.w, logoP.h, 240, 80);
+    ws.addImage(id, { tl: { col: pxToCol(Math.max(0, (totalPx - s.width) / 2)), row: r + 1 } as any, ext: s, editAs: "oneCell" } as any);
   }
 
 
@@ -441,12 +462,16 @@ export async function exportProcessamentoExcel(p: ProcessamentoExport) {
   }
 
   const buf = await wb.xlsx.writeBuffer();
-  const alvo = soFormando
-    ? `_form_${(formandosFiltrados[0]?.nome ?? "").replace(/\W+/g,"_").slice(0,30)}`
+  // Nome legível: "Mapa Processamento BF Nome Formando.xlsx" (mantém acentos, remove só caracteres inválidos)
+  const limpar = (s: string) => s.replace(/[\\/:*?"<>|]/g, " ").replace(/\s+/g, " ").trim();
+  const rubTxt = rubricasSel ? Array.from(rubricasSel).join("+") : "";
+  const pessoa = soFormando
+    ? (formandosFiltrados[0]?.nome ?? "")
     : soFormador
-      ? `_hnr_${(formadoresFiltrados[0]?.nome ?? "").replace(/\W+/g,"_").slice(0,30)}`
+      ? (formadoresFiltrados[0]?.nome ?? "")
       : "";
-  const rubSfx = rubricasSel ? `_${Array.from(rubricasSel).join("-")}` : "";
-  const name = `processamento_${p.ano}-${String(p.mes).padStart(2, "0")}_${(p.curso?.codigo ?? "curso").replace(/\W+/g, "_")}${alvo}${rubSfx}.xlsx`;
+  const partes = ["Mapa Processamento", rubTxt, pessoa].filter(Boolean).map(limpar).filter(Boolean);
+  if (!pessoa) partes.push(`${String(p.mes).padStart(2, "0")}-${p.ano}`);
+  const name = `${partes.join(" ")}.xlsx`;
   await saveFile(name, buf as ArrayBuffer);
 }

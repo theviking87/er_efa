@@ -251,7 +251,12 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const valorMensal = Number(bolsaCfg?.valor_mensal ?? 0);
     const elegSa = bolsaCfg?.elegivel_sa ?? true;
     const elegTr = bolsaCfg?.elegivel_tr ?? false;
-    const kmDia = Number(bolsaCfg?.km_diario ?? 0);
+    const trCfg = transporteByFormando.get(insc.formando_id);
+    const modoTr: "km" | "passe" = (trCfg?.modo === "passe" ? "passe" : "km");
+    const kmDia = Number(trCfg ? trCfg.km_diario ?? 0 : bolsaCfg?.km_diario ?? 0);
+    const valorPasse = Number(trCfg?.valor_passe ?? 0);
+    const trDesde: string | null = trCfg?.vigente_desde ?? null;
+
 
     // Bolsa BF/BFM — valor/hora = valor_mensal / horas_mes_ref; total = valor/hora × horas_freq
     if (tipoBolsa === "BF" || tipoBolsa === "BFM") {

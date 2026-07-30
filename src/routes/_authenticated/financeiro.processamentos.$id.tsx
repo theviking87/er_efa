@@ -565,6 +565,7 @@ function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linha
                         <TableHead className="text-right">H. prev.</TableHead>
                         <TableHead className="text-right">H. freq.</TableHead>
                         <TableHead className="text-right">Dias</TableHead>
+                        <TableHead className="text-right">Km</TableHead>
                         <TableHead className="text-right">€/h</TableHead>
                         <TableHead className="text-right">Valor (€)</TableHead>
                         <TableHead className="text-right">Valor Dif. (€)</TableHead>

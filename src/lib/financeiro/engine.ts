@@ -122,6 +122,23 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     bolsas = data ?? [];
   }
 
+  // Histórico de configuração de transporte (km ou passe) por formando.
+  // Vale o registo mais recente com vigente_desde <= último dia do mês processado.
+  let transportes: any[] = [];
+  if (formandoIds.length) {
+    const { data, error } = await supabase.from("fin_transporte_config")
+      .select("*")
+      .in("formando_id", formandoIds)
+      .lte("vigente_desde", last)
+      .order("vigente_desde", { ascending: true })
+      .range(0, 9999);
+    if (error) throw error;
+    transportes = data ?? [];
+  }
+  const transporteByFormando = new Map<string, any>();
+  transportes.forEach((t: any) => transporteByFormando.set(t.formando_id, t)); // ordenado asc → fica o mais recente
+
+
   if (!sessoes.length) avisos.push(`Sem sessões neste curso entre ${first} e ${last}. Verifica o curso e o mês/ano escolhidos.`);
   if (!inscritos.length) avisos.push("Este curso não tem formandos inscritos.");
   if (!bolsas.length) avisos.push("Nenhum formando tem bolsa configurada (Financeiro › Formandos).");

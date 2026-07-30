@@ -9,59 +9,59 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as AuthRouteImport } from './routes/auth'
-import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AuthenticatedUfcdsRouteImport } from './routes/_authenticated/ufcds'
-import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
-import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
-import { Route as AuthenticatedNotaHonorariosRouteImport } from './routes/_authenticated/nota-honorarios'
-import { Route as AuthenticatedExportarRouteImport } from './routes/_authenticated/exportar'
-import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/route'
+import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedCronogramaRouteImport } from './routes/_authenticated/cronograma'
-import { Route as AuthenticatedProjetosIndexRouteImport } from './routes/_authenticated/projetos.index'
-import { Route as AuthenticatedFormandosIndexRouteImport } from './routes/_authenticated/formandos.index'
-import { Route as AuthenticatedFormadoresIndexRouteImport } from './routes/_authenticated/formadores.index'
-import { Route as AuthenticatedFinanceiroIndexRouteImport } from './routes/_authenticated/financeiro.index'
+import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedExportarRouteImport } from './routes/_authenticated/exportar'
+import { Route as AuthenticatedNotaHonorariosRouteImport } from './routes/_authenticated/nota-honorarios'
+import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
+import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
+import { Route as AuthenticatedUfcdsRouteImport } from './routes/_authenticated/ufcds'
 import { Route as AuthenticatedCursosIndexRouteImport } from './routes/_authenticated/cursos.index'
-import { Route as AuthenticatedProjetosIdRouteImport } from './routes/_authenticated/projetos.$id'
-import { Route as AuthenticatedFormandosIdRouteImport } from './routes/_authenticated/formandos.$id'
-import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
-import { Route as AuthenticatedFinanceiroDespesasRouteImport } from './routes/_authenticated/financeiro.despesas'
-import { Route as AuthenticatedFinanceiroConfiguracaoRouteImport } from './routes/_authenticated/financeiro.configuracao'
 import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
-import { Route as AuthenticatedFinanceiroProcessamentosIndexRouteImport } from './routes/_authenticated/financeiro.processamentos.index'
-import { Route as AuthenticatedFinanceiroProcessamentosNovoRouteImport } from './routes/_authenticated/financeiro.processamentos.novo'
-import { Route as AuthenticatedFinanceiroProcessamentosIdRouteImport } from './routes/_authenticated/financeiro.processamentos.$id'
+import { Route as AuthenticatedFinanceiroIndexRouteImport } from './routes/_authenticated/financeiro.index'
+import { Route as AuthenticatedFinanceiroConfiguracaoRouteImport } from './routes/_authenticated/financeiro.configuracao'
+import { Route as AuthenticatedFinanceiroDespesasRouteImport } from './routes/_authenticated/financeiro.despesas'
+import { Route as AuthenticatedFormadoresIndexRouteImport } from './routes/_authenticated/formadores.index'
+import { Route as AuthenticatedFormadoresIdRouteImport } from './routes/_authenticated/formadores.$id'
+import { Route as AuthenticatedFormandosIndexRouteImport } from './routes/_authenticated/formandos.index'
+import { Route as AuthenticatedFormandosIdRouteImport } from './routes/_authenticated/formandos.$id'
+import { Route as AuthenticatedProjetosIndexRouteImport } from './routes/_authenticated/projetos.index'
+import { Route as AuthenticatedProjetosIdRouteImport } from './routes/_authenticated/projetos.$id'
 import { Route as AuthenticatedCursosIdImportarRouteImport } from './routes/_authenticated/cursos_.$id.importar'
+import { Route as AuthenticatedFinanceiroProcessamentosIndexRouteImport } from './routes/_authenticated/financeiro.processamentos.index'
+import { Route as AuthenticatedFinanceiroProcessamentosIdRouteImport } from './routes/_authenticated/financeiro.processamentos.$id'
+import { Route as AuthenticatedFinanceiroProcessamentosNovoRouteImport } from './routes/_authenticated/financeiro.processamentos.novo'
 
-const AuthRoute = AuthRouteImport.update({
-  id: '/auth',
-  path: '/auth',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AuthenticatedRouteRoute = AuthenticatedRouteRouteImport.update({
   id: '/_authenticated',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AuthRoute = AuthRouteImport.update({
+  id: '/auth',
+  path: '/auth',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AuthenticatedUfcdsRoute = AuthenticatedUfcdsRouteImport.update({
-  id: '/ufcds',
-  path: '/ufcds',
+const AuthenticatedCronogramaRoute = AuthenticatedCronogramaRouteImport.update({
+  id: '/cronograma',
+  path: '/cronograma',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
-  id: '/relatorios',
-  path: '/relatorios',
+const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
-  id: '/perfil',
-  path: '/perfil',
+const AuthenticatedExportarRoute = AuthenticatedExportarRouteImport.update({
+  id: '/exportar',
+  path: '/exportar',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
 const AuthenticatedNotaHonorariosRoute =
@@ -70,72 +70,36 @@ const AuthenticatedNotaHonorariosRoute =
     path: '/nota-honorarios',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedExportarRoute = AuthenticatedExportarRouteImport.update({
-  id: '/exportar',
-  path: '/exportar',
+const AuthenticatedPerfilRoute = AuthenticatedPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
+const AuthenticatedRelatoriosRoute = AuthenticatedRelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedCronogramaRoute = AuthenticatedCronogramaRouteImport.update({
-  id: '/cronograma',
-  path: '/cronograma',
+const AuthenticatedUfcdsRoute = AuthenticatedUfcdsRouteImport.update({
+  id: '/ufcds',
+  path: '/ufcds',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedProjetosIndexRoute =
-  AuthenticatedProjetosIndexRouteImport.update({
-    id: '/projetos/',
-    path: '/projetos/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFormandosIndexRoute =
-  AuthenticatedFormandosIndexRouteImport.update({
-    id: '/formandos/',
-    path: '/formandos/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFormadoresIndexRoute =
-  AuthenticatedFormadoresIndexRouteImport.update({
-    id: '/formadores/',
-    path: '/formadores/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFinanceiroIndexRoute =
-  AuthenticatedFinanceiroIndexRouteImport.update({
-    id: '/financeiro/',
-    path: '/financeiro/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
 const AuthenticatedCursosIndexRoute =
   AuthenticatedCursosIndexRouteImport.update({
     id: '/cursos/',
     path: '/cursos/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedProjetosIdRoute = AuthenticatedProjetosIdRouteImport.update({
-  id: '/projetos/$id',
-  path: '/projetos/$id',
+const AuthenticatedCursosIdRoute = AuthenticatedCursosIdRouteImport.update({
+  id: '/cursos/$id',
+  path: '/cursos/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
-const AuthenticatedFormandosIdRoute =
-  AuthenticatedFormandosIdRouteImport.update({
-    id: '/formandos/$id',
-    path: '/formandos/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFormadoresIdRoute =
-  AuthenticatedFormadoresIdRouteImport.update({
-    id: '/formadores/$id',
-    path: '/formadores/$id',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFinanceiroDespesasRoute =
-  AuthenticatedFinanceiroDespesasRouteImport.update({
-    id: '/financeiro/despesas',
-    path: '/financeiro/despesas',
+const AuthenticatedFinanceiroIndexRoute =
+  AuthenticatedFinanceiroIndexRouteImport.update({
+    id: '/financeiro/',
+    path: '/financeiro/',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedFinanceiroConfiguracaoRoute =
@@ -144,21 +108,57 @@ const AuthenticatedFinanceiroConfiguracaoRoute =
     path: '/financeiro/configuracao',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedCursosIdRoute = AuthenticatedCursosIdRouteImport.update({
-  id: '/cursos/$id',
-  path: '/cursos/$id',
+const AuthenticatedFinanceiroDespesasRoute =
+  AuthenticatedFinanceiroDespesasRouteImport.update({
+    id: '/financeiro/despesas',
+    path: '/financeiro/despesas',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFormadoresIndexRoute =
+  AuthenticatedFormadoresIndexRouteImport.update({
+    id: '/formadores/',
+    path: '/formadores/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFormadoresIdRoute =
+  AuthenticatedFormadoresIdRouteImport.update({
+    id: '/formadores/$id',
+    path: '/formadores/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFormandosIndexRoute =
+  AuthenticatedFormandosIndexRouteImport.update({
+    id: '/formandos/',
+    path: '/formandos/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFormandosIdRoute =
+  AuthenticatedFormandosIdRouteImport.update({
+    id: '/formandos/$id',
+    path: '/formandos/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProjetosIndexRoute =
+  AuthenticatedProjetosIndexRouteImport.update({
+    id: '/projetos/',
+    path: '/projetos/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedProjetosIdRoute = AuthenticatedProjetosIdRouteImport.update({
+  id: '/projetos/$id',
+  path: '/projetos/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedCursosIdImportarRoute =
+  AuthenticatedCursosIdImportarRouteImport.update({
+    id: '/cursos_/$id/importar',
+    path: '/cursos/$id/importar',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFinanceiroProcessamentosIndexRoute =
   AuthenticatedFinanceiroProcessamentosIndexRouteImport.update({
     id: '/financeiro/processamentos/',
     path: '/financeiro/processamentos/',
-    getParentRoute: () => AuthenticatedRouteRoute,
-  } as any)
-const AuthenticatedFinanceiroProcessamentosNovoRoute =
-  AuthenticatedFinanceiroProcessamentosNovoRouteImport.update({
-    id: '/financeiro/processamentos/novo',
-    path: '/financeiro/processamentos/novo',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedFinanceiroProcessamentosIdRoute =
@@ -167,10 +167,10 @@ const AuthenticatedFinanceiroProcessamentosIdRoute =
     path: '/financeiro/processamentos/$id',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
-const AuthenticatedCursosIdImportarRoute =
-  AuthenticatedCursosIdImportarRouteImport.update({
-    id: '/cursos_/$id/importar',
-    path: '/cursos/$id/importar',
+const AuthenticatedFinanceiroProcessamentosNovoRoute =
+  AuthenticatedFinanceiroProcessamentosNovoRouteImport.update({
+    id: '/financeiro/processamentos/novo',
+    path: '/financeiro/processamentos/novo',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 
@@ -344,11 +344,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/auth': {
-      id: '/auth'
-      path: '/auth'
-      fullPath: '/auth'
-      preLoaderRoute: typeof AuthRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_authenticated': {
@@ -358,46 +358,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedRouteRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/auth': {
+      id: '/auth'
+      path: '/auth'
+      fullPath: '/auth'
+      preLoaderRoute: typeof AuthRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/_authenticated/ufcds': {
-      id: '/_authenticated/ufcds'
-      path: '/ufcds'
-      fullPath: '/ufcds'
-      preLoaderRoute: typeof AuthenticatedUfcdsRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/relatorios': {
-      id: '/_authenticated/relatorios'
-      path: '/relatorios'
-      fullPath: '/relatorios'
-      preLoaderRoute: typeof AuthenticatedRelatoriosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/perfil': {
-      id: '/_authenticated/perfil'
-      path: '/perfil'
-      fullPath: '/perfil'
-      preLoaderRoute: typeof AuthenticatedPerfilRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/nota-honorarios': {
-      id: '/_authenticated/nota-honorarios'
-      path: '/nota-honorarios'
-      fullPath: '/nota-honorarios'
-      preLoaderRoute: typeof AuthenticatedNotaHonorariosRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/exportar': {
-      id: '/_authenticated/exportar'
-      path: '/exportar'
-      fullPath: '/exportar'
-      preLoaderRoute: typeof AuthenticatedExportarRouteImport
+    '/_authenticated/cronograma': {
+      id: '/_authenticated/cronograma'
+      path: '/cronograma'
+      fullPath: '/cronograma'
+      preLoaderRoute: typeof AuthenticatedCronogramaRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/dashboard': {
@@ -407,39 +379,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/cronograma': {
-      id: '/_authenticated/cronograma'
-      path: '/cronograma'
-      fullPath: '/cronograma'
-      preLoaderRoute: typeof AuthenticatedCronogramaRouteImport
+    '/_authenticated/exportar': {
+      id: '/_authenticated/exportar'
+      path: '/exportar'
+      fullPath: '/exportar'
+      preLoaderRoute: typeof AuthenticatedExportarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/projetos/': {
-      id: '/_authenticated/projetos/'
-      path: '/projetos'
-      fullPath: '/projetos/'
-      preLoaderRoute: typeof AuthenticatedProjetosIndexRouteImport
+    '/_authenticated/nota-honorarios': {
+      id: '/_authenticated/nota-honorarios'
+      path: '/nota-honorarios'
+      fullPath: '/nota-honorarios'
+      preLoaderRoute: typeof AuthenticatedNotaHonorariosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/formandos/': {
-      id: '/_authenticated/formandos/'
-      path: '/formandos'
-      fullPath: '/formandos/'
-      preLoaderRoute: typeof AuthenticatedFormandosIndexRouteImport
+    '/_authenticated/perfil': {
+      id: '/_authenticated/perfil'
+      path: '/perfil'
+      fullPath: '/perfil'
+      preLoaderRoute: typeof AuthenticatedPerfilRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/formadores/': {
-      id: '/_authenticated/formadores/'
-      path: '/formadores'
-      fullPath: '/formadores/'
-      preLoaderRoute: typeof AuthenticatedFormadoresIndexRouteImport
+    '/_authenticated/relatorios': {
+      id: '/_authenticated/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof AuthenticatedRelatoriosRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/financeiro/': {
-      id: '/_authenticated/financeiro/'
-      path: '/financeiro'
-      fullPath: '/financeiro/'
-      preLoaderRoute: typeof AuthenticatedFinanceiroIndexRouteImport
+    '/_authenticated/ufcds': {
+      id: '/_authenticated/ufcds'
+      path: '/ufcds'
+      fullPath: '/ufcds'
+      preLoaderRoute: typeof AuthenticatedUfcdsRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/cursos/': {
@@ -449,32 +421,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedCursosIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/projetos/$id': {
-      id: '/_authenticated/projetos/$id'
-      path: '/projetos/$id'
-      fullPath: '/projetos/$id'
-      preLoaderRoute: typeof AuthenticatedProjetosIdRouteImport
+    '/_authenticated/cursos/$id': {
+      id: '/_authenticated/cursos/$id'
+      path: '/cursos/$id'
+      fullPath: '/cursos/$id'
+      preLoaderRoute: typeof AuthenticatedCursosIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/formandos/$id': {
-      id: '/_authenticated/formandos/$id'
-      path: '/formandos/$id'
-      fullPath: '/formandos/$id'
-      preLoaderRoute: typeof AuthenticatedFormandosIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/formadores/$id': {
-      id: '/_authenticated/formadores/$id'
-      path: '/formadores/$id'
-      fullPath: '/formadores/$id'
-      preLoaderRoute: typeof AuthenticatedFormadoresIdRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
-    '/_authenticated/financeiro/despesas': {
-      id: '/_authenticated/financeiro/despesas'
-      path: '/financeiro/despesas'
-      fullPath: '/financeiro/despesas'
-      preLoaderRoute: typeof AuthenticatedFinanceiroDespesasRouteImport
+    '/_authenticated/financeiro/': {
+      id: '/_authenticated/financeiro/'
+      path: '/financeiro'
+      fullPath: '/financeiro/'
+      preLoaderRoute: typeof AuthenticatedFinanceiroIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/financeiro/configuracao': {
@@ -484,11 +442,60 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinanceiroConfiguracaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/cursos/$id': {
-      id: '/_authenticated/cursos/$id'
-      path: '/cursos/$id'
-      fullPath: '/cursos/$id'
-      preLoaderRoute: typeof AuthenticatedCursosIdRouteImport
+    '/_authenticated/financeiro/despesas': {
+      id: '/_authenticated/financeiro/despesas'
+      path: '/financeiro/despesas'
+      fullPath: '/financeiro/despesas'
+      preLoaderRoute: typeof AuthenticatedFinanceiroDespesasRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/formadores/': {
+      id: '/_authenticated/formadores/'
+      path: '/formadores'
+      fullPath: '/formadores/'
+      preLoaderRoute: typeof AuthenticatedFormadoresIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/formadores/$id': {
+      id: '/_authenticated/formadores/$id'
+      path: '/formadores/$id'
+      fullPath: '/formadores/$id'
+      preLoaderRoute: typeof AuthenticatedFormadoresIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/formandos/': {
+      id: '/_authenticated/formandos/'
+      path: '/formandos'
+      fullPath: '/formandos/'
+      preLoaderRoute: typeof AuthenticatedFormandosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/formandos/$id': {
+      id: '/_authenticated/formandos/$id'
+      path: '/formandos/$id'
+      fullPath: '/formandos/$id'
+      preLoaderRoute: typeof AuthenticatedFormandosIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/projetos/': {
+      id: '/_authenticated/projetos/'
+      path: '/projetos'
+      fullPath: '/projetos/'
+      preLoaderRoute: typeof AuthenticatedProjetosIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/projetos/$id': {
+      id: '/_authenticated/projetos/$id'
+      path: '/projetos/$id'
+      fullPath: '/projetos/$id'
+      preLoaderRoute: typeof AuthenticatedProjetosIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/cursos_/$id/importar': {
+      id: '/_authenticated/cursos_/$id/importar'
+      path: '/cursos/$id/importar'
+      fullPath: '/cursos/$id/importar'
+      preLoaderRoute: typeof AuthenticatedCursosIdImportarRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/financeiro/processamentos/': {
@@ -498,13 +505,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinanceiroProcessamentosIndexRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/financeiro/processamentos/novo': {
-      id: '/_authenticated/financeiro/processamentos/novo'
-      path: '/financeiro/processamentos/novo'
-      fullPath: '/financeiro/processamentos/novo'
-      preLoaderRoute: typeof AuthenticatedFinanceiroProcessamentosNovoRouteImport
-      parentRoute: typeof AuthenticatedRouteRoute
-    }
     '/_authenticated/financeiro/processamentos/$id': {
       id: '/_authenticated/financeiro/processamentos/$id'
       path: '/financeiro/processamentos/$id'
@@ -512,11 +512,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedFinanceiroProcessamentosIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
-    '/_authenticated/cursos_/$id/importar': {
-      id: '/_authenticated/cursos_/$id/importar'
-      path: '/cursos/$id/importar'
-      fullPath: '/cursos/$id/importar'
-      preLoaderRoute: typeof AuthenticatedCursosIdImportarRouteImport
+    '/_authenticated/financeiro/processamentos/novo': {
+      id: '/_authenticated/financeiro/processamentos/novo'
+      path: '/financeiro/processamentos/novo'
+      fullPath: '/financeiro/processamentos/novo'
+      preLoaderRoute: typeof AuthenticatedFinanceiroProcessamentosNovoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
   }
@@ -587,3 +587,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

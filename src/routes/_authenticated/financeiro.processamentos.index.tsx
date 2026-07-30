@@ -32,17 +32,18 @@ function ProcessamentosPage() {
 
   // Agrupar por curso, à semelhança da listagem de formandos.
   const grupos = useMemo(() => {
-    const map = new Map<string, { key: string; label: string; cursoId: string | null; procs: any[]; total: number }>();
-    const push = (g: { key: string; label: string; cursoId: string | null; procs: any[]; total: number }, p: any) => { g.procs.push(p); };
+    type Grupo = { key: string; label: string; cursoId: string | null; procs: any[]; total: number };
+    const map = new Map<string, Grupo>();
 
     for (const p of (q.data ?? []) as any[]) {
-      const key = p.curso?.id ?? "__sem_curso__";
+      const key: string = p.curso?.id ?? "__sem_curso__";
       const label = p.curso ? `${p.curso.codigo} · ${p.curso.nome}` : "Sem curso associado";
-      const g = map.get(key) ?? { key, label, cursoId: p.curso?.id ?? null, procs: [], total: 0 };
+      const g: Grupo = map.get(key) ?? { key, label, cursoId: p.curso?.id ?? null, procs: [] as any[], total: 0 };
       g.procs.push(p);
       g.total += Number(p.total_geral ?? 0);
       map.set(key, g);
     }
+
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label, "pt"));
   }, [q.data]);
 

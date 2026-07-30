@@ -433,13 +433,31 @@ function Stat({ label, v, strong }: { label: string; v: number; strong?: boolean
   );
 }
 
-function FormandosGrouped({ linhas, processamentoId, fechado, tetoAtl }: { linhas: any[]; processamentoId: string; fechado: boolean; tetoAtl: number }) {
+function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }: { linhas: any[]; processamentoId: string; cursoId: string; fechado: boolean; tetoAtl: number }) {
   const qc = useQueryClient();
   const [edits, setEdits] = useState<Record<string, string>>({});
   const [manualEdits, setManualEdits] = useState<Record<string, string>>({});
+  const [horasEdits, setHorasEdits] = useState<Record<string, string>>({});
   const [obsEdits, setObsEdits] = useState<Record<string, string>>({});
   const [savingId, setSavingId] = useState<string | null>(null);
   const [savingObsId, setSavingObsId] = useState<string | null>(null);
+
+  // Formandos desistentes deste curso — só nestes é permitido acertar horas frequentadas.
+  const desistentesQuery = useQuery({
+    queryKey: ["fin-proc-desistentes", cursoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("curso_formandos")
+        .select("formando_id, estado, data_desistencia").eq("curso_id", cursoId);
+      if (error) throw error;
+      const s = new Set<string>();
+      (data ?? []).forEach((r: any) => {
+        if (r.estado === "desistente" || r.data_desistencia) s.add(r.formando_id);
+      });
+      return s;
+    },
+  });
+  const desistentes = desistentesQuery.data ?? new Set<string>();
+
 
   const obsQuery = useQuery({
     queryKey: ["fin-proc-obs", processamentoId],

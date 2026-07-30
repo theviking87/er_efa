@@ -643,6 +643,8 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
                 </TableCell>
                 <TableCell className="font-medium">
                   {g.nome}
+                  {desistentes.has(g.id) && <Badge variant="outline" className="ml-2 text-[10px]">Desistente</Badge>}
+
                   {Math.abs(dif) > 0.005 && (
                     <div className="text-[11px] font-normal text-orange-700 dark:text-orange-300 mt-0.5">
                       Diferença: {dif > 0 ? "+" : ""}{dif.toFixed(2)} €

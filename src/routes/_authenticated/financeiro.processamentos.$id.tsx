@@ -496,9 +496,55 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
     (todas ?? []).forEach((l: any) => { if (soma[l.rubrica] !== undefined) soma[l.rubrica] += Number(l.valor ?? 0); });
     const geral = soma.BF + soma.BFM + soma.SA + soma.TR + soma.HN + soma.ATL;
     await supabase.from("fin_processamento")
-      .update({ total_atl: +soma.ATL.toFixed(2), total_geral: +geral.toFixed(2) } as never)
+      .update({
+        total_bf: +soma.BF.toFixed(2), total_bfm: +soma.BFM.toFixed(2),
+        total_sa: +soma.SA.toFixed(2), total_tr: +soma.TR.toFixed(2),
+        total_hn: +soma.HN.toFixed(2), total_atl: +soma.ATL.toFixed(2),
+        total_geral: +geral.toFixed(2),
+      } as never)
       .eq("id", processamentoId);
   }
+
+  // Acerto manual de horas frequentadas (só formandos desistentes).
+  // Nas bolsas (BF/BFM) o valor é recalculado proporcionalmente, com tecto no valor mensal.
+  async function saveHoras(l: any) {
+    const raw = horasEdits[l.id];
+    if (raw === undefined) return;
+    const h = Number(String(raw).replace(",", "."));
+    if (!Number.isFinite(h) || h < 0) { toast.error("Horas inválidas."); return; }
+    const mc = (l.memoria_calculo ?? {}) as any;
+    const patch: Record<string, unknown> = { horas_frequentadas: h, horas_elegiveis: h };
+    if (l.rubrica === "BF" || l.rubrica === "BFM") {
+      const valorMensal = Number(mc.valor_mensal ?? 0);
+      const horasRef = Number(mc.horas_mes_ref ?? 0);
+      const taxa = horasRef > 0 ? valorMensal / horasRef : Number(l.valor_hora ?? 0);
+      const bruto = +(taxa * h).toFixed(2);
+      const valor = valorMensal > 0 ? Math.min(bruto, valorMensal) : bruto;
+      patch.valor = valor;
+      patch.memoria_calculo = {
+        ...mc, horas_freq: h, valor_bruto: bruto,
+        limitado_pelo_tecto: valorMensal > 0 && bruto > valorMensal,
+        acerto_manual_horas: true,
+        nota_acerto: "Horas frequentadas acertadas manualmente (formando desistente).",
+      };
+    }
+    setSavingId(l.id);
+    try {
+      const { error } = await supabase.from("fin_processamento_linha")
+        .update(patch as never).eq("id", l.id);
+      if (error) throw error;
+      await refreshTotais();
+      toast.success("Horas atualizadas.");
+      setHorasEdits(prev => { const n = { ...prev }; delete n[l.id]; return n; });
+      qc.invalidateQueries({ queryKey: ["fin-proc", processamentoId] });
+      qc.invalidateQueries({ queryKey: ["fin-proc-linhas", processamentoId] });
+    } catch (e: any) {
+      toast.error(e.message);
+    } finally {
+      setSavingId(null);
+    }
+  }
+
 
   async function saveAtl(linhaId: string) {
     const raw = edits[linhaId];

@@ -202,10 +202,15 @@ function DetailPage() {
     const alvoRubricas = Array.from(rubricasSel).filter(r => r !== "HN");
     if (!alvoRubricas.length) { toast.error("As rubricas de formadores (HN) já não são exportadas aqui — usa a secção Honorários."); return; }
 
-    // Um ficheiro por (formando × rubrica).
+    // Um ficheiro por (formando × rubrica) — só rubricas com valor para esse formando.
+    let gerados = 0;
     for (const fid of alvoFormandoIds) {
+      const rubsComValor = alvoRubricas.filter(rub =>
+        fmdsAll.some(f => f.id === fid && f.rubrica === rub && Math.abs(f.valor) > 0.005),
+      );
+      if (!rubsComValor.length) continue;
       const presencas = await buildPresencas([fid]);
-      for (const rub of alvoRubricas) {
+      for (const rub of rubsComValor) {
         const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 } as Record<string, number>;
         fmdsAll.filter(f => f.id === fid && f.rubrica === rub)
           .forEach(f => { totais[rub] += f.valor; });
@@ -221,9 +226,12 @@ function DetailPage() {
           logoPessoas2030Url: cfg.data?.logo_pessoas2030_url ?? null,
           filtro: { formandoId: fid, formadorId: null, rubricas: [rub] },
         });
+        gerados++;
       }
     }
-    toast.success(`Gerados ${alvoFormandoIds.length * alvoRubricas.length} ficheiro(s).`);
+    if (!gerados) { toast.error("Nenhuma rubrica com valor para exportar."); return; }
+    toast.success(`Gerados ${gerados} ficheiro(s).`);
+
   }
 
 

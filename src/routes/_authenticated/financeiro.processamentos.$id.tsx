@@ -676,16 +676,10 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
                         {g.linhas.map((l: any) => {
                           const isAtl = l.rubrica === "ATL";
                           const editable = isAtl && !fechado;
-                          const editVal = edits[l.id];
-                          const currentVal = editVal !== undefined ? editVal : String(Number(l.valor ?? 0));
-                          const manualStored = l.valor_manual != null ? String(l.valor_manual) : "";
-                          const manualEdit = manualEdits[l.id];
-                          const manualCurrent = manualEdit !== undefined ? manualEdit : manualStored;
-                          return (
-                          <TableRow key={l.id}>
-                            <TableCell><Badge variant="outline">{l.rubrica}</Badge></TableCell>
-                            <TableCell className="text-right tabular-nums">{Number(l.horas_previstas).toFixed(1)}</TableCell>
-                            <TableCell className="text-right tabular-nums">{Number(l.horas_frequentadas).toFixed(1)}</TableCell>
+                          const horasEditavel = !fechado && desistentes.has(l.formando_id);
+                          const horasEdit = horasEdits[l.id];
+                          const horasCurrent = horasEdit !== undefined ? horasEdit : String(Number(l.horas_frequentadas ?? 0));
+
                             <TableCell className="text-right tabular-nums">{l.dias_elegiveis}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.rubrica === "TR" && Number(l.km_total ?? 0) > 0 ? Number(l.km_total).toFixed(2) : "—"}</TableCell>
                             <TableCell className="text-right tabular-nums">{l.valor_hora ? Number(l.valor_hora).toFixed(4) : "—"}</TableCell>

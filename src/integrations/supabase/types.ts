@@ -732,6 +732,42 @@ export type Database = {
           },
         ]
       }
+      fin_transporte_config: {
+        Row: {
+          created_at: string
+          formando_id: string
+          id: string
+          km_diario: number
+          modo: string
+          observacoes: string | null
+          updated_at: string
+          valor_passe: number
+          vigente_desde: string
+        }
+        Insert: {
+          created_at?: string
+          formando_id: string
+          id?: string
+          km_diario?: number
+          modo?: string
+          observacoes?: string | null
+          updated_at?: string
+          valor_passe?: number
+          vigente_desde?: string
+        }
+        Update: {
+          created_at?: string
+          formando_id?: string
+          id?: string
+          km_diario?: number
+          modo?: string
+          observacoes?: string | null
+          updated_at?: string
+          valor_passe?: number
+          vigente_desde?: string
+        }
+        Relationships: []
+      }
       formador_disponibilidades: {
         Row: {
           created_at: string

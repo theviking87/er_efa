@@ -264,8 +264,10 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
 
     // Bolsa BF/BFM — proporcional às horas, com tecto no valor mensal da ficha
     if (tipoBolsa === "BF" || tipoBolsa === "BFM") {
-      const valorHora = horasMesRef > 0 ? +(valorMensal / horasMesRef).toFixed(4) : 0;
-      const bruto = +(valorHora * horasFreq).toFixed(2);
+      const taxa = horasMesRef > 0 ? valorMensal / horasMesRef : 0;
+      const valorHora = +taxa.toFixed(4);
+      // usa a taxa sem arredondar para evitar perdas de cêntimos
+      const bruto = +(taxa * horasFreq).toFixed(2);
       const valor = valorMensal > 0 ? Math.min(bruto, valorMensal) : bruto;
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,

@@ -113,17 +113,13 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
             <Label htmlFor="tr" className="text-sm">Elegível a Transporte</Label>
           </div>
           {elegTr && (
-            <div className="space-y-1.5">
-              <Label>Km diários (ida + volta)</Label>
-              <Input type="number" step="0.1" value={kmDia} onChange={e => setKmDia(Number(e.target.value))} />
-              <p className="text-[11px] text-muted-foreground">
-                Máximo de <strong>{Number((cfg.data as any)?.limite_km_dia ?? 50)} km/dia</strong> aplicado pela Configuração Financeira.
-                {Number((cfg.data as any)?.tr_teto_mensal ?? 0) > 0 && (
-                  <> Tecto mensal de transporte: <strong>{Number((cfg.data as any)?.tr_teto_mensal).toFixed(2)} €</strong>.</>
-                )}
-              </p>
-            </div>
+            <TransporteHistorico
+              formandoId={formandoId}
+              limiteKmDia={Number((cfg.data as any)?.limite_km_dia ?? 50)}
+              tetoMensal={Number((cfg.data as any)?.tr_teto_mensal ?? 0)}
+            />
           )}
+
           <div className="flex items-center gap-2 pt-2 border-t">
             <Checkbox id="atl" checked={elegAtl} onCheckedChange={v => setElegAtl(!!v)} />
             <Label htmlFor="atl" className="text-sm">Elegível a ATL</Label>
@@ -154,6 +150,112 @@ export function FormandoFinanceiroPanel({ formandoId }: { formandoId: string }) 
     </div>
   );
 }
+
+/**
+ * Histórico do apoio de transporte: cada período define o modo (km ou passe),
+ * o valor e a data a partir da qual passa a vigorar. Os processamentos usam
+ * o período em vigor no mês calculado.
+ */
+function TransporteHistorico({ formandoId, limiteKmDia, tetoMensal }: { formandoId: string; limiteKmDia: number; tetoMensal: number }) {
+  const qc = useQueryClient();
+  const hoje = new Date();
+  const [modo, setModo] = useState<"km" | "passe">("km");
+  const [km, setKm] = useState<number>(0);
+  const [passe, setPasse] = useState<number>(0);
+  const [desde, setDesde] = useState<string>(`${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-01`);
+
+  const periodos = useQuery({
+    queryKey: ["fin-transporte", formandoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("fin_transporte_config")
+        .select("*").eq("formando_id", formandoId).order("vigente_desde", { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const guardar = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.from("fin_transporte_config").upsert({
+        formando_id: formandoId, modo, km_diario: modo === "km" ? km : 0,
+        valor_passe: modo === "passe" ? passe : 0, vigente_desde: desde,
+      } as never, { onConflict: "formando_id,vigente_desde" });
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fin-transporte", formandoId] }); toast.success("Período de transporte guardado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const apagar = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("fin_transporte_config").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ["fin-transporte", formandoId] }); toast.success("Período removido"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  return (
+    <div className="rounded-md border p-3 space-y-3">
+      <div className="text-sm font-medium">Apoio de transporte</div>
+
+      <div className="grid gap-2 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <Label className="text-xs">Modo</Label>
+          <Select value={modo} onValueChange={v => setModo(v as "km" | "passe")}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="km">Pago ao km</SelectItem>
+              <SelectItem value="passe">Valor de passe</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div className="space-y-1.5">
+          <Label className="text-xs">Em vigor a partir de</Label>
+          <Input type="date" value={desde} onChange={e => setDesde(e.target.value)} />
+        </div>
+        {modo === "km" ? (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Km diários (ida + volta)</Label>
+            <Input type="number" step="0.1" value={km} onChange={e => setKm(Number(e.target.value))} />
+          </div>
+        ) : (
+          <div className="space-y-1.5">
+            <Label className="text-xs">Valor do passe (€/mês)</Label>
+            <Input type="number" step="0.01" value={passe} onChange={e => setPasse(Number(e.target.value))} />
+          </div>
+        )}
+        <div className="flex items-end">
+          <Button type="button" variant="secondary" onClick={() => guardar.mutate()} disabled={guardar.isPending}>
+            Adicionar período
+          </Button>
+        </div>
+      </div>
+
+      <div className="space-y-1">
+        {(periodos.data ?? []).map((p: any) => (
+          <div key={p.id} className="flex items-center justify-between gap-2 rounded border px-2 py-1 text-xs">
+            <span>
+              <strong>{p.modo === "passe" ? "Passe" : "Km"}</strong>
+              {" · "}
+              {p.modo === "passe" ? `${Number(p.valor_passe).toFixed(2)} €/mês` : `${Number(p.km_diario)} km/dia`}
+              {" · desde "}{p.vigente_desde}
+            </span>
+            <Button type="button" size="sm" variant="ghost" onClick={() => apagar.mutate(p.id)}>Remover</Button>
+          </div>
+        ))}
+        {!periodos.data?.length && <div className="text-xs text-muted-foreground">Sem períodos definidos — sem transporte calculado.</div>}
+      </div>
+
+      <p className="text-[11px] text-muted-foreground">
+        Nos processamentos vale o período mais recente cuja data de início seja anterior ao fim do mês calculado.
+        Máximo de <strong>{limiteKmDia} km/dia</strong> no modo km.
+        {tetoMensal > 0 && <> Tecto mensal de transporte: <strong>{tetoMensal.toFixed(2)} €</strong>.</>}
+      </p>
+    </div>
+  );
+}
+
 
 function UcsPorInscricao({ inscricaoId, cursoId, cursoLabel }: { inscricaoId: string; cursoId: string; cursoLabel: string }) {
   const qc = useQueryClient();

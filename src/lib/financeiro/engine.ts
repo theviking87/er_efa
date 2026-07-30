@@ -122,6 +122,23 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     bolsas = data ?? [];
   }
 
+  // Histórico de configuração de transporte (km ou passe) por formando.
+  // Vale o registo mais recente com vigente_desde <= último dia do mês processado.
+  let transportes: any[] = [];
+  if (formandoIds.length) {
+    const { data, error } = await supabase.from("fin_transporte_config")
+      .select("*")
+      .in("formando_id", formandoIds)
+      .lte("vigente_desde", last)
+      .order("vigente_desde", { ascending: true })
+      .range(0, 9999);
+    if (error) throw error;
+    transportes = data ?? [];
+  }
+  const transporteByFormando = new Map<string, any>();
+  transportes.forEach((t: any) => transporteByFormando.set(t.formando_id, t)); // ordenado asc → fica o mais recente
+
+
   if (!sessoes.length) avisos.push(`Sem sessões neste curso entre ${first} e ${last}. Verifica o curso e o mês/ano escolhidos.`);
   if (!inscritos.length) avisos.push("Este curso não tem formandos inscritos.");
   if (!bolsas.length) avisos.push("Nenhum formando tem bolsa configurada (Financeiro › Formandos).");
@@ -234,7 +251,12 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const valorMensal = Number(bolsaCfg?.valor_mensal ?? 0);
     const elegSa = bolsaCfg?.elegivel_sa ?? true;
     const elegTr = bolsaCfg?.elegivel_tr ?? false;
-    const kmDia = Number(bolsaCfg?.km_diario ?? 0);
+    const trCfg = transporteByFormando.get(insc.formando_id);
+    const modoTr: "km" | "passe" = (trCfg?.modo === "passe" ? "passe" : "km");
+    const kmDia = Number(trCfg ? trCfg.km_diario ?? 0 : bolsaCfg?.km_diario ?? 0);
+    const valorPasse = Number(trCfg?.valor_passe ?? 0);
+    const trDesde: string | null = trCfg?.vigente_desde ?? null;
+
 
     // Bolsa BF/BFM — valor/hora = valor_mensal / horas_mes_ref; total = valor/hora × horas_freq
     if (tipoBolsa === "BF" || tipoBolsa === "BFM") {
@@ -261,32 +283,54 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       });
     }
 
-    // TR — dias com ≥ 3h efectivas; km/dia limitado; tecto mensal; exclui dias online.
-    if (elegTr && kmDia > 0 && valorKm > 0 && diasTr > 0) {
+    // TR — dias com ≥ 3h efectivas, excluindo dias online.
+    //   modo "km":    dias × min(km_dia, limite) × valor_km
+    //   modo "passe": valor fixo do passe se houver pelo menos 1 dia elegível
+    // A configuração usada é a que estiver em vigor no mês (fin_transporte_config.vigente_desde).
+    const notaOnline = diasTrExcluidosOnline > 0
+      ? `Formando com ${diasTrExcluidosOnline} dia(s) em sessão online — TR não pago nesses dias.`
+      : undefined;
+
+    if (elegTr && modoTr === "passe" && valorPasse > 0) {
+      const bruto = diasTr > 0 ? +valorPasse.toFixed(2) : 0;
+      const valor = trTetoMensal > 0 ? +Math.min(bruto, trTetoMensal).toFixed(2) : bruto;
+      linhasFormandos.push({
+        formando_id: insc.formando_id, formando_nome: formandoNome,
+        rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
+        horas_elegiveis: horasFreq, dias_elegiveis: diasTr,
+        km_total: 0, valor,
+        memoria_calculo: {
+          modo: "passe", valor_passe: valorPasse, vigente_desde: trDesde, dias: diasTr,
+          dias_online_excluidos: diasTrExcluidosOnline, bruto,
+          teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal,
+          nota: diasTr > 0 ? notaOnline : "Sem dias presenciais elegíveis — passe não pago.",
+          regra: "passe mensal pago se existir pelo menos 1 dia presencial com ≥ 3h efectivas; vigora a partir da data de início da configuração de transporte",
+          formula: "min(valor_passe, tr_teto_mensal)",
+        },
+      });
+    } else if (elegTr && modoTr === "km" && kmDia > 0 && valorKm > 0 && diasTr > 0) {
       const kmDiaAplicado = limiteKmDia > 0 ? Math.min(kmDia, limiteKmDia) : kmDia;
       const km_total = +(diasTr * kmDiaAplicado).toFixed(2);
       const bruto = +(km_total * valorKm).toFixed(2);
       const valor = trTetoMensal > 0 ? +Math.min(bruto, trTetoMensal).toFixed(2) : bruto;
-      const nota = diasTrExcluidosOnline > 0
-        ? `Formando com ${diasTrExcluidosOnline} dia(s) em sessão online — TR não pago nesses dias.`
-        : undefined;
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasTr,
         km_total, valor,
-        memoria_calculo: { km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, dias_online_excluidos: diasTrExcluidosOnline, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, nota, regra: "dias com ≥ 3h efectivas, excluindo dias em sessão online; km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h, presenciais) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
+        memoria_calculo: { modo: "km", vigente_desde: trDesde, km_dia: kmDia, km_dia_aplicado: kmDiaAplicado, limite_km_dia: limiteKmDia || null, dias: diasTr, dias_online_excluidos: diasTrExcluidosOnline, valor_km: valorKm, bruto, teto_mensal: trTetoMensal || null, aplicado_teto: trTetoMensal > 0 && bruto > trTetoMensal, nota: notaOnline, regra: "dias com ≥ 3h efectivas, excluindo dias em sessão online; km/dia limitado pela Configuração; aplicado tecto mensal global se definido", formula: "min(dias(≥3h, presenciais) × min(km_dia, limite_km_dia) × valor_km, tr_teto_mensal)" },
       });
-    } else if (elegTr && kmDia > 0 && valorKm > 0 && diasTrExcluidosOnline > 0) {
+    } else if (elegTr && modoTr === "km" && kmDia > 0 && valorKm > 0 && diasTrExcluidosOnline > 0) {
       // Todos os dias elegíveis foram online — regista linha zero com nota explicativa.
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: "TR", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: 0,
         km_total: 0, valor: 0,
-        memoria_calculo: { km_dia: kmDia, dias: 0, dias_online_excluidos: diasTrExcluidosOnline, valor_km: valorKm, valor: 0, nota: `Todos os dias elegíveis (${diasTrExcluidosOnline}) foram em sessão online — sem TR.`, regra: "TR não pago em dias de sessão online" },
+        memoria_calculo: { modo: "km", km_dia: kmDia, dias: 0, dias_online_excluidos: diasTrExcluidosOnline, valor_km: valorKm, valor: 0, nota: `Todos os dias elegíveis (${diasTrExcluidosOnline}) foram em sessão online — sem TR.`, regra: "TR não pago em dias de sessão online" },
       });
     }
+
     // ATL — apenas cria a linha se o formando estiver marcado como elegível.
     // O valor mensal é definido manualmente no ecrã do processamento.
     const elegAtl = Boolean((bolsaCfg as any)?.elegivel_atl ?? false);

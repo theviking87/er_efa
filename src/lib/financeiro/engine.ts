@@ -4,8 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
  * Motor de cálculo financeiro — mensal, por curso.
  *
  * Rubricas:
- *  - BF/BFM: bolsa mensal proporcional às horas frequentadas
- *      valor = bolsa_mensal * (horas_freq / horas_mes_referencia)
+ *  - BF/BFM: bolsa proporcional às horas, limitada ao valor mensal da ficha (tecto)
+ *      valor = min(bolsa_mensal * (horas_freq / horas_mes_referencia), bolsa_mensal)
  *  - SA:     dias_presenca * valor_sa       (se elegivel_sa)
  *  - TR:     dias_presenca * km_diario * valor_km  (se elegivel_tr)
  *  - HN:     horas_ministradas * valor_hora do formador
@@ -262,18 +262,25 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const trDesde: string | null = trCfg?.vigente_desde ?? null;
 
 
-    // Bolsa BF/BFM — valor/hora = valor_mensal / horas_mes_ref; total = valor/hora × horas_freq
+    // Bolsa BF/BFM — proporcional às horas, com tecto no valor mensal da ficha
     if (tipoBolsa === "BF" || tipoBolsa === "BFM") {
       const valorHora = horasMesRef > 0 ? +(valorMensal / horasMesRef).toFixed(4) : 0;
-      const valor = +(valorHora * horasFreq).toFixed(2);
+      const bruto = +(valorHora * horasFreq).toFixed(2);
+      const valor = valorMensal > 0 ? Math.min(bruto, valorMensal) : bruto;
       linhasFormandos.push({
         formando_id: insc.formando_id, formando_nome: formandoNome,
         rubrica: tipoBolsa, horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasPresenca,
         valor_hora: valorHora, valor,
-        memoria_calculo: { valor_mensal: valorMensal, horas_mes_ref: horasMesRef, valor_hora: valorHora, horas_freq: horasFreq, formula: "(valor_mensal / horas_mes_ref) × horas_freq" },
+        memoria_calculo: {
+          valor_mensal: valorMensal, horas_mes_ref: horasMesRef, valor_hora: valorHora,
+          horas_freq: horasFreq, valor_bruto: bruto, tecto_mensal: valorMensal,
+          limitado_pelo_tecto: valorMensal > 0 && bruto > valorMensal,
+          formula: "min((valor_mensal / horas_mes_ref) × horas_freq, valor_mensal)",
+        },
       });
     }
+
 
     // SA — só dias com ≥ 3h frequentadas
     if (elegSa && valorSa > 0 && diasSa > 0) {

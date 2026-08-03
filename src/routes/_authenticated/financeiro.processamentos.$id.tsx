@@ -440,6 +440,7 @@ function DetailPage() {
             >
               <FileText className="size-4" />PDF Contabilidade
             </Button>
+            <Button variant="outline" onClick={exportarPagamentos}><FileSpreadsheet className="size-4" />Excel Pagamentos</Button>
             <Button onClick={exportar}><FileSpreadsheet className="size-4" />Gerar Excel</Button>
           </div>
         </CardContent>

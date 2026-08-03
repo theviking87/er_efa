@@ -271,21 +271,24 @@ function DetailPage() {
     const ano = proc.data.ano as number, mes = proc.data.mes as number;
     const ficheiros: { name: string; buf: ArrayBuffer }[] = [];
 
-    for (const fid of alvoIds) {
-      const f = byId.get(fid);
-      const nome = f?.nome ?? fmdsList.find((l: any) => l.formando_id === fid)?.formando?.nome ?? "—";
+    const { RUBRICA_PAGAMENTO_LABEL } = await import("@/lib/financeiro/excel-pagamentos");
+    for (const rub of alvoRubricas) {
       const rows = fmdsList
-        .filter((l: any) => l.formando_id === fid && alvoRubricas.includes(l.rubrica))
+        .filter((l: any) => l.rubrica === rub && alvoIds.includes(l.formando_id))
         .map((l: any) => {
+          const f = byId.get(l.formando_id);
+          const nome = f?.nome ?? fmdsList.find((x: any) => x.formando_id === l.formando_id)?.formando?.nome ?? "—";
           const manual = l.valor_manual != null ? Number(l.valor_manual) : null;
           const valor = manual != null && manual > 0 ? manual : Number(l.valor ?? 0);
           return { iban: f?.iban ?? "", nome, bic: f?.bic ?? "", valor, ano, mes, rubrica: l.rubrica };
         })
-        .filter((r: any) => Math.abs(r.valor) > 0.005);
+        .filter((r: any) => Math.abs(r.valor) > 0.005)
+        .sort((a: any, b: any) => a.nome.localeCompare(b.nome, "pt"));
       if (!rows.length) continue;
-      const safe = String(nome).replace(/[\\/:*?"<>|]/g, " ").trim();
-      ficheiros.push(await exportPagamentosSimplesExcel(rows, `Pagamentos ${safe} ${String(mes).padStart(2, "0")}-${ano}.xlsx`));
+      const label = (RUBRICA_PAGAMENTO_LABEL[rub] ?? rub).replace(/[\\/:*?"<>|]/g, " ").trim();
+      ficheiros.push(await exportPagamentosSimplesExcel(rows, `Pagamentos ${label} ${String(mes).padStart(2, "0")}-${ano}.xlsx`));
     }
+
 
     if (!ficheiros.length) { toast.error("Nenhum valor para exportar."); return; }
     if (ficheiros.length === 1) {

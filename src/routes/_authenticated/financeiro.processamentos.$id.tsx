@@ -254,6 +254,54 @@ function DetailPage() {
     toast.success(`Gerados ${ficheiros.length} ficheiros num .zip.`);
   }
 
+  // Mapa simples de pagamentos (sem cabeçalhos/logos): IBAN, Nome, BIC/SWIFT, Valor, Mês, Rubrica.
+  async function exportarPagamentos() {
+    if (!proc.data || !linhas.data) return;
+    if (filtroModo === "formando" && !filtroId) { toast.error("Escolhe o formando."); return; }
+    if (!rubricasSel.size) { toast.error("Escolhe pelo menos uma rubrica."); return; }
+    const alvoRubricas = Array.from(rubricasSel).filter(r => r !== "HN");
+    if (!alvoRubricas.length) { toast.error("Escolhe pelo menos uma rubrica de formandos."); return; }
+    const alvoIds = filtroModo === "formando" ? [filtroId] : opcoesFormandos.map(o => o.id);
+    if (!alvoIds.length) { toast.error("Sem formandos para exportar."); return; }
+
+    const { data: dadosFmd } = await supabase.from("formandos").select("id, nome, iban, bic").in("id", alvoIds);
+    const byId = new Map<string, any>((dadosFmd ?? []).map((f: any) => [f.id, f]));
+
+    const { exportPagamentosSimplesExcel } = await import("@/lib/financeiro/excel-pagamentos");
+    const ano = proc.data.ano as number, mes = proc.data.mes as number;
+    const ficheiros: { name: string; buf: ArrayBuffer }[] = [];
+
+    for (const fid of alvoIds) {
+      const f = byId.get(fid);
+      const nome = f?.nome ?? fmdsList.find((l: any) => l.formando_id === fid)?.formando?.nome ?? "—";
+      const rows = fmdsList
+        .filter((l: any) => l.formando_id === fid && alvoRubricas.includes(l.rubrica))
+        .map((l: any) => {
+          const manual = l.valor_manual != null ? Number(l.valor_manual) : null;
+          const valor = manual != null && manual > 0 ? manual : Number(l.valor ?? 0);
+          return { iban: f?.iban ?? "", nome, bic: f?.bic ?? "", valor, ano, mes, rubrica: l.rubrica };
+        })
+        .filter((r: any) => Math.abs(r.valor) > 0.005);
+      if (!rows.length) continue;
+      const safe = String(nome).replace(/[\\/:*?"<>|]/g, " ").trim();
+      ficheiros.push(await exportPagamentosSimplesExcel(rows, `Pagamentos ${safe} ${String(mes).padStart(2, "0")}-${ano}.xlsx`));
+    }
+
+    if (!ficheiros.length) { toast.error("Nenhum valor para exportar."); return; }
+    if (ficheiros.length === 1) {
+      await saveFile(ficheiros[0].name, ficheiros[0].buf);
+      toast.success("Ficheiro gerado.");
+      return;
+    }
+    const JSZip = (await import("jszip")).default;
+    const zip = new JSZip();
+    ficheiros.forEach(f => zip.file(f.name, f.buf));
+    const blob = await zip.generateAsync({ type: "blob", compression: "DEFLATE" });
+    const cursoTxt = String(proc.data.curso?.nome ?? proc.data.curso?.codigo ?? "").replace(/[\\/:*?"<>|]/g, " ").trim();
+    await saveFile(`Pagamentos ${cursoTxt} ${String(mes).padStart(2, "0")}-${ano}.zip`.replace(/\s+/g, " "), await blob.arrayBuffer());
+    toast.success(`Gerados ${ficheiros.length} ficheiros num .zip.`);
+  }
+
 
   if (proc.isLoading) return <PageContainer><div className="text-sm text-muted-foreground">A carregar…</div></PageContainer>;
   if (!proc.data) return <PageContainer><div className="text-sm">Processamento não encontrado.</div></PageContainer>;
@@ -392,6 +440,7 @@ function DetailPage() {
             >
               <FileText className="size-4" />PDF Contabilidade
             </Button>
+            <Button variant="outline" onClick={exportarPagamentos}><FileSpreadsheet className="size-4" />Excel Pagamentos</Button>
             <Button onClick={exportar}><FileSpreadsheet className="size-4" />Gerar Excel</Button>
           </div>
         </CardContent>

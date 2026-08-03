@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Link } from "@tanstack/react-router";
 import { AlertTriangle, BookOpen, Users, Calendar, ListChecks, FolderKanban, ClipboardList } from "lucide-react";
 import { addDaysIso, fmtDate, fmtHoras, localDateIso } from "@/lib/format";
+import { NotasPainel } from "@/components/notas-painel";
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Painel — Gestão Pedagógica" }] }),
@@ -114,6 +115,9 @@ function Dashboard() {
         <Stat label="Valor processado (€)" value={(counts.data?.procsValor ?? 0).toFixed(2)} icon={ClipboardList} href="/financeiro/processamentos" />
         <Stat label="Próximas 7 dias" value={proximas.data?.length ?? 0} icon={Calendar} />
       </div>
+
+      <NotasPainel />
+
 
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">

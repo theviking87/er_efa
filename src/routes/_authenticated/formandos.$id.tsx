@@ -114,6 +114,7 @@ function FormandoDetail() {
             <Field label="Habilitações" value={f.habilitacoes} />
             <Field label="Situação face ao emprego" value={f.situacao_emprego} />
             <Field label="IBAN" value={f.iban} />
+            <Field label="BIC/SWIFT" value={(f as any).bic} />
             <div className="sm:col-span-2"><Field label="Observações" value={f.observacoes} /></div>
           </CardContent></Card>
         </TabsContent>

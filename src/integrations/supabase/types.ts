@@ -1183,6 +1183,27 @@ export type Database = {
         }
         Relationships: []
       }
+      painel_notas: {
+        Row: {
+          created_at: string
+          id: string
+          texto: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          texto?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          texto?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       projetos: {
         Row: {
           ativo: boolean

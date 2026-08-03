@@ -1,0 +1,1 @@
+ALTER TABLE public.formandos ADD COLUMN IF NOT EXISTS bic text;

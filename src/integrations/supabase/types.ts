@@ -1116,6 +1116,7 @@ export type Database = {
       }
       formandos: {
         Row: {
+          bic: string | null
           cc: string | null
           codigo_postal: string | null
           created_at: string
@@ -1137,6 +1138,7 @@ export type Database = {
           validade_cc: string | null
         }
         Insert: {
+          bic?: string | null
           cc?: string | null
           codigo_postal?: string | null
           created_at?: string
@@ -1158,6 +1160,7 @@ export type Database = {
           validade_cc?: string | null
         }
         Update: {
+          bic?: string | null
           cc?: string | null
           codigo_postal?: string | null
           created_at?: string

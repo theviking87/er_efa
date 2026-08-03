@@ -26,6 +26,7 @@ type Formando = {
   situacao_emprego?: string | null;
   niss?: string | null;
   iban?: string | null;
+  bic?: string | null;
   observacoes?: string | null;
   estado?: string;
 };

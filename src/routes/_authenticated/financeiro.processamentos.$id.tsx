@@ -286,7 +286,9 @@ function DetailPage() {
         .sort((a: any, b: any) => a.nome.localeCompare(b.nome, "pt"));
       if (!rows.length) continue;
       const label = (RUBRICA_PAGAMENTO_LABEL[rub] ?? rub).replace(/[\\/:*?"<>|]/g, " ").trim();
-      ficheiros.push(await exportPagamentosSimplesExcel(rows, `Pagamentos ${label} ${String(mes).padStart(2, "0")}-${ano}.xlsx`));
+      let nomeFich = `Pagamentos ${label} ${String(mes).padStart(2, "0")}-${ano}.xlsx`;
+      if (ficheiros.some(f => f.name === nomeFich)) nomeFich = `Pagamentos ${label} ${rub} ${String(mes).padStart(2, "0")}-${ano}.xlsx`;
+      ficheiros.push(await exportPagamentosSimplesExcel(rows, nomeFich));
     }
 
 

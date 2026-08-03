@@ -115,6 +115,9 @@ function Dashboard() {
         <Stat label="Próximas 7 dias" value={proximas.data?.length ?? 0} icon={Calendar} />
       </div>
 
+      <NotasPainel />
+
+
       <div className="grid lg:grid-cols-3 gap-4">
         <Card className="lg:col-span-2">
           <CardHeader className="pb-3">

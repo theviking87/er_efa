@@ -24,14 +24,6 @@ export function PresencasDialog({
     enabled: !!sessao && open,
     queryFn: async () => {
       const sessaoData = sessao!.data;
-      const offline = await localRows<any>(`
-        SELECT cf.id, cf.estado, cf.data_desistencia, cf.data_conclusao, f.id AS formando_id, f.nome AS formando_nome
-          FROM curso_formandos cf
-          JOIN formandos f ON f.id = cf.formando_id
-         WHERE cf.curso_id = $1
-           AND cf.estado IN ('inscrito', 'em_formacao', 'desistente', 'concluido')
-         ORDER BY f.nome ASC
-      `, [sessao!.curso_id]);
       const rows = offline
         ? offline.map((r: any) => ({ id: r.id, estado: r.estado, data_desistencia: r.data_desistencia, data_conclusao: r.data_conclusao, formando: { id: r.formando_id, nome: r.formando_nome } }))
         : await (async () => {
@@ -57,12 +49,6 @@ export function PresencasDialog({
     queryKey: ["presencas-faltas", sessao?.id],
     enabled: !!sessao && open,
     queryFn: async () => {
-      const offline = await localRows<any>(`
-        SELECT id, curso_formando_id, tipo, horas, observacoes
-          FROM formando_faltas
-         WHERE sessao_id = $1
-      `, [sessao!.id]);
-      if (offline) return offline;
       const { data, error } = await supabase
         .from("formando_faltas")
         .select("id, curso_formando_id, tipo, horas, observacoes")
@@ -120,25 +106,6 @@ export function PresencasDialog({
         });
       }
 
-      const offlineDelete = await localRows<any>(`DELETE FROM formando_faltas WHERE sessao_id = $1`, [sessao.id]);
-      if (offlineDelete) {
-        if (aInserir.length) {
-          const params: any[] = [];
-          const values = aInserir.map((r: any) => {
-            params.push(r.curso_formando_id, r.sessao_id, r.data, r.horas, r.tipo, r.observacoes);
-            const n = params.length;
-            return `(gen_random_uuid(), $${n - 5}, $${n - 4}, $${n - 3}, $${n - 2}, $${n - 1}, $${n})`;
-          }).join(",");
-          await localRows<any>(`INSERT INTO formando_faltas (id, curso_formando_id, sessao_id, data, horas, tipo, observacoes) VALUES ${values}`, params);
-        }
-      } else {
-        const del = await supabase.from("formando_faltas").delete().eq("sessao_id", sessao.id);
-        if (del.error) throw del.error;
-        if (aInserir.length) {
-          const { error } = await supabase.from("formando_faltas").insert(aInserir as never);
-          if (error) throw error;
-        }
-      }
 
       toast.success("Presenças guardadas");
       qc.invalidateQueries({ queryKey: ["presencas-faltas", sessao.id] });

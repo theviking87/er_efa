@@ -136,13 +136,7 @@ export function getDb(): Promise<PGlite> {
 export async function resetDb() {
   const db = await getDb();
   await db.exec("drop schema public cascade; create schema public;");
-  for (const stmt of splitSql(SCHEMA_SQL)) {
-    try {
-      await db.exec(stmt);
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      if (!/already exists|duplicate/i.test(msg)) throw e;
-    }
-  }
+  await runSchema(db);
+
   await loadMeta(db);
 }

@@ -6,31 +6,13 @@
 // You can pass additional config via defineConfig({ vite: { ... }, etc... }) if needed.
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
-// Instância Supabase própria (única fonte de dados da aplicação).
-// A chave publishable é lida do ambiente (TARGET_* no editor, VITE_* no Vercel).
-const SUPABASE_URL = "https://dpmyqqmsyzyysprsihou.supabase.co";
-const SUPABASE_PROJECT_ID = "dpmyqqmsyzyysprsihou";
-const SUPABASE_PUBLISHABLE_KEY =
-  process.env.TARGET_SUPABASE_PUBLISHABLE_KEY ||
-  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
-  "";
-
+// A configuração do Supabase vem exclusivamente das variáveis de ambiente
+// (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PROJECT_ID).
+// No Vercel são definidas no painel do projeto; localmente em .env.local.
 export default defineConfig({
   tanstackStart: {
     // Redirect TanStack Start's bundled server entry to src/server.ts (our SSR error wrapper).
     // nitro/vite builds from this
     server: { entry: "server" },
   },
-  vite: {
-    define: {
-      "import.meta.env.VITE_SUPABASE_URL": JSON.stringify(SUPABASE_URL),
-      "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(SUPABASE_PUBLISHABLE_KEY),
-      "import.meta.env.VITE_SUPABASE_ANON_KEY": JSON.stringify(SUPABASE_PUBLISHABLE_KEY),
-      "import.meta.env.VITE_SUPABASE_PROJECT_ID": JSON.stringify(SUPABASE_PROJECT_ID),
-      "process.env.SUPABASE_URL": JSON.stringify(SUPABASE_URL),
-      "process.env.SUPABASE_PUBLISHABLE_KEY": JSON.stringify(SUPABASE_PUBLISHABLE_KEY),
-      "process.env.SUPABASE_PROJECT_ID": JSON.stringify(SUPABASE_PROJECT_ID),
-    },
-  },
 });
-

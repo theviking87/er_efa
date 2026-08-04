@@ -23,16 +23,12 @@ export function PresencasDialog({
     enabled: !!sessao && open,
     queryFn: async () => {
       const sessaoData = sessao!.data;
-      const rows = offline
-        ? offline.map((r: any) => ({ id: r.id, estado: r.estado, data_desistencia: r.data_desistencia, data_conclusao: r.data_conclusao, formando: { id: r.formando_id, nome: r.formando_nome } }))
-        : await (async () => {
-            const { data, error } = await supabase
-              .from("curso_formandos")
-              .select("id, estado, data_desistencia, data_conclusao, formando:formandos(id, nome)")
-              .eq("curso_id", sessao!.curso_id);
-            if (error) throw error;
-            return (data ?? []).filter((i: any) => i.formando);
-          })();
+      const { data, error } = await supabase
+        .from("curso_formandos")
+        .select("id, estado, data_desistencia, data_conclusao, formando:formandos(id, nome)")
+        .eq("curso_id", sessao!.curso_id);
+      if (error) throw error;
+      const rows = (data ?? []).filter((i: any) => i.formando);
       // Ativos na data da sessão: inclui inscritos/em_formação, e ex-inscritos cuja desistência/conclusão só ocorreu depois desta sessão.
       return rows.filter((r: any) => {
         if (r.data_desistencia && r.data_desistencia <= sessaoData) return false;

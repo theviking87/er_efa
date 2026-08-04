@@ -8,8 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Pencil, Trash2, Download, Upload, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
 import { EstadoFormandoBadge } from "./formandos.index";
+import { SimNao } from "./formadores.$id";
+
 import { FormandoDialog } from "@/components/formando-dialog";
 import { fmtDate, INSCRICAO_ESTADO_LABEL, MONTH_NAMES } from "@/lib/format";
 import { compareUfcdCodigo } from "@/lib/utils";
@@ -94,7 +96,9 @@ function FormandoDetail() {
         <TabsList>
           <TabsTrigger value="dados">Dados</TabsTrigger>
           <TabsTrigger value="inscricoes">Inscrições</TabsTrigger>
+          <TabsTrigger value="documentos">Documentos</TabsTrigger>
           <TabsTrigger value="pra">PRA</TabsTrigger>
+
           <TabsTrigger value="horas">Horas</TabsTrigger>
           <TabsTrigger value="faltas">Faltas</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
@@ -145,7 +149,12 @@ function FormandoDetail() {
           </CardContent></Card>
         </TabsContent>
 
+        <TabsContent value="documentos">
+          <DocumentosFormandoTab formandoId={id} />
+        </TabsContent>
+
         <TabsContent value="pra">
+
           <Card><CardContent className="p-6 space-y-6">
             {q.data.inscricoes.length === 0 ? (
               <div className="text-sm text-muted-foreground text-center py-8">Sem inscrições. Os PRA aparecem aqui após inscrever o formando num curso.</div>
@@ -204,7 +213,7 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
           .select("id, ufcd:ufcds(id, codigo, designacao)")
           .eq("curso_id", curso.id),
         supabase.from("formando_pra" as any)
-          .select("id, curso_ufcd_id, nome, storage_path, nota")
+          .select("id, curso_ufcd_id, nome, storage_path, nota, entregue")
           .eq("curso_formando_id", cursoFormandoId),
         supabase.from("curso_formando_ufcds" as any)
           .select("curso_ufcd_id")
@@ -220,33 +229,15 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
     },
   });
 
-
-  async function upload(cursoUfcdId: string, file: File) {
-    const path = `${cursoFormandoId}/${cursoUfcdId}/${Date.now()}_${file.name}`;
-    const up = await supabase.storage.from("formando-pra").upload(path, file);
-    if (up.error) return toast.error(up.error.message);
-    const { error } = await supabase.from("formando_pra" as any).upsert(
-      { curso_formando_id: cursoFormandoId, curso_ufcd_id: cursoUfcdId, nome: file.name, storage_path: path } as any,
-      { onConflict: "curso_formando_id,curso_ufcd_id" } as any,
-    );
-    if (error) return toast.error(error.message);
-    toast.success("PRA carregado");
-    qc.invalidateQueries({ queryKey: ["pra-curso", cursoFormandoId] });
-  }
-
-  async function download(p: any) {
-    const { data, error } = await supabase.storage.from("formando-pra").createSignedUrl(p.storage_path, 60);
-    if (error || !data) return toast.error("Erro a abrir documento");
-    window.open(data.signedUrl, "_blank");
-  }
-
-  async function remove(p: any) {
-    await supabase.storage.from("formando-pra").remove([p.storage_path]);
-    // keep row if it has a nota; otherwise delete entirely
-    if (p.nota && p.nota.trim().length > 0) {
-      await supabase.from("formando_pra" as any).update({ nome: null, storage_path: null } as any).eq("id", p.id);
+  async function setEntregue(cursoUfcdId: string, existing: any, entregue: boolean) {
+    if (existing) {
+      const { error } = await supabase.from("formando_pra" as any).update({ entregue } as any).eq("id", existing.id);
+      if (error) return toast.error(error.message);
     } else {
-      await supabase.from("formando_pra" as any).delete().eq("id", p.id);
+      const { error } = await supabase.from("formando_pra" as any).insert(
+        { curso_formando_id: cursoFormandoId, curso_ufcd_id: cursoUfcdId, entregue } as any,
+      );
+      if (error) return toast.error(error.message);
     }
     qc.invalidateQueries({ queryKey: ["pra-curso", cursoFormandoId] });
   }
@@ -267,7 +258,7 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
   }
 
   const ufcds = q.data ?? [];
-  const comDoc = ufcds.filter((u: any) => u.pra).length;
+  const comDoc = ufcds.filter((u: any) => u.pra?.entregue).length;
 
   return (
     <div className="space-y-2">
@@ -275,7 +266,7 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
         <Link to="/cursos/$id" params={{ id: curso.id }} className="font-medium hover:underline">
           {curso.codigo} — {curso.nome}
         </Link>
-        <div className="text-xs text-muted-foreground">{comDoc} / {ufcds.length} PRA carregados</div>
+        <div className="text-xs text-muted-foreground">{comDoc} / {ufcds.length} PRA entregues</div>
       </div>
       {ufcds.length === 0 ? (
         <div className="text-xs text-muted-foreground italic">Sem UFCD atribuídas a este formando. Atribua-as no separador Horas.</div>
@@ -285,12 +276,9 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
           {ufcds.map((u: any) => (
             <PraRow
               key={u.id}
-              cursoUfcdId={u.id}
               ufcd={u.ufcd}
               pra={u.pra}
-              onUpload={(f) => upload(u.id, f)}
-              onDownload={() => download(u.pra)}
-              onRemove={() => remove(u.pra)}
+              onSetEntregue={(v) => setEntregue(u.id, u.pra, v)}
               onSaveNota={(nota) => saveNota(u.id, u.pra, nota)}
             />
           ))}
@@ -301,24 +289,17 @@ function PraCurso({ cursoFormandoId, curso }: { cursoFormandoId: string; curso: 
 }
 
 function PraRow({
-  cursoUfcdId,
   ufcd,
   pra,
-  onUpload,
-  onDownload,
-  onRemove,
+  onSetEntregue,
   onSaveNota,
 }: {
-  cursoUfcdId: string;
   ufcd: { codigo: string; designacao: string } | null;
-  pra: { id: string; nome: string | null; storage_path: string | null; nota: string | null } | null;
-  onUpload: (file: File) => void;
-  onDownload: () => void;
-  onRemove: () => void;
+  pra: { id: string; nota: string | null; entregue?: boolean } | null;
+  onSetEntregue: (v: boolean) => void;
   onSaveNota: (nota: string) => void;
 }) {
-  void cursoUfcdId;
-  const hasDoc = !!pra?.storage_path;
+  const entregue = !!pra?.entregue;
   const [nota, setNota] = useState<string>(pra?.nota ?? "");
   const initial = pra?.nota ?? "";
 
@@ -326,7 +307,7 @@ function PraRow({
     <div
       className={
         "rounded-md border px-3 py-2 text-sm transition-colors " +
-        (hasDoc ? "bg-green-500/10 border-green-500/40" : "bg-red-500/10 border-red-500/40")
+        (entregue ? "bg-green-500/10 border-green-500/40" : "bg-red-500/10 border-red-500/40")
       }
     >
       <div className="flex items-center gap-3">
@@ -335,41 +316,8 @@ function PraRow({
             <span className="font-mono text-xs text-muted-foreground">{ufcd?.codigo}</span>
             <span className="truncate">{ufcd?.designacao}</span>
           </div>
-          {hasDoc && pra?.nome && (
-            <div className="text-xs text-muted-foreground truncate mt-0.5">{pra.nome}</div>
-          )}
         </div>
-        {hasDoc ? (
-          <>
-            <Button type="button" variant="ghost" size="sm" onClick={onDownload}>
-              <Download className="size-3.5" />
-            </Button>
-            <Button type="button" variant="ghost" size="sm" onClick={onRemove}>
-              <Trash2 className="size-3.5" />
-            </Button>
-            <label className="cursor-pointer">
-              <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border hover:bg-muted">
-                <Upload className="size-3.5" /> Substituir
-              </span>
-              <input
-                type="file"
-                className="hidden"
-                onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }}
-              />
-            </label>
-          </>
-        ) : (
-          <label className="cursor-pointer">
-            <span className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-md border hover:bg-background">
-              <Upload className="size-3.5" /> Carregar PRA
-            </span>
-            <input
-              type="file"
-              className="hidden"
-              onChange={(e) => { const f = e.target.files?.[0]; if (f) onUpload(f); e.target.value = ""; }}
-            />
-          </label>
-        )}
+        <SimNao value={entregue} onChange={onSetEntregue} />
       </div>
       <Textarea
         value={nota}
@@ -381,6 +329,103 @@ function PraRow({
     </div>
   );
 }
+
+const DOCS_FORMANDO_BASE = [
+  "Cartão de Cidadão",
+  "NIF",
+  "NISS",
+  "Comprovativo de IBAN",
+  "Certificado de Habilitações",
+  "Comprovativo de morada",
+  "Declaração do IEFP / situação face ao emprego",
+];
+
+function DocumentosFormandoTab({ formandoId }: { formandoId: string }) {
+  const qc = useQueryClient();
+  const [novo, setNovo] = useState("");
+  const [busy, setBusy] = useState(false);
+
+  const q = useQuery({
+    queryKey: ["formando-documentos", formandoId],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("formando_documentos" as any)
+        .select("*").eq("formando_id", formandoId).order("ordem");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  const lista = q.data ?? [];
+  const refresh = () => qc.invalidateQueries({ queryKey: ["formando-documentos", formandoId] });
+
+  async function criarBase() {
+    setBusy(true);
+    const rows = DOCS_FORMANDO_BASE.map((nome, i) => ({ formando_id: formandoId, nome, ordem: i }));
+    const { error } = await supabase.from("formando_documentos" as any).insert(rows as any);
+    setBusy(false);
+    if (error) return toast.error("Erro a criar lista", { description: error.message });
+    refresh();
+  }
+
+  async function adicionar() {
+    const nome = novo.trim();
+    if (!nome) return;
+    setBusy(true);
+    const { error } = await supabase.from("formando_documentos" as any)
+      .insert({ formando_id: formandoId, nome, ordem: lista.length } as any);
+    setBusy(false);
+    if (error) return toast.error("Erro a adicionar", { description: error.message });
+    setNovo("");
+    refresh();
+  }
+
+  async function setEntregue(d: any, entregue: boolean) {
+    const { error } = await supabase.from("formando_documentos" as any).update({ entregue } as any).eq("id", d.id);
+    if (error) return toast.error(error.message);
+    refresh();
+  }
+
+  async function del(d: any) {
+    const { error } = await supabase.from("formando_documentos" as any).delete().eq("id", d.id);
+    if (error) return toast.error(error.message);
+    refresh();
+  }
+
+  const entregues = lista.filter((d: any) => d.entregue).length;
+
+  return (
+    <Card><CardContent className="p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-muted-foreground">{entregues} / {lista.length} documentos entregues</div>
+        <div className="flex gap-2">
+          <Input value={novo} onChange={e => setNovo(e.target.value)} placeholder="Novo documento…" className="h-9 w-56"
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); adicionar(); } }} />
+          <Button size="sm" onClick={adicionar} disabled={busy || !novo.trim()}><Plus className="size-3.5" /> Adicionar</Button>
+        </div>
+      </div>
+
+      {lista.length === 0 ? (
+        <div className="text-sm text-muted-foreground text-center py-8 space-y-3">
+          <div>Sem lista de documentos.</div>
+          <Button size="sm" variant="outline" onClick={criarBase} disabled={busy}>Criar lista base de identificação</Button>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {lista.map((d: any) => (
+            <div key={d.id}
+              className={"rounded-md border px-3 py-2 flex items-center gap-3 text-sm transition-colors " +
+                (d.entregue ? "bg-green-500/10 border-green-500/40" : "bg-red-500/10 border-red-500/40")}>
+              <div className="flex-1 min-w-0 font-medium truncate">{d.nome}</div>
+              <SimNao value={!!d.entregue} onChange={v => setEntregue(d, v)} />
+              <Button variant="ghost" size="sm" onClick={() => del(d)}><Trash2 className="size-3.5" /></Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </CardContent></Card>
+  );
+}
+
 
 function monthKey(d: string) { return d.slice(0, 7); }
 function monthLabel(k: string) {

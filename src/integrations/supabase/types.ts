@@ -825,28 +825,34 @@ export type Database = {
       formador_documentos: {
         Row: {
           created_at: string
+          entregue: boolean
           formador_id: string
           id: string
           nome: string
-          storage_path: string
+          ordem: number
+          storage_path: string | null
           tipo: string
           validade: string | null
         }
         Insert: {
           created_at?: string
+          entregue?: boolean
           formador_id: string
           id?: string
           nome: string
-          storage_path: string
+          ordem?: number
+          storage_path?: string | null
           tipo: string
           validade?: string | null
         }
         Update: {
           created_at?: string
+          entregue?: boolean
           formador_id?: string
           id?: string
           nome?: string
-          storage_path?: string
+          ordem?: number
+          storage_path?: string | null
           tipo?: string
           validade?: string | null
         }
@@ -1018,6 +1024,47 @@ export type Database = {
         }
         Relationships: []
       }
+      formando_documentos: {
+        Row: {
+          created_at: string
+          entregue: boolean
+          formando_id: string
+          id: string
+          nome: string
+          observacoes: string | null
+          ordem: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          entregue?: boolean
+          formando_id: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          ordem?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          entregue?: boolean
+          formando_id?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          ordem?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "formando_documentos_formando_id_fkey"
+            columns: ["formando_id"]
+            isOneToOne: false
+            referencedRelation: "formandos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       formando_faltas: {
         Row: {
           created_at: string
@@ -1071,6 +1118,7 @@ export type Database = {
           created_at: string
           curso_formando_id: string
           curso_ufcd_id: string
+          entregue: boolean
           id: string
           nome: string | null
           nota: string | null
@@ -1081,6 +1129,7 @@ export type Database = {
           created_at?: string
           curso_formando_id: string
           curso_ufcd_id: string
+          entregue?: boolean
           id?: string
           nome?: string | null
           nota?: string | null
@@ -1091,6 +1140,7 @@ export type Database = {
           created_at?: string
           curso_formando_id?: string
           curso_ufcd_id?: string
+          entregue?: boolean
           id?: string
           nome?: string | null
           nota?: string | null

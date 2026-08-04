@@ -222,73 +222,93 @@ function InatividadesTab({ formadorId, items, onChange }: { formadorId: string; 
   );
 }
 
+const DOCS_FORMADOR_BASE = [
+  "Cartão de Cidadão",
+  "NIF",
+  "CCP / CAP",
+  "Certificado de Habilitações",
+  "Curriculum Vitae",
+  "Comprovativo de IBAN",
+];
+
 function DocumentosTab({ formadorId, items, onChange }: { formadorId: string; items: any[]; onChange: () => void }) {
-  const [tipo, setTipo] = useState("CC");
-  const [validade, setValidade] = useState("");
-  const [uploading, setUploading] = useState(false);
+  const [novo, setNovo] = useState("");
+  const [busy, setBusy] = useState(false);
 
-  async function onFile(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    try {
-      // Sanitize filename: strip accents, replace invalid chars with "_"
-      const safeName = file.name
-        .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
-        .replace(/[^a-zA-Z0-9._-]+/g, "_")
-        .replace(/_+/g, "_");
-      const path = `${formadorId}/${Date.now()}_${safeName}`;
-      const up = await supabase.storage.from("formador-documentos").upload(path, file, { upsert: false });
-      if (up.error) { toast.error("Erro ao carregar ficheiro", { description: up.error.message }); return; }
-      const { error } = await supabase.from("formador_documentos").insert({
-        formador_id: formadorId, tipo, nome: file.name, storage_path: path, validade: validade || null,
-      });
-      if (error) { toast.error("Erro a guardar registo", { description: error.message }); return; }
-      toast.success("Documento carregado");
-      setValidade("");
-      onChange();
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }
+  const lista = [...items].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0) || (a.nome ?? "").localeCompare(b.nome ?? ""));
 
-  async function download(d: any) {
-    const { data, error } = await supabase.storage.from("formador-documentos").createSignedUrl(d.storage_path, 60);
-    if (error || !data) return toast.error("Erro a abrir documento");
-    window.open(data.signedUrl, "_blank");
-  }
-  async function del(d: any) {
-    await supabase.storage.from("formador-documentos").remove([d.storage_path]);
-    await supabase.from("formador_documentos").delete().eq("id", d.id);
+  async function criarBase() {
+    setBusy(true);
+    const rows = DOCS_FORMADOR_BASE.map((nome, i) => ({ formador_id: formadorId, tipo: "identificacao", nome, ordem: i }));
+    const { error } = await supabase.from("formador_documentos").insert(rows as never);
+    setBusy(false);
+    if (error) return toast.error("Erro a criar lista", { description: error.message });
     onChange();
   }
 
+  async function adicionar() {
+    const nome = novo.trim();
+    if (!nome) return;
+    setBusy(true);
+    const { error } = await supabase.from("formador_documentos").insert({
+      formador_id: formadorId, tipo: "identificacao", nome, ordem: lista.length,
+    } as never);
+    setBusy(false);
+    if (error) return toast.error("Erro a adicionar", { description: error.message });
+    setNovo("");
+    onChange();
+  }
+
+  async function setEntregue(d: any, entregue: boolean) {
+    const { error } = await supabase.from("formador_documentos").update({ entregue } as never).eq("id", d.id);
+    if (error) return toast.error(error.message);
+    onChange();
+  }
+
+  async function setValidade(d: any, validade: string) {
+    const { error } = await supabase.from("formador_documentos").update({ validade: validade || null } as never).eq("id", d.id);
+    if (error) return toast.error(error.message);
+    onChange();
+  }
+
+  async function del(d: any) {
+    if (d.storage_path) await supabase.storage.from("formador-documentos").remove([d.storage_path]);
+    const { error } = await supabase.from("formador_documentos").delete().eq("id", d.id);
+    if (error) return toast.error(error.message);
+    onChange();
+  }
+
+  const entregues = lista.filter(d => d.entregue).length;
+
   return (
     <Card><CardContent className="p-6 space-y-4">
-      <div className="grid grid-cols-1 sm:grid-cols-[1fr_1fr_2fr] gap-3 items-end">
-        <div className="space-y-1.5">
-          <Label>Tipo</Label>
-          <select className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={tipo} onChange={e => setTipo(e.target.value)}>
-            {["CC","CCP","Habilitações","CV","Certificado","Outro"].map(t => <option key={t} value={t}>{t}</option>)}
-          </select>
+      <div className="flex items-center justify-between gap-3">
+        <div className="text-sm text-muted-foreground">{entregues} / {lista.length} documentos entregues</div>
+        <div className="flex gap-2">
+          <Input value={novo} onChange={e => setNovo(e.target.value)} placeholder="Novo documento…" className="h-9 w-56"
+            onKeyDown={e => { if (e.key === "Enter") { e.preventDefault(); adicionar(); } }} />
+          <Button size="sm" onClick={adicionar} disabled={busy || !novo.trim()}><Plus className="size-3.5" /> Adicionar</Button>
         </div>
-        <div className="space-y-1.5"><Label>Validade</Label><Input type="date" value={validade} onChange={e => setValidade(e.target.value)} /></div>
-        <div className="space-y-1.5"><Label>Ficheiro</Label><Input type="file" onChange={onFile} disabled={uploading} /></div>
       </div>
-      {uploading && <div className="text-xs text-muted-foreground">A carregar…</div>}
-      {items.length === 0 ? <div className="text-sm text-muted-foreground text-center py-8">Sem documentos.</div> : (
-        <div className="border rounded-md divide-y">
-          {items.map(d => (
-            <div key={d.id} className="px-4 py-2.5 flex items-center justify-between text-sm">
-              <div>
-                <div className="font-medium">{d.tipo} · {d.nome}</div>
-                <div className="text-xs text-muted-foreground">{fmtDate(d.created_at)}{d.validade && ` · válido até ${fmtDate(d.validade)}`}</div>
+
+      {lista.length === 0 ? (
+        <div className="text-sm text-muted-foreground text-center py-8 space-y-3">
+          <div>Sem lista de documentos.</div>
+          <Button size="sm" variant="outline" onClick={criarBase} disabled={busy}>Criar lista base de identificação</Button>
+        </div>
+      ) : (
+        <div className="space-y-1.5">
+          {lista.map(d => (
+            <div key={d.id}
+              className={"rounded-md border px-3 py-2 flex flex-wrap items-center gap-3 text-sm transition-colors " +
+                (d.entregue ? "bg-green-500/10 border-green-500/40" : "bg-red-500/10 border-red-500/40")}>
+              <div className="flex-1 min-w-[160px] font-medium">{d.nome}</div>
+              <div className="flex items-center gap-1.5">
+                <Label className="text-xs text-muted-foreground">Validade</Label>
+                <Input type="date" value={d.validade ?? ""} onChange={e => setValidade(d, e.target.value)} className="h-8 w-[140px]" />
               </div>
-              <div className="flex gap-1">
-                <Button variant="ghost" size="sm" onClick={() => download(d)}>Abrir</Button>
-                <Button variant="ghost" size="sm" onClick={() => del(d)}><Trash2 className="size-3.5" /></Button>
-              </div>
+              <SimNao value={!!d.entregue} onChange={v => setEntregue(d, v)} />
+              <Button variant="ghost" size="sm" onClick={() => del(d)}><Trash2 className="size-3.5" /></Button>
             </div>
           ))}
         </div>
@@ -296,6 +316,22 @@ function DocumentosTab({ formadorId, items, onChange }: { formadorId: string; it
     </CardContent></Card>
   );
 }
+
+export function SimNao({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) {
+  return (
+    <div className="inline-flex rounded-md border overflow-hidden">
+      <button type="button" onClick={() => onChange(true)}
+        className={"px-3 py-1 text-xs font-medium transition-colors " + (value ? "bg-green-600 text-white" : "bg-background hover:bg-muted")}>
+        Sim
+      </button>
+      <button type="button" onClick={() => onChange(false)}
+        className={"px-3 py-1 text-xs font-medium border-l transition-colors " + (!value ? "bg-red-600 text-white" : "bg-background hover:bg-muted")}>
+        Não
+      </button>
+    </div>
+  );
+}
+
 
 function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
   const qc = useQueryClient();

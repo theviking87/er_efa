@@ -1,5 +1,22 @@
 # Gestão de Formação
 
+Sistema de gestão de formação desenvolvido em React + TanStack Start.
+
+## Tecnologias
+
+- React 19
+- TanStack Start
+- Supabase
+- Vercel
+- GitHub
+- Tailwind CSS
+
+## Estado do projeto
+
+🟢 Produção estável (v1.0.0)
+
+# Gestão de Formação
+
 Aplicação de gestão pedagógica e financeira de cursos de formação (projetos, cursos, UFCD, cronograma, formadores, formandos, sessões, faltas, processamento financeiro, despesas e notas de honorários).
 
 Stack: **React 19 + TanStack Start (Vite) + Tailwind CSS 4 + Supabase**, com deploy em **Vercel** e código em **GitHub**. Não existe qualquer dependência funcional de plataformas externas para além destas três.

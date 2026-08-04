@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, Upload, Users, FileText, Clock, AlertTriangle, CheckCircle2, Palmtree, Pencil } from "lucide-react";
+import { ArrowLeft, Trash2, Plus, ChevronLeft, ChevronRight, Printer, FileSpreadsheet, Users, FileText, Clock, AlertTriangle, CheckCircle2, Palmtree, Pencil } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { exportSigoCurso, exportFaltasCurso } from "@/lib/exports";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -76,11 +76,6 @@ function CursoDetail() {
           <>
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" /> Editar
-            </Button>
-            <Button variant="outline" asChild>
-              <Link to="/cursos/$id/importar" params={{ id }}>
-                <Upload className="size-4" /> Importar cronograma
-              </Link>
             </Button>
             <Button variant="outline" onClick={async () => {
               try {

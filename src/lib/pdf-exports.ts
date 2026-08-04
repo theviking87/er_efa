@@ -59,7 +59,7 @@ function uniqueIds(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.filter(Boolean) as string[]));
 }
 
-async function rowsById(table: string, columns: string, ids: string[]) {
+async function rowsById(table: string, columns: string, ids: string[]): Promise<Map<string, any>> {
   if (!ids.length) return new Map<string, any>();
   const placeholders = ids.map((_, i) => `$${i + 1}`).join(",");
   const { data, error } = await (supabase as any).from(table).select(columns).in("id", ids);
@@ -69,11 +69,6 @@ async function rowsById(table: string, columns: string, ids: string[]) {
 
 async function savePdf(doc: jsPDF, filename: string) {
   await yieldToBrowser();
-  if (import.meta.env.VITE_OFFLINE === "1") {
-    const bytes = doc.output("arraybuffer");
-    const saved = await saveFile(filename, bytes, [{ name: "PDF", extensions: ["pdf"] }]);
-    if (saved) return;
-  }
   doc.save(filename);
 }
 

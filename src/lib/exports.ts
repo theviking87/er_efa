@@ -5,20 +5,6 @@ import { yieldToBrowser, saveFile } from "@/lib/dom-helpers";
 
 async function downloadWorkbook(wb: XLSX.WorkBook, filename: string) {
   await yieldToBrowser();
-  if (import.meta.env.VITE_OFFLINE === "1") {
-    const blob = XLSX.write(wb, { bookType: "xlsx", type: "array" });
-    const saved = await saveFile(filename, blob, [{ name: "Excel", extensions: ["xlsx"] }]);
-    if (saved) return;
-    const url = URL.createObjectURL(new Blob([blob], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" }));
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = filename;
-    document.body.appendChild(a);
-    a.click();
-    a.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
-    return;
-  }
   XLSX.writeFile(wb, filename);
 }
 

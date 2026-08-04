@@ -3,7 +3,7 @@ import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { TIPOLOGIA_LABEL, ESTADO_CURSO_LABEL, fmtDate } from "@/lib/format";
 import { localRows, yieldToBrowser } from "@/lib/dom-helpers";
-import { saveFileElectron } from "@/lib/dom-helpers";
+import { saveFile } from "@/lib/dom-helpers";
 
 const BRAND = [37, 99, 235] as [number, number, number]; // azul
 const MUTED = [100, 116, 139] as [number, number, number];
@@ -72,7 +72,7 @@ async function savePdf(doc: jsPDF, filename: string) {
   await yieldToBrowser();
   if (import.meta.env.VITE_OFFLINE === "1") {
     const bytes = doc.output("arraybuffer");
-    const saved = await saveFileElectron(filename, bytes, [{ name: "PDF", extensions: ["pdf"] }]);
+    const saved = await saveFile(filename, bytes, [{ name: "PDF", extensions: ["pdf"] }]);
     if (saved) return;
   }
   doc.save(filename);

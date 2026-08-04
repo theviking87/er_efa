@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { localDateIso } from "@/lib/format";
-import { yieldToBrowser, runNativeExcelReport, runNativePdfReport } from "@/lib/dom-helpers";
+import { yieldToBrowser } from "@/lib/dom-helpers";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios e SIGO — Gestão Pedagógica" }] }),

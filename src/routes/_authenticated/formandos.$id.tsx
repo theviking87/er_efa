@@ -8,8 +8,10 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Pencil, Trash2, Download, Upload, Plus } from "lucide-react";
+import { ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
 import { EstadoFormandoBadge } from "./formandos.index";
+import { SimNao } from "./formadores.$id";
+
 import { FormandoDialog } from "@/components/formando-dialog";
 import { fmtDate, INSCRICAO_ESTADO_LABEL, MONTH_NAMES } from "@/lib/format";
 import { compareUfcdCodigo } from "@/lib/utils";

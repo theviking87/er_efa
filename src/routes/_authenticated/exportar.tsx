@@ -62,13 +62,21 @@ function ExportarPage() {
         setRestoreSteps([{ label: msg, status: "running" }]),
       );
       setRestoreSteps([
-        { label: "Restauro concluído", status: "done", detail: `${registos} registos · ${ficheiros} ficheiros` },
+        {
+          label: "Restauro concluído",
+          status: "done",
+          detail: `${registos} registos · ${ficheiros} ficheiros`,
+        },
       ]);
       toast.success("Restauro concluído");
       setTimeout(() => window.location.reload(), 800);
     } catch (e) {
       setRestoreSteps([
-        { label: "Erro no restauro", status: "error", detail: e instanceof Error ? e.message : String(e) },
+        {
+          label: "Erro no restauro",
+          status: "error",
+          detail: e instanceof Error ? e.message : String(e),
+        },
       ]);
       toast.error(e instanceof Error ? e.message : "Erro no restauro");
     } finally {
@@ -93,14 +101,27 @@ function ExportarPage() {
             Gera um ficheiro <code>.zip</code> com:
           </p>
           <ul className="text-sm list-disc pl-5 space-y-1 text-muted-foreground">
-            <li><code>data.json</code> — todos os formadores, formandos, cursos, UFCDs, sessões, PRA, financeiro, etc.</li>
-            <li><code>storage/formador-documentos/</code> — documentos dos formadores</li>
-            <li><code>storage/formando-pra/</code> — PRAs dos formandos</li>
-            <li><code>storage/despesas-anexos/</code> e <code>storage/empresa-logos/</code></li>
+            <li>
+              <code>data.json</code> — todos os formadores, formandos, cursos, UFCDs, sessões, PRA,
+              financeiro, etc.
+            </li>
+            <li>
+              <code>storage/formador-documentos/</code> — documentos dos formadores
+            </li>
+            <li>
+              <code>storage/formando-pra/</code> — PRAs dos formandos
+            </li>
+            <li>
+              <code>storage/despesas-anexos/</code> e <code>storage/empresa-logos/</code>
+            </li>
           </ul>
 
           <Button onClick={exportar} disabled={running} size="lg">
-            {running ? <Loader2 className="size-4 animate-spin" /> : <Download className="size-4" />}
+            {running ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Download className="size-4" />
+            )}
             {running ? "A exportar..." : "Exportar backup"}
           </Button>
 
@@ -120,8 +141,8 @@ function ExportarPage() {
         </CardHeader>
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
-            Selecione um ficheiro <code>.zip</code> gerado pela exportação. Todos os dados actuais serão substituídos
-            pelos do backup.
+            Selecione um ficheiro <code>.zip</code> gerado pela exportação. Todos os dados actuais
+            serão substituídos pelos do backup.
           </p>
           <input
             ref={fileRef}
@@ -133,8 +154,17 @@ function ExportarPage() {
               if (f) restaurar(f);
             }}
           />
-          <Button variant="outline" size="lg" disabled={restoring} onClick={() => fileRef.current?.click()}>
-            {restoring ? <Loader2 className="size-4 animate-spin" /> : <Upload className="size-4" />}
+          <Button
+            variant="outline"
+            size="lg"
+            disabled={restoring}
+            onClick={() => fileRef.current?.click()}
+          >
+            {restoring ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Upload className="size-4" />
+            )}
             {restoring ? "A restaurar..." : "Restaurar backup"}
           </Button>
 
@@ -157,7 +187,9 @@ function StepRow({ step: s }: { step: Step }) {
       {s.status === "done" && <CheckCircle2 className="size-4 text-green-600 mt-0.5" />}
       {s.status === "running" && <Loader2 className="size-4 animate-spin text-blue-600 mt-0.5" />}
       {s.status === "error" && <AlertCircle className="size-4 text-red-600 mt-0.5" />}
-      {s.status === "pending" && <div className="size-4 rounded-full border-2 border-muted mt-0.5" />}
+      {s.status === "pending" && (
+        <div className="size-4 rounded-full border-2 border-muted mt-0.5" />
+      )}
       <div className="flex-1">
         <div className={s.status === "error" ? "text-red-600" : ""}>{s.label}</div>
         {s.detail && <div className="text-xs text-muted-foreground">{s.detail}</div>}

@@ -16,9 +16,10 @@ export async function saveFile(
   filename: string,
   bytes: ArrayBuffer | Uint8Array,
 ): Promise<boolean> {
-  const buffer = bytes instanceof Uint8Array
-    ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
-    : bytes;
+  const buffer =
+    bytes instanceof Uint8Array
+      ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+      : bytes;
   const url = URL.createObjectURL(new Blob([new Uint8Array(buffer as ArrayBuffer)]));
   const a = document.createElement("a");
   a.href = url;
@@ -36,7 +37,9 @@ export function collectDocumentStyles(): string {
   const chunks: string[] = [];
   for (const sheet of Array.from(document.styleSheets)) {
     try {
-      const rules = Array.from(sheet.cssRules ?? []).map((rule) => rule.cssText).join("\n");
+      const rules = Array.from(sheet.cssRules ?? [])
+        .map((rule) => rule.cssText)
+        .join("\n");
       if (rules) chunks.push(`<style>${rules}</style>`);
     } catch {
       const owner = sheet.ownerNode as HTMLElement | null;
@@ -50,7 +53,11 @@ export function collectDocumentStyles(): string {
 }
 
 /** Abre uma nova janela com HTML pronto a imprimir. */
-export async function printHtml(payload: { title: string; html: string; landscape?: boolean }): Promise<boolean> {
+export async function printHtml(payload: {
+  title: string;
+  html: string;
+  landscape?: boolean;
+}): Promise<boolean> {
   const w = window.open("", "_blank");
   if (!w) return false;
   w.document.write(payload.html);

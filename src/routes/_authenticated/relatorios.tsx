@@ -11,7 +11,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FileSpreadsheet, FileText } from "lucide-react";
 import { toast } from "sonner";
 import { localDateIso } from "@/lib/format";
-import { paintBeforeHeavyWork, runNativeExcelReport, runNativePdfReport } from "@/lib/dom-helpers";
+import { yieldToBrowser } from "@/lib/dom-helpers";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
   head: () => ({ meta: [{ title: "Relatórios e SIGO — Gestão Pedagógica" }] }),
@@ -40,7 +40,7 @@ function RelatoriosPage() {
     if (busy) return;
     try {
       setBusy(key);
-      await paintBeforeHeavyWork();
+      await yieldToBrowser();
       await fn();
       toast.success("Exportação concluída");
     } catch (e: any) {
@@ -80,14 +80,12 @@ function RelatoriosPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Button disabled={!cursoId || !!busy} onClick={() => run("sigo", async () => {
-                const native = await runNativeExcelReport("sigo-curso", { cursoId });
-                if (!native) await (await import("@/lib/exports")).exportSigoCurso(cursoId);
+                await (await import("@/lib/exports")).exportSigoCurso(cursoId);
               })}>
                 <FileSpreadsheet className="size-4" /> {busy === "sigo" ? "A exportar…" : "Excel"}
               </Button>
               <Button variant="outline" disabled={!cursoId || !!busy} onClick={() => run("sigo-pdf", async () => {
-                const native = await runNativePdfReport("sigo-curso", { cursoId });
-                if (!native) await (await import("@/lib/pdf-exports")).exportSigoCursoPdf(cursoId);
+                await (await import("@/lib/pdf-exports")).exportSigoCursoPdf(cursoId);
               })}>
                 <FileText className="size-4" /> {busy === "sigo-pdf" ? "A exportar…" : "PDF"}
               </Button>
@@ -111,14 +109,12 @@ function RelatoriosPage() {
             </div>
             <div className="grid grid-cols-2 gap-2">
               <Button disabled={!inicio || !fim || !!busy} onClick={() => run("form", async () => {
-                const native = await runNativeExcelReport("relatorio-formadores", { inicio, fim });
-                if (!native) await (await import("@/lib/exports")).exportRelatorioFormadores(inicio, fim);
+                await (await import("@/lib/exports")).exportRelatorioFormadores(inicio, fim);
               })}>
                 <FileSpreadsheet className="size-4" /> {busy === "form" ? "A exportar…" : "Excel"}
               </Button>
               <Button variant="outline" disabled={!inicio || !fim || !!busy} onClick={() => run("form-pdf", async () => {
-                const native = await runNativePdfReport("relatorio-formadores", { inicio, fim });
-                if (!native) await (await import("@/lib/pdf-exports")).exportRelatorioFormadoresPdf(inicio, fim);
+                await (await import("@/lib/pdf-exports")).exportRelatorioFormadoresPdf(inicio, fim);
               })}>
                 <FileText className="size-4" /> {busy === "form-pdf" ? "A exportar…" : "PDF"}
               </Button>
@@ -138,14 +134,12 @@ function RelatoriosPage() {
             </p>
             <div className="flex gap-2">
               <Button disabled={!!busy} onClick={() => run("cursos", async () => {
-                const native = await runNativeExcelReport("relatorio-cursos", {});
-                if (!native) await (await import("@/lib/exports")).exportRelatorioCursos();
+                await (await import("@/lib/exports")).exportRelatorioCursos();
               })}>
                 <FileSpreadsheet className="size-4" /> {busy === "cursos" ? "A exportar…" : "Excel"}
               </Button>
               <Button variant="outline" disabled={!!busy} onClick={() => run("cursos-pdf", async () => {
-                const native = await runNativePdfReport("relatorio-cursos", {});
-                if (!native) await (await import("@/lib/pdf-exports")).exportRelatorioCursosPdf();
+                await (await import("@/lib/pdf-exports")).exportRelatorioCursosPdf();
               })}>
                 <FileText className="size-4" /> {busy === "cursos-pdf" ? "A exportar…" : "PDF"}
               </Button>
@@ -165,14 +159,12 @@ function RelatoriosPage() {
             </p>
             <div className="flex gap-2">
               <Button disabled={!inicio || !fim || !!busy} onClick={() => run("faltas", async () => {
-                const native = await runNativeExcelReport("relatorio-faltas", { inicio, fim });
-                if (!native) await (await import("@/lib/exports")).exportRelatorioFaltas(inicio, fim);
+                await (await import("@/lib/exports")).exportRelatorioFaltas(inicio, fim);
               })}>
                 <FileSpreadsheet className="size-4" /> {busy === "faltas" ? "A exportar…" : "Excel"}
               </Button>
               <Button variant="outline" disabled={!inicio || !fim || !!busy} onClick={() => run("faltas-pdf", async () => {
-                const native = await runNativePdfReport("relatorio-faltas", { inicio, fim });
-                if (!native) await (await import("@/lib/pdf-exports")).exportRelatorioFaltasPdf(inicio, fim);
+                await (await import("@/lib/pdf-exports")).exportRelatorioFaltasPdf(inicio, fim);
               })}>
                 <FileText className="size-4" /> {busy === "faltas-pdf" ? "A exportar…" : "PDF"}
               </Button>

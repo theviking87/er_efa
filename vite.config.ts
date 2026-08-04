@@ -7,10 +7,13 @@
 import { defineConfig } from "@lovable.dev/vite-tanstack-config";
 
 // Instância Supabase própria (única fonte de dados da aplicação).
-// A chave publishable é pública por design (RLS protege os dados).
+// A chave publishable é lida do ambiente (TARGET_* no editor, VITE_* no Vercel).
 const SUPABASE_URL = "https://dpmyqqmsyzyysprsihou.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_-X38NUVxto7hiA2nwYmSyQ_C7rxaiMx";
 const SUPABASE_PROJECT_ID = "dpmyqqmsyzyysprsihou";
+const SUPABASE_PUBLISHABLE_KEY =
+  process.env.TARGET_SUPABASE_PUBLISHABLE_KEY ||
+  process.env.VITE_SUPABASE_PUBLISHABLE_KEY ||
+  "";
 
 export default defineConfig({
   tanstackStart: {

@@ -15,4 +15,8 @@ export default defineConfig({
     // nitro/vite builds from this
     server: { entry: "server" },
   },
+  // Alvo de deploy explícito: o Vercel precisa do preset "vercel" (.vercel/output).
+  // Sem isto o build pode cair no preset por omissão (cloudflare-module), gerando um
+  // worker que o Vercel não consegue servir em runtime.
+  nitro: { preset: "vercel" },
 });

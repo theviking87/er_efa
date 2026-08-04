@@ -2,7 +2,8 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { TIPOLOGIA_LABEL, ESTADO_CURSO_LABEL, fmtDate } from "@/lib/format";
-import { yieldToBrowser } from "@/lib/dom-helpers";
+import { localRows, yieldToBrowser } from "@/lib/dom-helpers";
+import { saveFileElectron } from "@/lib/dom-helpers";
 
 const BRAND = [37, 99, 235] as [number, number, number]; // azul
 const MUTED = [100, 116, 139] as [number, number, number];
@@ -71,7 +72,7 @@ async function savePdf(doc: jsPDF, filename: string) {
   await yieldToBrowser();
   if (import.meta.env.VITE_OFFLINE === "1") {
     const bytes = doc.output("arraybuffer");
-    const saved = await saveFile(filename, bytes, [{ name: "PDF", extensions: ["pdf"] }]);
+    const saved = await saveFileElectron(filename, bytes, [{ name: "PDF", extensions: ["pdf"] }]);
     if (saved) return;
   }
   doc.save(filename);
@@ -217,6 +218,26 @@ export async function exportSigoCursoPdf(cursoId: string) {
   let sess: any[];
   let ufcdById: Map<string, any>;
   let formadorById: Map<string, any>;
+    const [curso, cursoUfcds, sessoes] = await Promise.all([
+      supabase.from("cursos").select("*").eq("id", cursoId).maybeSingle(),
+      supabase.from("curso_ufcds")
+        .select("id, horas_totais, concluida, ordem, ufcd_id")
+        .eq("curso_id", cursoId).order("ordem"),
+      supabase.from("sessoes")
+        .select("data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id")
+        .eq("curso_id", cursoId).order("data").order("hora_inicio"),
+    ]);
+    if (!curso.data) throw new Error("Curso não encontrado");
+    if (cursoUfcds.error) throw cursoUfcds.error;
+    if (sessoes.error) throw sessoes.error;
+    c = curso.data as any;
+    cufs = cursoUfcds.data ?? [];
+    sess = sessoes.data ?? [];
+    [ufcdById, formadorById] = await Promise.all([
+      rowsById("ufcds", "id, codigo, designacao", uniqueIds(cufs.map((u: any) => u.ufcd_id))),
+      rowsById("formadores", "id, nome", uniqueIds(sess.map((s: any) => s.formador_id))),
+    ]);
+  
   const cufById = new Map(cufs.map((u: any) => [u.id, u]));
 
   const horasPorCuf = new Map<string, number>();
@@ -293,6 +314,19 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
   let cursoById: Map<string, any>;
   let cufById: Map<string, any>;
   let ufcdById: Map<string, any>;
+    const { data, error } = await supabase.from("sessoes")
+      .select("data, horas, formador_id, curso_id, curso_ufcd_id")
+      .gte("data", inicio).lte("data", fim)
+      .order("data");
+    if (error) throw error;
+    rows = data ?? [];
+    [formadorById, cursoById, cufById] = await Promise.all([
+      rowsById("formadores", "id, nome, nif", uniqueIds(rows.map((s: any) => s.formador_id))),
+      rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
+      rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(rows.map((s: any) => s.curso_ufcd_id))),
+    ]);
+    ufcdById = await rowsById("ufcds", "id, codigo", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
+  
 
   const agg = new Map<string, { formador: string; nif: string; horas: number; sessoes: number }>();
   rows.forEach((s: any) => {
@@ -361,6 +395,22 @@ export async function exportRelatorioCursosPdf() {
   let cursosRows: any[];
   let horasPorCurso = new Map<string, number>();
   let totais = new Map<string, { total: number; concluidas: number; n: number }>();
+    const [cursos, ufcds, sessoes] = await Promise.all([
+      supabase.from("cursos").select("id, codigo, nome, tipologia, estado, data_inicio, data_fim"),
+      supabase.from("curso_ufcds").select("id, curso_id, horas_totais, concluida"),
+      supabase.from("sessoes").select("curso_id, horas"),
+    ]);
+
+    cursosRows = cursos.data ?? [];
+    (sessoes.data ?? []).forEach((s: any) => {
+      horasPorCurso.set(s.curso_id, (horasPorCurso.get(s.curso_id) ?? 0) + Number(s.horas));
+    });
+    (ufcds.data ?? []).forEach((u: any) => {
+      const cur = totais.get(u.curso_id) ?? { total: 0, concluidas: 0, n: 0 };
+      cur.total += Number(u.horas_totais); cur.n += 1; if (u.concluida) cur.concluidas += 1;
+      totais.set(u.curso_id, cur);
+    });
+  
 
   const doc = newDoc("landscape");
   header(doc, "Execução de cursos", `Atualizado em ${new Date().toLocaleDateString("pt-PT")}`);

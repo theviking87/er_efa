@@ -9,7 +9,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import { fmtDate } from "@/lib/format";
-import { yieldToBrowser } from "@/lib/dom-helpers";
+import { paintBeforeHeavyWork } from "@/lib/dom-helpers";
 
 
 export function NotaHonorariosCard({ soloExterno = false }: { soloExterno?: boolean } = {}) {
@@ -144,7 +144,7 @@ export function NotaHonorariosCard({ soloExterno = false }: { soloExterno?: bool
     }
     try {
       setBusy(true);
-      await yieldToBrowser();
+      await paintBeforeHeavyWork();
       const { exportNotaHonorariosPdf } = await import("@/lib/pdf-exports");
       await exportNotaHonorariosPdf({
         modo: tipoFormador === "externo" ? "avulso" : modo,

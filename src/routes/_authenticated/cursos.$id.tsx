@@ -25,7 +25,8 @@ import { compareUfcdCodigo } from "@/lib/utils";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
-import { yieldToBrowser, collectDocumentStyles, printHtml } from "@/lib/dom-helpers";
+import { localRows, paintBeforeHeavyWork, yieldToBrowser } from "@/lib/dom-helpers";
+import { collectDocumentStyles, printHtmlWithFallback, runNativeExcelReport } from "@/lib/dom-helpers";
 
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
@@ -78,8 +79,9 @@ function CursoDetail() {
             </Button>
             <Button variant="outline" onClick={async () => {
               try {
-                await yieldToBrowser();
-                await exportSigoCurso(id);
+                await paintBeforeHeavyWork();
+                const native = await runNativeExcelReport("sigo-curso", { cursoId: id });
+                if (!native) await exportSigoCurso(id);
                 toast.success("Exportado");
               } catch (e: any) { toast.error(e.message); }
             }}>
@@ -305,7 +307,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
       <script>window.onload=()=>setTimeout(()=>window.print(),100)</script>
       </body></html>`;
     try {
-      const ok = await printHtml({ title: "UFCD sem formador", html, landscape: false });
+      const ok = await printHtmlWithFallback({ title: "UFCD sem formador", html, landscape: false });
       if (!ok) toast.error("Não foi possível abrir a impressão");
     } catch (e: any) {
       toast.error("Erro na impressão", { description: e.message });
@@ -331,7 +333,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
       <script>window.onload=()=>setTimeout(()=>window.print(),100)</script>
       </body></html>`;
     try {
-      const ok = await printHtml({ title: "UFCD com formador", html, landscape: false });
+      const ok = await printHtmlWithFallback({ title: "UFCD com formador", html, landscape: false });
       if (!ok) toast.error("Não foi possível abrir a impressão");
     } catch (e: any) {
       toast.error("Erro na impressão", { description: e.message });
@@ -1327,7 +1329,7 @@ function CronogramaTab({ cursoId, cursoNome, cursoCodigo }: { cursoId: string; c
         .text-red-600 { color: #dc2626 !important; font-weight: 700 !important; }
       </style></head><body><div id="cronograma-print"><div class="cronograma-page">${node.querySelector(".cronograma-page")?.innerHTML ?? ""}</div><div class="horas-page text-[10px]">${node.querySelector(".horas-page")?.innerHTML ?? ""}</div></div><script>window.onload=()=>setTimeout(()=>{window.focus();window.print();},250)<\/script></body></html>`;
     try {
-      const ok = await printHtml({ title: `Cronograma ${cursoCodigo}`, html, landscape: true });
+      const ok = await printHtmlWithFallback({ title: `Cronograma ${cursoCodigo}`, html, landscape: true });
       if (!ok) toast.error("Não foi possível abrir a impressão");
     } catch (e: any) {
       toast.error("Erro na impressão", { description: e.message });
@@ -2625,6 +2627,13 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
         .map((i: any) => ({ curso_formando_id: i.id, horas: Number(faltasDraft[i.id]?.horas ?? 0), tipo: (faltasDraft[i.id]?.tipo ?? "injustificada") as "justificada" | "injustificada" }))
         .filter((r: any) => r.horas > 0);
 
+        const del = await supabase.from("formando_faltas").delete().eq("sessao_id", sessao.id);
+        if (del.error) throw del.error;
+        if (rows.length) {
+          const ins = await supabase.from("formando_faltas").insert(rows.map((r: any) => ({ ...r, sessao_id: sessao.id, data: sessao.data })) as never);
+          if (ins.error) throw ins.error;
+        }
+      
       toast.success("Faltas guardadas");
       qc.invalidateQueries({ queryKey: ["faltas", cursoId, sessaoId] });
       qc.invalidateQueries({ queryKey: ["faltas-totais", cursoId] });
@@ -2706,8 +2715,9 @@ function FaltasTab({ cursoId }: { cursoId: string }) {
           <Button variant="outline" size="sm" disabled={exportingFaltas} onClick={async () => {
             try {
               setExportingFaltas(true);
-              await yieldToBrowser();
-              await exportFaltasCurso(cursoId);
+              await paintBeforeHeavyWork();
+              const native = await runNativeExcelReport("faltas-curso", { cursoId });
+              if (!native) await exportFaltasCurso(cursoId);
               toast.success("Exportado");
             } catch (e: any) {
               toast.error(e.message);

@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Loader2, CheckCircle2, AlertCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
-import { saveFile } from "@/lib/dom-helpers";
+import { saveFileElectron } from "@/lib/dom-helpers";
 import { criarBackup, restaurarBackup } from "@/lib/backup";
 
 export const Route = createFileRoute("/_authenticated/exportar")({
@@ -39,7 +39,7 @@ function ExportarPage() {
 
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
       const filename = `backup-formacao-${stamp}.zip`;
-      const saved = await saveFile(filename, await blob.arrayBuffer(), [
+      const saved = await saveFileElectron(filename, await blob.arrayBuffer(), [
         { name: "Backup ZIP", extensions: ["zip"] },
       ]);
       if (!saved) {

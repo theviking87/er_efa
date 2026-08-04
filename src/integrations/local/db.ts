@@ -17,22 +17,37 @@ let pkCache: Record<string, string[]> = {};
 
 const DB_NAME = "idb://formacao-er";
 
+/** Ordena os statements: tabelas → chaves primárias/únicas → chaves estrangeiras → restantes. */
+function orderStatements(stmts: string[]): string[] {
+  const rank = (s: string) => {
+    if (/^create\s+(table|type|extension|schema)/i.test(s)) return 0;
+    if (/primary key|add constraint\s+\S+\s+unique/i.test(s)) return 1;
+    if (/foreign key/i.test(s)) return 2;
+    return 3;
+  };
+  return stmts.map((s, i) => ({ s, i, r: rank(s) })).sort((a, b) => a.r - b.r || a.i - b.i).map((x) => x.s);
+}
+
+async function runSchema(db: PGlite) {
+  for (const stmt of orderStatements(splitSql(SCHEMA_SQL))) {
+    try {
+      await db.exec(stmt);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (!/already exists|duplicate/i.test(msg)) throw e;
+    }
+  }
+}
+
 async function bootstrap(db: PGlite) {
   const existing = await db.query<{ n: number }>(
     "select count(*)::int as n from information_schema.tables where table_schema='public' and table_name='cursos'",
   );
   if ((existing.rows[0]?.n ?? 0) === 0) {
-    const statements = splitSql(SCHEMA_SQL);
-    for (const stmt of statements) {
-      try {
-        await db.exec(stmt);
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        if (!/already exists|duplicate/i.test(msg)) throw e;
-      }
-    }
+    await runSchema(db);
   }
 }
+
 
 /** Divide SQL em statements, respeitando $fn$ ... $fn$ */
 function splitSql(sql: string): string[] {

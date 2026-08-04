@@ -77,11 +77,6 @@ function CursoDetail() {
             <Button variant="outline" onClick={() => setEditOpen(true)}>
               <Pencil className="size-4" /> Editar
             </Button>
-            <Button variant="outline" asChild>
-              <Link to="/cursos/$id/importar" params={{ id }}>
-                <Upload className="size-4" /> Importar cronograma
-              </Link>
-            </Button>
             <Button variant="outline" onClick={async () => {
               try {
                 await paintBeforeHeavyWork();

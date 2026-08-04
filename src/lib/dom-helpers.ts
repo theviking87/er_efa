@@ -1,8 +1,4 @@
-// Utilitários de UI/exportação usados por várias páginas.
-// Este ficheiro substitui os antigos wrappers específicos de contexto que
-// existiam antes da v2.0.
-
-type SaveFilter = { name: string; extensions: string[] };
+// Utilitários de UI/exportação usados por várias páginas (browser).
 
 /** Cede o thread ao browser para permitir repintar entre trabalhos pesados. */
 export function yieldToBrowser() {
@@ -15,27 +11,11 @@ export function yieldToBrowser() {
   });
 }
 
-/** Alias mantido para chamadas existentes. */
-export const paintBeforeHeavyWork = yieldToBrowser;
-
-/**
- * Executor pass-through — usado por chamadas legadas que verificavam um
- * caminho alternativo de dados. Retorna sempre `null` para forçar o fallback
- * habitual via Supabase.
- */
-export async function localRows<T = unknown>(_sql: string, _params?: unknown[]): Promise<T[] | null> {
-  void _sql;
-  void _params;
-  return null;
-}
-
 /** Download de ficheiro no browser via anchor + object URL. */
 export async function saveFile(
   filename: string,
   bytes: ArrayBuffer | Uint8Array,
-  _filters?: SaveFilter[],
 ): Promise<boolean> {
-  void _filters;
   const buffer = bytes instanceof Uint8Array
     ? bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
     : bytes;
@@ -49,9 +29,6 @@ export async function saveFile(
   setTimeout(() => URL.revokeObjectURL(url), 1000);
   return true;
 }
-
-/** Alias compatível com chamadas antigas. */
-export const saveFileElectron = saveFile;
 
 /** Recolhe as folhas de estilo aplicadas ao documento (para impressão). */
 export function collectDocumentStyles(): string {
@@ -79,23 +56,4 @@ export async function printHtml(payload: { title: string; html: string; landscap
   w.document.write(payload.html);
   w.document.close();
   return true;
-}
-
-/** Alias compatível com chamadas antigas. */
-export const printHtmlWithFallback = printHtml;
-
-/**
- * Placeholder para relatórios nativos (removidos na v2.0). Retorna sempre
- * `false` para que o chamador use a rota de exportação em browser.
- */
-export async function runNativeExcelReport(_name: string, _params?: Record<string, unknown>): Promise<boolean> {
-  void _name;
-  void _params;
-  return false;
-}
-
-export async function runNativePdfReport(_name: string, _params?: Record<string, unknown>): Promise<boolean> {
-  void _name;
-  void _params;
-  return false;
 }

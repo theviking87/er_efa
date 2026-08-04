@@ -17,8 +17,7 @@ export const extrairReferencialPdf = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d: unknown) => Input.parse(d))
   .handler(async ({ data, context }) => {
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY em falta");
+    const { extractJsonFromPdf } = await import("./ai/openai.server");
 
     const systemPrompt = `És um assistente que extrai a lista de UFCD de um referencial de formação em PDF.
 Devolves APENAS JSON válido no formato:
@@ -31,42 +30,12 @@ Regras:
 - Ignora cabeçalhos, índices, totais, áreas de formação e tudo o que não seja uma UFCD individual.
 - Não inventes UFCD que não estejam claramente no documento.`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", "Lovable-API-Key": key },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Extrai todas as UFCD deste referencial." },
-              {
-                type: "file",
-                file: {
-                  filename: data.filename ?? "referencial.pdf",
-                  file_data: `data:application/pdf;base64,${data.pdfBase64}`,
-                },
-              },
-            ],
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const parsed: any = await extractJsonFromPdf({
+      systemPrompt,
+      userText: "Extrai todas as UFCD deste referencial.",
+      filename: data.filename ?? "referencial.pdf",
+      pdfBase64: data.pdfBase64,
     });
-
-    if (!res.ok) {
-      const txt = await res.text();
-      if (res.status === 429) throw new Error("Limite de pedidos atingido. Tenta novamente em alguns instantes.");
-      if (res.status === 402) throw new Error("Créditos esgotados. Adiciona créditos na workspace.");
-      throw new Error(`Erro da IA (${res.status}): ${txt.slice(0, 300)}`);
-    }
-
-    const payload = await res.json();
-    const content = payload?.choices?.[0]?.message?.content ?? "{}";
-    let parsed: any;
-    try { parsed = JSON.parse(content); } catch { throw new Error("A IA devolveu resposta inválida."); }
 
     const ufcds: UfcdExtraida[] = (parsed.ufcds ?? []).map((u: any) => ({
       codigo: String(u.codigo ?? "").trim(),

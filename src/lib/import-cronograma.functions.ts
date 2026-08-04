@@ -38,8 +38,7 @@ export const extrairCronogramaPdf = createServerFn({ method: "POST" })
       `${f.nome}${f.abreviatura ? ` (${f.abreviatura})` : ""}`
     ).join("\n");
 
-    const key = process.env.LOVABLE_API_KEY;
-    if (!key) throw new Error("LOVABLE_API_KEY em falta");
+    const { extractJsonFromPdf } = await import("./ai/openai.server");
 
     const systemPrompt = `És um assistente que extrai sessões de formação de um cronograma em PDF.
 Devolves APENAS JSON válido no formato:
@@ -64,45 +63,12 @@ ${ufcdList || "(nenhuma — usa o que aparecer no PDF)"}
 Formadores disponíveis:
 ${formadorList}`;
 
-    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Lovable-API-Key": key,
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-pro",
-        messages: [
-          { role: "system", content: systemPrompt },
-          {
-            role: "user",
-            content: [
-              { type: "text", text: "Extrai todas as sessões deste cronograma." },
-              {
-                type: "file",
-                file: {
-                  filename: data.filename ?? "cronograma.pdf",
-                  file_data: `data:application/pdf;base64,${data.pdfBase64}`,
-                },
-              },
-            ],
-          },
-        ],
-        response_format: { type: "json_object" },
-      }),
+    const parsed: any = await extractJsonFromPdf({
+      systemPrompt,
+      userText: "Extrai todas as sessões deste cronograma.",
+      filename: data.filename ?? "cronograma.pdf",
+      pdfBase64: data.pdfBase64,
     });
-
-    if (!res.ok) {
-      const txt = await res.text();
-      if (res.status === 429) throw new Error("Limite de pedidos atingido. Tenta novamente em alguns instantes.");
-      if (res.status === 402) throw new Error("Créditos esgotados. Adiciona créditos na workspace.");
-      throw new Error(`Erro da IA (${res.status}): ${txt.slice(0, 300)}`);
-    }
-
-    const payload = await res.json();
-    const content = payload?.choices?.[0]?.message?.content ?? "{}";
-    let parsed: any;
-    try { parsed = JSON.parse(content); } catch { throw new Error("A IA devolveu resposta inválida."); }
 
     const sessoes: SessaoExtraida[] = (parsed.sessoes ?? parsed.sessions ?? []).map((s: any) => ({
       data: s.data ?? s.date ?? "",

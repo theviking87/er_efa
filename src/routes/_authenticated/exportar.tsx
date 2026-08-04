@@ -39,17 +39,7 @@ function ExportarPage() {
 
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, "-");
       const filename = `backup-formacao-${stamp}.zip`;
-      const saved = await saveFile(filename, await blob.arrayBuffer(), [
-        { name: "Backup ZIP", extensions: ["zip"] },
-      ]);
-      if (!saved) {
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement("a");
-        a.href = url;
-        a.download = filename;
-        a.click();
-        URL.revokeObjectURL(url);
-      }
+      await saveFile(filename, await blob.arrayBuffer());
       update(1, { status: "done", detail: `${(blob.size / 1024 / 1024).toFixed(2)} MB` });
       toast.success("Exportação concluída");
     } catch (e) {

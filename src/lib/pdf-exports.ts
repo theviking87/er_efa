@@ -217,35 +217,6 @@ export async function exportSigoCursoPdf(cursoId: string) {
   let sess: any[];
   let ufcdById: Map<string, any>;
   let formadorById: Map<string, any>;
-  if (offline) {
-    const cursoRow = offline.find((r: any) => r.kind === "curso");
-    if (!cursoRow) throw new Error("Curso não encontrado");
-    c = cursoRow;
-    cufs = offline.filter((r: any) => r.kind === "ufcd").map((r: any) => ({ id: r.id, ufcd_id: r.ufcd_id, horas_totais: Number(r.horas_totais ?? 0), concluida: r.concluida, ordem: r.ordem }));
-    sess = offline.filter((r: any) => r.kind === "sessao").map((r: any) => ({ ...r, horas: Number(r.horas ?? 0) }));
-    ufcdById = new Map(offline.filter((r: any) => r.ufcd_id).map((r: any) => [r.ufcd_id, { id: r.ufcd_id, codigo: r.ufcd_codigo, designacao: r.ufcd_designacao }]));
-    formadorById = new Map(offline.filter((r: any) => r.formador_id).map((r: any) => [r.formador_id, { id: r.formador_id, nome: r.formador_nome }]));
-  } else {
-    const [curso, cursoUfcds, sessoes] = await Promise.all([
-      supabase.from("cursos").select("*").eq("id", cursoId).maybeSingle(),
-      supabase.from("curso_ufcds")
-        .select("id, horas_totais, concluida, ordem, ufcd_id")
-        .eq("curso_id", cursoId).order("ordem"),
-      supabase.from("sessoes")
-        .select("data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id")
-        .eq("curso_id", cursoId).order("data").order("hora_inicio"),
-    ]);
-    if (!curso.data) throw new Error("Curso não encontrado");
-    if (cursoUfcds.error) throw cursoUfcds.error;
-    if (sessoes.error) throw sessoes.error;
-    c = curso.data as any;
-    cufs = cursoUfcds.data ?? [];
-    sess = sessoes.data ?? [];
-    [ufcdById, formadorById] = await Promise.all([
-      rowsById("ufcds", "id, codigo, designacao", uniqueIds(cufs.map((u: any) => u.ufcd_id))),
-      rowsById("formadores", "id, nome", uniqueIds(sess.map((s: any) => s.formador_id))),
-    ]);
-  }
   const cufById = new Map(cufs.map((u: any) => [u.id, u]));
 
   const horasPorCuf = new Map<string, number>();
@@ -322,26 +293,6 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
   let cursoById: Map<string, any>;
   let cufById: Map<string, any>;
   let ufcdById: Map<string, any>;
-  if (offline) {
-    rows = offline;
-    formadorById = new Map(rows.filter((s: any) => s.formador_id).map((s: any) => [s.formador_id, { id: s.formador_id, nome: s.formador_nome, nif: s.formador_nif }]));
-    cursoById = new Map(rows.filter((s: any) => s.curso_id).map((s: any) => [s.curso_id, { id: s.curso_id, codigo: s.curso_codigo }]));
-    cufById = new Map(rows.filter((s: any) => s.curso_ufcd_id).map((s: any) => [s.curso_ufcd_id, { id: s.curso_ufcd_id, ufcd_id: s.ufcd_id }]));
-    ufcdById = new Map(rows.filter((s: any) => s.ufcd_id).map((s: any) => [s.ufcd_id, { id: s.ufcd_id, codigo: s.ufcd_codigo }]));
-  } else {
-    const { data, error } = await supabase.from("sessoes")
-      .select("data, horas, formador_id, curso_id, curso_ufcd_id")
-      .gte("data", inicio).lte("data", fim)
-      .order("data");
-    if (error) throw error;
-    rows = data ?? [];
-    [formadorById, cursoById, cufById] = await Promise.all([
-      rowsById("formadores", "id, nome, nif", uniqueIds(rows.map((s: any) => s.formador_id))),
-      rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
-      rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(rows.map((s: any) => s.curso_ufcd_id))),
-    ]);
-    ufcdById = await rowsById("ufcds", "id, codigo", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
-  }
 
   const agg = new Map<string, { formador: string; nif: string; horas: number; sessoes: number }>();
   rows.forEach((s: any) => {
@@ -410,29 +361,6 @@ export async function exportRelatorioCursosPdf() {
   let cursosRows: any[];
   let horasPorCurso = new Map<string, number>();
   let totais = new Map<string, { total: number; concluidas: number; n: number }>();
-  if (offline) {
-    cursosRows = offline;
-    offline.forEach((c: any) => {
-      horasPorCurso.set(c.id, Number(c.realizadas ?? 0));
-      totais.set(c.id, { total: Number(c.previstas ?? 0), concluidas: Number(c.concluidas ?? 0), n: Number(c.n_ufcds ?? 0) });
-    });
-  } else {
-    const [cursos, ufcds, sessoes] = await Promise.all([
-      supabase.from("cursos").select("id, codigo, nome, tipologia, estado, data_inicio, data_fim"),
-      supabase.from("curso_ufcds").select("id, curso_id, horas_totais, concluida"),
-      supabase.from("sessoes").select("curso_id, horas"),
-    ]);
-
-    cursosRows = cursos.data ?? [];
-    (sessoes.data ?? []).forEach((s: any) => {
-      horasPorCurso.set(s.curso_id, (horasPorCurso.get(s.curso_id) ?? 0) + Number(s.horas));
-    });
-    (ufcds.data ?? []).forEach((u: any) => {
-      const cur = totais.get(u.curso_id) ?? { total: 0, concluidas: 0, n: 0 };
-      cur.total += Number(u.horas_totais); cur.n += 1; if (u.concluida) cur.concluidas += 1;
-      totais.set(u.curso_id, cur);
-    });
-  }
 
   const doc = newDoc("landscape");
   header(doc, "Execução de cursos", `Atualizado em ${new Date().toLocaleDateString("pt-PT")}`);

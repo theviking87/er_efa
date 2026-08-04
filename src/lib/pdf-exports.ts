@@ -2,54 +2,70 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { supabase } from "@/integrations/supabase/client";
 import { TIPOLOGIA_LABEL, ESTADO_CURSO_LABEL, fmtDate } from "@/lib/format";
-import { localRows, yieldToBrowser } from "@/lib/dom-helpers";
-import { saveFileElectron } from "@/lib/dom-helpers";
+import { yieldToBrowser, saveFile } from "@/lib/dom-helpers";
 
 const BRAND = [37, 99, 235] as [number, number, number]; // azul
 const MUTED = [100, 116, 139] as [number, number, number];
 
 // ============= Branding (logos institucionais) =============
 type Branding = {
-  logoEmpresa?: string; logoDgert?: string; logoPessoas?: string;
-  empresa_nome?: string; empresa_nif?: string; empresa_morada?: string;
+  logoEmpresa?: string;
+  logoDgert?: string;
+  logoPessoas?: string;
+  empresa_nome?: string;
+  empresa_nif?: string;
+  empresa_morada?: string;
 };
 let brandingCache: Branding | null = null;
 async function _toDataUrl(url?: string | null): Promise<string | undefined> {
   if (!url) return undefined;
   try {
-    const r = await fetch(url); if (!r.ok) return undefined;
+    const r = await fetch(url);
+    if (!r.ok) return undefined;
     const b = await r.blob();
-    return await new Promise<string>(res => {
+    return await new Promise<string>((res) => {
       const fr = new FileReader();
       fr.onload = () => res(fr.result as string);
       fr.readAsDataURL(b);
     });
-  } catch { return undefined; }
+  } catch {
+    return undefined;
+  }
 }
 export async function loadBranding(): Promise<Branding> {
   if (brandingCache) return brandingCache;
   try {
-    const { data } = await supabase.from("fin_config")
-      .select("logo_empresa_url, logo_dgert_url, logo_pessoas2030_url, empresa_nome, empresa_nif, empresa_morada")
-      .limit(1).maybeSingle();
+    const { data } = await supabase
+      .from("fin_config")
+      .select(
+        "logo_empresa_url, logo_dgert_url, logo_pessoas2030_url, empresa_nome, empresa_nif, empresa_morada",
+      )
+      .limit(1)
+      .maybeSingle();
     const [e, d, p] = await Promise.all([
       _toDataUrl(data?.logo_empresa_url),
       _toDataUrl(data?.logo_dgert_url),
       _toDataUrl(data?.logo_pessoas2030_url),
     ]);
     brandingCache = {
-      logoEmpresa: e, logoDgert: d, logoPessoas: p,
+      logoEmpresa: e,
+      logoDgert: d,
+      logoPessoas: p,
       empresa_nome: data?.empresa_nome ?? undefined,
       empresa_nif: data?.empresa_nif ?? undefined,
       empresa_morada: data?.empresa_morada ?? undefined,
     };
-  } catch { brandingCache = {}; }
+  } catch {
+    brandingCache = {};
+  }
   return brandingCache;
 }
-export function getBrandingSync(): Branding { return brandingCache ?? {}; }
+export function getBrandingSync(): Branding {
+  return brandingCache ?? {};
+}
 
 export const HEADER_LOGO_BAND = 18; // faixa branca com logos
-export const HEADER_BAR = 18;        // faixa azul com título
+export const HEADER_BAR = 18; // faixa azul com título
 export const CONTENT_TOP = HEADER_LOGO_BAND + HEADER_BAR + 8; // = 44
 
 function sanitize(s: string) {
@@ -60,11 +76,9 @@ function uniqueIds(values: Array<string | null | undefined>) {
   return Array.from(new Set(values.filter(Boolean) as string[]));
 }
 
-async function rowsById(table: string, columns: string, ids: string[]) {
+async function rowsById(table: string, columns: string, ids: string[]): Promise<Map<string, any>> {
   if (!ids.length) return new Map<string, any>();
   const placeholders = ids.map((_, i) => `$${i + 1}`).join(",");
-  const offline = await localRows<any>(`SELECT ${columns} FROM ${table} WHERE id IN (${placeholders})`, ids);
-  if (offline) return new Map(offline.map((r: any) => [r.id, r]));
   const { data, error } = await (supabase as any).from(table).select(columns).in("id", ids);
   if (error) throw error;
   return new Map((data ?? []).map((r: any) => [r.id, r]));
@@ -72,11 +86,6 @@ async function rowsById(table: string, columns: string, ids: string[]) {
 
 async function savePdf(doc: jsPDF, filename: string) {
   await yieldToBrowser();
-  if (import.meta.env.VITE_OFFLINE === "1") {
-    const bytes = doc.output("arraybuffer");
-    const saved = await saveFileElectron(filename, bytes, [{ name: "PDF", extensions: ["pdf"] }]);
-    if (saved) return;
-  }
   doc.save(filename);
 }
 
@@ -94,25 +103,37 @@ function imgFmt(dataUrl?: string): "PNG" | "JPEG" {
 function fitBox(doc: jsPDF, dataUrl: string, maxW: number, maxH: number): { w: number; h: number } {
   try {
     const p: any = doc.getImageProperties(dataUrl);
-    const nw = p?.width ?? maxW, nh = p?.height ?? maxH;
+    const nw = p?.width ?? maxW,
+      nh = p?.height ?? maxH;
     const r = Math.min(maxW / nw, maxH / nh);
     return { w: nw * r, h: nh * r };
-  } catch { return { w: maxW, h: maxH }; }
+  } catch {
+    return { w: maxW, h: maxH };
+  }
 }
 
 function drawLogoBand(doc: jsPDF) {
   const b = getBrandingSync();
   const w = doc.internal.pageSize.getWidth();
-  const maxW = 34, maxH = 16;
+  const maxW = 34,
+    maxH = 16;
   if (b.logoEmpresa) {
     const s = fitBox(doc, b.logoEmpresa, maxW, maxH);
     const y = (HEADER_LOGO_BAND - s.h) / 2;
-    try { doc.addImage(b.logoEmpresa, imgFmt(b.logoEmpresa), 14, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+    try {
+      doc.addImage(b.logoEmpresa, imgFmt(b.logoEmpresa), 14, y, s.w, s.h, undefined, "NONE");
+    } catch {
+      /* noop */
+    }
   }
   if (b.logoDgert) {
     const s = fitBox(doc, b.logoDgert, maxW, maxH);
     const y = (HEADER_LOGO_BAND - s.h) / 2;
-    try { doc.addImage(b.logoDgert, imgFmt(b.logoDgert), w - 14 - s.w, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+    try {
+      doc.addImage(b.logoDgert, imgFmt(b.logoDgert), w - 14 - s.w, y, s.w, s.h, undefined, "NONE");
+    } catch {
+      /* noop */
+    }
   }
 }
 
@@ -142,7 +163,20 @@ function footer(doc: jsPDF) {
     doc.setPage(i);
     if (b.logoPessoas) {
       const s = fitBox(doc, b.logoPessoas, 70, 22);
-      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), w - 14 - s.w, h - 14 - s.h, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+      try {
+        doc.addImage(
+          b.logoPessoas,
+          imgFmt(b.logoPessoas),
+          w - 14 - s.w,
+          h - 14 - s.h,
+          s.w,
+          s.h,
+          undefined,
+          "NONE",
+        );
+      } catch {
+        /* noop */
+      }
     }
 
     doc.setDrawColor(...MUTED);
@@ -175,7 +209,11 @@ function footerNotaHonorarios(doc: jsPDF) {
       const s = fitBox(doc, b.logoPessoas, 80, 18);
       const x = (w - s.w) / 2;
       const y = h - footerH + 10 + (14 - s.h) / 2;
-      try { doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), x, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+      try {
+        doc.addImage(b.logoPessoas, imgFmt(b.logoPessoas), x, y, s.w, s.h, undefined, "NONE");
+      } catch {
+        /* noop */
+      }
     }
 
     doc.setTextColor(...MUTED);
@@ -186,8 +224,6 @@ function footerNotaHonorarios(doc: jsPDF) {
     doc.setTextColor(0, 0, 0);
   }
 }
-
-
 
 const tableTheme = {
   styles: { font: "helvetica", fontSize: 8.5, cellPadding: 2, overflow: "linebreak" as const },
@@ -214,65 +250,37 @@ function infoBlock(doc: jsPDF, startY: number, items: [string, string][]) {
 // ============= 1. SIGO por curso =============
 export async function exportSigoCursoPdf(cursoId: string) {
   await loadBranding();
-  const offline = await localRows<any>(`
-    SELECT 'curso' AS kind, c.id, c.codigo, c.nome, c.tipologia, c.estado, c.data_inicio, c.data_fim,
-           NULL::uuid AS ufcd_id, NULL::text AS ufcd_codigo, NULL::text AS ufcd_designacao,
-           NULL::numeric AS horas_totais, NULL::boolean AS concluida, NULL::integer AS ordem,
-           NULL::date AS data, NULL::time AS hora_inicio, NULL::time AS hora_fim, NULL::numeric AS horas,
-           NULL::uuid AS formador_id, NULL::text AS formador_nome, NULL::uuid AS curso_ufcd_id
-      FROM cursos c WHERE c.id = $1
-    UNION ALL
-    SELECT 'ufcd' AS kind, cu.id, NULL, NULL, NULL, NULL, NULL, NULL,
-           cu.ufcd_id, u.codigo, u.designacao, cu.horas_totais, cu.concluida, cu.ordem,
-           NULL, NULL, NULL, NULL, NULL, NULL, cu.id
-      FROM curso_ufcds cu LEFT JOIN ufcds u ON u.id = cu.ufcd_id
-     WHERE cu.curso_id = $1
-    UNION ALL
-    SELECT 'sessao' AS kind, s.id, NULL, NULL, NULL, NULL, NULL, NULL,
-           cu.ufcd_id, u.codigo, u.designacao, NULL, NULL, NULL,
-           s.data, s.hora_inicio, s.hora_fim, s.horas, s.formador_id, f.nome, s.curso_ufcd_id
-      FROM sessoes s
-      LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
-      LEFT JOIN ufcds u ON u.id = cu.ufcd_id
-      LEFT JOIN formadores f ON f.id = s.formador_id
-     WHERE s.curso_id = $1
-     ORDER BY kind, data, hora_inicio
-  `, [cursoId]);
 
   let c: any;
   let cufs: any[];
   let sess: any[];
   let ufcdById: Map<string, any>;
   let formadorById: Map<string, any>;
-  if (offline) {
-    const cursoRow = offline.find((r: any) => r.kind === "curso");
-    if (!cursoRow) throw new Error("Curso não encontrado");
-    c = cursoRow;
-    cufs = offline.filter((r: any) => r.kind === "ufcd").map((r: any) => ({ id: r.id, ufcd_id: r.ufcd_id, horas_totais: Number(r.horas_totais ?? 0), concluida: r.concluida, ordem: r.ordem }));
-    sess = offline.filter((r: any) => r.kind === "sessao").map((r: any) => ({ ...r, horas: Number(r.horas ?? 0) }));
-    ufcdById = new Map(offline.filter((r: any) => r.ufcd_id).map((r: any) => [r.ufcd_id, { id: r.ufcd_id, codigo: r.ufcd_codigo, designacao: r.ufcd_designacao }]));
-    formadorById = new Map(offline.filter((r: any) => r.formador_id).map((r: any) => [r.formador_id, { id: r.formador_id, nome: r.formador_nome }]));
-  } else {
-    const [curso, cursoUfcds, sessoes] = await Promise.all([
-      supabase.from("cursos").select("*").eq("id", cursoId).maybeSingle(),
-      supabase.from("curso_ufcds")
-        .select("id, horas_totais, concluida, ordem, ufcd_id")
-        .eq("curso_id", cursoId).order("ordem"),
-      supabase.from("sessoes")
-        .select("data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id")
-        .eq("curso_id", cursoId).order("data").order("hora_inicio"),
-    ]);
-    if (!curso.data) throw new Error("Curso não encontrado");
-    if (cursoUfcds.error) throw cursoUfcds.error;
-    if (sessoes.error) throw sessoes.error;
-    c = curso.data as any;
-    cufs = cursoUfcds.data ?? [];
-    sess = sessoes.data ?? [];
-    [ufcdById, formadorById] = await Promise.all([
-      rowsById("ufcds", "id, codigo, designacao", uniqueIds(cufs.map((u: any) => u.ufcd_id))),
-      rowsById("formadores", "id, nome", uniqueIds(sess.map((s: any) => s.formador_id))),
-    ]);
-  }
+  const [curso, cursoUfcds, sessoes] = await Promise.all([
+    supabase.from("cursos").select("*").eq("id", cursoId).maybeSingle(),
+    supabase
+      .from("curso_ufcds")
+      .select("id, horas_totais, concluida, ordem, ufcd_id")
+      .eq("curso_id", cursoId)
+      .order("ordem"),
+    supabase
+      .from("sessoes")
+      .select("data, hora_inicio, hora_fim, horas, formador_id, curso_ufcd_id")
+      .eq("curso_id", cursoId)
+      .order("data")
+      .order("hora_inicio"),
+  ]);
+  if (!curso.data) throw new Error("Curso não encontrado");
+  if (cursoUfcds.error) throw cursoUfcds.error;
+  if (sessoes.error) throw sessoes.error;
+  c = curso.data as any;
+  cufs = cursoUfcds.data ?? [];
+  sess = sessoes.data ?? [];
+  [ufcdById, formadorById] = await Promise.all([
+    rowsById("ufcds", "id, codigo, designacao", uniqueIds(cufs.map((u: any) => u.ufcd_id))),
+    rowsById("formadores", "id, nome", uniqueIds(sess.map((s: any) => s.formador_id))),
+  ]);
+
   const cufById = new Map(cufs.map((u: any) => [u.id, u]));
 
   const horasPorCuf = new Map<string, number>();
@@ -294,7 +302,8 @@ export async function exportSigoCursoPdf(cursoId: string) {
   ]);
 
   y += 3;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
   doc.text("UFCD do curso", 14, y);
   autoTable(doc, {
     ...tableTheme,
@@ -312,7 +321,12 @@ export async function exportSigoCursoPdf(cursoId: string) {
         u.concluida ? "Sim" : "Não",
       ];
     }),
-    columnStyles: { 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "center" } },
+    columnStyles: {
+      2: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "center" },
+    },
   });
 
   doc.addPage();
@@ -344,51 +358,42 @@ export async function exportSigoCursoPdf(cursoId: string) {
 // ============= 2. Horas por formador =============
 export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) {
   await loadBranding();
-  const offline = await localRows<any>(`
-    SELECT s.data, s.horas, s.formador_id, s.curso_id, s.curso_ufcd_id,
-           f.nome AS formador_nome, f.nif AS formador_nif,
-           c.codigo AS curso_codigo,
-           cu.ufcd_id, u.codigo AS ufcd_codigo
-      FROM sessoes s
-      LEFT JOIN formadores f ON f.id = s.formador_id
-      LEFT JOIN cursos c ON c.id = s.curso_id
-      LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
-      LEFT JOIN ufcds u ON u.id = cu.ufcd_id
-     WHERE s.data >= $1 AND s.data <= $2
-     ORDER BY s.data ASC
-  `, [inicio, fim]);
   let rows: any[];
   let formadorById: Map<string, any>;
   let cursoById: Map<string, any>;
   let cufById: Map<string, any>;
   let ufcdById: Map<string, any>;
-  if (offline) {
-    rows = offline;
-    formadorById = new Map(rows.filter((s: any) => s.formador_id).map((s: any) => [s.formador_id, { id: s.formador_id, nome: s.formador_nome, nif: s.formador_nif }]));
-    cursoById = new Map(rows.filter((s: any) => s.curso_id).map((s: any) => [s.curso_id, { id: s.curso_id, codigo: s.curso_codigo }]));
-    cufById = new Map(rows.filter((s: any) => s.curso_ufcd_id).map((s: any) => [s.curso_ufcd_id, { id: s.curso_ufcd_id, ufcd_id: s.ufcd_id }]));
-    ufcdById = new Map(rows.filter((s: any) => s.ufcd_id).map((s: any) => [s.ufcd_id, { id: s.ufcd_id, codigo: s.ufcd_codigo }]));
-  } else {
-    const { data, error } = await supabase.from("sessoes")
-      .select("data, horas, formador_id, curso_id, curso_ufcd_id")
-      .gte("data", inicio).lte("data", fim)
-      .order("data");
-    if (error) throw error;
-    rows = data ?? [];
-    [formadorById, cursoById, cufById] = await Promise.all([
-      rowsById("formadores", "id, nome, nif", uniqueIds(rows.map((s: any) => s.formador_id))),
-      rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
-      rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(rows.map((s: any) => s.curso_ufcd_id))),
-    ]);
-    ufcdById = await rowsById("ufcds", "id, codigo", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
-  }
+  const { data, error } = await supabase
+    .from("sessoes")
+    .select("data, horas, formador_id, curso_id, curso_ufcd_id")
+    .gte("data", inicio)
+    .lte("data", fim)
+    .order("data");
+  if (error) throw error;
+  rows = data ?? [];
+  [formadorById, cursoById, cufById] = await Promise.all([
+    rowsById("formadores", "id, nome, nif", uniqueIds(rows.map((s: any) => s.formador_id))),
+    rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
+    rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(rows.map((s: any) => s.curso_ufcd_id))),
+  ]);
+  ufcdById = await rowsById(
+    "ufcds",
+    "id, codigo",
+    uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)),
+  );
 
   const agg = new Map<string, { formador: string; nif: string; horas: number; sessoes: number }>();
   rows.forEach((s: any) => {
     const formador = formadorById.get(s.formador_id);
     const k = formador?.id ?? "—";
-    const cur = agg.get(k) ?? { formador: formador?.nome ?? "—", nif: formador?.nif ?? "", horas: 0, sessoes: 0 };
-    cur.horas += Number(s.horas); cur.sessoes += 1;
+    const cur = agg.get(k) ?? {
+      formador: formador?.nome ?? "—",
+      nif: formador?.nif ?? "",
+      horas: 0,
+      sessoes: 0,
+    };
+    cur.horas += Number(s.horas);
+    cur.sessoes += 1;
     agg.set(k, cur);
   });
   const totalH = rows.reduce((a: number, s: any) => a + Number(s.horas), 0);
@@ -403,7 +408,8 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
   ]);
 
   y += 3;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
   doc.text("Resumo por formador", 14, y);
   autoTable(doc, {
     ...tableTheme,
@@ -411,7 +417,7 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
     head: [["Formador", "NIF", "Sessões", "Horas"]],
     body: Array.from(agg.values())
       .sort((a, b) => b.horas - a.horas)
-      .map(a => [a.formador, a.nif, String(a.sessoes), `${a.horas}h`]),
+      .map((a) => [a.formador, a.nif, String(a.sessoes), `${a.horas}h`]),
     columnStyles: { 2: { halign: "right" }, 3: { halign: "right", fontStyle: "bold" } },
     foot: [["", "Total", String(rows.length), `${totalH}h`]],
     footStyles: { fillColor: [241, 245, 249], textColor: 0, fontStyle: "bold" },
@@ -446,49 +452,27 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
 // ============= 3. Execução de cursos =============
 export async function exportRelatorioCursosPdf() {
   await loadBranding();
-  const offline = await localRows<any>(`
-    SELECT c.id, c.codigo, c.nome, c.tipologia, c.estado, c.data_inicio, c.data_fim,
-           COUNT(cu.id) AS n_ufcds,
-           SUM(CASE WHEN cu.concluida THEN 1 ELSE 0 END) AS concluidas,
-           SUM(COALESCE(cu.horas_totais, 0)) AS previstas,
-           COALESCE(h.realizadas, 0) AS realizadas
-      FROM cursos c
-      LEFT JOIN curso_ufcds cu ON cu.curso_id = c.id
-      LEFT JOIN (
-        SELECT curso_id, SUM(COALESCE(horas, 0)) AS realizadas
-          FROM sessoes
-         GROUP BY curso_id
-      ) h ON h.curso_id = c.id
-     GROUP BY c.id, c.codigo, c.nome, c.tipologia, c.estado, c.data_inicio, c.data_fim, h.realizadas
-     ORDER BY c.codigo ASC
-  `);
 
   let cursosRows: any[];
   let horasPorCurso = new Map<string, number>();
   let totais = new Map<string, { total: number; concluidas: number; n: number }>();
-  if (offline) {
-    cursosRows = offline;
-    offline.forEach((c: any) => {
-      horasPorCurso.set(c.id, Number(c.realizadas ?? 0));
-      totais.set(c.id, { total: Number(c.previstas ?? 0), concluidas: Number(c.concluidas ?? 0), n: Number(c.n_ufcds ?? 0) });
-    });
-  } else {
-    const [cursos, ufcds, sessoes] = await Promise.all([
-      supabase.from("cursos").select("id, codigo, nome, tipologia, estado, data_inicio, data_fim"),
-      supabase.from("curso_ufcds").select("id, curso_id, horas_totais, concluida"),
-      supabase.from("sessoes").select("curso_id, horas"),
-    ]);
+  const [cursos, ufcds, sessoes] = await Promise.all([
+    supabase.from("cursos").select("id, codigo, nome, tipologia, estado, data_inicio, data_fim"),
+    supabase.from("curso_ufcds").select("id, curso_id, horas_totais, concluida"),
+    supabase.from("sessoes").select("curso_id, horas"),
+  ]);
 
-    cursosRows = cursos.data ?? [];
-    (sessoes.data ?? []).forEach((s: any) => {
-      horasPorCurso.set(s.curso_id, (horasPorCurso.get(s.curso_id) ?? 0) + Number(s.horas));
-    });
-    (ufcds.data ?? []).forEach((u: any) => {
-      const cur = totais.get(u.curso_id) ?? { total: 0, concluidas: 0, n: 0 };
-      cur.total += Number(u.horas_totais); cur.n += 1; if (u.concluida) cur.concluidas += 1;
-      totais.set(u.curso_id, cur);
-    });
-  }
+  cursosRows = cursos.data ?? [];
+  (sessoes.data ?? []).forEach((s: any) => {
+    horasPorCurso.set(s.curso_id, (horasPorCurso.get(s.curso_id) ?? 0) + Number(s.horas));
+  });
+  (ufcds.data ?? []).forEach((u: any) => {
+    const cur = totais.get(u.curso_id) ?? { total: 0, concluidas: 0, n: 0 };
+    cur.total += Number(u.horas_totais);
+    cur.n += 1;
+    if (u.concluida) cur.concluidas += 1;
+    totais.set(u.curso_id, cur);
+  });
 
   const doc = newDoc("landscape");
   header(doc, "Execução de cursos", `Atualizado em ${new Date().toLocaleDateString("pt-PT")}`);
@@ -496,22 +480,49 @@ export async function exportRelatorioCursosPdf() {
   autoTable(doc, {
     ...tableTheme,
     startY: 24,
-    head: [["Código", "Curso", "Tipologia", "Estado", "Início", "Fim", "UFCD", "Concl.", "Previstas", "Dadas", "Faltam", "%"]],
+    head: [
+      [
+        "Código",
+        "Curso",
+        "Tipologia",
+        "Estado",
+        "Início",
+        "Fim",
+        "UFCD",
+        "Concl.",
+        "Previstas",
+        "Dadas",
+        "Faltam",
+        "%",
+      ],
+    ],
     body: cursosRows.map((c: any) => {
       const t = totais.get(c.id) ?? { total: 0, concluidas: 0, n: 0 };
       const r = horasPorCurso.get(c.id) ?? 0;
       const pct = t.total > 0 ? Math.round((r / t.total) * 1000) / 10 : 0;
       return [
-        c.codigo, c.nome,
+        c.codigo,
+        c.nome,
         TIPOLOGIA_LABEL[c.tipologia] ?? c.tipologia ?? "",
         ESTADO_CURSO_LABEL[c.estado] ?? c.estado ?? "",
         c.data_inicio ? fmtDate(c.data_inicio) : "",
         c.data_fim ? fmtDate(c.data_fim) : "",
-        String(t.n), String(t.concluidas),
-        `${t.total}h`, `${r}h`, `${Math.max(0, t.total - r)}h`, `${pct}%`,
+        String(t.n),
+        String(t.concluidas),
+        `${t.total}h`,
+        `${r}h`,
+        `${Math.max(0, t.total - r)}h`,
+        `${pct}%`,
       ];
     }),
-    columnStyles: { 6: { halign: "right" }, 7: { halign: "right" }, 8: { halign: "right" }, 9: { halign: "right" }, 10: { halign: "right" }, 11: { halign: "right", fontStyle: "bold" } },
+    columnStyles: {
+      6: { halign: "right" },
+      7: { halign: "right" },
+      8: { halign: "right" },
+      9: { halign: "right" },
+      10: { halign: "right" },
+      11: { halign: "right", fontStyle: "bold" },
+    },
   });
 
   footer(doc);
@@ -521,74 +532,12 @@ export async function exportRelatorioCursosPdf() {
 // ============= 4. Faltas dos formandos =============
 export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
   await loadBranding();
-  const offline = await localRows<any>(`
-    SELECT ff.data, ff.horas, ff.tipo, ff.observacoes, ff.curso_formando_id, ff.sessao_id,
-           c.codigo AS curso_codigo, c.nome AS curso_nome,
-           fo.nome AS formando_nome, fo.nif AS formando_nif,
-           u.codigo AS ufcd_codigo,
-           s.hora_inicio, s.hora_fim,
-           cf.id AS cf_id, cf.curso_id
-      FROM formando_faltas ff
-      LEFT JOIN curso_formandos cf ON cf.id = ff.curso_formando_id
-      LEFT JOIN cursos c ON c.id = cf.curso_id
-      LEFT JOIN formandos fo ON fo.id = cf.formando_id
-      LEFT JOIN sessoes s ON s.id = ff.sessao_id
-      LEFT JOIN curso_ufcds cu ON cu.id = s.curso_ufcd_id
-      LEFT JOIN ufcds u ON u.id = cu.ufcd_id
-     WHERE ff.data >= $1 AND ff.data <= $2
-     ORDER BY ff.data ASC
-  `, [inicio, fim]);
-  if (offline) {
-    const m = new Map<string, { curso: string; formando: string; nif: string; just: number; injust: number }>();
-    offline.forEach((f: any) => {
-      const key = `${f.cf_id ?? ""}|${f.curso_id ?? ""}`;
-      const cur = m.get(key) ?? {
-        curso: `${f.curso_codigo ?? ""} — ${f.curso_nome ?? ""}`,
-        formando: f.formando_nome ?? "",
-        nif: f.formando_nif ?? "",
-        just: 0, injust: 0,
-      };
-      if (f.tipo === "justificada") cur.just += Number(f.horas);
-      else cur.injust += Number(f.horas);
-      m.set(key, cur);
-    });
-    const resumo = Array.from(m.values()).sort((a, b) => a.curso.localeCompare(b.curso) || a.formando.localeCompare(b.formando));
-    const totJ = resumo.reduce((a, r) => a + r.just, 0);
-    const totI = resumo.reduce((a, r) => a + r.injust, 0);
-
-    const doc = newDoc("portrait");
-    header(doc, "Faltas dos formandos", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
-    let y = infoBlock(doc, CONTENT_TOP, [["Registos", String(offline.length)], ["Horas justificadas", `${totJ}h`], ["Horas injustificadas", `${totI}h`]]);
-    y += 3;
-    doc.setFont("helvetica", "bold"); doc.setFontSize(10);
-    doc.text("Resumo por formando", 14, y);
-    autoTable(doc, {
-      ...tableTheme,
-      startY: y + 2,
-      head: [["Curso", "Formando", "NIF", "Just.", "Injust.", "Total"]],
-      body: resumo.map(r => [r.curso, r.formando, r.nif, `${r.just}h`, `${r.injust}h`, `${r.just + r.injust}h`]),
-      columnStyles: { 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right", fontStyle: "bold" } },
-      foot: [["", "", "Total", `${totJ}h`, `${totI}h`, `${totJ + totI}h`]],
-      footStyles: { fillColor: [241, 245, 249], textColor: 0, fontStyle: "bold" },
-    });
-    doc.addPage();
-    header(doc, "Faltas — detalhe", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
-    autoTable(doc, {
-      ...tableTheme,
-      startY: CONTENT_TOP,
-      head: [["Data", "Formando", "Curso", "UFCD", "Hora", "Horas", "Tipo", "Observações"]],
-      body: offline.map((f: any) => [fmtDate(f.data), f.formando_nome ?? "", f.curso_codigo ?? "", f.ufcd_codigo ?? "", `${String(f.hora_inicio ?? "").slice(0, 5)}–${String(f.hora_fim ?? "").slice(0, 5)}`, `${f.horas}h`, f.tipo === "justificada" ? "Just." : "Injust.", f.observacoes ?? ""]),
-      columnStyles: { 5: { halign: "right" }, 6: { halign: "center" } },
-    });
-    footer(doc);
-    await savePdf(doc, `Relatorio_Faltas_${inicio}_${fim}.pdf`);
-    return;
-  }
 
   const { data: faltas, error } = await supabase
     .from("formando_faltas")
     .select("data, horas, tipo, observacoes, curso_formando_id, sessao_id")
-    .gte("data", inicio).lte("data", fim)
+    .gte("data", inicio)
+    .lte("data", fim)
     .order("data");
   if (error) throw error;
 
@@ -600,21 +549,39 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
       ? supabase.from("curso_formandos").select("id, curso_id, formando_id").in("id", cfIds)
       : Promise.resolve({ data: [], error: null }),
     sessaoIds.length
-      ? supabase.from("sessoes").select("id, hora_inicio, hora_fim, curso_ufcd_id").in("id", sessaoIds)
+      ? supabase
+          .from("sessoes")
+          .select("id, hora_inicio, hora_fim, curso_ufcd_id")
+          .in("id", sessaoIds)
       : Promise.resolve({ data: [], error: null }),
   ]);
   if (cfs.error) throw cfs.error;
   if (sessoes.error) throw sessoes.error;
   const [cursoById, formandoById, cufById] = await Promise.all([
     rowsById("cursos", "id, codigo, nome", uniqueIds((cfs.data ?? []).map((r: any) => r.curso_id))),
-    rowsById("formandos", "id, nome, nif", uniqueIds((cfs.data ?? []).map((r: any) => r.formando_id))),
-    rowsById("curso_ufcds", "id, ufcd_id", uniqueIds((sessoes.data ?? []).map((r: any) => r.curso_ufcd_id))),
+    rowsById(
+      "formandos",
+      "id, nome, nif",
+      uniqueIds((cfs.data ?? []).map((r: any) => r.formando_id)),
+    ),
+    rowsById(
+      "curso_ufcds",
+      "id, ufcd_id",
+      uniqueIds((sessoes.data ?? []).map((r: any) => r.curso_ufcd_id)),
+    ),
   ]);
-  const ufcdById = await rowsById("ufcds", "id, codigo", uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)));
+  const ufcdById = await rowsById(
+    "ufcds",
+    "id, codigo",
+    uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)),
+  );
   const cfById = new Map((cfs.data ?? []).map((r: any) => [r.id, r]));
   const sessaoById = new Map((sessoes.data ?? []).map((r: any) => [r.id, r]));
 
-  const m = new Map<string, { curso: string; formando: string; nif: string; just: number; injust: number }>();
+  const m = new Map<
+    string,
+    { curso: string; formando: string; nif: string; just: number; injust: number }
+  >();
   lista.forEach((f: any) => {
     const cf = cfById.get(f.curso_formando_id);
     const key = (f.curso_formando_id ?? "") + "|" + (cf?.curso_id ?? "");
@@ -622,13 +589,16 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
       curso: `${cursoById.get(cf?.curso_id)?.codigo ?? ""} — ${cursoById.get(cf?.curso_id)?.nome ?? ""}`,
       formando: formandoById.get(cf?.formando_id)?.nome ?? "",
       nif: formandoById.get(cf?.formando_id)?.nif ?? "",
-      just: 0, injust: 0,
+      just: 0,
+      injust: 0,
     };
     if (f.tipo === "justificada") cur.just += Number(f.horas);
     else cur.injust += Number(f.horas);
     m.set(key, cur);
   });
-  const resumo = Array.from(m.values()).sort((a, b) => a.curso.localeCompare(b.curso) || a.formando.localeCompare(b.formando));
+  const resumo = Array.from(m.values()).sort(
+    (a, b) => a.curso.localeCompare(b.curso) || a.formando.localeCompare(b.formando),
+  );
   const totJ = resumo.reduce((a, r) => a + r.just, 0);
   const totI = resumo.reduce((a, r) => a + r.injust, 0);
 
@@ -642,14 +612,26 @@ export async function exportRelatorioFaltasPdf(inicio: string, fim: string) {
   ]);
 
   y += 3;
-  doc.setFont("helvetica", "bold"); doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
   doc.text("Resumo por formando", 14, y);
   autoTable(doc, {
     ...tableTheme,
     startY: y + 2,
     head: [["Curso", "Formando", "NIF", "Just.", "Injust.", "Total"]],
-    body: resumo.map(r => [r.curso, r.formando, r.nif, `${r.just}h`, `${r.injust}h`, `${r.just + r.injust}h`]),
-    columnStyles: { 3: { halign: "right" }, 4: { halign: "right" }, 5: { halign: "right", fontStyle: "bold" } },
+    body: resumo.map((r) => [
+      r.curso,
+      r.formando,
+      r.nif,
+      `${r.just}h`,
+      `${r.injust}h`,
+      `${r.just + r.injust}h`,
+    ]),
+    columnStyles: {
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "right", fontStyle: "bold" },
+    },
     foot: [["", "", "Total", `${totJ}h`, `${totI}h`, `${totJ + totI}h`]],
     footStyles: { fillColor: [241, 245, 249], textColor: 0, fontStyle: "bold" },
   });
@@ -727,7 +709,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   if (modo === "avulso") {
     if (!opts.formadorExterno?.nome) throw new Error("Nome do formador obrigatório");
     const usaTotal = (opts.valorTotalAvulso ?? 0) > 0;
-    if (!usaTotal && (!opts.horasAvulso || opts.horasAvulso <= 0)) throw new Error("Horas obrigatórias");
+    if (!usaTotal && (!opts.horasAvulso || opts.horasAvulso <= 0))
+      throw new Error("Horas obrigatórias");
   } else {
     if (!opts.formadorId) throw new Error("Formador obrigatório");
   }
@@ -742,7 +725,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     formador = opts.formadorExterno!;
   } else {
     const formadorId = opts.formadorId!;
-    let query = supabase.from("sessoes")
+    let query = supabase
+      .from("sessoes")
       .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
       .eq("formador_id", formadorId);
 
@@ -754,7 +738,6 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       if (opts.cursoId) query = query.eq("curso_id", opts.cursoId);
     }
 
-
     const [formadorRes, sessoesRes] = await Promise.all([
       supabase.from("formadores").select("*").eq("id", formadorId).maybeSingle(),
       query.order("data").order("hora_inicio"),
@@ -764,8 +747,8 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     formador = formadorRes.data;
     sess = sessoesRes.data ?? [];
 
-    const cufIds = uniqueIds(sess.map(s => s.curso_ufcd_id));
-    const cursoIds = uniqueIds(sess.map(s => s.curso_id));
+    const cufIds = uniqueIds(sess.map((s) => s.curso_ufcd_id));
+    const cursoIds = uniqueIds(sess.map((s) => s.curso_id));
     cufById = await rowsById("curso_ufcds", "id, ufcd_id, curso_id", cufIds);
     const ufcdIds = uniqueIds(Array.from(cufById.values()).map((c: any) => c.ufcd_id));
     [ufcdById, cursoById] = await Promise.all([
@@ -774,20 +757,19 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     ]);
 
     if (modo === "ufcd" && ufcdId) {
-      sess = sess.filter(s => {
+      sess = sess.filter((s) => {
         const cuf = cufById.get(s.curso_ufcd_id);
         return cuf?.ufcd_id === ufcdId;
       });
     }
   }
 
-
-  const avulsoTotal = modo === "avulso" && (opts.valorTotalAvulso ?? 0) > 0
-    ? Number(opts.valorTotalAvulso)
-    : null;
-  const totalHoras = modo === "avulso"
-    ? Number(opts.horasAvulso || 0)
-    : sess.reduce((a, s) => a + Number(s.horas || 0), 0);
+  const avulsoTotal =
+    modo === "avulso" && (opts.valorTotalAvulso ?? 0) > 0 ? Number(opts.valorTotalAvulso) : null;
+  const totalHoras =
+    modo === "avulso"
+      ? Number(opts.horasAvulso || 0)
+      : sess.reduce((a, s) => a + Number(s.horas || 0), 0);
   const subtotal = avulsoTotal !== null ? avulsoTotal : totalHoras * valorHora;
   const ivaPct = opts.iva ?? 0;
   const ivaValor = subtotal * (ivaPct / 100);
@@ -795,27 +777,52 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   const retencao = subtotal * (retencaoPct / 100);
   const total = subtotal + ivaValor - retencao;
 
-  const meses = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const meses = [
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+  ];
   const ufcdSel = modo === "ufcd" && ufcdId ? ufcdById.get(ufcdId) : null;
-  const periodoLabel = modo === "mes"
-    ? `${meses[mes!-1]} ${ano}`
-    : modo === "ufcd"
-      ? (ufcdSel ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}` : "UFCD")
-      : `Prestação de serviços — ${fmtDate(dataEmissao)}`;
-  const numeroSuffix = modo === "mes"
-    ? `${ano}${String(mes).padStart(2,"0")}`
-    : modo === "ufcd"
-      ? (ufcdSel ? String(ufcdSel.codigo).replace(/\s+/g,"") : "UFCD")
-      : dataEmissao.replace(/-/g,"");
-  const numero = opts.numero || `NH-${numeroSuffix}-${String(formador.nome || "").replace(/\s+/g,"").slice(0,4).toUpperCase()}`;
-
+  const periodoLabel =
+    modo === "mes"
+      ? `${meses[mes! - 1]} ${ano}`
+      : modo === "ufcd"
+        ? ufcdSel
+          ? `UFCD ${ufcdSel.codigo} — ${ufcdSel.designacao}`
+          : "UFCD"
+        : `Prestação de serviços — ${fmtDate(dataEmissao)}`;
+  const numeroSuffix =
+    modo === "mes"
+      ? `${ano}${String(mes).padStart(2, "0")}`
+      : modo === "ufcd"
+        ? ufcdSel
+          ? String(ufcdSel.codigo).replace(/\s+/g, "")
+          : "UFCD"
+        : dataEmissao.replace(/-/g, "");
+  const numero =
+    opts.numero ||
+    `NH-${numeroSuffix}-${String(formador.nome || "")
+      .replace(/\s+/g, "")
+      .slice(0, 4)
+      .toUpperCase()}`;
 
   const fmtEUR = (v: number) => `${v.toFixed(2).replace(".", ",")} €`;
 
   // Empresa (dados) da configuração — logos vêm do branding cache
-  const { data: cfg } = await supabase.from("fin_config")
+  const { data: cfg } = await supabase
+    .from("fin_config")
     .select("empresa_nome, empresa_nif, empresa_morada")
-    .limit(1).maybeSingle();
+    .limit(1)
+    .maybeSingle();
   const b = getBrandingSync();
   const logoE = b.logoEmpresa;
   const logoD = b.logoDgert;
@@ -825,71 +832,110 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   // Faixa de logotipos (topo) — Empresa à esquerda, DGERT à direita. Pessoas 2030 vai no rodapé.
   const logoBandH = 22;
-  const maxW = 38, maxH = 18;
+  const maxW = 38,
+    maxH = 18;
   if (logoE) {
     const s = fitBox(doc, logoE, maxW, maxH);
     const y = (logoBandH - s.h) / 2;
-    try { doc.addImage(logoE, imgFmt(logoE), 14, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+    try {
+      doc.addImage(logoE, imgFmt(logoE), 14, y, s.w, s.h, undefined, "NONE");
+    } catch {
+      /* noop */
+    }
   }
   if (logoD) {
     const s = fitBox(doc, logoD, maxW, maxH);
     const y = (logoBandH - s.h) / 2;
-    try { doc.addImage(logoD, imgFmt(logoD), w - 14 - s.w, y, s.w, s.h, undefined, "NONE"); } catch { /* noop */ }
+    try {
+      doc.addImage(logoD, imgFmt(logoD), w - 14 - s.w, y, s.w, s.h, undefined, "NONE");
+    } catch {
+      /* noop */
+    }
   }
-
 
   // Header azul
   doc.setFillColor(...BRAND);
   doc.rect(0, logoBandH, w, 22, "F");
-  doc.setTextColor(255,255,255);
-  doc.setFont("helvetica","bold"); doc.setFontSize(16);
+  doc.setTextColor(255, 255, 255);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(16);
   doc.text("NOTA DE HONORÁRIOS", 14, logoBandH + 13);
-  doc.setFont("helvetica","normal"); doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
   doc.text(`Nº ${numero}`, 14, logoBandH + 19);
   if (cfg?.empresa_nome) {
-    doc.setFont("helvetica","bold"); doc.setFontSize(10);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
     doc.text(cfg.empresa_nome, w - 14, logoBandH + 12, { align: "right" });
-    doc.setFont("helvetica","normal"); doc.setFontSize(8);
-    const linha2 = [cfg.empresa_nif ? `NIF ${cfg.empresa_nif}` : "", cfg.empresa_morada ?? ""].filter(Boolean).join(" • ");
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    const linha2 = [cfg.empresa_nif ? `NIF ${cfg.empresa_nif}` : "", cfg.empresa_morada ?? ""]
+      .filter(Boolean)
+      .join(" • ");
     if (linha2) doc.text(linha2, w - 14, logoBandH + 18, { align: "right" });
   }
-  doc.setTextColor(0,0,0);
+  doc.setTextColor(0, 0, 0);
 
   // Emitente
   let y = logoBandH + 32;
-  doc.setFont("helvetica","bold"); doc.setFontSize(10);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
   doc.text("EMITENTE", 14, y);
-  doc.setFont("helvetica","normal"); doc.setFontSize(9);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
   y += 5;
-  doc.text(formador.nome || "", 14, y); y += 4;
-  if (formador.nif) { doc.text(`NIF: ${formador.nif}`, 14, y); y += 4; }
-  if (formador.morada) { doc.text(formador.morada, 14, y); y += 4; }
-  if (formador.codigo_postal || formador.localidade) {
-    doc.text(`${formador.codigo_postal ?? ""} ${formador.localidade ?? ""}`.trim(), 14, y); y += 4;
+  doc.text(formador.nome || "", 14, y);
+  y += 4;
+  if (formador.nif) {
+    doc.text(`NIF: ${formador.nif}`, 14, y);
+    y += 4;
   }
-  if (formador.email) { doc.text(formador.email, 14, y); y += 4; }
-  if (formador.iban) { doc.text(`IBAN: ${formador.iban}`, 14, y); y += 4; }
+  if (formador.morada) {
+    doc.text(formador.morada, 14, y);
+    y += 4;
+  }
+  if (formador.codigo_postal || formador.localidade) {
+    doc.text(`${formador.codigo_postal ?? ""} ${formador.localidade ?? ""}`.trim(), 14, y);
+    y += 4;
+  }
+  if (formador.email) {
+    doc.text(formador.email, 14, y);
+    y += 4;
+  }
+  if (formador.iban) {
+    doc.text(`IBAN: ${formador.iban}`, 14, y);
+    y += 4;
+  }
 
   // Destinatário (lado direito)
   let yr = logoBandH + 32;
-  doc.setFont("helvetica","bold"); doc.setFontSize(10);
-  doc.text("DESTINATÁRIO", w/2 + 5, yr);
-  doc.setFont("helvetica","normal"); doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(10);
+  doc.text("DESTINATÁRIO", w / 2 + 5, yr);
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(9);
   yr += 5;
   const d = opts.destinatario ?? {};
-  doc.text(d.nome || "—", w/2 + 5, yr); yr += 4;
-  if (d.nif) { doc.text(`NIF: ${d.nif}`, w/2 + 5, yr); yr += 4; }
+  doc.text(d.nome || "—", w / 2 + 5, yr);
+  yr += 4;
+  if (d.nif) {
+    doc.text(`NIF: ${d.nif}`, w / 2 + 5, yr);
+    yr += 4;
+  }
   if (d.morada) {
-    const lines = doc.splitTextToSize(d.morada, w/2 - 20);
-    doc.text(lines, w/2 + 5, yr); yr += 4 * lines.length;
+    const lines = doc.splitTextToSize(d.morada, w / 2 - 20);
+    doc.text(lines, w / 2 + 5, yr);
+    yr += 4 * lines.length;
   }
 
   // Meta
   y = Math.max(y, yr) + 4;
-  doc.setDrawColor(...MUTED); doc.setLineWidth(0.2);
+  doc.setDrawColor(...MUTED);
+  doc.setLineWidth(0.2);
   doc.line(14, y, w - 14, y);
   y += 6;
-  doc.setFont("helvetica","bold"); doc.setFontSize(9);
+  doc.setFont("helvetica", "bold");
+  doc.setFontSize(9);
   doc.text(`Período: ${periodoLabel}`, 14, y);
   doc.text(`Data de emissão: ${fmtDate(dataEmissao)}`, w - 14, y, { align: "right" });
   y += 6;
@@ -900,12 +946,14 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       ...tableTheme,
       startY: y,
       head: [["Descrição", "Horas", "Valor/h", "Total"]],
-      body: [[
-        opts.descricaoAvulso || "Prestação de serviços de formação",
-        avulsoTotal !== null && totalHoras === 0 ? "—" : `${totalHoras.toFixed(2)}h`,
-        avulsoTotal !== null ? "—" : fmtEUR(valorHora),
-        fmtEUR(subtotal),
-      ]],
+      body: [
+        [
+          opts.descricaoAvulso || "Prestação de serviços de formação",
+          avulsoTotal !== null && totalHoras === 0 ? "—" : `${totalHoras.toFixed(2)}h`,
+          avulsoTotal !== null ? "—" : fmtEUR(valorHora),
+          fmtEUR(subtotal),
+        ],
+      ],
       columnStyles: {
         1: { halign: "right" },
         2: { halign: "right" },
@@ -913,18 +961,25 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       },
     });
   } else {
-    const body = sess.map(s => {
+    const body = sess.map((s) => {
       const cuf = cufById.get(s.curso_ufcd_id);
       const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
       const curso: any = cursoById.get(s.curso_id);
       const cursoTxt = curso
-        ? [curso.nome, curso.acao ? `Ação ${curso.acao}` : null, curso.codigo_operacao ? `Op ${curso.codigo_operacao}` : null, curso.codigo_sigo ? `SIGO ${curso.codigo_sigo}` : null].filter(Boolean).join("\n")
+        ? [
+            curso.nome,
+            curso.acao ? `Ação ${curso.acao}` : null,
+            curso.codigo_operacao ? `Op ${curso.codigo_operacao}` : null,
+            curso.codigo_sigo ? `SIGO ${curso.codigo_sigo}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n")
         : "";
       return [
         fmtDate(s.data),
         cursoTxt,
         ufcd ? `${ufcd.codigo} — ${ufcd.designacao}` : "",
-        `${(s.hora_inicio ?? "").slice(0,5)}–${(s.hora_fim ?? "").slice(0,5)}`,
+        `${(s.hora_inicio ?? "").slice(0, 5)}–${(s.hora_fim ?? "").slice(0, 5)}`,
         `${Number(s.horas).toFixed(2)}h`,
         fmtEUR(valorHora),
         fmtEUR(Number(s.horas) * valorHora),
@@ -934,7 +989,9 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       ...tableTheme,
       startY: y,
       head: [["Data", "Curso", "UFCD", "Horário", "Horas", "Valor/h", "Total"]],
-      body: body.length ? body : [["—","—","Sem sessões no período","—","0h", fmtEUR(valorHora), fmtEUR(0)]],
+      body: body.length
+        ? body
+        : [["—", "—", "Sem sessões no período", "—", "0h", fmtEUR(valorHora), fmtEUR(0)]],
       columnStyles: {
         4: { halign: "right" },
         5: { halign: "right" },
@@ -942,7 +999,6 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
       },
     });
   }
-
 
   let yEnd = (doc as any).lastAutoTable.finalY + 6;
 
@@ -953,9 +1009,11 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     (!(avulsoTotal !== null && totalHoras === 0) ? 1 : 0) + // total horas
     1 + // subtotal
     1 + // IVA (sempre)
-    1;  // Retenção (sempre)
-  const totalsHeight = rowsNormal * 5 + 2 /* linha */ + 7 /* TOTAL */;
-  const obsLines = opts.observacoes ? doc.splitTextToSize(opts.observacoes, doc.internal.pageSize.getWidth() - 28).length : 0;
+    1; // Retenção (sempre)
+  const totalsHeight = rowsNormal * 5 + 2 /* linha */ + 7; /* TOTAL */
+  const obsLines = opts.observacoes
+    ? doc.splitTextToSize(opts.observacoes, doc.internal.pageSize.getWidth() - 28).length
+    : 0;
   const obsHeight = opts.observacoes ? 4 + 4 * obsLines + 6 : 0;
   const legalHeight = 10 + 4;
   const needed = totalsHeight + obsHeight + legalHeight;
@@ -975,13 +1033,15 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
     doc.text(value, w2 - 14, yEnd, { align: "right" });
     yEnd += bold ? 7 : 5;
   };
-  if (!(avulsoTotal !== null && totalHoras === 0)) drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
+  if (!(avulsoTotal !== null && totalHoras === 0))
+    drawRow("Total de horas:", `${totalHoras.toFixed(2)}h`);
   drawRow("Subtotal:", fmtEUR(subtotal));
   if (!opts.aplicarIva || ivaPct === 0) drawRow("IVA:", "Regime de isenção");
   else if (ivaPct > 0) drawRow(`IVA (${ivaPct}%):`, `+ ${fmtEUR(ivaValor)}`);
   if (retencaoPct > 0) drawRow(`Retenção IRS (${retencaoPct}%):`, `- ${fmtEUR(retencao)}`);
   else if (retencaoPct === 0) drawRow("Retenção IRS:", "Regime de isenção");
-  doc.setDrawColor(...BRAND); doc.setLineWidth(0.5);
+  doc.setDrawColor(...BRAND);
+  doc.setLineWidth(0.5);
   doc.line(boxX, yEnd - 2, w2 - 14, yEnd - 2);
   yEnd += 2;
   drawRow("TOTAL A PAGAR:", fmtEUR(total), true);
@@ -989,9 +1049,10 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
   // Observações
   if (opts.observacoes) {
     yEnd += 6;
-    doc.setFont("helvetica","bold"); doc.setFontSize(9);
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(9);
     doc.text("Observações", 14, yEnd);
-    doc.setFont("helvetica","normal");
+    doc.setFont("helvetica", "normal");
     yEnd += 4;
     const lines = doc.splitTextToSize(opts.observacoes, w2 - 28);
     doc.text(lines, 14, yEnd);
@@ -1000,24 +1061,29 @@ export async function exportNotaHonorariosPdf(opts: NotaHonorariosOpts) {
 
   // Nota legal
   yEnd += 10;
-  doc.setFont("helvetica","italic"); doc.setFontSize(8);
+  doc.setFont("helvetica", "italic");
+  doc.setFontSize(8);
   doc.setTextColor(...MUTED);
-  doc.text("Documento sem valor fiscal. Emitido para efeitos de processamento de honorários.", 14, yEnd);
-  doc.setTextColor(0,0,0);
-
+  doc.text(
+    "Documento sem valor fiscal. Emitido para efeitos de processamento de honorários.",
+    14,
+    yEnd,
+  );
+  doc.setTextColor(0, 0, 0);
 
   footerNotaHonorarios(doc);
-  const fnameSuffix = modo === "mes"
-    ? `${ano}-${String(mes).padStart(2,"0")}`
-    : modo === "ufcd"
-      ? (ufcdSel ? sanitize(String(ufcdSel.codigo)) : "ufcd")
-      : `avulso-${dataEmissao}`;
+  const fnameSuffix =
+    modo === "mes"
+      ? `${ano}-${String(mes).padStart(2, "0")}`
+      : modo === "ufcd"
+        ? ufcdSel
+          ? sanitize(String(ufcdSel.codigo))
+          : "ufcd"
+        : `avulso-${dataEmissao}`;
   const fname = `NotaHonorarios_${sanitize(formador.nome || "formador")}_${fnameSuffix}.pdf`;
-
 
   await savePdf(doc, fname);
 }
-
 
 // ============= Mapa de pagamentos para contabilidade =============
 const RUBRICA_NOME: Record<string, string> = {
@@ -1037,7 +1103,20 @@ export async function exportPagamentosContabilidadePdf(opts: {
   mes: number;
 }) {
   await loadBranding();
-  const MESES_PT = ["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"];
+  const MESES_PT = [
+    "Janeiro",
+    "Fevereiro",
+    "Março",
+    "Abril",
+    "Maio",
+    "Junho",
+    "Julho",
+    "Agosto",
+    "Setembro",
+    "Outubro",
+    "Novembro",
+    "Dezembro",
+  ];
   const periodo = `${MESES_PT[opts.mes - 1]} ${opts.ano}`;
 
   const { data: linhas, error } = await (supabase as any)
@@ -1047,7 +1126,13 @@ export async function exportPagamentosContabilidadePdf(opts: {
     .not("formando_id", "is", null);
   if (error) throw error;
 
-  type Reg = { nome: string; iban: string; nif: string; rubricas: Record<string, number>; total: number };
+  type Reg = {
+    nome: string;
+    iban: string;
+    nif: string;
+    rubricas: Record<string, number>;
+    total: number;
+  };
   const map = new Map<string, Reg>();
   for (const l of (linhas ?? []) as any[]) {
     const v = l.valor_manual != null ? Number(l.valor_manual) : Number(l.valor ?? 0);
@@ -1056,7 +1141,8 @@ export async function exportPagamentosContabilidadePdf(opts: {
       nome: l.formando?.nome ?? "—",
       iban: l.formando?.iban ?? "",
       nif: l.formando?.nif ?? "",
-      rubricas: {} as Record<string, number>, total: 0,
+      rubricas: {} as Record<string, number>,
+      total: 0,
     };
 
     r.rubricas[l.rubrica] = (r.rubricas[l.rubrica] ?? 0) + v;
@@ -1066,21 +1152,23 @@ export async function exportPagamentosContabilidadePdf(opts: {
   const regs = Array.from(map.values()).sort((a, b) => a.nome.localeCompare(b.nome));
   if (!regs.length) throw new Error("Sem valores para exportar.");
 
-  const rubricasPresentes = RUBRICA_ORDEM.filter(r => regs.some(x => (x.rubricas[r] ?? 0) > 0));
+  const rubricasPresentes = RUBRICA_ORDEM.filter((r) => regs.some((x) => (x.rubricas[r] ?? 0) > 0));
   const eur = (n: number) => `${n.toFixed(2).replace(".", ",")} €`;
 
   const doc = newDoc("landscape");
   header(doc, "Mapa de Pagamentos — Contabilidade", `${opts.cursoNome} · ${periodo}`);
 
-  const body = regs.map(r => [
+  const body = regs.map((r) => [
     r.nome,
     r.iban || "—",
     r.nif || "—",
-    ...rubricasPresentes.map(rb => (r.rubricas[rb] ? eur(r.rubricas[rb]) : "—")),
+    ...rubricasPresentes.map((rb) => (r.rubricas[rb] ? eur(r.rubricas[rb]) : "—")),
     eur(r.total),
   ]);
 
-  const totaisRub = rubricasPresentes.map(rb => regs.reduce((s, r) => s + (r.rubricas[rb] ?? 0), 0));
+  const totaisRub = rubricasPresentes.map((rb) =>
+    regs.reduce((s, r) => s + (r.rubricas[rb] ?? 0), 0),
+  );
   const totalGeral = regs.reduce((s, r) => s + r.total, 0);
 
   autoTable(doc, {
@@ -1104,8 +1192,10 @@ export async function exportPagamentosContabilidadePdf(opts: {
   doc.setFontSize(8);
   doc.setTextColor(...MUTED);
   doc.text(
-    `Legenda: ${rubricasPresentes.map(r => `${r} — ${RUBRICA_NOME[r]}`).join("; ")}.`,
-    14, y, { maxWidth: doc.internal.pageSize.getWidth() - 28 },
+    `Legenda: ${rubricasPresentes.map((r) => `${r} — ${RUBRICA_NOME[r]}`).join("; ")}.`,
+    14,
+    y,
+    { maxWidth: doc.internal.pageSize.getWidth() - 28 },
   );
   y += 5;
   doc.text(`Total de formandos: ${regs.length} · Total a pagar: ${eur(totalGeral)}`, 14, y);

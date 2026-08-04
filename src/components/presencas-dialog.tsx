@@ -1,21 +1,35 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fmtDate } from "@/lib/format";
-import { localRows } from "@/lib/dom-helpers";
 
 type Estado = "presente" | "online" | "justificada" | "injustificada";
 
 export function PresencasDialog({
-  open, onOpenChange, sessao,
+  open,
+  onOpenChange,
+  sessao,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  sessao: { id: string; curso_id: string; data: string; horas: number; hora_inicio: string; hora_fim: string } | null;
+  sessao: {
+    id: string;
+    curso_id: string;
+    data: string;
+    horas: number;
+    hora_inicio: string;
+    hora_fim: string;
+  } | null;
 }) {
   const qc = useQueryClient();
 
@@ -24,32 +38,22 @@ export function PresencasDialog({
     enabled: !!sessao && open,
     queryFn: async () => {
       const sessaoData = sessao!.data;
-      const offline = await localRows<any>(`
-        SELECT cf.id, cf.estado, cf.data_desistencia, cf.data_conclusao, f.id AS formando_id, f.nome AS formando_nome
-          FROM curso_formandos cf
-          JOIN formandos f ON f.id = cf.formando_id
-         WHERE cf.curso_id = $1
-           AND cf.estado IN ('inscrito', 'em_formacao', 'desistente', 'concluido')
-         ORDER BY f.nome ASC
-      `, [sessao!.curso_id]);
-      const rows = offline
-        ? offline.map((r: any) => ({ id: r.id, estado: r.estado, data_desistencia: r.data_desistencia, data_conclusao: r.data_conclusao, formando: { id: r.formando_id, nome: r.formando_nome } }))
-        : await (async () => {
-            const { data, error } = await supabase
-              .from("curso_formandos")
-              .select("id, estado, data_desistencia, data_conclusao, formando:formandos(id, nome)")
-              .eq("curso_id", sessao!.curso_id);
-            if (error) throw error;
-            return (data ?? []).filter((i: any) => i.formando);
-          })();
+      const { data, error } = await supabase
+        .from("curso_formandos")
+        .select("id, estado, data_desistencia, data_conclusao, formando:formandos(id, nome)")
+        .eq("curso_id", sessao!.curso_id);
+      if (error) throw error;
+      const rows = (data ?? []).filter((i: any) => i.formando);
       // Ativos na data da sessão: inclui inscritos/em_formação, e ex-inscritos cuja desistência/conclusão só ocorreu depois desta sessão.
-      return rows.filter((r: any) => {
-        if (r.data_desistencia && r.data_desistencia <= sessaoData) return false;
-        if (r.data_conclusao && r.data_conclusao < sessaoData) return false;
-        if (r.estado === "desistente" && !r.data_desistencia) return false;
-        if (r.estado === "concluido" && !r.data_conclusao) return false;
-        return true;
-      }).sort((a: any, b: any) => a.formando.nome.localeCompare(b.formando.nome));
+      return rows
+        .filter((r: any) => {
+          if (r.data_desistencia && r.data_desistencia <= sessaoData) return false;
+          if (r.data_conclusao && r.data_conclusao < sessaoData) return false;
+          if (r.estado === "desistente" && !r.data_desistencia) return false;
+          if (r.estado === "concluido" && !r.data_conclusao) return false;
+          return true;
+        })
+        .sort((a: any, b: any) => a.formando.nome.localeCompare(b.formando.nome));
     },
   });
 
@@ -57,12 +61,6 @@ export function PresencasDialog({
     queryKey: ["presencas-faltas", sessao?.id],
     enabled: !!sessao && open,
     queryFn: async () => {
-      const offline = await localRows<any>(`
-        SELECT id, curso_formando_id, tipo, horas, observacoes
-          FROM formando_faltas
-         WHERE sessao_id = $1
-      `, [sessao!.id]);
-      if (offline) return offline;
       const { data, error } = await supabase
         .from("formando_faltas")
         .select("id, curso_formando_id, tipo, horas, observacoes")
@@ -104,12 +102,13 @@ export function PresencasDialog({
         const obsTxt = (obs[i.id] ?? "").trim();
         if (estado === "presente") continue;
         // Online: marcador de sessão remota — 0h de falta, apenas retira TR.
-        const horas = estado === "online"
-          ? 0
-          : (() => {
-              const h = Number(horasFalta[i.id] ?? sessao.horas);
-              return Number.isFinite(h) && h > 0 ? Math.min(h, sessao.horas) : sessao.horas;
-            })();
+        const horas =
+          estado === "online"
+            ? 0
+            : (() => {
+                const h = Number(horasFalta[i.id] ?? sessao.horas);
+                return Number.isFinite(h) && h > 0 ? Math.min(h, sessao.horas) : sessao.horas;
+              })();
         aInserir.push({
           curso_formando_id: i.id,
           sessao_id: sessao.id,
@@ -120,24 +119,11 @@ export function PresencasDialog({
         });
       }
 
-      const offlineDelete = await localRows<any>(`DELETE FROM formando_faltas WHERE sessao_id = $1`, [sessao.id]);
-      if (offlineDelete) {
-        if (aInserir.length) {
-          const params: any[] = [];
-          const values = aInserir.map((r: any) => {
-            params.push(r.curso_formando_id, r.sessao_id, r.data, r.horas, r.tipo, r.observacoes);
-            const n = params.length;
-            return `(gen_random_uuid(), $${n - 5}, $${n - 4}, $${n - 3}, $${n - 2}, $${n - 1}, $${n})`;
-          }).join(",");
-          await localRows<any>(`INSERT INTO formando_faltas (id, curso_formando_id, sessao_id, data, horas, tipo, observacoes) VALUES ${values}`, params);
-        }
-      } else {
-        const del = await supabase.from("formando_faltas").delete().eq("sessao_id", sessao.id);
-        if (del.error) throw del.error;
-        if (aInserir.length) {
-          const { error } = await supabase.from("formando_faltas").insert(aInserir as never);
-          if (error) throw error;
-        }
+      const del = await supabase.from("formando_faltas").delete().eq("sessao_id", sessao.id);
+      if (del.error) throw del.error;
+      if (aInserir.length) {
+        const { error } = await supabase.from("formando_faltas").insert(aInserir as never);
+        if (error) throw error;
       }
 
       toast.success("Presenças guardadas");
@@ -158,14 +144,19 @@ export function PresencasDialog({
           <DialogTitle>Presenças</DialogTitle>
           {sessao && (
             <div className="text-xs text-muted-foreground">
-              {fmtDate(sessao.data)} · {sessao.hora_inicio?.slice(0, 5)}–{sessao.hora_fim?.slice(0, 5)} · {sessao.horas}h
+              {fmtDate(sessao.data)} · {sessao.hora_inicio?.slice(0, 5)}–
+              {sessao.hora_fim?.slice(0, 5)} · {sessao.horas}h
             </div>
           )}
         </DialogHeader>
 
-        {(inscritos.isLoading || faltas.isLoading) && <div className="text-sm text-muted-foreground py-6 text-center">A carregar…</div>}
+        {(inscritos.isLoading || faltas.isLoading) && (
+          <div className="text-sm text-muted-foreground py-6 text-center">A carregar…</div>
+        )}
         {!inscritos.isLoading && (inscritos.data?.length ?? 0) === 0 && (
-          <div className="text-sm text-muted-foreground py-6 text-center">Sem formandos ativos inscritos neste curso.</div>
+          <div className="text-sm text-muted-foreground py-6 text-center">
+            Sem formandos ativos inscritos neste curso.
+          </div>
         )}
 
         {(inscritos.data?.length ?? 0) > 0 && (
@@ -175,7 +166,12 @@ export function PresencasDialog({
                 <tr className="border-b">
                   <th className="text-left py-2 font-medium">Formando</th>
                   <th className="text-center py-2 font-medium w-[80px]">Presente</th>
-                  <th className="text-center py-2 font-medium w-[80px]" title="Sessão remota — sem falta, mas sem TR nesse dia">Online</th>
+                  <th
+                    className="text-center py-2 font-medium w-[80px]"
+                    title="Sessão remota — sem falta, mas sem TR nesse dia"
+                  >
+                    Online
+                  </th>
                   <th className="text-center py-2 font-medium w-[100px]">Falta just.</th>
                   <th className="text-center py-2 font-medium w-[100px]">Falta injust.</th>
                   <th className="text-center py-2 font-medium w-[80px]">Horas</th>
@@ -189,16 +185,18 @@ export function PresencasDialog({
                   return (
                     <tr key={i.id} className="border-b last:border-0">
                       <td className="py-2 pr-2">{i.formando.nome}</td>
-                      {(["presente", "online", "justificada", "injustificada"] as Estado[]).map(e => (
-                        <td key={e} className="text-center">
-                          <input
-                            type="radio"
-                            name={`p-${i.id}`}
-                            checked={estado === e}
-                            onChange={() => setEstados(s => ({ ...s, [i.id]: e }))}
-                          />
-                        </td>
-                      ))}
+                      {(["presente", "online", "justificada", "injustificada"] as Estado[]).map(
+                        (e) => (
+                          <td key={e} className="text-center">
+                            <input
+                              type="radio"
+                              name={`p-${i.id}`}
+                              checked={estado === e}
+                              onChange={() => setEstados((s) => ({ ...s, [i.id]: e }))}
+                            />
+                          </td>
+                        ),
+                      )}
                       <td className="py-1 px-1">
                         <Input
                           type="number"
@@ -206,7 +204,9 @@ export function PresencasDialog({
                           min="0"
                           max={sessao?.horas ?? undefined}
                           value={horasFalta[i.id] ?? ""}
-                          onChange={ev => setHorasFalta(s => ({ ...s, [i.id]: ev.target.value }))}
+                          onChange={(ev) =>
+                            setHorasFalta((s) => ({ ...s, [i.id]: ev.target.value }))
+                          }
                           placeholder={String(sessao?.horas ?? "")}
                           className="h-8 text-xs text-center"
                           disabled={!isFalta}
@@ -215,7 +215,7 @@ export function PresencasDialog({
                       <td className="py-1">
                         <Input
                           value={obs[i.id] ?? ""}
-                          onChange={ev => setObs(s => ({ ...s, [i.id]: ev.target.value }))}
+                          onChange={(ev) => setObs((s) => ({ ...s, [i.id]: ev.target.value }))}
                           placeholder={estado === "online" ? "Sessão online" : "—"}
                           className="h-8 text-xs"
                           disabled={estado === "presente"}
@@ -230,7 +230,9 @@ export function PresencasDialog({
         )}
 
         <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
+            Cancelar
+          </Button>
           <Button onClick={save} disabled={saving || (inscritos.data?.length ?? 0) === 0}>
             {saving ? "A guardar…" : "Guardar"}
           </Button>

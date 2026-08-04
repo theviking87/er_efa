@@ -41,9 +41,9 @@ async function runSchema(db: PGlite) {
 
 async function bootstrap(db: PGlite) {
   const existing = await db.query<{ n: number }>(
-    "select count(*)::int as n from information_schema.tables where table_schema='public' and table_name='cursos'",
+    "select count(*)::int as n from information_schema.tables where table_schema='public' and table_name in ('cursos','_local_auth')",
   );
-  if ((existing.rows[0]?.n ?? 0) === 0) {
+  if ((existing.rows[0]?.n ?? 0) < 2) {
     await runSchema(db);
   }
 }
@@ -68,8 +68,19 @@ function splitSql(sql: string): string[] {
     } else buf += ch;
   }
   if (buf.trim()) out.push(buf.trim());
-  return out.filter((s) => !/^--/.test(s));
+  // Remove linhas de comentário (--) para não desaparecerem statements válidos
+  // que venham precedidos de um comentário.
+  return out
+    .map((s) =>
+      s
+        .split("\n")
+        .filter((line) => !/^\s*--/.test(line))
+        .join("\n")
+        .trim(),
+    )
+    .filter(Boolean);
 }
+
 
 async function loadMeta(db: PGlite) {
   const r = await db.query<{

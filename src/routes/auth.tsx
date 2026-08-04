@@ -6,7 +6,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { GraduationCap } from "lucide-react";
-import { ensureFixedUser } from "@/lib/bootstrap-user.functions";
 
 export const Route = createFileRoute("/auth")({
   ssr: false,
@@ -74,18 +73,7 @@ function SignInForm() {
     setLoading(true);
     const email = `${username.trim().toLowerCase()}@${USERNAME_DOMAIN}`;
 
-    let { error } = await supabase.auth.signInWithPassword({ email, password });
-
-    // If the fixed user doesn't exist yet, bootstrap it and retry once.
-    if (error && /invalid login credentials/i.test(error.message)) {
-      try {
-        await ensureFixedUser();
-        const retry = await supabase.auth.signInWithPassword({ email, password });
-        error = retry.error;
-      } catch {
-        // ignore — fall through to error toast below
-      }
-    }
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
 
     setLoading(false);
     if (error) {

@@ -16,7 +16,7 @@ export function yieldToBrowser() {
 }
 
 /** Alias mantido para chamadas existentes. */
-export const yieldToBrowser = yieldToBrowser;
+export const paintBeforeHeavyWork = yieldToBrowser;
 
 /**
  * Executor pass-through — usado por chamadas legadas que verificavam um
@@ -51,7 +51,7 @@ export async function saveFile(
 }
 
 /** Alias compatível com chamadas antigas. */
-export const saveFile = saveFile;
+export const saveFileElectron = saveFile;
 
 /** Recolhe as folhas de estilo aplicadas ao documento (para impressão). */
 export function collectDocumentStyles(): string {
@@ -82,7 +82,7 @@ export async function printHtml(payload: { title: string; html: string; landscap
 }
 
 /** Alias compatível com chamadas antigas. */
-export const printHtml = printHtml;
+export const printHtmlWithFallback = printHtml;
 
 /**
  * Placeholder para relatórios nativos (removidos na v2.0). Retorna sempre

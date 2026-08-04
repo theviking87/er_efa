@@ -106,7 +106,7 @@ function CronogramaGeral() {
       const cursoIds = cursos.map((c: any) => c.id).filter(Boolean);
       if (cursoIds.length === 0) return [];
 
-      // Evitar nested embeds pesados no PGlite/Electron: em pens USB isso
+      // Evitar nested embeds pesados: reduz o custo das queries.
       // bloqueava a UI ao mudar de separador. Duas consultas simples são muito
       // mais leves e dão a mesma lista de formadores por curso.
       const { data: cursoUfcds, error: cuError } = await supabase

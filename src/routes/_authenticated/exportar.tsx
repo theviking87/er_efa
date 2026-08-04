@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Download, Loader2, CheckCircle2, AlertCircle, Upload } from "lucide-react";
 import { toast } from "sonner";
 import { saveFileElectron } from "@/lib/dom-helpers";
-import { criarBackup, restaurarBackup } from "@/integrations/local/backup";
+import { criarBackup, restaurarBackup } from "@/lib/backup";
 
 export const Route = createFileRoute("/_authenticated/exportar")({
   component: ExportarPage,

@@ -19,6 +19,7 @@ import { exportProcessamentoExcel, type RubricaFilter } from "@/lib/financeiro/e
 import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
 import { exportNotaHonorariosPdf } from "@/lib/pdf-exports";
 import { saveFile } from "@/lib/dom-helpers";
+import { NotasPainel } from "@/components/notas-painel";
 
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/$id")({
@@ -351,6 +352,10 @@ function DetailPage() {
           </div>
         }
       />
+
+      <NotasPainel chave={`processamento:${p.id}`} titulo="Notas deste processamento" placeholder="Notas sobre este mês…" />
+
+
 
       {(() => {
         const rubs = ["BF","BFM","SA","TR","HN","ATL"] as const;

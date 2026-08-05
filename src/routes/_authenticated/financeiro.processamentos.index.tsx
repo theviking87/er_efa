@@ -55,6 +55,8 @@ function ProcessamentosPage() {
         actions={<Button asChild><Link to="/financeiro/processamentos/novo"><Plus className="size-4" />Novo</Link></Button>}
       />
 
+      <NotasPainel chave="processamentos" titulo="Notas dos processamentos" placeholder="Notas sobre os processamentos…" />
+
       {q.isLoading && <div className="text-sm text-muted-foreground">A carregar…</div>}
       {!q.isLoading && grupos.length === 0 && (
         <div className="border rounded-md bg-card px-6 py-10 text-sm text-muted-foreground">Sem processamentos.</div>

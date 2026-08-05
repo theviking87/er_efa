@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { useProjetoAtivo } from "@/lib/projeto-context";
+import { NotasPainel } from "@/components/notas-painel";
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/")({
   head: () => ({ meta: [{ title: "Financeiro — Processamentos" }] }),
@@ -54,6 +55,8 @@ function ProcessamentosPage() {
         description="Lista mensal de processamentos, agrupada por curso."
         actions={<Button asChild><Link to="/financeiro/processamentos/novo"><Plus className="size-4" />Novo</Link></Button>}
       />
+
+      <NotasPainel chave="processamentos" titulo="Notas dos processamentos" placeholder="Notas sobre os processamentos…" />
 
       {q.isLoading && <div className="text-sm text-muted-foreground">A carregar…</div>}
       {!q.isLoading && grupos.length === 0 && (

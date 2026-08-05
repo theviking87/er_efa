@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { useProjetoAtivo } from "@/lib/projeto-context";
+import { NotasPainel } from "@/components/notas-painel";
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/")({
   head: () => ({ meta: [{ title: "Financeiro — Processamentos" }] }),

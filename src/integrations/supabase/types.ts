@@ -1235,18 +1235,21 @@ export type Database = {
       }
       painel_notas: {
         Row: {
+          chave: string
           created_at: string
           id: string
           texto: string
           updated_at: string
         }
         Insert: {
+          chave?: string
           created_at?: string
           id?: string
           texto?: string
           updated_at?: string
         }
         Update: {
+          chave?: string
           created_at?: string
           id?: string
           texto?: string

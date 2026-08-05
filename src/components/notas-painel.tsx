@@ -8,17 +8,18 @@ import { NotebookPen } from "lucide-react";
 import { toast } from "sonner";
 
 /** Bloco de notas do painel — persiste até ser alterado ou apagado. */
-export function NotasPainel() {
+export function NotasPainel({ chave = "painel", titulo = "Notas", placeholder = "Coisas a não esquecer…" }: { chave?: string; titulo?: string; placeholder?: string } = {}) {
   const qc = useQueryClient();
   const [texto, setTexto] = useState("");
   const [dirty, setDirty] = useState(false);
   const [saving, setSaving] = useState(false);
 
   const nota = useQuery({
-    queryKey: ["painel-notas"],
+    queryKey: ["painel-notas", chave],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("painel_notas").select("id, texto, updated_at")
+        .eq("chave", chave)
         .order("created_at", { ascending: true }).limit(1).maybeSingle();
       if (error) throw error;
       return data as { id: string; texto: string; updated_at: string } | null;
@@ -36,11 +37,11 @@ export function NotasPainel() {
         const { error } = await supabase.from("painel_notas").update({ texto: valor }).eq("id", nota.data.id);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from("painel_notas").insert({ texto: valor });
+        const { error } = await supabase.from("painel_notas").insert({ texto: valor, chave });
         if (error) throw error;
       }
       setDirty(false);
-      await qc.invalidateQueries({ queryKey: ["painel-notas"] });
+      await qc.invalidateQueries({ queryKey: ["painel-notas", chave] });
       toast.success("Notas guardadas.");
     } catch (e: any) {
       toast.error(e.message);
@@ -53,7 +54,7 @@ export function NotasPainel() {
     <Card className="mb-6">
       <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
         <CardTitle className="text-base font-semibold flex items-center gap-2">
-          <NotebookPen className="size-4" /> Notas
+          <NotebookPen className="size-4" /> {titulo}
         </CardTitle>
         <div className="flex items-center gap-2">
           {dirty && <span className="text-xs text-muted-foreground">Alterações por guardar</span>}
@@ -64,7 +65,7 @@ export function NotasPainel() {
       <CardContent>
         <Textarea
           rows={4}
-          placeholder="Coisas a não esquecer…"
+          placeholder={placeholder}
           value={texto}
           onChange={e => { setTexto(e.target.value); setDirty(true); }}
         />

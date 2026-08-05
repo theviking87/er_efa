@@ -352,6 +352,10 @@ function DetailPage() {
         }
       />
 
+      <NotasPainel chave={`processamento:${p.id}`} titulo="Notas deste processamento" placeholder="Notas sobre este mês…" />
+
+
+
       {(() => {
         const rubs = ["BF","BFM","SA","TR","HN","ATL"] as const;
         const totDif: Record<string, number> = { BF:0, BFM:0, SA:0, TR:0, HN:0, ATL:0 };

@@ -902,28 +902,42 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
   );
 }
 
-function HonorariosFormadores({ linhas, ano, mes, cursoId, cursoNome, cursoCodigo, empresa }: {
-  linhas: any[]; ano: number; mes: number; cursoId?: string | null; cursoNome?: string; cursoCodigo?: string;
+function HonorariosFormadores({ procId, linhas, ano, mes, cursoId, cursoNome, cursoCodigo, empresa }: {
+  procId: string; linhas: any[]; ano: number; mes: number; cursoId?: string | null; cursoNome?: string; cursoCodigo?: string;
 
   empresa: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
 }) {
+  const qc = useQueryClient();
   const [gerandoId, setGerandoId] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, { semRet: boolean; retPct: number; aplicaIva: boolean; ivaPct: number }>>({});
 
   // Um formador pode ter várias linhas (várias UFCDs); agrupamos por formador.
   const grupos = useMemo(() => {
-    const m = new Map<string, { formador: any; horas: number; valorHora: number; valor: number }>();
+    const m = new Map<string, { formador: any; horas: number; valorHora: number; valor: number; lineIds: string[]; recibo: boolean }>();
     for (const l of linhas) {
       const fid = l.formador_id;
-      const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0 };
+      const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0, lineIds: [], recibo: false };
       g.horas += Number(l.horas_frequentadas ?? 0);
       g.valor += Number(l.valor ?? 0);
+      g.lineIds.push(l.id);
+      if (l.recibo_confirmado) g.recibo = true;
       if (!g.valorHora) g.valorHora = Number(l.valor_hora ?? 0);
       m.set(fid, g);
     }
     return Array.from(m.entries()).map(([fid, g]) => ({ fid, ...g }))
       .sort((a,b) => (a.formador?.nome ?? "").localeCompare(b.formador?.nome ?? ""));
   }, [linhas]);
+
+  const reciboMut = useMutation({
+    mutationFn: async ({ ids, valor }: { ids: string[]; valor: boolean }) => {
+      const { error } = await supabase.from("fin_processamento_linha")
+        .update({ recibo_confirmado: valor } as any).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-proc-linhas", procId] }),
+    onError: (e: any) => toast.error(e.message ?? "Erro a guardar recibo."),
+  });
+
 
   function currentTax(g: any) {
     const f = g.formador ?? {};

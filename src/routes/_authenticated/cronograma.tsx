@@ -846,7 +846,30 @@ function CronogramaGeral() {
                           <span
                             className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-sky-100 text-sky-800 border border-sky-300 inline-flex items-center gap-0.5"
                             title={`Férias: ${feriasCursos.map((c: any) => c.codigo).join(", ") || "curso"}`}
-                          ><Palmtree className="size-2.5" /> Férias</span>
+                          >
+                            <Palmtree className="size-2.5" /> Férias
+                            <button
+                              type="button"
+                              className="ml-0.5 text-rose-600 hover:text-rose-700 leading-none"
+                              title="Eliminar férias neste dia"
+                              onClick={async (ev) => {
+                                ev.stopPropagation();
+                                const alvos: string[] = cursoFiltro
+                                  ? [cursoFiltro]
+                                  : feriasCursos.map((c: any) => c.id);
+                                if (!alvos.length) return;
+                                if (!window.confirm(`Eliminar o dia de férias ${cell.iso}?`)) return;
+                                try {
+                                  for (const cid of alvos) await removerDiaFerias(cid, cell.iso);
+                                  qc.invalidateQueries({ queryKey: ["curso-ferias-all"] });
+                                  qc.invalidateQueries({ queryKey: ["curso-ferias-list"] });
+                                  toast.success("Dia de férias eliminado.");
+                                } catch (e: any) {
+                                  toast.error(e.message ?? "Erro a eliminar férias.");
+                                }
+                              }}
+                            >✕</button>
+                          </span>
                         )}
                         {!emFerias && diaIncompleto && (
                           <span

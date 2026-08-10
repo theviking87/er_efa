@@ -1,0 +1,1 @@
+ALTER TABLE public.fin_processamento_linha ADD COLUMN IF NOT EXISTS recibo_confirmado boolean NOT NULL DEFAULT false;

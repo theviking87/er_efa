@@ -71,6 +71,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
+import { removerDiaFerias } from "@/lib/ferias";
 import { yieldToBrowser, collectDocumentStyles, printHtml } from "@/lib/dom-helpers";
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({

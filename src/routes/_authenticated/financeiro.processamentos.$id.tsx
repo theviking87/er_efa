@@ -471,7 +471,7 @@ function DetailPage() {
           <CardTitle className="text-base">Notas de Honorários — Formadores</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <HonorariosFormadores linhas={fdrs} ano={p.ano} mes={p.mes} cursoId={p.curso_id} cursoNome={p.curso?.nome} cursoCodigo={p.curso?.codigo} empresa={cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null} />
+          <HonorariosFormadores procId={id} linhas={fdrs} ano={p.ano} mes={p.mes} cursoId={p.curso_id} cursoNome={p.curso?.nome} cursoCodigo={p.curso?.codigo} empresa={cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null} />
         </CardContent>
       </Card>
 
@@ -902,28 +902,42 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
   );
 }
 
-function HonorariosFormadores({ linhas, ano, mes, cursoId, cursoNome, cursoCodigo, empresa }: {
-  linhas: any[]; ano: number; mes: number; cursoId?: string | null; cursoNome?: string; cursoCodigo?: string;
+function HonorariosFormadores({ procId, linhas, ano, mes, cursoId, cursoNome, cursoCodigo, empresa }: {
+  procId: string; linhas: any[]; ano: number; mes: number; cursoId?: string | null; cursoNome?: string; cursoCodigo?: string;
 
   empresa: { nome?: string | null; nif?: string | null; morada?: string | null } | null;
 }) {
+  const qc = useQueryClient();
   const [gerandoId, setGerandoId] = useState<string | null>(null);
   const [overrides, setOverrides] = useState<Record<string, { semRet: boolean; retPct: number; aplicaIva: boolean; ivaPct: number }>>({});
 
   // Um formador pode ter várias linhas (várias UFCDs); agrupamos por formador.
   const grupos = useMemo(() => {
-    const m = new Map<string, { formador: any; horas: number; valorHora: number; valor: number }>();
+    const m = new Map<string, { formador: any; horas: number; valorHora: number; valor: number; lineIds: string[]; recibo: boolean }>();
     for (const l of linhas) {
       const fid = l.formador_id;
-      const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0 };
+      const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0, lineIds: [], recibo: false };
       g.horas += Number(l.horas_frequentadas ?? 0);
       g.valor += Number(l.valor ?? 0);
+      g.lineIds.push(l.id);
+      if (l.recibo_confirmado) g.recibo = true;
       if (!g.valorHora) g.valorHora = Number(l.valor_hora ?? 0);
       m.set(fid, g);
     }
     return Array.from(m.entries()).map(([fid, g]) => ({ fid, ...g }))
       .sort((a,b) => (a.formador?.nome ?? "").localeCompare(b.formador?.nome ?? ""));
   }, [linhas]);
+
+  const reciboMut = useMutation({
+    mutationFn: async ({ ids, valor }: { ids: string[]; valor: boolean }) => {
+      const { error } = await supabase.from("fin_processamento_linha")
+        .update({ recibo_confirmado: valor } as any).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-proc-linhas", procId] }),
+    onError: (e: any) => toast.error(e.message ?? "Erro a guardar recibo."),
+  });
+
 
   function currentTax(g: any) {
     const f = g.formador ?? {};
@@ -981,18 +995,24 @@ function HonorariosFormadores({ linhas, ano, mes, cursoId, cursoNome, cursoCodig
         <TableHead className="text-right">Valor (€)</TableHead>
         <TableHead className="text-center w-44">Retenção IRS</TableHead>
         <TableHead className="text-center w-40">IVA</TableHead>
+        <TableHead className="text-right w-28">Total (€)</TableHead>
+        <TableHead className="text-center w-28">Recibo</TableHead>
         <TableHead className="text-right w-32"></TableHead>
       </TableRow></TableHeader>
       <TableBody>
         {grupos.map(g => {
           const t = currentTax(g);
           const f = g.formador ?? {};
+          const base = g.valor;
+          const valIva = t.aplicaIva ? base * (t.ivaPct / 100) : 0;
+          const valIrs = t.semRet ? 0 : base * (t.retPct / 100);
+          const totalPagar = base + valIva - valIrs;
           return (
-            <TableRow key={g.fid}>
+            <TableRow key={g.fid} className={g.recibo ? "bg-emerald-500/5" : undefined}>
               <TableCell className="font-medium">{f.nome ?? "—"}{f.nif ? <span className="text-xs text-muted-foreground ml-2">NIF {f.nif}</span> : null}</TableCell>
               <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
               <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
-              <TableCell className="text-right tabular-nums font-semibold">{g.valor.toFixed(2)}</TableCell>
+              <TableCell className="text-right tabular-nums font-semibold">{base.toFixed(2)}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5 justify-center">
                   <label className="flex items-center gap-1 text-xs">
@@ -1005,6 +1025,9 @@ function HonorariosFormadores({ linhas, ano, mes, cursoId, cursoNome, cursoCodig
                     onChange={e => updateTax(g.fid, { retPct: Number(e.target.value) })} />
                   <span className="text-xs text-muted-foreground">%</span>
                 </div>
+                {!t.semRet && (
+                  <div className="text-[11px] text-right text-destructive tabular-nums mt-1">− {valIrs.toFixed(2)} €</div>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5 justify-center">
@@ -1018,6 +1041,19 @@ function HonorariosFormadores({ linhas, ano, mes, cursoId, cursoNome, cursoCodig
                     onChange={e => updateTax(g.fid, { ivaPct: Number(e.target.value) })} />
                   <span className="text-xs text-muted-foreground">%</span>
                 </div>
+                {t.aplicaIva && (
+                  <div className="text-[11px] text-right text-muted-foreground tabular-nums mt-1">+ {valIva.toFixed(2)} €</div>
+                )}
+              </TableCell>
+              <TableCell className="text-right tabular-nums font-semibold">{totalPagar.toFixed(2)}</TableCell>
+              <TableCell className="text-center">
+                <label className="flex items-center gap-1.5 justify-center text-xs">
+                  <Checkbox checked={g.recibo} disabled={reciboMut.isPending}
+                    onCheckedChange={(v) => reciboMut.mutate({ ids: g.lineIds, valor: v === true })} />
+                  <span className={g.recibo ? "text-emerald-600 font-medium" : "text-muted-foreground"}>
+                    {g.recibo ? "Confirmado" : "Pendente"}
+                  </span>
+                </label>
               </TableCell>
               <TableCell className="text-right">
                 <Button size="sm" variant="outline" onClick={() => emitir(g)} disabled={gerandoId === g.fid}>

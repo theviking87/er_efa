@@ -631,6 +631,7 @@ export type Database = {
           km_total: number | null
           memoria_calculo: Json
           processamento_id: string
+          recibo_confirmado: boolean
           rubrica: string
           valor: number
           valor_dia: number | null
@@ -649,6 +650,7 @@ export type Database = {
           km_total?: number | null
           memoria_calculo?: Json
           processamento_id: string
+          recibo_confirmado?: boolean
           rubrica: string
           valor?: number
           valor_dia?: number | null
@@ -667,6 +669,7 @@ export type Database = {
           km_total?: number | null
           memoria_calculo?: Json
           processamento_id?: string
+          recibo_confirmado?: boolean
           rubrica?: string
           valor?: number
           valor_dia?: number | null

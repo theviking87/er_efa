@@ -995,18 +995,24 @@ function HonorariosFormadores({ procId, linhas, ano, mes, cursoId, cursoNome, cu
         <TableHead className="text-right">Valor (€)</TableHead>
         <TableHead className="text-center w-44">Retenção IRS</TableHead>
         <TableHead className="text-center w-40">IVA</TableHead>
+        <TableHead className="text-right w-28">Total (€)</TableHead>
+        <TableHead className="text-center w-28">Recibo</TableHead>
         <TableHead className="text-right w-32"></TableHead>
       </TableRow></TableHeader>
       <TableBody>
         {grupos.map(g => {
           const t = currentTax(g);
           const f = g.formador ?? {};
+          const base = g.valor;
+          const valIva = t.aplicaIva ? base * (t.ivaPct / 100) : 0;
+          const valIrs = t.semRet ? 0 : base * (t.retPct / 100);
+          const totalPagar = base + valIva - valIrs;
           return (
-            <TableRow key={g.fid}>
+            <TableRow key={g.fid} className={g.recibo ? "bg-emerald-500/5" : undefined}>
               <TableCell className="font-medium">{f.nome ?? "—"}{f.nif ? <span className="text-xs text-muted-foreground ml-2">NIF {f.nif}</span> : null}</TableCell>
               <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
               <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
-              <TableCell className="text-right tabular-nums font-semibold">{g.valor.toFixed(2)}</TableCell>
+              <TableCell className="text-right tabular-nums font-semibold">{base.toFixed(2)}</TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5 justify-center">
                   <label className="flex items-center gap-1 text-xs">
@@ -1019,6 +1025,9 @@ function HonorariosFormadores({ procId, linhas, ano, mes, cursoId, cursoNome, cu
                     onChange={e => updateTax(g.fid, { retPct: Number(e.target.value) })} />
                   <span className="text-xs text-muted-foreground">%</span>
                 </div>
+                {!t.semRet && (
+                  <div className="text-[11px] text-right text-destructive tabular-nums mt-1">− {valIrs.toFixed(2)} €</div>
+                )}
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5 justify-center">
@@ -1032,6 +1041,19 @@ function HonorariosFormadores({ procId, linhas, ano, mes, cursoId, cursoNome, cu
                     onChange={e => updateTax(g.fid, { ivaPct: Number(e.target.value) })} />
                   <span className="text-xs text-muted-foreground">%</span>
                 </div>
+                {t.aplicaIva && (
+                  <div className="text-[11px] text-right text-muted-foreground tabular-nums mt-1">+ {valIva.toFixed(2)} €</div>
+                )}
+              </TableCell>
+              <TableCell className="text-right tabular-nums font-semibold">{totalPagar.toFixed(2)}</TableCell>
+              <TableCell className="text-center">
+                <label className="flex items-center gap-1.5 justify-center text-xs">
+                  <Checkbox checked={g.recibo} disabled={reciboMut.isPending}
+                    onCheckedChange={(v) => reciboMut.mutate({ ids: g.lineIds, valor: v === true })} />
+                  <span className={g.recibo ? "text-emerald-600 font-medium" : "text-muted-foreground"}>
+                    {g.recibo ? "Confirmado" : "Pendente"}
+                  </span>
+                </label>
               </TableCell>
               <TableCell className="text-right">
                 <Button size="sm" variant="outline" onClick={() => emitir(g)} disabled={gerandoId === g.fid}>

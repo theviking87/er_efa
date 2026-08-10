@@ -71,6 +71,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PresencasDialog } from "@/components/presencas-dialog";
 import { feriadoNome } from "@/lib/feriados";
+import { removerDiaFerias } from "@/lib/ferias";
 import { yieldToBrowser, collectDocumentStyles, printHtml } from "@/lib/dom-helpers";
 
 export const Route = createFileRoute("/_authenticated/cursos/$id")({
@@ -2186,6 +2187,23 @@ function CronogramaTab({
                             title={feriasMotivo}
                           >
                             <Palmtree className="size-2.5" /> Férias
+                            <button
+                              type="button"
+                              className="ml-0.5 text-rose-600 hover:text-rose-700 leading-none"
+                              title="Eliminar férias neste dia"
+                              onClick={async (ev) => {
+                                ev.stopPropagation();
+                                if (!window.confirm(`Eliminar o dia de férias ${cell.iso}?`)) return;
+                                try {
+                                  await removerDiaFerias(cursoId, cell.iso);
+                                  qc.invalidateQueries({ queryKey: ["curso-ferias", cursoId] });
+                                  qc.invalidateQueries({ queryKey: ["curso-ferias-all"] });
+                                  toast.success("Dia de férias eliminado.");
+                                } catch (e: any) {
+                                  toast.error(e.message ?? "Erro a eliminar férias.");
+                                }
+                              }}
+                            >✕</button>
                           </span>
                         )}
                         {semSessao && (

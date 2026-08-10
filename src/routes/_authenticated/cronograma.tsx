@@ -19,6 +19,7 @@ import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso,
 import { toast } from "sonner";
 import { confirmarFimDeSemana } from "@/lib/weekend-check";
 import { compareUfcdCodigo } from "@/lib/utils";
+import { removerDiaFerias } from "@/lib/ferias";
 
 export const Route = createFileRoute("/_authenticated/cronograma")({
   head: () => ({ meta: [{ title: "Cronograma Geral — Gestão Pedagógica" }] }),

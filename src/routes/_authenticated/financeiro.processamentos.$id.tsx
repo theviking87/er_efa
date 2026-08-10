@@ -471,7 +471,7 @@ function DetailPage() {
           <CardTitle className="text-base">Notas de Honorários — Formadores</CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-          <HonorariosFormadores linhas={fdrs} ano={p.ano} mes={p.mes} cursoId={p.curso_id} cursoNome={p.curso?.nome} cursoCodigo={p.curso?.codigo} empresa={cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null} />
+          <HonorariosFormadores procId={id} linhas={fdrs} ano={p.ano} mes={p.mes} cursoId={p.curso_id} cursoNome={p.curso?.nome} cursoCodigo={p.curso?.codigo} empresa={cfg.data ? { nome: cfg.data.empresa_nome, nif: cfg.data.empresa_nif, morada: cfg.data.empresa_morada } : null} />
         </CardContent>
       </Card>
 

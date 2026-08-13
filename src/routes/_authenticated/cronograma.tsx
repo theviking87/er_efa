@@ -613,6 +613,15 @@ function CronogramaGeral() {
             >
               <Palmtree className="size-4 mr-1" />Lançar férias
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setSemDispOpen(true)}
+              title="Formadores sem disponibilidades no mês"
+            >
+              <UserX className="size-4 mr-1" />Formadores sem disponibilidade
+            </Button>
+
 
 
           </div>

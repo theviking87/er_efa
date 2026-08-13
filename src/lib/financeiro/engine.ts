@@ -399,13 +399,18 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
   let processamentoId = existente?.id as string | undefined;
 
   // Preservar valores manuais de ATL já introduzidos no processamento anterior.
+  const manuaisFormando = new Map<string, number>();   // `${formando_id}|${rubrica}` -> valor_manual
+  const recibosFormador = new Map<string, boolean>();  // formador_id -> recibo_confirmado
   if (processamentoId) {
-    const { data: atlAntigas } = await supabase.from("fin_processamento_linha")
-      .select("formando_id, valor")
-      .eq("processamento_id", processamentoId)
-      .eq("rubrica", "ATL");
+    const { data: antigas } = await supabase.from("fin_processamento_linha")
+      .select("formando_id, formador_id, rubrica, valor, valor_manual, recibo_confirmado")
+      .eq("processamento_id", processamentoId);
     const mapAtl = new Map<string, number>();
-    (atlAntigas ?? []).forEach((l: any) => { if (l.formando_id) mapAtl.set(l.formando_id, Number(l.valor ?? 0)); });
+    (antigas ?? []).forEach((l: any) => {
+      if (l.formando_id && l.rubrica === "ATL") mapAtl.set(l.formando_id, Number(l.valor ?? 0));
+      if (l.formando_id && l.valor_manual != null) manuaisFormando.set(`${l.formando_id}|${l.rubrica}`, Number(l.valor_manual));
+      if (l.formador_id && l.recibo_confirmado) recibosFormador.set(l.formador_id, true);
+    });
     preview.formandos.forEach(l => {
       if (l.rubrica === "ATL") {
         const v = mapAtl.get(l.formando_id);
@@ -413,6 +418,7 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
       }
     });
   }
+
 
   // Recalcular totais após aplicar ATL preservado.
   const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0, geral: 0 };

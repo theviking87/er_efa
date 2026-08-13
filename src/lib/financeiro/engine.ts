@@ -454,13 +454,16 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
       valor_hora: l.valor_hora ?? null,
       valor_dia: l.valor_dia ?? null, km_total: l.km_total ?? null, valor: l.valor,
       memoria_calculo: l.memoria_calculo,
+      valor_manual: manuaisFormando.get(`${l.formando_id}|${l.rubrica}`) ?? null,
     })),
     ...preview.formadores.map(l => ({
       processamento_id: processamentoId, formador_id: l.formador_id, rubrica: l.rubrica,
       horas_frequentadas: l.horas_frequentadas, valor_hora: l.valor_hora, valor: l.valor,
       memoria_calculo: l.memoria_calculo,
+      recibo_confirmado: recibosFormador.get(l.formador_id) ?? false,
     })),
   ];
+
   if (linhas.length) {
     const { error } = await supabase.from("fin_processamento_linha").insert(linhas as never);
     if (error) throw error;

@@ -191,6 +191,36 @@ function CronogramaGeral() {
     },
   });
 
+  const dispMesTodos = useQuery({
+    queryKey: ["disp-mes-todos", inicioMes, fimMes],
+    enabled: semDispOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("formador_disponibilidades" as any)
+        .select("formador_id")
+        .gte("data", inicioMes).lte("data", fimMes);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  // Formadores alocados a cursos ativos que não declararam disponibilidade no mês.
+  const semDispLista = useMemo(() => {
+    const comDisp = new Set<string>((dispMesTodos.data ?? []).map((d: any) => d.formador_id));
+    const cursosPorFormador = new Map<string, string[]>();
+    (cursosAtivos.data ?? []).forEach((c: any) => {
+      (c.formadores ?? []).forEach((fid: string) => {
+        const arr = cursosPorFormador.get(fid) ?? [];
+        arr.push(c.codigo); cursosPorFormador.set(fid, arr);
+      });
+    });
+    return (formadores.data ?? [])
+      .filter((f: any) => cursosPorFormador.has(f.id) && !comDisp.has(f.id))
+      .map((f: any) => {
+        const cs = cursosPorFormador.get(f.id) ?? [];
+        return { id: f.id, nome: f.nome, cursoUnico: cs.length === 1 ? cs[0] : null };
+      });
+  }, [dispMesTodos.data, cursosAtivos.data, formadores.data]);
+
   const ferias = useQuery({
     queryKey: ["curso-ferias-all"],
     queryFn: async () => {
@@ -949,6 +979,33 @@ function CronogramaGeral() {
         slot={convertSlot}
         onClose={() => setConvertSlot(null)}
       />
+      <Dialog open={semDispOpen} onOpenChange={(o) => !o && setSemDispOpen(false)}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <UserX className="size-4" /> Formadores sem disponibilidade — {MONTH_NAMES[mes.mes]} {mes.ano}
+            </DialogTitle>
+          </DialogHeader>
+          {semDispLista.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Todos os formadores alocados a cursos ativos têm disponibilidades neste mês.</p>
+          ) : (
+            <ul className="space-y-1.5 max-h-[60vh] overflow-auto">
+              {semDispLista.map(f => (
+                <li key={f.id} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
+                  <span className="font-medium">{f.nome}</span>
+                  {f.cursoUnico && (
+                    <span className="text-xs text-muted-foreground">só alocado a {f.cursoUnico}</span>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSemDispOpen(false)}>Fechar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <FeriasDialog
         open={feriasOpen}
         onClose={() => setFeriasOpen(false)}

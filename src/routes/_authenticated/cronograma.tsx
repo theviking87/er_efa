@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 
-import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning, Palmtree } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarPlus, Printer, FileWarning, Palmtree, UserX } from "lucide-react";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { MONTH_NAMES, fmtDate, fmtHoras, diffHoras, dateOnlyIso, weekdayFromIso, localDateIso } from "@/lib/format";
@@ -67,6 +67,7 @@ function CronogramaGeral() {
   const [createDate, setCreateDate] = useState<string | null>(null);
   const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
   const [feriasOpen, setFeriasOpen] = useState(false);
+  const [semDispOpen, setSemDispOpen] = useState(false);
 
 
 

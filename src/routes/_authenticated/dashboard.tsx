@@ -8,6 +8,8 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, BookOpen, Users, Calendar, ListChecks, FolderKanban, ClipboardList } from "lucide-react";
 import { addDaysIso, fmtDate, fmtHoras, localDateIso } from "@/lib/format";
 import { NotasPainel } from "@/components/notas-painel";
+import { LucroCard } from "@/components/lucro-card";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Painel — Gestão Pedagógica" }] }),
@@ -113,14 +115,8 @@ function Dashboard() {
         <Stat label="UFCD no catálogo" value={counts.data?.ufcdsTotal ?? 0} icon={ListChecks} href="/ufcds" />
         <Stat label="Processamentos" value={counts.data?.procsTotal ?? 0} icon={ClipboardList} href="/financeiro/processamentos" />
         <Stat label="Valor processado (€)" value={(counts.data?.procsValor ?? 0).toFixed(2)} icon={ClipboardList} href="/financeiro/processamentos" />
-        <Card className="border-sky-300 bg-sky-50 dark:bg-sky-950/20 hover:border-sky-400 transition-colors">
-          <CardContent className="p-4">
-            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">40% do valor processado</div>
-            <div className="mt-1 tabular-nums text-2xl font-semibold text-sky-700 dark:text-sky-300">
-              {(Number(counts.data?.procsValor ?? 0) * 0.4).toFixed(2)} €
-            </div>
-          </CardContent>
-        </Card>
+        <LucroCard processado={Number(counts.data?.procsValor ?? 0)} />
+
         <Stat label="Próximas 7 dias" value={proximas.data?.length ?? 0} icon={Calendar} />
       </div>
 

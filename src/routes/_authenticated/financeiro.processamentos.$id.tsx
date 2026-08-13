@@ -378,10 +378,17 @@ function DetailPage() {
               <Stat label="ATL" v={p.total_atl ?? 0} />
               <Stat label="HN" v={p.total_hn} /><Stat label="Total" v={p.total_geral} strong />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 mb-3">
+            <div className="grid gap-3 sm:grid-cols-3 mb-3">
               <Stat label="Total formandos (BF+BFM+SA+TR+ATL)" v={fmd} />
               <Stat label="Total formadores (HN)" v={p.total_hn} />
+              <Card className="border-sky-300 bg-sky-50 dark:bg-sky-950/20"><CardContent className="p-3">
+                <div className="text-[10px] uppercase tracking-wide text-muted-foreground">40% do valor processado</div>
+                <div className="mt-1 tabular-nums text-lg font-semibold text-sky-700 dark:text-sky-300">
+                  {(Number(p.total_geral ?? 0) * 0.4).toFixed(2)} €
+                </div>
+              </CardContent></Card>
             </div>
+
             <div className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-2 mb-4 rounded-md border p-3 ${hasDif ? "border-orange-300 bg-orange-50 dark:bg-orange-950/20" : "border-border"}`}>
               <Stat label="Total Dif. formandos" v={fmdDif} />
               <Card><CardContent className="p-3">

@@ -8,6 +8,8 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, BookOpen, Users, Calendar, ListChecks, FolderKanban, ClipboardList } from "lucide-react";
 import { addDaysIso, fmtDate, fmtHoras, localDateIso } from "@/lib/format";
 import { NotasPainel } from "@/components/notas-painel";
+import { LucroCard } from "@/components/lucro-card";
+
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
   head: () => ({ meta: [{ title: "Painel — Gestão Pedagógica" }] }),

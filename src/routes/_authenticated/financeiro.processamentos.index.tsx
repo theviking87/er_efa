@@ -51,8 +51,8 @@ function ProcessamentosPage() {
   return (
     <PageContainer>
       <PageHeader
-        title="Processamentos"
-        description="Lista mensal de processamentos, agrupada por curso."
+        title="Processamentos Formandos"
+        description="Processamentos dos formandos, por mês e por curso."
         actions={<Button asChild><Link to="/financeiro/processamentos/novo"><Plus className="size-4" />Novo</Link></Button>}
       />
 

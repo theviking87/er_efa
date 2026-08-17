@@ -30,6 +30,8 @@ import { Route as AuthenticatedFormandosIndexRouteImport } from './routes/_authe
 import { Route as AuthenticatedFormandosIdRouteImport } from './routes/_authenticated/formandos.$id'
 import { Route as AuthenticatedProjetosIndexRouteImport } from './routes/_authenticated/projetos.index'
 import { Route as AuthenticatedProjetosIdRouteImport } from './routes/_authenticated/projetos.$id'
+import { Route as AuthenticatedFinanceiroFormadoresIndexRouteImport } from './routes/_authenticated/financeiro.formadores.index'
+import { Route as AuthenticatedFinanceiroFormadoresIdRouteImport } from './routes/_authenticated/financeiro.formadores.$id'
 import { Route as AuthenticatedFinanceiroProcessamentosIndexRouteImport } from './routes/_authenticated/financeiro.processamentos.index'
 import { Route as AuthenticatedFinanceiroProcessamentosIdRouteImport } from './routes/_authenticated/financeiro.processamentos.$id'
 import { Route as AuthenticatedFinanceiroProcessamentosNovoRouteImport } from './routes/_authenticated/financeiro.processamentos.novo'
@@ -148,6 +150,18 @@ const AuthenticatedProjetosIdRoute = AuthenticatedProjetosIdRouteImport.update({
   path: '/projetos/$id',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedFinanceiroFormadoresIndexRoute =
+  AuthenticatedFinanceiroFormadoresIndexRouteImport.update({
+    id: '/financeiro/formadores/',
+    path: '/financeiro/formadores/',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedFinanceiroFormadoresIdRoute =
+  AuthenticatedFinanceiroFormadoresIdRouteImport.update({
+    id: '/financeiro/formadores/$id',
+    path: '/financeiro/formadores/$id',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedFinanceiroProcessamentosIndexRoute =
   AuthenticatedFinanceiroProcessamentosIndexRouteImport.update({
     id: '/financeiro/processamentos/',
@@ -188,8 +202,10 @@ export interface FileRoutesByFullPath {
   '/formadores/': typeof AuthenticatedFormadoresIndexRoute
   '/formandos/': typeof AuthenticatedFormandosIndexRoute
   '/projetos/': typeof AuthenticatedProjetosIndexRoute
+  '/financeiro/formadores/$id': typeof AuthenticatedFinanceiroFormadoresIdRoute
   '/financeiro/processamentos/$id': typeof AuthenticatedFinanceiroProcessamentosIdRoute
   '/financeiro/processamentos/novo': typeof AuthenticatedFinanceiroProcessamentosNovoRoute
+  '/financeiro/formadores/': typeof AuthenticatedFinanceiroFormadoresIndexRoute
   '/financeiro/processamentos/': typeof AuthenticatedFinanceiroProcessamentosIndexRoute
 }
 export interface FileRoutesByTo {
@@ -213,8 +229,10 @@ export interface FileRoutesByTo {
   '/formadores': typeof AuthenticatedFormadoresIndexRoute
   '/formandos': typeof AuthenticatedFormandosIndexRoute
   '/projetos': typeof AuthenticatedProjetosIndexRoute
+  '/financeiro/formadores/$id': typeof AuthenticatedFinanceiroFormadoresIdRoute
   '/financeiro/processamentos/$id': typeof AuthenticatedFinanceiroProcessamentosIdRoute
   '/financeiro/processamentos/novo': typeof AuthenticatedFinanceiroProcessamentosNovoRoute
+  '/financeiro/formadores': typeof AuthenticatedFinanceiroFormadoresIndexRoute
   '/financeiro/processamentos': typeof AuthenticatedFinanceiroProcessamentosIndexRoute
 }
 export interface FileRoutesById {
@@ -240,8 +258,10 @@ export interface FileRoutesById {
   '/_authenticated/formadores/': typeof AuthenticatedFormadoresIndexRoute
   '/_authenticated/formandos/': typeof AuthenticatedFormandosIndexRoute
   '/_authenticated/projetos/': typeof AuthenticatedProjetosIndexRoute
+  '/_authenticated/financeiro/formadores/$id': typeof AuthenticatedFinanceiroFormadoresIdRoute
   '/_authenticated/financeiro/processamentos/$id': typeof AuthenticatedFinanceiroProcessamentosIdRoute
   '/_authenticated/financeiro/processamentos/novo': typeof AuthenticatedFinanceiroProcessamentosNovoRoute
+  '/_authenticated/financeiro/formadores/': typeof AuthenticatedFinanceiroFormadoresIndexRoute
   '/_authenticated/financeiro/processamentos/': typeof AuthenticatedFinanceiroProcessamentosIndexRoute
 }
 export interface FileRouteTypes {
@@ -267,8 +287,10 @@ export interface FileRouteTypes {
     | '/formadores/'
     | '/formandos/'
     | '/projetos/'
+    | '/financeiro/formadores/$id'
     | '/financeiro/processamentos/$id'
     | '/financeiro/processamentos/novo'
+    | '/financeiro/formadores/'
     | '/financeiro/processamentos/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -292,8 +314,10 @@ export interface FileRouteTypes {
     | '/formadores'
     | '/formandos'
     | '/projetos'
+    | '/financeiro/formadores/$id'
     | '/financeiro/processamentos/$id'
     | '/financeiro/processamentos/novo'
+    | '/financeiro/formadores'
     | '/financeiro/processamentos'
   id:
     | '__root__'
@@ -318,8 +342,10 @@ export interface FileRouteTypes {
     | '/_authenticated/formadores/'
     | '/_authenticated/formandos/'
     | '/_authenticated/projetos/'
+    | '/_authenticated/financeiro/formadores/$id'
     | '/_authenticated/financeiro/processamentos/$id'
     | '/_authenticated/financeiro/processamentos/novo'
+    | '/_authenticated/financeiro/formadores/'
     | '/_authenticated/financeiro/processamentos/'
   fileRoutesById: FileRoutesById
 }
@@ -478,6 +504,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AuthenticatedProjetosIdRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
+    '/_authenticated/financeiro/formadores/': {
+      id: '/_authenticated/financeiro/formadores/'
+      path: '/financeiro/formadores'
+      fullPath: '/financeiro/formadores/'
+      preLoaderRoute: typeof AuthenticatedFinanceiroFormadoresIndexRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/financeiro/formadores/$id': {
+      id: '/_authenticated/financeiro/formadores/$id'
+      path: '/financeiro/formadores/$id'
+      fullPath: '/financeiro/formadores/$id'
+      preLoaderRoute: typeof AuthenticatedFinanceiroFormadoresIdRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
     '/_authenticated/financeiro/processamentos/': {
       id: '/_authenticated/financeiro/processamentos/'
       path: '/financeiro/processamentos'
@@ -521,8 +561,10 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedFormadoresIndexRoute: typeof AuthenticatedFormadoresIndexRoute
   AuthenticatedFormandosIndexRoute: typeof AuthenticatedFormandosIndexRoute
   AuthenticatedProjetosIndexRoute: typeof AuthenticatedProjetosIndexRoute
+  AuthenticatedFinanceiroFormadoresIdRoute: typeof AuthenticatedFinanceiroFormadoresIdRoute
   AuthenticatedFinanceiroProcessamentosIdRoute: typeof AuthenticatedFinanceiroProcessamentosIdRoute
   AuthenticatedFinanceiroProcessamentosNovoRoute: typeof AuthenticatedFinanceiroProcessamentosNovoRoute
+  AuthenticatedFinanceiroFormadoresIndexRoute: typeof AuthenticatedFinanceiroFormadoresIndexRoute
   AuthenticatedFinanceiroProcessamentosIndexRoute: typeof AuthenticatedFinanceiroProcessamentosIndexRoute
 }
 
@@ -546,10 +588,14 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedFormadoresIndexRoute: AuthenticatedFormadoresIndexRoute,
   AuthenticatedFormandosIndexRoute: AuthenticatedFormandosIndexRoute,
   AuthenticatedProjetosIndexRoute: AuthenticatedProjetosIndexRoute,
+  AuthenticatedFinanceiroFormadoresIdRoute:
+    AuthenticatedFinanceiroFormadoresIdRoute,
   AuthenticatedFinanceiroProcessamentosIdRoute:
     AuthenticatedFinanceiroProcessamentosIdRoute,
   AuthenticatedFinanceiroProcessamentosNovoRoute:
     AuthenticatedFinanceiroProcessamentosNovoRoute,
+  AuthenticatedFinanceiroFormadoresIndexRoute:
+    AuthenticatedFinanceiroFormadoresIndexRoute,
   AuthenticatedFinanceiroProcessamentosIndexRoute:
     AuthenticatedFinanceiroProcessamentosIndexRoute,
 }

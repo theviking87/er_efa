@@ -439,7 +439,9 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
     if (existente?.estado === "fechado") throw new Error("Processamento fechado — não pode ser recalculado.");
     const { error } = await supabase.from("fin_processamento").update(payload as never).eq("id", processamentoId);
     if (error) throw error;
-    await supabase.from("fin_processamento_linha").delete().eq("processamento_id", processamentoId);
+    // As linhas de "outras despesas" (rubrica OUT) são manuais — nunca são recalculadas.
+    await supabase.from("fin_processamento_linha").delete()
+      .eq("processamento_id", processamentoId).neq("rubrica", "OUT");
   } else {
     const { data, error } = await supabase.from("fin_processamento").insert(payload as never).select("id").single();
     if (error) throw error;

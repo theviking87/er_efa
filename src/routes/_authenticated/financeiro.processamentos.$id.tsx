@@ -357,8 +357,7 @@ function DetailPage() {
 
 
       {(() => {
-        const rubs = ["BF","BFM","SA","TR","HN","ATL"] as const;
-        const totDif: Record<string, number> = { BF:0, BFM:0, SA:0, TR:0, HN:0, ATL:0 };
+        const totDif: Record<string, number> = { BF:0, BFM:0, SA:0, TR:0, ATL:0 };
         (linhas.data ?? []).forEach((l: any) => {
           if (totDif[l.rubrica] === undefined) return;
           const primario = Number(l.valor ?? 0);
@@ -371,16 +370,13 @@ function DetailPage() {
         const hasDif = Math.abs(diff) > 0.005;
         return (
           <>
-            <div className="grid gap-3 sm:grid-cols-4 lg:grid-cols-7 mb-3">
+            <div className="grid gap-3 sm:grid-cols-3 lg:grid-cols-6 mb-3">
               <Stat label="BF" v={p.total_bf} /><Stat label="BFM" v={p.total_bfm} />
               <Stat label="SA" v={p.total_sa} /><Stat label="TR" v={p.total_tr} />
               <Stat label="ATL" v={p.total_atl ?? 0} />
-              <Stat label="HN" v={p.total_hn} /><Stat label="Total" v={p.total_geral} strong />
+              <Stat label="Total formandos" v={fmd} strong />
             </div>
-            <div className="grid gap-3 sm:grid-cols-2 mb-3">
-              <Stat label="Total formandos (BF+BFM+SA+TR+ATL)" v={fmd} />
-              <Stat label="Total formadores (HN)" v={p.total_hn} />
-            </div>
+
 
 
             <div className={`grid gap-3 sm:grid-cols-2 lg:grid-cols-2 mb-4 rounded-md border p-3 ${hasDif ? "border-orange-300 bg-orange-50 dark:bg-orange-950/20" : "border-border"}`}>

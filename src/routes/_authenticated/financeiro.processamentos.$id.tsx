@@ -315,7 +315,6 @@ function DetailPage() {
   const p = proc.data as any;
   const fechado = p.estado === "fechado";
   const fmds = fmdsList;
-  const fdrs = fdrsList;
   const RUBRICAS: RubricaFilter[] = ["BF","BFM","SA","TR","HN","ATL"];
 
   return (

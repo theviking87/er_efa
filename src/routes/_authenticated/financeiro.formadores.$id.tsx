@@ -151,39 +151,18 @@ function ProcFormadorDetalhe() {
       <NotasPainel chave={`processamento-formadores:${p.id}`} titulo="Notas deste mês" placeholder="Notas sobre honorários e despesas deste mês…" />
 
       <Card className="mb-4">
-        <CardHeader className="pb-3"><CardTitle className="text-base">Formadores</CardTitle></CardHeader>
+        <CardHeader className="pb-3"><CardTitle className="text-base">Notas de Honorários — Formadores</CardTitle></CardHeader>
         <CardContent className="p-0">
-          {honorarios.length === 0 ? (
-            <div className="px-6 py-10 text-sm text-muted-foreground">Sem formadores neste mês.</div>
-          ) : (
-            <Table>
-              <TableHeader><TableRow>
-                <TableHead>Formador</TableHead>
-                <TableHead className="text-right">Horas</TableHead>
-                <TableHead className="text-right">€/h</TableHead>
-                <TableHead className="text-right">Valor (€)</TableHead>
-                <TableHead className="text-center w-28">Recibo</TableHead>
-              </TableRow></TableHeader>
-              <TableBody>
-                {honorarios.map(g => (
-                  <TableRow key={g.fid} className={g.recibo ? "bg-emerald-500/5" : undefined}>
-                    <TableCell className="font-medium">
-                      {g.nome}{g.nif ? <span className="text-xs text-muted-foreground ml-2">NIF {g.nif}</span> : null}
-                    </TableCell>
-                    <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
-                    <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
-                    <TableCell className="text-right tabular-nums font-semibold">{g.valor.toFixed(2)}</TableCell>
-                    <TableCell className="text-center">
-                      <input
-                        type="checkbox" className="size-4" checked={g.recibo}
-                        onChange={e => reciboMut.mutate({ ids: g.ids, valor: e.target.checked })}
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
+          <HonorariosFormadores
+            linhas={(linhas.data ?? [])}
+            ano={p.ano}
+            mes={p.mes}
+            cursoId={p.curso_id}
+            cursoNome={p.curso?.nome}
+            cursoCodigo={p.curso?.codigo}
+            empresa={cfg.data ? { nome: (cfg.data as any).empresa_nome, nif: (cfg.data as any).empresa_nif, morada: (cfg.data as any).empresa_morada } : null}
+            invalidateKey={["fin-proc-linhas-formadores", id]}
+          />
         </CardContent>
       </Card>
 

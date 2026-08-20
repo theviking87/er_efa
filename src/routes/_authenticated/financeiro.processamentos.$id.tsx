@@ -540,9 +540,9 @@ function FormandosGrouped({ linhas, processamentoId, cursoId, fechado, tetoAtl }
   async function refreshTotais() {
     const { data: todas } = await supabase.from("fin_processamento_linha")
       .select("rubrica, valor").eq("processamento_id", processamentoId);
-    const soma = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0 } as Record<string, number>;
+    const soma = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0, OUT: 0 } as Record<string, number>;
     (todas ?? []).forEach((l: any) => { if (soma[l.rubrica] !== undefined) soma[l.rubrica] += Number(l.valor ?? 0); });
-    const geral = soma.BF + soma.BFM + soma.SA + soma.TR + soma.HN + soma.ATL;
+    const geral = soma.BF + soma.BFM + soma.SA + soma.TR + soma.HN + soma.ATL + soma.OUT;
     await supabase.from("fin_processamento")
       .update({
         total_bf: +soma.BF.toFixed(2), total_bfm: +soma.BFM.toFixed(2),

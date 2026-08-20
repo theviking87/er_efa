@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Lock, LockOpen } from "lucide-react";
 import { NotasPainel } from "@/components/notas-painel";
+import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
 import { HonorariosFormadores } from "@/components/financeiro/honorarios-formadores";
 
 export const Route = createFileRoute("/_authenticated/financeiro/formadores/$id")({
@@ -74,6 +75,38 @@ function ProcFormadorDetalhe() {
     [linhas.data],
   );
 
+  const toggleEstado = useMutation({
+    mutationFn: async (novo: "rascunho" | "fechado") => {
+      const { error } = await supabase.from("fin_processamento")
+        .update({ estado: novo, fechado_em: novo === "fechado" ? new Date().toISOString() : null } as never)
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-proc", id] });
+      qc.invalidateQueries({ queryKey: ["fin-procs-formadores"] });
+      toast.success("Estado atualizado.");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const recalcular = useMutation({
+    mutationFn: async () => {
+      const p: any = proc.data;
+      if (!p) throw new Error("Sem processamento.");
+      if (p.estado === "fechado") throw new Error("Processamento fechado — reabre antes de recalcular.");
+      const preview = await calcularProcessamento(p.curso_id, p.ano, p.mes);
+      await guardarProcessamento(preview, p.projeto_id ?? null);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["fin-proc", id] });
+      qc.invalidateQueries({ queryKey: ["fin-proc-linhas-formadores", id] });
+      qc.invalidateQueries({ queryKey: ["fin-procs-formadores"] });
+      toast.success("Processamento recalculado.");
+    },
+    onError: (e: any) => toast.error(e.message ?? "Erro a recalcular."),
+  });
+
   const [desc, setDesc] = useState("");
   const [valor, setValor] = useState("");
 
@@ -127,10 +160,26 @@ function ProcFormadorDetalhe() {
         actions={
           <div className="flex gap-2 items-center">
             <Badge variant={fechado ? "default" : "secondary"}>{p.estado}</Badge>
+            {!fechado && (
+              <Button variant="outline" onClick={() => recalcular.mutate()} disabled={recalcular.isPending}>
+                <RefreshCw className="size-4" />{recalcular.isPending ? "A recalcular…" : "Recalcular"}
+              </Button>
+            )}
+            {fechado ? (
+              <Button variant="outline" onClick={() => toggleEstado.mutate("rascunho")} disabled={toggleEstado.isPending}>
+                <LockOpen className="size-4" />Reabrir
+              </Button>
+            ) : (
+              <Button onClick={() => toggleEstado.mutate("fechado")} disabled={toggleEstado.isPending}>
+                <Lock className="size-4" />Fechar
+              </Button>
+            )}
             <Button asChild variant="ghost"><Link to="/financeiro/formadores">Voltar</Link></Button>
           </div>
         }
       />
+
+
 
       <div className="grid gap-3 sm:grid-cols-4 mb-4">
         <Stat label="Honorários (HN)" v={totalHn} />

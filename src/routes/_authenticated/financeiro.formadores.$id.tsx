@@ -127,10 +127,24 @@ function ProcFormadorDetalhe() {
         actions={
           <div className="flex gap-2 items-center">
             <Badge variant={fechado ? "default" : "secondary"}>{p.estado}</Badge>
+            {!fechado && (
+              <Button variant="outline" onClick={() => recalcular.mutate()} disabled={recalcular.isPending}>
+                <RefreshCw className="size-4" />{recalcular.isPending ? "A recalcular…" : "Recalcular"}
+              </Button>
+            )}
+            {fechado ? (
+              <Button variant="outline" onClick={() => toggleEstado.mutate("rascunho")} disabled={toggleEstado.isPending}>
+                <LockOpen className="size-4" />Reabrir
+              </Button>
+            ) : (
+              <Button onClick={() => toggleEstado.mutate("fechado")} disabled={toggleEstado.isPending}>
+                <Lock className="size-4" />Fechar
+              </Button>
+            )}
             <Button asChild variant="ghost"><Link to="/financeiro/formadores">Voltar</Link></Button>
           </div>
         }
-      />
+
 
       <div className="grid gap-3 sm:grid-cols-4 mb-4">
         <Stat label="Honorários (HN)" v={totalHn} />

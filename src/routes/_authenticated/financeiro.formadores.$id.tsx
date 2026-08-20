@@ -144,6 +144,8 @@ function ProcFormadorDetalhe() {
             <Button asChild variant="ghost"><Link to="/financeiro/formadores">Voltar</Link></Button>
           </div>
         }
+      />
+
 
 
       <div className="grid gap-3 sm:grid-cols-4 mb-4">

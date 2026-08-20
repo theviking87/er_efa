@@ -451,23 +451,46 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
     processamentoId = (data as any).id;
   }
 
+  // Todas as linhas têm de ter exatamente as mesmas chaves: o PostgREST usa a
+  // união das chaves do array e envia NULL nas que faltam (ignorando defaults).
+  const linhaBase = {
+    processamento_id: processamentoId,
+    formando_id: null as string | null,
+    formador_id: null as string | null,
+    rubrica: "",
+    horas_previstas: 0,
+    horas_frequentadas: 0,
+    horas_elegiveis: 0,
+    dias_elegiveis: 0,
+    valor_hora: 0,
+    valor_dia: 0,
+    km_total: 0,
+    valor: 0,
+    memoria_calculo: {} as unknown,
+    valor_manual: null as number | null,
+    recibo_confirmado: false,
+  };
+
   const linhas = [
     ...preview.formandos.map(l => ({
-      processamento_id: processamentoId, formando_id: l.formando_id, rubrica: l.rubrica,
-      horas_previstas: l.horas_previstas, horas_frequentadas: l.horas_frequentadas,
-      horas_elegiveis: l.horas_elegiveis, dias_elegiveis: l.dias_elegiveis,
-      valor_hora: l.valor_hora ?? null,
-      valor_dia: l.valor_dia ?? null, km_total: l.km_total ?? null, valor: l.valor,
-      memoria_calculo: l.memoria_calculo,
+      ...linhaBase,
+      formando_id: l.formando_id, rubrica: l.rubrica,
+      horas_previstas: l.horas_previstas ?? 0, horas_frequentadas: l.horas_frequentadas ?? 0,
+      horas_elegiveis: l.horas_elegiveis ?? 0, dias_elegiveis: l.dias_elegiveis ?? 0,
+      valor_hora: l.valor_hora ?? 0,
+      valor_dia: l.valor_dia ?? 0, km_total: l.km_total ?? 0, valor: l.valor ?? 0,
+      memoria_calculo: l.memoria_calculo ?? {},
       valor_manual: manuaisFormando.get(`${l.formando_id}|${l.rubrica}`) ?? null,
     })),
     ...preview.formadores.map(l => ({
-      processamento_id: processamentoId, formador_id: l.formador_id, rubrica: l.rubrica,
-      horas_frequentadas: l.horas_frequentadas, valor_hora: l.valor_hora, valor: l.valor,
-      memoria_calculo: l.memoria_calculo,
+      ...linhaBase,
+      formador_id: l.formador_id, rubrica: l.rubrica,
+      horas_frequentadas: l.horas_frequentadas ?? 0, valor_hora: l.valor_hora ?? 0, valor: l.valor ?? 0,
+      memoria_calculo: l.memoria_calculo ?? {},
       recibo_confirmado: recibosFormador.get(l.formador_id) ?? false,
     })),
   ];
+
 
   if (linhas.length) {
     const { error } = await supabase.from("fin_processamento_linha").insert(linhas as never);

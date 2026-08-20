@@ -401,6 +401,7 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
   // Preservar valores manuais de ATL já introduzidos no processamento anterior.
   const manuaisFormando = new Map<string, number>();   // `${formando_id}|${rubrica}` -> valor_manual
   const recibosFormador = new Map<string, boolean>();  // formador_id -> recibo_confirmado
+  let totalOutros = 0;                                 // linhas manuais (rubrica OUT) — nunca recalculadas
   if (processamentoId) {
     const { data: antigas } = await supabase.from("fin_processamento_linha")
       .select("formando_id, formador_id, rubrica, valor, valor_manual, recibo_confirmado")
@@ -410,6 +411,7 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
       if (l.formando_id && l.rubrica === "ATL") mapAtl.set(l.formando_id, Number(l.valor ?? 0));
       if (l.formando_id && l.valor_manual != null) manuaisFormando.set(`${l.formando_id}|${l.rubrica}`, Number(l.valor_manual));
       if (l.formador_id && l.recibo_confirmado) recibosFormador.set(l.formador_id, true);
+      if (l.rubrica === "OUT") totalOutros += Number(l.valor ?? 0);
     });
     preview.formandos.forEach(l => {
       if (l.rubrica === "ATL") {
@@ -424,6 +426,7 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
   const totais = { BF: 0, BFM: 0, SA: 0, TR: 0, HN: 0, ATL: 0, geral: 0 };
   preview.formandos.forEach(l => { totais[l.rubrica] += l.valor; totais.geral += l.valor; });
   preview.formadores.forEach(l => { totais.HN += l.valor; totais.geral += l.valor; });
+  totais.geral += totalOutros;
   (Object.keys(totais) as (keyof typeof totais)[]).forEach(k => (totais[k] = +totais[k].toFixed(2)));
   preview.totais = totais;
 

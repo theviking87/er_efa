@@ -12,6 +12,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { toast } from "sonner";
 import { Plus, Trash2 } from "lucide-react";
 import { NotasPainel } from "@/components/notas-painel";
+import { HonorariosFormadores } from "@/components/financeiro/honorarios-formadores";
 
 export const Route = createFileRoute("/_authenticated/financeiro/formadores/$id")({
   head: () => ({ meta: [{ title: "Financeiro — Processamento de formadores" }] }),
@@ -37,11 +38,16 @@ function ProcFormadorDetalhe() {
     queryKey: ["fin-proc-linhas-formadores", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("fin_processamento_linha")
-        .select("*, formador:formador_id(id, nome, nif)")
+        .select("*, formador:formador_id(id, nome, nif, morada, codigo_postal, localidade, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem)")
         .eq("processamento_id", id);
       if (error) throw error;
       return (data ?? []) as any[];
     },
+  });
+
+  const cfg = useQuery({
+    queryKey: ["fin-config"],
+    queryFn: async () => (await supabase.from("fin_config").select("*").limit(1).maybeSingle()).data,
   });
 
   const honorarios = useMemo(() => {
@@ -67,16 +73,6 @@ function ProcFormadorDetalhe() {
       .sort((a, b) => String(a.created_at).localeCompare(String(b.created_at))),
     [linhas.data],
   );
-
-  const reciboMut = useMutation({
-    mutationFn: async ({ ids, valor }: { ids: string[]; valor: boolean }) => {
-      const { error } = await supabase.from("fin_processamento_linha")
-        .update({ recibo_confirmado: valor } as never).in("id", ids);
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["fin-proc-linhas-formadores", id] }),
-    onError: (e: any) => toast.error(e.message),
-  });
 
   const [desc, setDesc] = useState("");
   const [valor, setValor] = useState("");

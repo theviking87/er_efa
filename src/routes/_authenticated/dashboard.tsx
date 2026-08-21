@@ -8,7 +8,6 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, BookOpen, Users, Calendar, ListChecks, FolderKanban, ClipboardList } from "lucide-react";
 import { addDaysIso, fmtDate, fmtHoras, localDateIso } from "@/lib/format";
 import { NotasPainel } from "@/components/notas-painel";
-import { LucroCard } from "@/components/lucro-card";
 
 
 export const Route = createFileRoute("/_authenticated/dashboard")({
@@ -115,7 +114,6 @@ function Dashboard() {
         <Stat label="UFCD no catálogo" value={counts.data?.ufcdsTotal ?? 0} icon={ListChecks} href="/ufcds" />
         <Stat label="Processamentos" value={counts.data?.procsTotal ?? 0} icon={ClipboardList} href="/financeiro/processamentos" />
         <Stat label="Valor processado (€)" value={(counts.data?.procsValor ?? 0).toFixed(2)} icon={ClipboardList} href="/financeiro/processamentos" />
-        <LucroCard processado={Number(counts.data?.procsValor ?? 0)} />
 
         <Stat label="Próximas 7 dias" value={proximas.data?.length ?? 0} icon={Calendar} />
       </div>

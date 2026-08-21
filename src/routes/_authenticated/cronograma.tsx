@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { confirmarFimDeSemana } from "@/lib/weekend-check";
 import { compareUfcdCodigo } from "@/lib/utils";
 import { removerDiaFerias } from "@/lib/ferias";
+import { feriadoNome } from "@/lib/feriados";
 
 export const Route = createFileRoute("/_authenticated/cronograma")({
   head: () => ({ meta: [{ title: "Cronograma Geral — Gestão Pedagógica" }] }),
@@ -68,6 +69,7 @@ function CronogramaGeral() {
   const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
   const [feriasOpen, setFeriasOpen] = useState(false);
   const [semDispOpen, setSemDispOpen] = useState(false);
+  const [printMenuOpen, setPrintMenuOpen] = useState(false);
 
 
 
@@ -231,9 +233,11 @@ function CronogramaGeral() {
       const { data: sess } = await supabase.from("sessoes").select("curso_ufcd_id, horas").in("curso_ufcd_id", ids);
       const dadas = new Map<string, number>();
       (sess ?? []).forEach((s: any) => dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0)));
+      // Só UFCDs ainda por iniciar: sem horas dadas e com horas em falta.
       return abertas.filter((r: any) => {
         const total = Number(r.curso_ufcd.horas_totais ?? 0);
-        return total <= 0 || (dadas.get(r.curso_ufcd.id) ?? 0) < total;
+        const dadasH = dadas.get(r.curso_ufcd.id) ?? 0;
+        return dadasH === 0 && (total <= 0 || dadasH < total);
       });
     },
   });
@@ -248,13 +252,14 @@ function CronogramaGeral() {
         arr.push(c.codigo); cursosPorFormador.set(fid, arr);
       });
     });
+    const comSessao = new Set<string>((sessoesMesTodas.data ?? []).map((d: any) => d.formador_id));
     return (formadores.data ?? [])
-      .filter((f: any) => cursosPorFormador.has(f.id) && !comDisp.has(f.id))
+      .filter((f: any) => cursosPorFormador.has(f.id) && !comDisp.has(f.id) && !comSessao.has(f.id))
       .map((f: any) => {
         const cs = cursosPorFormador.get(f.id) ?? [];
         return { id: f.id, nome: f.nome, cursos: cs, cursoUnico: cs.length === 1 ? cs[0] : null };
       });
-  }, [dispMesTodos.data, cursosAtivos.data, formadores.data]);
+  }, [dispMesTodos.data, sessoesMesTodas.data, cursosAtivos.data, formadores.data]);
 
   // Formadores com UFCDs por concluir sem qualquer sessão nem disponibilidade
   // lançada nesse curso durante o mês.
@@ -505,6 +510,62 @@ function CronogramaGeral() {
     return r;
   }, [mostrar, cursosComCor, coverageByDay, grid, feriasByDay]);
 
+  // Períodos (manhã/tarde) de dias úteis sem sessão marcada, por curso ativo.
+  const sessoesEmFalta = useMemo(() => {
+    const cursos = cursosComCor;
+    const toMin = (h: string) => {
+      const [hh, mm] = (h ?? "").split(":").map(Number);
+      return (hh || 0) * 60 + (mm || 0);
+    };
+    const cov = new Map<string, { manha: boolean; tarde: boolean }>();
+    (sessoes.data ?? []).forEach((s: any) => {
+      const cid = s.curso?.id ?? s.curso_id;
+      if (!cid) return;
+      const ini = toMin(s.hora_inicio); const fim = toMin(s.hora_fim);
+      const k = `${s.data}|${cid}`;
+      const v = cov.get(k) ?? { manha: false, tarde: false };
+      if (ini < 780 && fim > 540) v.manha = true;
+      if (ini < 1020 && fim > 840) v.tarde = true;
+      cov.set(k, v);
+    });
+    const rows: { iso: string; curso: string; periodo: string; nota: string }[] = [];
+    for (const cell of grid) {
+      if (!cell) continue;
+      const dow = weekdayFromIso(cell.iso);
+      if (dow === 0 || dow === 6) continue;
+      const fer = feriadoNome(cell.iso);
+      const feriasSet = feriasByDay.get(cell.iso);
+      for (const c of cursos) {
+        if (feriasSet?.has(c.id)) continue;
+        const v = cov.get(`${cell.iso}|${c.id}`) ?? { manha: false, tarde: false };
+        if (v.manha && v.tarde) continue;
+        const periodo = !v.manha && !v.tarde ? "Dia todo" : (!v.manha ? "Manhã" : "Tarde");
+        rows.push({ iso: cell.iso, curso: `${c.codigo} — ${c.nome}`, periodo, nota: fer ? `Feriado: ${fer}` : "" });
+      }
+    }
+    return rows;
+  }, [cursosComCor, sessoes.data, grid, feriasByDay]);
+
+  function imprimirSessoesEmFalta() {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setFontSize(13);
+    doc.text("Sessões em falta", 14, 16);
+    doc.setFontSize(10);
+    doc.text(`${MONTH_NAMES[mes.mes]} ${mes.ano}`, 14, 22);
+    if (sessoesEmFalta.length === 0) {
+      doc.text("Sem sessões em falta neste mês.", 14, 32);
+    } else {
+      autoTable(doc, {
+        startY: 28,
+        head: [["Data", "Curso", "Período", "Notas"]],
+        body: sessoesEmFalta.map(r => [fmtDate(r.iso), r.curso, r.periodo, r.nota]),
+        styles: { fontSize: 8, cellPadding: 1.5 },
+        headStyles: { fillColor: [15, 118, 110] },
+      });
+    }
+    doc.save(`sessoes-em-falta-${mes.ano}-${String(mes.mes + 1).padStart(2, "0")}.pdf`);
+  }
+
   // Disponibilidades sobrepostas: mesmo curso, mesmo dia, formadores diferentes, intervalos que se intersetam.
   const overlapDispIds = useMemo(() => {
     const matched = new Set<string>();
@@ -687,7 +748,7 @@ function CronogramaGeral() {
             <div className="font-semibold text-lg min-w-[170px] text-center">{MONTH_NAMES[mes.mes]} {mes.ano}</div>
             <Button variant="outline" size="icon" onClick={next}><ChevronRight className="size-4" /></Button>
             <Button variant="ghost" size="sm" onClick={hoje}>Hoje</Button>
-            <Button variant="outline" size="sm" onClick={() => window.print()}><Printer className="size-4 mr-1" />Imprimir</Button>
+            <Button variant="outline" size="sm" onClick={() => setPrintMenuOpen(true)}><Printer className="size-4 mr-1" />Imprimir</Button>
             <Button
               variant="outline"
               size="sm"
@@ -1066,6 +1127,22 @@ function CronogramaGeral() {
         </div>
       </div>
 
+      <Dialog open={printMenuOpen} onOpenChange={setPrintMenuOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2"><Printer className="size-4" /> Imprimir</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Button className="w-full justify-start" variant="outline" onClick={() => { setPrintMenuOpen(false); setTimeout(() => window.print(), 100); }}>
+              <Printer className="size-4 mr-2" />Imprimir Cronograma
+            </Button>
+            <Button className="w-full justify-start" variant="outline" onClick={() => { setPrintMenuOpen(false); imprimirSessoesEmFalta(); }}>
+              <FileWarning className="size-4 mr-2" />Imprimir Sessões em Falta
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <ConvertDispDialog
         slot={convertSlot}
         onClose={() => setConvertSlot(null)}
@@ -1080,7 +1157,7 @@ function CronogramaGeral() {
 
           <div className="space-y-6 max-h-[65vh] overflow-auto">
             <section className="space-y-2">
-              <h3 className="text-sm font-semibold">1. Formadores sem disponibilidade lançada</h3>
+              <h3 className="text-sm font-semibold">1. Formadores sem disponibilidade nem sessão lançada</h3>
               {semDispLista.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Todos os formadores alocados a cursos ativos têm disponibilidades neste mês.</p>
               ) : (

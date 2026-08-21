@@ -2356,7 +2356,10 @@ function CronogramaTab({
                             const diaUtil =
                               weekdayFromIso(cell.iso) !== 0 && weekdayFromIso(cell.iso) !== 6;
                             const feriasMotivo = feriasDias.get(cell.iso);
-                            if (!diaUtil || feriado || feriasMotivo) return null;
+                            // Feriados/férias: imprimir apenas sessões efetivamente marcadas.
+                            const soSessoes = !!feriado || !!feriasMotivo;
+                            if (!diaUtil) return null;
+                            if (soSessoes && sessDoDia.length === 0) return null;
                             const toMin = (t: string) => {
                               const [h, m] = String(t).slice(0, 5).split(":").map(Number);
                               return h * 60 + (m || 0);
@@ -2367,6 +2370,7 @@ function CronogramaTab({
                                   toMin(s.hora_inicio) < slot.end && toMin(s.hora_fim) > slot.start,
                               );
                               const semFormador = !sessao || sessaoSemFormadorAtribuido(sessao);
+                              if (soSessoes && !sessao) return null;
                               return (
                                 <div
                                   key={`${cell.iso}-${slot.from}`}

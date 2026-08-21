@@ -8,7 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
+import { UserCheck, UserX, ArrowLeft, Pencil, Trash2, Plus } from "lucide-react";
 import { EstadoBadge } from "./formadores.index";
 import { FormadorDialog } from "@/components/formador-dialog";
 import { fmtDate } from "@/lib/format";
@@ -42,6 +42,21 @@ function FormadorDetail() {
     },
   });
 
+  const toggleEstado = useMutation({
+    mutationFn: async (novo: "ativo" | "inativo") => {
+      const { error } = await supabase.from("formadores").update({ estado: novo } as never).eq("id", id);
+      if (error) throw error;
+      return novo;
+    },
+    onSuccess: (novo) => {
+      toast.success(novo === "inativo" ? "Formador marcado como inativo" : "Formador reativado");
+      qc.invalidateQueries({ queryKey: ["formador", id] });
+      qc.invalidateQueries({ queryKey: ["formadores"] });
+      qc.invalidateQueries({ queryKey: ["formadores-todos"] });
+    },
+    onError: (e: any) => toast.error("Erro a alterar estado", { description: e.message }),
+  });
+
   const remove = useMutation({
     mutationFn: async () => {
       const { error } = await supabase.from("formadores").delete().eq("id", id);
@@ -72,6 +87,15 @@ function FormadorDetail() {
         description={f.email ?? f.telemovel ?? "Sem contacto registado"}
         actions={
           <>
+            <Button
+              variant="outline"
+              onClick={() => toggleEstado.mutate(f.estado === "inativo" ? "ativo" : "inativo")}
+              disabled={toggleEstado.isPending}
+            >
+              {f.estado === "inativo"
+                ? (<><UserCheck className="size-4" /> Reativar</>)
+                : (<><UserX className="size-4" /> Tornar inativo</>)}
+            </Button>
             <Button variant="outline" onClick={() => setEditing(true)}><Pencil className="size-4" /> Editar</Button>
             <AlertDialog>
               <AlertDialogTrigger asChild>

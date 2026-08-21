@@ -18,6 +18,7 @@ export const Route = createFileRoute("/_authenticated/formadores/")({
 function FormadoresPage() {
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
+  const [verInativos, setVerInativos] = useState(false);
 
   const list = useQuery({
     queryKey: ["formadores"],
@@ -32,6 +33,8 @@ function FormadoresPage() {
   });
 
   const filtered = (list.data ?? []).filter(f =>
+    (verInativos || (f.estado !== "inativo" && f.estado !== "arquivado"))
+  ).filter(f =>
     !q || f.nome.toLowerCase().includes(q.toLowerCase()) ||
     (f.nif ?? "").includes(q) || (f.email ?? "").toLowerCase().includes(q.toLowerCase())
   );
@@ -53,6 +56,9 @@ function FormadoresPage() {
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
           <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Pesquisar por nome, NIF ou email…" className="pl-8" />
         </div>
+        <Button variant={verInativos ? "secondary" : "outline"} size="sm" onClick={() => setVerInativos(v => !v)}>
+          {verInativos ? "A mostrar inativos" : "Mostrar inativos"}
+        </Button>
         <span className="text-xs text-muted-foreground">{filtered.length} {filtered.length === 1 ? "formador" : "formadores"}</span>
       </div>
 

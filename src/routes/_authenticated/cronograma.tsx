@@ -154,7 +154,7 @@ function CronogramaGeral() {
 
   const formadores = useQuery({
     queryKey: ["formadores-todos"],
-    queryFn: async () => (await supabase.from("formadores").select("id, nome, cor").order("nome")).data ?? [],
+    queryFn: async () => (await supabase.from("formadores").select("id, nome, cor, estado").eq("estado", "ativo").order("nome")).data ?? [],
   });
 
   const cursosTodos = useQuery({

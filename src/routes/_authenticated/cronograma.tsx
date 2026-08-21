@@ -231,9 +231,11 @@ function CronogramaGeral() {
       const { data: sess } = await supabase.from("sessoes").select("curso_ufcd_id, horas").in("curso_ufcd_id", ids);
       const dadas = new Map<string, number>();
       (sess ?? []).forEach((s: any) => dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0)));
+      // Só UFCDs ainda por iniciar: sem horas dadas e com horas em falta.
       return abertas.filter((r: any) => {
         const total = Number(r.curso_ufcd.horas_totais ?? 0);
-        return total <= 0 || (dadas.get(r.curso_ufcd.id) ?? 0) < total;
+        const dadasH = dadas.get(r.curso_ufcd.id) ?? 0;
+        return dadasH === 0 && (total <= 0 || dadasH < total);
       });
     },
   });
@@ -248,13 +250,14 @@ function CronogramaGeral() {
         arr.push(c.codigo); cursosPorFormador.set(fid, arr);
       });
     });
+    const comSessao = new Set<string>((sessoesMesTodas.data ?? []).map((d: any) => d.formador_id));
     return (formadores.data ?? [])
-      .filter((f: any) => cursosPorFormador.has(f.id) && !comDisp.has(f.id))
+      .filter((f: any) => cursosPorFormador.has(f.id) && !comDisp.has(f.id) && !comSessao.has(f.id))
       .map((f: any) => {
         const cs = cursosPorFormador.get(f.id) ?? [];
         return { id: f.id, nome: f.nome, cursos: cs, cursoUnico: cs.length === 1 ? cs[0] : null };
       });
-  }, [dispMesTodos.data, cursosAtivos.data, formadores.data]);
+  }, [dispMesTodos.data, sessoesMesTodas.data, cursosAtivos.data, formadores.data]);
 
   // Formadores com UFCDs por concluir sem qualquer sessão nem disponibilidade
   // lançada nesse curso durante o mês.

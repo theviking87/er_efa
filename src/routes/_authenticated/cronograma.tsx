@@ -947,7 +947,7 @@ function CronogramaGeral() {
                               if (error) return toast.error(error.message);
                               toast.success("Disponibilidade apagada");
                               qc.invalidateQueries({ queryKey: ["disp-geral"] });
-                              qc.invalidateQueries({ queryKey: ["disponibilidades", fid] });
+                              qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
                             }}
                             className="px-1 text-[10px] text-rose-600"
                             title="Apagar disponibilidade"

@@ -196,10 +196,35 @@ function CronogramaGeral() {
     enabled: semDispOpen,
     queryFn: async () => {
       const { data, error } = await supabase.from("formador_disponibilidades" as any)
-        .select("formador_id")
+        .select("formador_id, curso_id")
         .gte("data", inicioMes).lte("data", fimMes);
       if (error) throw error;
       return (data ?? []) as any[];
+    },
+  });
+
+  const sessoesMesTodas = useQuery({
+    queryKey: ["sessoes-mes-todas", inicioMes, fimMes],
+    enabled: semDispOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sessoes")
+        .select("formador_id, curso_id, curso_ufcd_id")
+        .gte("data", inicioMes).lte("data", fimMes);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  // UFCDs por concluir de cursos ativos e respetivos formadores atribuídos.
+  const ufcdsAbertas = useQuery({
+    queryKey: ["ufcds-abertas-analise", inicioMes],
+    enabled: semDispOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("curso_ufcd_formadores")
+        .select("formador_id, curso_ufcd:curso_ufcds(id, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))");
+      if (error) throw error;
+      return (data ?? []).filter((r: any) => r.curso_ufcd?.curso?.estado === "ativo" && !r.curso_ufcd?.concluida) as any[];
     },
   });
 
@@ -217,9 +242,43 @@ function CronogramaGeral() {
       .filter((f: any) => cursosPorFormador.has(f.id) && !comDisp.has(f.id))
       .map((f: any) => {
         const cs = cursosPorFormador.get(f.id) ?? [];
-        return { id: f.id, nome: f.nome, cursoUnico: cs.length === 1 ? cs[0] : null };
+        return { id: f.id, nome: f.nome, cursos: cs, cursoUnico: cs.length === 1 ? cs[0] : null };
       });
   }, [dispMesTodos.data, cursosAtivos.data, formadores.data]);
+
+  // Formadores com UFCDs por concluir sem qualquer sessão nem disponibilidade
+  // lançada nesse curso durante o mês.
+  const semLancamentoLista = useMemo(() => {
+    const nomes = new Map<string, string>((formadores.data ?? []).map((f: any) => [f.id, f.nome]));
+    const chavesSessao = new Set<string>();
+    (sessoesMesTodas.data ?? []).forEach((s: any) => chavesSessao.add(`${s.formador_id}|${s.curso_id}`));
+    const chavesDisp = new Set<string>();
+    (dispMesTodos.data ?? []).forEach((d: any) => {
+      if (d.curso_id) chavesDisp.add(`${d.formador_id}|${d.curso_id}`);
+      else chavesDisp.add(`${d.formador_id}|*`);
+    });
+
+    const grupos = new Map<string, { key: string; formador_id: string; formador_nome: string; curso_id: string; curso_codigo: string; curso_nome: string; ufcds: string[] }>();
+    (ufcdsAbertas.data ?? []).forEach((r: any) => {
+      const cu = r.curso_ufcd;
+      const cursoId = cu.curso.id;
+      const key = `${r.formador_id}|${cursoId}`;
+      if (chavesSessao.has(key) || chavesDisp.has(key) || chavesDisp.has(`${r.formador_id}|*`)) return;
+      const g = grupos.get(key) ?? {
+        key,
+        formador_id: r.formador_id,
+        formador_nome: nomes.get(r.formador_id) ?? "—",
+        curso_id: cursoId,
+        curso_codigo: cu.curso.codigo,
+        curso_nome: cu.curso.nome,
+        ufcds: [] as string[],
+      };
+      const cod = cu.ufcd?.codigo;
+      if (cod && !g.ufcds.includes(cod)) g.ufcds.push(cod);
+      grupos.set(key, g);
+    });
+    return Array.from(grupos.values()).sort((a, b) => a.formador_nome.localeCompare(b.formador_nome));
+  }, [ufcdsAbertas.data, sessoesMesTodas.data, dispMesTodos.data, formadores.data]);
 
   const ferias = useQuery({
     queryKey: ["curso-ferias-all"],
@@ -648,9 +707,9 @@ function CronogramaGeral() {
               variant="outline"
               size="sm"
               onClick={() => setSemDispOpen(true)}
-              title="Formadores sem disponibilidades no mês"
+              title="Análise do mês: disponibilidades e UFCDs por lançar"
             >
-              <UserX className="size-4 mr-1" />Formadores sem disponibilidade
+              <UserX className="size-4 mr-1" />Análise Mês Corrente
             </Button>
 
 
@@ -980,26 +1039,90 @@ function CronogramaGeral() {
         onClose={() => setConvertSlot(null)}
       />
       <Dialog open={semDispOpen} onOpenChange={(o) => !o && setSemDispOpen(false)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserX className="size-4" /> Formadores sem disponibilidade — {MONTH_NAMES[mes.mes]} {mes.ano}
+              <UserX className="size-4" /> Análise Mês Corrente — {MONTH_NAMES[mes.mes]} {mes.ano}
             </DialogTitle>
           </DialogHeader>
-          {semDispLista.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todos os formadores alocados a cursos ativos têm disponibilidades neste mês.</p>
-          ) : (
-            <ul className="space-y-1.5 max-h-[60vh] overflow-auto">
-              {semDispLista.map(f => (
-                <li key={f.id} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
-                  <span className="font-medium">{f.nome}</span>
-                  {f.cursoUnico && (
-                    <span className="text-xs text-muted-foreground">só alocado a {f.cursoUnico}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+
+          <div className="space-y-6 max-h-[65vh] overflow-auto">
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">1. Formadores sem disponibilidade lançada</h3>
+              {semDispLista.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Todos os formadores alocados a cursos ativos têm disponibilidades neste mês.</p>
+              ) : (
+                <table className="w-full text-sm border rounded-md overflow-hidden">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
+                    <tr><th className="text-left px-3 py-2">Formador</th><th className="text-left px-3 py-2">Cursos</th></tr>
+                  </thead>
+                  <tbody>
+                    {semDispLista.map((f: any) => (
+                      <tr key={f.id} className="border-t">
+                        <td className="px-3 py-2 font-medium">{f.nome}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">
+                          {f.cursoUnico ? `só alocado a ${f.cursoUnico}` : (f.cursos ?? []).join(", ")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">2. UFCDs por concluir sem sessão nem disponibilidade no mês</h3>
+              {semLancamentoLista.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sem situações por lançar neste mês.</p>
+              ) : (
+                <table className="w-full text-sm border rounded-md overflow-hidden">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-3 py-2">Formador</th>
+                      <th className="text-left px-3 py-2">Curso</th>
+                      <th className="text-left px-3 py-2">UFCDs</th>
+                      <th className="px-3 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {semLancamentoLista.map((r) => (
+                      <tr key={r.key} className="border-t">
+                        <td className="px-3 py-2 font-medium">{r.formador_nome}</td>
+                        <td className="px-3 py-2 text-xs">{r.curso_codigo} — {r.curso_nome}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{r.ufcds.join(", ")}</td>
+                        <td className="px-3 py-2 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSemDispOpen(false);
+                              setConvertSlot({
+                                kind: "disp",
+                                id: "",
+                                formador_id: r.formador_id,
+                                formador_nome: r.formador_nome,
+                                formador_cor: "#888",
+                                data: localDateIso(),
+                                hora_inicio: "09:00",
+                                hora_fim: "13:00",
+                                tipo: "disponivel",
+                                notas: null,
+                                curso_id: r.curso_id,
+                                curso_codigo: r.curso_codigo,
+                              });
+                            }}
+                          >
+                            <CalendarPlus className="size-4 mr-1" />Lançar sessão
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setSemDispOpen(false)}>Fechar</Button>
           </DialogFooter>
@@ -1039,6 +1162,8 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
   const [horaFim, setHoraFim] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [removerDisp, setRemoverDisp] = useState(true);
+  const [dataSessao, setDataSessao] = useState("");
+  const avulso = !!slot && !slot.id;
   const [saving, setSaving] = useState(false);
 
   // UFCDs onde o formador está atribuído, com horas em falta.
@@ -1098,6 +1223,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
       setCursoUfcdId("");
       setObservacoes("");
       setRemoverDisp(true);
+      setDataSessao(slot.data);
     }
   }, [slot?.id]);
 
@@ -1111,7 +1237,8 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     if (!cursoId) return toast.error("Escolhe o curso");
     if (!cursoUfcdId) return toast.error("Escolhe a UFCD");
     if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
-    if (!confirmarFimDeSemana(slot.data, "esta sessão")) return;
+    if (!dataSessao) return toast.error("Escolhe a data");
+    if (!confirmarFimDeSemana(dataSessao, "esta sessão")) return;
 
     const cu = (opcoes.data ?? []).find((x: any) => x.id === cursoUfcdId) as any;
     if (!cu) return toast.error("UFCD inválida");
@@ -1123,7 +1250,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
       .from("sessoes")
       .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
       .eq("formador_id", slot.formador_id)
-      .eq("data", slot.data);
+      .eq("data", dataSessao);
     const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
     if (choque) {
       return toast.error("Formador já tem sessão neste horário", {
@@ -1137,7 +1264,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
       curso_id: cu.curso.id,
       curso_ufcd_id: cursoUfcdId,
       formador_id: slot.formador_id,
-      data: slot.data,
+      data: dataSessao,
       hora_inicio: horaInicio,
       hora_fim: horaFim,
       horas,
@@ -1145,7 +1272,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     } as never);
     if (error) { setSaving(false); return toast.error(error.message); }
 
-    if (removerDisp) {
+    if (removerDisp && slot.id) {
       await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
     }
     setSaving(false);
@@ -1163,14 +1290,21 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> Criar sessão a partir de disponibilidade</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> {avulso ? "Lançar sessão" : "Criar sessão a partir de disponibilidade"}</DialogTitle>
         </DialogHeader>
         {slot && (
           <div className="space-y-3">
             <div className="text-sm bg-muted/40 rounded-md px-3 py-2">
               <div><span className="text-muted-foreground">Formador:</span> <span className="font-medium">{slot.formador_nome}</span></div>
-              <div><span className="text-muted-foreground">Data:</span> <span className="font-medium">{fmtDate(slot.data)}</span></div>
-              <div><span className="text-muted-foreground">Janela:</span> <span className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</span></div>
+              {avulso ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-muted-foreground">Data:</span>
+                  <Input type="date" className="h-8 w-auto" value={dataSessao} onChange={e => setDataSessao(e.target.value)} />
+                </div>
+              ) : (
+                <div><span className="text-muted-foreground">Data:</span> <span className="font-medium">{fmtDate(slot.data)}</span></div>
+              )}
+              {!avulso && <div><span className="text-muted-foreground">Janela:</span> <span className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</span></div>}
               {slot.notas && <div className="text-xs text-muted-foreground mt-1">"{slot.notas}"</div>}
             </div>
 
@@ -1184,7 +1318,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
                   ))}
                 </SelectContent>
               </Select>
-              {cursoLocked && <div className="text-xs text-muted-foreground">Curso definido na disponibilidade.</div>}
+              {cursoLocked && !avulso && <div className="text-xs text-muted-foreground">Curso definido na disponibilidade.</div>}
             </div>
 
             <div className="space-y-1.5">
@@ -1208,10 +1342,10 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
 
             <div className="space-y-1.5"><Label>Observações</Label><Input value={observacoes} onChange={e => setObservacoes(e.target.value)} /></div>
 
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            {!avulso && <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <input type="checkbox" checked={removerDisp} onChange={e => setRemoverDisp(e.target.checked)} />
               Remover esta disponibilidade após criar a sessão
-            </label>
+            </label>}
           </div>
         )}
         <DialogFooter>

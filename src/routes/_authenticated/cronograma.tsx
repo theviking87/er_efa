@@ -1269,8 +1269,9 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
       setObservacoes("");
       setRemoverDisp(true);
       setDataSessao(slot.data);
+      setFormadorSel("");
     }
-  }, [slot?.id]);
+  }, [slot?.id, slot?.formador_id, slot?.data]);
 
   // Quando há apenas um curso disponível, pré-selecionar
   useMemo(() => {

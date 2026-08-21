@@ -1332,7 +1332,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
   }
 
   const open = !!slot;
-  const cursoLocked = !!slot?.curso_id && !avulso ? true : !!slot?.curso_id;
+  const cursoLocked = !!slot?.curso_id;
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>

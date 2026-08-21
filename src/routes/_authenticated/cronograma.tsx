@@ -196,10 +196,35 @@ function CronogramaGeral() {
     enabled: semDispOpen,
     queryFn: async () => {
       const { data, error } = await supabase.from("formador_disponibilidades" as any)
-        .select("formador_id")
+        .select("formador_id, curso_id")
         .gte("data", inicioMes).lte("data", fimMes);
       if (error) throw error;
       return (data ?? []) as any[];
+    },
+  });
+
+  const sessoesMesTodas = useQuery({
+    queryKey: ["sessoes-mes-todas", inicioMes, fimMes],
+    enabled: semDispOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sessoes")
+        .select("formador_id, curso_id, curso_ufcd_id")
+        .gte("data", inicioMes).lte("data", fimMes);
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
+
+  // UFCDs por concluir de cursos ativos e respetivos formadores atribuídos.
+  const ufcdsAbertas = useQuery({
+    queryKey: ["ufcds-abertas-analise", inicioMes],
+    enabled: semDispOpen,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("curso_ufcd_formadores")
+        .select("formador_id, curso_ufcd:curso_ufcds(id, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))");
+      if (error) throw error;
+      return (data ?? []).filter((r: any) => r.curso_ufcd?.curso?.estado === "ativo" && !r.curso_ufcd?.concluida) as any[];
     },
   });
 
@@ -217,9 +242,43 @@ function CronogramaGeral() {
       .filter((f: any) => cursosPorFormador.has(f.id) && !comDisp.has(f.id))
       .map((f: any) => {
         const cs = cursosPorFormador.get(f.id) ?? [];
-        return { id: f.id, nome: f.nome, cursoUnico: cs.length === 1 ? cs[0] : null };
+        return { id: f.id, nome: f.nome, cursos: cs, cursoUnico: cs.length === 1 ? cs[0] : null };
       });
   }, [dispMesTodos.data, cursosAtivos.data, formadores.data]);
+
+  // Formadores com UFCDs por concluir sem qualquer sessão nem disponibilidade
+  // lançada nesse curso durante o mês.
+  const semLancamentoLista = useMemo(() => {
+    const nomes = new Map<string, string>((formadores.data ?? []).map((f: any) => [f.id, f.nome]));
+    const chavesSessao = new Set<string>();
+    (sessoesMesTodas.data ?? []).forEach((s: any) => chavesSessao.add(`${s.formador_id}|${s.curso_id}`));
+    const chavesDisp = new Set<string>();
+    (dispMesTodos.data ?? []).forEach((d: any) => {
+      if (d.curso_id) chavesDisp.add(`${d.formador_id}|${d.curso_id}`);
+      else chavesDisp.add(`${d.formador_id}|*`);
+    });
+
+    const grupos = new Map<string, { key: string; formador_id: string; formador_nome: string; curso_id: string; curso_codigo: string; curso_nome: string; ufcds: string[] }>();
+    (ufcdsAbertas.data ?? []).forEach((r: any) => {
+      const cu = r.curso_ufcd;
+      const cursoId = cu.curso.id;
+      const key = `${r.formador_id}|${cursoId}`;
+      if (chavesSessao.has(key) || chavesDisp.has(key) || chavesDisp.has(`${r.formador_id}|*`)) return;
+      const g = grupos.get(key) ?? {
+        key,
+        formador_id: r.formador_id,
+        formador_nome: nomes.get(r.formador_id) ?? "—",
+        curso_id: cursoId,
+        curso_codigo: cu.curso.codigo,
+        curso_nome: cu.curso.nome,
+        ufcds: [] as string[],
+      };
+      const cod = cu.ufcd?.codigo;
+      if (cod && !g.ufcds.includes(cod)) g.ufcds.push(cod);
+      grupos.set(key, g);
+    });
+    return Array.from(grupos.values()).sort((a, b) => a.formador_nome.localeCompare(b.formador_nome));
+  }, [ufcdsAbertas.data, sessoesMesTodas.data, dispMesTodos.data, formadores.data]);
 
   const ferias = useQuery({
     queryKey: ["curso-ferias-all"],

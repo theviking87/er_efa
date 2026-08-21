@@ -947,7 +947,7 @@ function CronogramaGeral() {
                               if (error) return toast.error(error.message);
                               toast.success("Disponibilidade apagada");
                               qc.invalidateQueries({ queryKey: ["disp-geral"] });
-                              qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
+                              qc.invalidateQueries({ queryKey: ["disponibilidades", fid] });
                             }}
                             className="px-1 text-[10px] text-rose-600"
                             title="Apagar disponibilidade"
@@ -1280,6 +1280,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
 
   async function criar() {
     if (!slot) return;
+    if (!fid) return toast.error("Escolhe o formador");
     if (!cursoId) return toast.error("Escolhe o curso");
     if (!cursoUfcdId) return toast.error("Escolhe a UFCD");
     if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
@@ -1295,7 +1296,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     const { data: sess } = await supabase
       .from("sessoes")
       .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
-      .eq("formador_id", slot.formador_id)
+      .eq("formador_id", fid)
       .eq("data", dataSessao);
     const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
     if (choque) {
@@ -1309,7 +1310,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     const { error } = await supabase.from("sessoes").insert({
       curso_id: cu.curso.id,
       curso_ufcd_id: cursoUfcdId,
-      formador_id: slot.formador_id,
+      formador_id: fid,
       data: dataSessao,
       hora_inicio: horaInicio,
       hora_fim: horaFim,
@@ -1326,12 +1327,12 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     qc.invalidateQueries({ queryKey: ["sessoes-geral"] });
     qc.invalidateQueries({ queryKey: ["disp-geral"] });
     qc.invalidateQueries({ queryKey: ["sessoes"] });
-    qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
+    qc.invalidateQueries({ queryKey: ["disponibilidades", fid] });
     onClose();
   }
 
   const open = !!slot;
-  const cursoLocked = !!slot?.curso_id;
+  const cursoLocked = !!slot?.curso_id && !avulso ? true : !!slot?.curso_id;
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
@@ -1341,7 +1342,21 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
         {slot && (
           <div className="space-y-3">
             <div className="text-sm bg-muted/40 rounded-md px-3 py-2">
-              <div><span className="text-muted-foreground">Formador:</span> <span className="font-medium">{slot.formador_nome}</span></div>
+              {escolherFormador ? (
+                <div className="space-y-1.5">
+                  <Label>Formador *</Label>
+                  <Select value={formadorSel} onValueChange={(v) => { setFormadorSel(v); setCursoId(""); setCursoUfcdId(""); }}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Escolher formador…" /></SelectTrigger>
+                    <SelectContent>
+                      {(formadoresLista.data ?? []).map((f: any) => (
+                        <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div><span className="text-muted-foreground">Formador:</span> <span className="font-medium">{slot.formador_nome}</span></div>
+              )}
               {avulso ? (
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-muted-foreground">Data:</span>
@@ -1396,7 +1411,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
         )}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={criar} disabled={saving || !cursoUfcdId}>{saving ? "A criar…" : "Criar sessão"}</Button>
+          <Button onClick={criar} disabled={saving || !cursoUfcdId || !fid}>{saving ? "A criar…" : "Criar sessão"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

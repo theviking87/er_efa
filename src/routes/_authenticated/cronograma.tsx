@@ -69,6 +69,7 @@ function CronogramaGeral() {
   const [editDisp, setEditDisp] = useState<DispSlot | null>(null);
   const [feriasOpen, setFeriasOpen] = useState(false);
   const [semDispOpen, setSemDispOpen] = useState(false);
+  const [printMenuOpen, setPrintMenuOpen] = useState(false);
 
 
 
@@ -1156,7 +1157,7 @@ function CronogramaGeral() {
 
           <div className="space-y-6 max-h-[65vh] overflow-auto">
             <section className="space-y-2">
-              <h3 className="text-sm font-semibold">1. Formadores sem disponibilidade lançada</h3>
+              <h3 className="text-sm font-semibold">1. Formadores sem disponibilidade nem sessão lançada</h3>
               {semDispLista.length === 0 ? (
                 <p className="text-sm text-muted-foreground">Todos os formadores alocados a cursos ativos têm disponibilidades neste mês.</p>
               ) : (

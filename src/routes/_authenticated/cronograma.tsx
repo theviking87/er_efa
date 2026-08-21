@@ -742,71 +742,84 @@ function CronogramaGeral() {
 
 
       <Card><CardContent className="p-6 space-y-4">
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="icon" onClick={prev}><ChevronLeft className="size-4" /></Button>
-            <div className="font-semibold text-lg min-w-[170px] text-center">{MONTH_NAMES[mes.mes]} {mes.ano}</div>
-            <Button variant="outline" size="icon" onClick={next}><ChevronRight className="size-4" /></Button>
-            <Button variant="ghost" size="sm" onClick={hoje}>Hoje</Button>
-            <Button variant="outline" size="sm" onClick={() => setPrintMenuOpen(true)}><Printer className="size-4 mr-1" />Imprimir</Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={imprimirDiasSemDisp}
-              disabled={!cursoFiltro}
-              title={cursoFiltro ? "PDF dos dias úteis sem disponibilidade para o curso selecionado" : "Seleciona um curso para ativar"}
-            >
-              <FileWarning className="size-4 mr-1" />Dias sem disponibilidade
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => setCreateDate(localDateIso())}
-              title="Lançar disponibilidade"
-            >
-              <CalendarPlus className="size-4 mr-1" />Lançar disponibilidade
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setFeriasOpen(true)}
-              title="Lançar período de férias / inatividade do formador"
-            >
-              <Palmtree className="size-4 mr-1" />Lançar férias
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setSemDispOpen(true)}
-              title="Análise do mês: disponibilidades e UFCDs por lançar"
-            >
-              <UserX className="size-4 mr-1" />Análise Mês Corrente
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setConvertSlot({
-                kind: "disp",
-                id: "",
-                formador_id: "",
-                formador_nome: "",
-                formador_cor: "#888",
-                data: localDateIso(),
-                hora_inicio: "09:00",
-                hora_fim: "13:00",
-                tipo: "disponivel",
-                notas: null,
-                curso_id: null,
-                curso_codigo: null,
-              } as any)}
-              title="Criar sessão ad-hoc sem disponibilidade prévia"
-            >
-              <CalendarPlus className="size-4 mr-1" />Lançar sessão
-            </Button>
+        <div className="flex items-start justify-between gap-3 flex-wrap">
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center gap-2">
+              <div className="inline-flex items-center rounded-md border border-input bg-background overflow-hidden">
+                <Button variant="ghost" size="icon" className="rounded-none h-9 w-9" onClick={prev}><ChevronLeft className="size-4" /></Button>
+                <div className="font-semibold text-base min-w-[150px] text-center px-1">{MONTH_NAMES[mes.mes]} {mes.ano}</div>
+                <Button variant="ghost" size="icon" className="rounded-none h-9 w-9" onClick={next}><ChevronRight className="size-4" /></Button>
+              </div>
+              <Button variant="ghost" size="sm" onClick={hoje}>Hoje</Button>
+            </div>
 
+            <div className="flex items-center gap-2 flex-wrap">
+              <div className="inline-flex items-center rounded-md overflow-hidden border border-primary/20">
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="rounded-none"
+                  onClick={() => setCreateDate(localDateIso())}
+                  title="Lançar disponibilidade"
+                >
+                  <CalendarPlus className="size-4 mr-1" />Disponibilidade
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="rounded-none border-l border-primary-foreground/20"
+                  onClick={() => setConvertSlot({
+                    kind: "disp",
+                    id: "",
+                    formador_id: "",
+                    formador_nome: "",
+                    formador_cor: "#888",
+                    data: localDateIso(),
+                    hora_inicio: "09:00",
+                    hora_fim: "13:00",
+                    tipo: "disponivel",
+                    notas: null,
+                    curso_id: null,
+                    curso_codigo: null,
+                  } as any)}
+                  title="Criar sessão ad-hoc sem disponibilidade prévia"
+                >
+                  <CalendarPlus className="size-4 mr-1" />Sessão
+                </Button>
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="rounded-none border-l border-primary-foreground/20"
+                  onClick={() => setFeriasOpen(true)}
+                  title="Lançar período de férias / inatividade do formador"
+                >
+                  <Palmtree className="size-4 mr-1" />Férias
+                </Button>
+              </div>
 
+              <span className="h-6 w-px bg-border mx-0.5" aria-hidden />
 
-
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setSemDispOpen(true)}
+                title="Análise do mês: disponibilidades e UFCDs por lançar"
+              >
+                <UserX className="size-4 mr-1" />Análise do mês
+              </Button>
+              <Button variant="outline" size="sm" onClick={() => setPrintMenuOpen(true)}>
+                <Printer className="size-4 mr-1" />Imprimir
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={imprimirDiasSemDisp}
+                disabled={!cursoFiltro}
+                title={cursoFiltro ? "PDF dos dias úteis sem disponibilidade para o curso selecionado" : "Seleciona um curso para ativar"}
+              >
+                <FileWarning className="size-4 mr-1" />Dias s/ disp.
+              </Button>
+            </div>
           </div>
           <div className="flex items-center gap-3 flex-wrap">
             <select

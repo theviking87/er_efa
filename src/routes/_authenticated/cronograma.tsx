@@ -1162,6 +1162,8 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
   const [horaFim, setHoraFim] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [removerDisp, setRemoverDisp] = useState(true);
+  const [dataSessao, setDataSessao] = useState("");
+  const avulso = !!slot && !slot.id;
   const [saving, setSaving] = useState(false);
 
   // UFCDs onde o formador está atribuído, com horas em falta.
@@ -1221,6 +1223,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
       setCursoUfcdId("");
       setObservacoes("");
       setRemoverDisp(true);
+      setDataSessao(slot.data);
     }
   }, [slot?.id]);
 
@@ -1234,7 +1237,8 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     if (!cursoId) return toast.error("Escolhe o curso");
     if (!cursoUfcdId) return toast.error("Escolhe a UFCD");
     if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
-    if (!confirmarFimDeSemana(slot.data, "esta sessão")) return;
+    if (!dataSessao) return toast.error("Escolhe a data");
+    if (!confirmarFimDeSemana(dataSessao, "esta sessão")) return;
 
     const cu = (opcoes.data ?? []).find((x: any) => x.id === cursoUfcdId) as any;
     if (!cu) return toast.error("UFCD inválida");
@@ -1246,7 +1250,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
       .from("sessoes")
       .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
       .eq("formador_id", slot.formador_id)
-      .eq("data", slot.data);
+      .eq("data", dataSessao);
     const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
     if (choque) {
       return toast.error("Formador já tem sessão neste horário", {
@@ -1260,7 +1264,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
       curso_id: cu.curso.id,
       curso_ufcd_id: cursoUfcdId,
       formador_id: slot.formador_id,
-      data: slot.data,
+      data: dataSessao,
       hora_inicio: horaInicio,
       hora_fim: horaFim,
       horas,
@@ -1268,7 +1272,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     } as never);
     if (error) { setSaving(false); return toast.error(error.message); }
 
-    if (removerDisp) {
+    if (removerDisp && slot.id) {
       await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
     }
     setSaving(false);
@@ -1286,14 +1290,21 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     <Dialog open={open} onOpenChange={(v) => { if (!v) onClose(); }}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> Criar sessão a partir de disponibilidade</DialogTitle>
+          <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> {avulso ? "Lançar sessão" : "Criar sessão a partir de disponibilidade"}</DialogTitle>
         </DialogHeader>
         {slot && (
           <div className="space-y-3">
             <div className="text-sm bg-muted/40 rounded-md px-3 py-2">
               <div><span className="text-muted-foreground">Formador:</span> <span className="font-medium">{slot.formador_nome}</span></div>
-              <div><span className="text-muted-foreground">Data:</span> <span className="font-medium">{fmtDate(slot.data)}</span></div>
-              <div><span className="text-muted-foreground">Janela:</span> <span className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</span></div>
+              {avulso ? (
+                <div className="flex items-center gap-2 mt-1">
+                  <span className="text-muted-foreground">Data:</span>
+                  <Input type="date" className="h-8 w-auto" value={dataSessao} onChange={e => setDataSessao(e.target.value)} />
+                </div>
+              ) : (
+                <div><span className="text-muted-foreground">Data:</span> <span className="font-medium">{fmtDate(slot.data)}</span></div>
+              )}
+              {!avulso && <div><span className="text-muted-foreground">Janela:</span> <span className="font-medium">{slot.hora_inicio?.slice(0,5)}–{slot.hora_fim?.slice(0,5)}</span></div>}
               {slot.notas && <div className="text-xs text-muted-foreground mt-1">"{slot.notas}"</div>}
             </div>
 
@@ -1331,10 +1342,10 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
 
             <div className="space-y-1.5"><Label>Observações</Label><Input value={observacoes} onChange={e => setObservacoes(e.target.value)} /></div>
 
-            <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            {!avulso && <label className="flex items-center gap-2 text-sm text-muted-foreground">
               <input type="checkbox" checked={removerDisp} onChange={e => setRemoverDisp(e.target.checked)} />
               Remover esta disponibilidade após criar a sessão
-            </label>
+            </label>}
           </div>
         )}
         <DialogFooter>

@@ -216,15 +216,25 @@ function CronogramaGeral() {
   });
 
   // UFCDs por concluir de cursos ativos e respetivos formadores atribuídos.
+  // Exclui também UFCDs cuja carga horária total já foi atingida, mesmo sem visto de concluída.
   const ufcdsAbertas = useQuery({
     queryKey: ["ufcds-abertas-analise", inicioMes],
     enabled: semDispOpen,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("curso_ufcd_formadores")
-        .select("formador_id, curso_ufcd:curso_ufcds(id, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))");
+        .select("formador_id, curso_ufcd:curso_ufcds(id, concluida, horas_totais, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))");
       if (error) throw error;
-      return (data ?? []).filter((r: any) => r.curso_ufcd?.curso?.estado === "ativo" && !r.curso_ufcd?.concluida) as any[];
+      const abertas = (data ?? []).filter((r: any) => r.curso_ufcd?.curso?.estado === "ativo" && !r.curso_ufcd?.concluida) as any[];
+      const ids = Array.from(new Set(abertas.map((r: any) => r.curso_ufcd.id)));
+      if (ids.length === 0) return [];
+      const { data: sess } = await supabase.from("sessoes").select("curso_ufcd_id, horas").in("curso_ufcd_id", ids);
+      const dadas = new Map<string, number>();
+      (sess ?? []).forEach((s: any) => dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0)));
+      return abertas.filter((r: any) => {
+        const total = Number(r.curso_ufcd.horas_totais ?? 0);
+        return total <= 0 || (dadas.get(r.curso_ufcd.id) ?? 0) < total;
+      });
     },
   });
 
@@ -711,6 +721,28 @@ function CronogramaGeral() {
             >
               <UserX className="size-4 mr-1" />Análise Mês Corrente
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConvertSlot({
+                kind: "disp",
+                id: "",
+                formador_id: "",
+                formador_nome: "",
+                formador_cor: "#888",
+                data: localDateIso(),
+                hora_inicio: "09:00",
+                hora_fim: "13:00",
+                tipo: "disponivel",
+                notas: null,
+                curso_id: null,
+                curso_codigo: null,
+              } as any)}
+              title="Criar sessão ad-hoc sem disponibilidade prévia"
+            >
+              <CalendarPlus className="size-4 mr-1" />Lançar sessão
+            </Button>
+
 
 
 
@@ -1164,17 +1196,30 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
   const [removerDisp, setRemoverDisp] = useState(true);
   const [dataSessao, setDataSessao] = useState("");
   const avulso = !!slot && !slot.id;
+  const [formadorSel, setFormadorSel] = useState("");
+  const fid = slot?.formador_id || formadorSel;
+  const escolherFormador = avulso && !slot?.formador_id;
   const [saving, setSaving] = useState(false);
+
+  const formadoresLista = useQuery({
+    queryKey: ["formadores-avulso-sessao"],
+    enabled: escolherFormador,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("formadores").select("id, nome").eq("estado", "ativo").order("nome");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
 
   // UFCDs onde o formador está atribuído, com horas em falta.
   const opcoes = useQuery({
-    queryKey: ["ufcds-do-formador-conv", slot?.formador_id],
-    enabled: !!slot,
+    queryKey: ["ufcds-do-formador-conv", fid],
+    enabled: !!slot && !!fid,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("curso_ufcd_formadores")
         .select("curso_ufcd:curso_ufcds(id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))")
-        .eq("formador_id", slot!.formador_id);
+        .eq("formador_id", fid);
       if (error) throw error;
       const cus = (data ?? [])
         .map((r: any) => r.curso_ufcd)
@@ -1224,8 +1269,9 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
       setObservacoes("");
       setRemoverDisp(true);
       setDataSessao(slot.data);
+      setFormadorSel("");
     }
-  }, [slot?.id]);
+  }, [slot?.id, slot?.formador_id, slot?.data]);
 
   // Quando há apenas um curso disponível, pré-selecionar
   useMemo(() => {
@@ -1234,6 +1280,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
 
   async function criar() {
     if (!slot) return;
+    if (!fid) return toast.error("Escolhe o formador");
     if (!cursoId) return toast.error("Escolhe o curso");
     if (!cursoUfcdId) return toast.error("Escolhe a UFCD");
     if (!horaInicio || !horaFim || horaFim <= horaInicio) return toast.error("Horário inválido");
@@ -1249,7 +1296,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     const { data: sess } = await supabase
       .from("sessoes")
       .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
-      .eq("formador_id", slot.formador_id)
+      .eq("formador_id", fid)
       .eq("data", dataSessao);
     const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
     if (choque) {
@@ -1263,7 +1310,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     const { error } = await supabase.from("sessoes").insert({
       curso_id: cu.curso.id,
       curso_ufcd_id: cursoUfcdId,
-      formador_id: slot.formador_id,
+      formador_id: fid,
       data: dataSessao,
       hora_inicio: horaInicio,
       hora_fim: horaFim,
@@ -1280,7 +1327,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     qc.invalidateQueries({ queryKey: ["sessoes-geral"] });
     qc.invalidateQueries({ queryKey: ["disp-geral"] });
     qc.invalidateQueries({ queryKey: ["sessoes"] });
-    qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
+    qc.invalidateQueries({ queryKey: ["disponibilidades", fid] });
     onClose();
   }
 
@@ -1295,7 +1342,21 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
         {slot && (
           <div className="space-y-3">
             <div className="text-sm bg-muted/40 rounded-md px-3 py-2">
-              <div><span className="text-muted-foreground">Formador:</span> <span className="font-medium">{slot.formador_nome}</span></div>
+              {escolherFormador ? (
+                <div className="space-y-1.5">
+                  <Label>Formador *</Label>
+                  <Select value={formadorSel} onValueChange={(v) => { setFormadorSel(v); setCursoId(""); setCursoUfcdId(""); }}>
+                    <SelectTrigger className="h-8"><SelectValue placeholder="Escolher formador…" /></SelectTrigger>
+                    <SelectContent>
+                      {(formadoresLista.data ?? []).map((f: any) => (
+                        <SelectItem key={f.id} value={f.id}>{f.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div><span className="text-muted-foreground">Formador:</span> <span className="font-medium">{slot.formador_nome}</span></div>
+              )}
               {avulso ? (
                 <div className="flex items-center gap-2 mt-1">
                   <span className="text-muted-foreground">Data:</span>
@@ -1350,7 +1411,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
         )}
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>
-          <Button onClick={criar} disabled={saving || !cursoUfcdId}>{saving ? "A criar…" : "Criar sessão"}</Button>
+          <Button onClick={criar} disabled={saving || !cursoUfcdId || !fid}>{saving ? "A criar…" : "Criar sessão"}</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

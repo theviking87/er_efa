@@ -401,7 +401,6 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [analiseOpen, setAnaliseOpen] = useState(false);
-  const [printMenuOpen, setPrintMenuOpen] = useState(false);
 
   const data = useQuery({
     queryKey: ["curso-ufcds", cursoId],
@@ -1462,6 +1461,7 @@ function CronogramaTab({
   const [substituirSessao, setSubstituirSessao] = useState<any | null>(null);
   const [bulkOpen, setBulkOpen] = useState(false);
   const [analiseOpen, setAnaliseOpen] = useState(false);
+  const [printMenuOpen, setPrintMenuOpen] = useState(false);
   const [analiseBusy, setAnaliseBusy] = useState(false);
   const [analise, setAnalise] = useState<AnaliseCronograma>(EMPTY_ANALISE);
 

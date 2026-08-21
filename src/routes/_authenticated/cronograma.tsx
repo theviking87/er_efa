@@ -1318,7 +1318,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
                   ))}
                 </SelectContent>
               </Select>
-              {cursoLocked && <div className="text-xs text-muted-foreground">Curso definido na disponibilidade.</div>}
+              {cursoLocked && !avulso && <div className="text-xs text-muted-foreground">Curso definido na disponibilidade.</div>}
             </div>
 
             <div className="space-y-1.5">

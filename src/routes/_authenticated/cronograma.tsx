@@ -1196,17 +1196,30 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
   const [removerDisp, setRemoverDisp] = useState(true);
   const [dataSessao, setDataSessao] = useState("");
   const avulso = !!slot && !slot.id;
+  const [formadorSel, setFormadorSel] = useState("");
+  const fid = slot?.formador_id || formadorSel;
+  const escolherFormador = avulso && !slot?.formador_id;
   const [saving, setSaving] = useState(false);
+
+  const formadoresLista = useQuery({
+    queryKey: ["formadores-avulso-sessao"],
+    enabled: escolherFormador,
+    queryFn: async () => {
+      const { data, error } = await supabase.from("formadores").select("id, nome").eq("estado", "ativo").order("nome");
+      if (error) throw error;
+      return (data ?? []) as any[];
+    },
+  });
 
   // UFCDs onde o formador está atribuído, com horas em falta.
   const opcoes = useQuery({
-    queryKey: ["ufcds-do-formador-conv", slot?.formador_id],
-    enabled: !!slot,
+    queryKey: ["ufcds-do-formador-conv", fid],
+    enabled: !!slot && !!fid,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("curso_ufcd_formadores")
         .select("curso_ufcd:curso_ufcds(id, horas_totais, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))")
-        .eq("formador_id", slot!.formador_id);
+        .eq("formador_id", fid);
       if (error) throw error;
       const cus = (data ?? [])
         .map((r: any) => r.curso_ufcd)

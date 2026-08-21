@@ -26,6 +26,8 @@ import {
   Pencil,
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
+import jsPDF from "jspdf";
+import autoTable from "jspdf-autotable";
 import { exportSigoCurso, exportFaltasCurso } from "@/lib/exports";
 import {
   Dialog,
@@ -399,6 +401,7 @@ function UfcdsTab({ cursoId }: { cursoId: string }) {
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [analiseOpen, setAnaliseOpen] = useState(false);
+  const [printMenuOpen, setPrintMenuOpen] = useState(false);
 
   const data = useQuery({
     queryKey: ["curso-ufcds", cursoId],
@@ -1909,6 +1912,52 @@ function CronogramaTab({
 
   const totalMes = resumoMes.reduce((a, r) => a + r.horas, 0);
 
+  // Períodos (manhã/tarde) de dias úteis sem sessão marcada neste curso/mês.
+  const sessoesEmFalta = useMemo(() => {
+    const toMin = (t: string) => {
+      const [h, m] = String(t).slice(0, 5).split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    };
+    const rows: { iso: string; periodo: string; nota: string }[] = [];
+    for (const cell of grid) {
+      if (!cell) continue;
+      const dow = weekdayFromIso(cell.iso);
+      if (dow === 0 || dow === 6) continue;
+      const fer = feriadoNome(cell.iso);
+      const feriasMotivo = feriasDias.get(cell.iso);
+      if (fer || feriasMotivo) continue;
+      const sess = sessoesByDay.get(cell.iso) ?? [];
+      const manha = sess.some((x: any) => toMin(x.hora_inicio) < 780 && toMin(x.hora_fim) > 540);
+      const tarde = sess.some((x: any) => toMin(x.hora_inicio) < 1020 && toMin(x.hora_fim) > 840);
+      if (manha && tarde) continue;
+      const semForm = sess.some((x: any) => sessaoSemFormadorAtribuido(x));
+      const periodo = !manha && !tarde ? "Dia todo" : !manha ? "Manhã" : "Tarde";
+      rows.push({ iso: cell.iso, periodo, nota: semForm ? "Sessão sem formador atribuído" : "" });
+    }
+    return rows;
+  }, [grid, sessoesByDay, feriasDias]);
+
+  function imprimirSessoesEmFalta() {
+    const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    doc.setFontSize(13);
+    doc.text("Sessões em falta", 14, 16);
+    doc.setFontSize(10);
+    doc.text(`${cursoCodigo} — ${cursoNome}`, 14, 22);
+    doc.text(`${MONTH_NAMES[mes.mes]} ${mes.ano}`, 14, 27);
+    if (sessoesEmFalta.length === 0) {
+      doc.text("Sem sessões em falta neste mês.", 14, 37);
+    } else {
+      autoTable(doc, {
+        startY: 33,
+        head: [["Data", "Período", "Notas"]],
+        body: sessoesEmFalta.map((r) => [fmtDate(r.iso), r.periodo, r.nota]),
+        styles: { fontSize: 9, cellPadding: 1.5 },
+        headStyles: { fillColor: [15, 118, 110] },
+      });
+    }
+    doc.save(`sessoes-em-falta-${cursoCodigo}-${mes.ano}-${String(mes.mes + 1).padStart(2, "0")}.pdf`);
+  }
+
   async function imprimirCronograma() {
     const node = document.getElementById("cronograma-print");
     if (!node) return window.print();
@@ -1973,7 +2022,7 @@ function CronogramaTab({
                   </Badge>
                 )}
             </Button>
-            <Button variant="outline" size="sm" onClick={imprimirCronograma}>
+            <Button variant="outline" size="sm" onClick={() => setPrintMenuOpen(true)}>
               <Printer className="size-4" /> Imprimir
             </Button>
 

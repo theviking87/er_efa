@@ -707,9 +707,9 @@ function CronogramaGeral() {
               variant="outline"
               size="sm"
               onClick={() => setSemDispOpen(true)}
-              title="Formadores sem disponibilidades no mês"
+              title="Análise do mês: disponibilidades e UFCDs por lançar"
             >
-              <UserX className="size-4 mr-1" />Formadores sem disponibilidade
+              <UserX className="size-4 mr-1" />Análise Mês Corrente
             </Button>
 
 

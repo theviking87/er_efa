@@ -721,6 +721,28 @@ function CronogramaGeral() {
             >
               <UserX className="size-4 mr-1" />Análise Mês Corrente
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setConvertSlot({
+                kind: "disp",
+                id: "",
+                formador_id: "",
+                formador_nome: "",
+                formador_cor: "#888",
+                data: localDateIso(),
+                hora_inicio: "09:00",
+                hora_fim: "13:00",
+                tipo: "disponivel",
+                notas: null,
+                curso_id: null,
+                curso_codigo: null,
+              } as any)}
+              title="Criar sessão ad-hoc sem disponibilidade prévia"
+            >
+              <CalendarPlus className="size-4 mr-1" />Lançar sessão
+            </Button>
+
 
 
 

@@ -2041,6 +2041,38 @@ function CronogramaTab({
           </div>
         </div>
 
+        <Dialog open={printMenuOpen} onOpenChange={setPrintMenuOpen}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Printer className="size-4" /> Imprimir
+              </DialogTitle>
+            </DialogHeader>
+            <div className="space-y-2">
+              <Button
+                className="w-full justify-start"
+                variant="outline"
+                onClick={() => {
+                  setPrintMenuOpen(false);
+                  setTimeout(() => imprimirCronograma(), 100);
+                }}
+              >
+                <Printer className="size-4 mr-2" />Imprimir Cronograma
+              </Button>
+              <Button
+                className="w-full justify-start"
+                variant="outline"
+                onClick={() => {
+                  setPrintMenuOpen(false);
+                  imprimirSessoesEmFalta();
+                }}
+              >
+                <AlertTriangle className="size-4 mr-2" />Imprimir Sessões em Falta
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
         <Dialog open={analiseOpen} onOpenChange={setAnaliseOpen}>
           <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
             <DialogHeader>

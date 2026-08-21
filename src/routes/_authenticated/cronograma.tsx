@@ -1039,26 +1039,90 @@ function CronogramaGeral() {
         onClose={() => setConvertSlot(null)}
       />
       <Dialog open={semDispOpen} onOpenChange={(o) => !o && setSemDispOpen(false)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <UserX className="size-4" /> Formadores sem disponibilidade — {MONTH_NAMES[mes.mes]} {mes.ano}
+              <UserX className="size-4" /> Análise Mês Corrente — {MONTH_NAMES[mes.mes]} {mes.ano}
             </DialogTitle>
           </DialogHeader>
-          {semDispLista.length === 0 ? (
-            <p className="text-sm text-muted-foreground">Todos os formadores alocados a cursos ativos têm disponibilidades neste mês.</p>
-          ) : (
-            <ul className="space-y-1.5 max-h-[60vh] overflow-auto">
-              {semDispLista.map(f => (
-                <li key={f.id} className="flex items-center justify-between gap-3 rounded-md border px-3 py-2 text-sm">
-                  <span className="font-medium">{f.nome}</span>
-                  {f.cursoUnico && (
-                    <span className="text-xs text-muted-foreground">só alocado a {f.cursoUnico}</span>
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
+
+          <div className="space-y-6 max-h-[65vh] overflow-auto">
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">1. Formadores sem disponibilidade lançada</h3>
+              {semDispLista.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Todos os formadores alocados a cursos ativos têm disponibilidades neste mês.</p>
+              ) : (
+                <table className="w-full text-sm border rounded-md overflow-hidden">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
+                    <tr><th className="text-left px-3 py-2">Formador</th><th className="text-left px-3 py-2">Cursos</th></tr>
+                  </thead>
+                  <tbody>
+                    {semDispLista.map((f: any) => (
+                      <tr key={f.id} className="border-t">
+                        <td className="px-3 py-2 font-medium">{f.nome}</td>
+                        <td className="px-3 py-2 text-muted-foreground text-xs">
+                          {f.cursoUnico ? `só alocado a ${f.cursoUnico}` : (f.cursos ?? []).join(", ")}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+
+            <section className="space-y-2">
+              <h3 className="text-sm font-semibold">2. UFCDs por concluir sem sessão nem disponibilidade no mês</h3>
+              {semLancamentoLista.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Sem situações por lançar neste mês.</p>
+              ) : (
+                <table className="w-full text-sm border rounded-md overflow-hidden">
+                  <thead className="bg-muted/50 text-xs text-muted-foreground">
+                    <tr>
+                      <th className="text-left px-3 py-2">Formador</th>
+                      <th className="text-left px-3 py-2">Curso</th>
+                      <th className="text-left px-3 py-2">UFCDs</th>
+                      <th className="px-3 py-2" />
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {semLancamentoLista.map((r) => (
+                      <tr key={r.key} className="border-t">
+                        <td className="px-3 py-2 font-medium">{r.formador_nome}</td>
+                        <td className="px-3 py-2 text-xs">{r.curso_codigo} — {r.curso_nome}</td>
+                        <td className="px-3 py-2 text-xs text-muted-foreground">{r.ufcds.join(", ")}</td>
+                        <td className="px-3 py-2 text-right">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => {
+                              setSemDispOpen(false);
+                              setConvertSlot({
+                                kind: "disp",
+                                id: "",
+                                formador_id: r.formador_id,
+                                formador_nome: r.formador_nome,
+                                formador_cor: "#888",
+                                data: localDateIso(),
+                                hora_inicio: "09:00",
+                                hora_fim: "13:00",
+                                tipo: "disponivel",
+                                notas: null,
+                                curso_id: r.curso_id,
+                                curso_codigo: r.curso_codigo,
+                              });
+                            }}
+                          >
+                            <CalendarPlus className="size-4 mr-1" />Lançar sessão
+                          </Button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </section>
+          </div>
+
           <DialogFooter>
             <Button variant="outline" onClick={() => setSemDispOpen(false)}>Fechar</Button>
           </DialogFooter>

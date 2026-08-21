@@ -216,15 +216,25 @@ function CronogramaGeral() {
   });
 
   // UFCDs por concluir de cursos ativos e respetivos formadores atribuídos.
+  // Exclui também UFCDs cuja carga horária total já foi atingida, mesmo sem visto de concluída.
   const ufcdsAbertas = useQuery({
     queryKey: ["ufcds-abertas-analise", inicioMes],
     enabled: semDispOpen,
     queryFn: async () => {
       const { data, error } = await supabase
         .from("curso_ufcd_formadores")
-        .select("formador_id, curso_ufcd:curso_ufcds(id, concluida, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))");
+        .select("formador_id, curso_ufcd:curso_ufcds(id, concluida, horas_totais, ufcd:ufcds(codigo, designacao), curso:cursos(id, codigo, nome, estado))");
       if (error) throw error;
-      return (data ?? []).filter((r: any) => r.curso_ufcd?.curso?.estado === "ativo" && !r.curso_ufcd?.concluida) as any[];
+      const abertas = (data ?? []).filter((r: any) => r.curso_ufcd?.curso?.estado === "ativo" && !r.curso_ufcd?.concluida) as any[];
+      const ids = Array.from(new Set(abertas.map((r: any) => r.curso_ufcd.id)));
+      if (ids.length === 0) return [];
+      const { data: sess } = await supabase.from("sessoes").select("curso_ufcd_id, horas").in("curso_ufcd_id", ids);
+      const dadas = new Map<string, number>();
+      (sess ?? []).forEach((s: any) => dadas.set(s.curso_ufcd_id, (dadas.get(s.curso_ufcd_id) ?? 0) + Number(s.horas ?? 0)));
+      return abertas.filter((r: any) => {
+        const total = Number(r.curso_ufcd.horas_totais ?? 0);
+        return total <= 0 || (dadas.get(r.curso_ufcd.id) ?? 0) < total;
+      });
     },
   });
 

@@ -23,6 +23,7 @@ const NAV = [
   { to: "/contratos/formador", label: "Contrato de Formador", icon: FileSignature, section: "Contratos" },
   { to: "/contratos/formando", label: "Contrato de Formando", icon: FileSignature, section: "Contratos" },
   { to: "/contratos/historico", label: "Histórico", icon: HistoryIcon, section: "Contratos" },
+  { to: "/documentacao", label: "Gestão de Documentação", icon: FolderCheck, section: "Documentação" },
   { to: "/financeiro", label: "Painel", icon: Wallet, section: "Financeiro" },
   { to: "/financeiro/processamentos", label: "Proc. Formandos", icon: ClipboardList, section: "Financeiro" },
   { to: "/financeiro/formadores", label: "Proc. Formadores", icon: Receipt, section: "Financeiro" },

@@ -2,7 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { Loader2, Trash2, History } from "lucide-react";
+import { Loader2, Trash2, History as HistoryIcon } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -97,7 +97,7 @@ function HistoricoContratosPage() {
             </div>
           ) : registos.length === 0 ? (
             <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-              <History className="size-8 text-muted-foreground" />
+              <HistoryIcon className="size-8 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">Ainda não existem contratos no histórico.</p>
             </div>
           ) : (

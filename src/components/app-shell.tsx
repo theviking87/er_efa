@@ -3,7 +3,7 @@ import { useEffect, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useQueryClient } from "@tanstack/react-query";
 import {
-  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, Settings2, ClipboardList, FolderKanban, Receipt, ShoppingCart, FileSignature, History as HistoryIcon,
+  LayoutDashboard, Users, BookOpen, ListChecks, LogOut, GraduationCap, CalendarDays, UserSquare2, FileBarChart2, UserCog, Download, Wallet, Settings2, ClipboardList, FolderKanban, Receipt, ShoppingCart, FileSignature, FolderCheck, History as HistoryIcon,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -23,6 +23,7 @@ const NAV = [
   { to: "/contratos/formador", label: "Contrato de Formador", icon: FileSignature, section: "Contratos" },
   { to: "/contratos/formando", label: "Contrato de Formando", icon: FileSignature, section: "Contratos" },
   { to: "/contratos/historico", label: "Histórico", icon: HistoryIcon, section: "Contratos" },
+  { to: "/documentacao", label: "Gestão de Documentação", icon: FolderCheck, section: "Documentação" },
   { to: "/financeiro", label: "Painel", icon: Wallet, section: "Financeiro" },
   { to: "/financeiro/processamentos", label: "Proc. Formandos", icon: ClipboardList, section: "Financeiro" },
   { to: "/financeiro/formadores", label: "Proc. Formadores", icon: Receipt, section: "Financeiro" },

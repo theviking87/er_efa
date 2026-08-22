@@ -14,6 +14,7 @@ import { Route as AuthenticatedRouteRouteImport } from './routes/_authenticated/
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as AuthenticatedCronogramaRouteImport } from './routes/_authenticated/cronograma'
 import { Route as AuthenticatedDashboardRouteImport } from './routes/_authenticated/dashboard'
+import { Route as AuthenticatedDocumentacaoRouteImport } from './routes/_authenticated/documentacao'
 import { Route as AuthenticatedExportarRouteImport } from './routes/_authenticated/exportar'
 import { Route as AuthenticatedNotaHonorariosRouteImport } from './routes/_authenticated/nota-honorarios'
 import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated/perfil'
@@ -63,6 +64,12 @@ const AuthenticatedDashboardRoute = AuthenticatedDashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => AuthenticatedRouteRoute,
 } as any)
+const AuthenticatedDocumentacaoRoute =
+  AuthenticatedDocumentacaoRouteImport.update({
+    id: '/documentacao',
+    path: '/documentacao',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
 const AuthenticatedExportarRoute = AuthenticatedExportarRouteImport.update({
   id: '/exportar',
   path: '/exportar',
@@ -207,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/auth': typeof AuthRoute
   '/cronograma': typeof AuthenticatedCronogramaRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/documentacao': typeof AuthenticatedDocumentacaoRoute
   '/exportar': typeof AuthenticatedExportarRoute
   '/nota-honorarios': typeof AuthenticatedNotaHonorariosRoute
   '/perfil': typeof AuthenticatedPerfilRoute
@@ -237,6 +245,7 @@ export interface FileRoutesByTo {
   '/auth': typeof AuthRoute
   '/cronograma': typeof AuthenticatedCronogramaRoute
   '/dashboard': typeof AuthenticatedDashboardRoute
+  '/documentacao': typeof AuthenticatedDocumentacaoRoute
   '/exportar': typeof AuthenticatedExportarRoute
   '/nota-honorarios': typeof AuthenticatedNotaHonorariosRoute
   '/perfil': typeof AuthenticatedPerfilRoute
@@ -269,6 +278,7 @@ export interface FileRoutesById {
   '/auth': typeof AuthRoute
   '/_authenticated/cronograma': typeof AuthenticatedCronogramaRoute
   '/_authenticated/dashboard': typeof AuthenticatedDashboardRoute
+  '/_authenticated/documentacao': typeof AuthenticatedDocumentacaoRoute
   '/_authenticated/exportar': typeof AuthenticatedExportarRoute
   '/_authenticated/nota-honorarios': typeof AuthenticatedNotaHonorariosRoute
   '/_authenticated/perfil': typeof AuthenticatedPerfilRoute
@@ -301,6 +311,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cronograma'
     | '/dashboard'
+    | '/documentacao'
     | '/exportar'
     | '/nota-honorarios'
     | '/perfil'
@@ -331,6 +342,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/cronograma'
     | '/dashboard'
+    | '/documentacao'
     | '/exportar'
     | '/nota-honorarios'
     | '/perfil'
@@ -362,6 +374,7 @@ export interface FileRouteTypes {
     | '/auth'
     | '/_authenticated/cronograma'
     | '/_authenticated/dashboard'
+    | '/_authenticated/documentacao'
     | '/_authenticated/exportar'
     | '/_authenticated/nota-honorarios'
     | '/_authenticated/perfil'
@@ -429,6 +442,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof AuthenticatedDashboardRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/documentacao': {
+      id: '/_authenticated/documentacao'
+      path: '/documentacao'
+      fullPath: '/documentacao'
+      preLoaderRoute: typeof AuthenticatedDocumentacaoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/exportar': {
@@ -605,6 +625,7 @@ declare module '@tanstack/react-router' {
 interface AuthenticatedRouteRouteChildren {
   AuthenticatedCronogramaRoute: typeof AuthenticatedCronogramaRoute
   AuthenticatedDashboardRoute: typeof AuthenticatedDashboardRoute
+  AuthenticatedDocumentacaoRoute: typeof AuthenticatedDocumentacaoRoute
   AuthenticatedExportarRoute: typeof AuthenticatedExportarRoute
   AuthenticatedNotaHonorariosRoute: typeof AuthenticatedNotaHonorariosRoute
   AuthenticatedPerfilRoute: typeof AuthenticatedPerfilRoute
@@ -634,6 +655,7 @@ interface AuthenticatedRouteRouteChildren {
 const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedCronogramaRoute: AuthenticatedCronogramaRoute,
   AuthenticatedDashboardRoute: AuthenticatedDashboardRoute,
+  AuthenticatedDocumentacaoRoute: AuthenticatedDocumentacaoRoute,
   AuthenticatedExportarRoute: AuthenticatedExportarRoute,
   AuthenticatedNotaHonorariosRoute: AuthenticatedNotaHonorariosRoute,
   AuthenticatedPerfilRoute: AuthenticatedPerfilRoute,

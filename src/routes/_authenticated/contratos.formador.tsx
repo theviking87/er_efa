@@ -105,8 +105,17 @@ function ContratoFormadorPage() {
         FORMADOR_UFCD: ufcdTexto,
         DATA_CONTRATO: formatDatePt(form.dataContrato),
       });
+      const { error: histErro } = await supabase.from("contratos_historico").insert({
+        tipo_contrato: "FORMADOR",
+        nome_formador: form.formadorNome.trim(),
+        ufcd: ufcdTexto,
+      });
       downloadBlob(blob, `Contrato_Formador_${sanitizeFilename(form.formadorNome)}.docx`);
-      toast.success("Contrato gerado com sucesso");
+      if (histErro) {
+        toast.warning("Contrato gerado, mas não foi possível registar no histórico", { description: histErro.message });
+      } else {
+        toast.success("Contrato gerado e registado no histórico");
+      }
     } catch (e) {
       toast.error("Erro ao gerar o contrato", { description: e instanceof Error ? e.message : "Erro desconhecido" });
     } finally {

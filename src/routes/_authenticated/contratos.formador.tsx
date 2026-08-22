@@ -75,7 +75,7 @@ function ContratoFormadorPage() {
   );
 
   function validar() {
-    const problemas = CAMPOS.filter(c => !form[c.key].trim()).map(c => c.label);
+    const problemas: string[] = CAMPOS.filter(c => !form[c.key].trim()).map(c => String(c.label));
     if (!ufcdTexto) problemas.push("Pelo menos uma UFCD completa (horas + designação)");
     if (form.formadorNif && !/^\d{9}$/.test(form.formadorNif.trim())) problemas.push("NIF com exatamente 9 algarismos");
     return problemas;

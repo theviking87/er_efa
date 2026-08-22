@@ -441,6 +441,30 @@ export type Database = {
           },
         ]
       }
+      documentacao_estado: {
+        Row: {
+          chave: string
+          created_at: string
+          dados: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          chave: string
+          created_at?: string
+          dados?: Json
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          chave?: string
+          created_at?: string
+          dados?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fin_bolsa_config: {
         Row: {
           created_at: string

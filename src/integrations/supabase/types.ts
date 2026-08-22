@@ -14,6 +14,33 @@ export type Database = {
   }
   public: {
     Tables: {
+      contratos_historico: {
+        Row: {
+          created_at: string
+          data_geracao: string
+          id: string
+          nome_formador: string
+          tipo_contrato: string
+          ufcd: string
+        }
+        Insert: {
+          created_at?: string
+          data_geracao?: string
+          id?: string
+          nome_formador: string
+          tipo_contrato?: string
+          ufcd?: string
+        }
+        Update: {
+          created_at?: string
+          data_geracao?: string
+          id?: string
+          nome_formador?: string
+          tipo_contrato?: string
+          ufcd?: string
+        }
+        Relationships: []
+      }
       cronograma_observacoes: {
         Row: {
           created_at: string

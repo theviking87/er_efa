@@ -20,6 +20,7 @@ import { Route as AuthenticatedPerfilRouteImport } from './routes/_authenticated
 import { Route as AuthenticatedRelatoriosRouteImport } from './routes/_authenticated/relatorios'
 import { Route as AuthenticatedUfcdsRouteImport } from './routes/_authenticated/ufcds'
 import { Route as AuthenticatedContratosFormadorRouteImport } from './routes/_authenticated/contratos.formador'
+import { Route as AuthenticatedContratosFormandoRouteImport } from './routes/_authenticated/contratos.formando'
 import { Route as AuthenticatedContratosHistoricoRouteImport } from './routes/_authenticated/contratos.historico'
 import { Route as AuthenticatedCursosIndexRouteImport } from './routes/_authenticated/cursos.index'
 import { Route as AuthenticatedCursosIdRouteImport } from './routes/_authenticated/cursos.$id'
@@ -92,6 +93,12 @@ const AuthenticatedContratosFormadorRoute =
   AuthenticatedContratosFormadorRouteImport.update({
     id: '/contratos/formador',
     path: '/contratos/formador',
+    getParentRoute: () => AuthenticatedRouteRoute,
+  } as any)
+const AuthenticatedContratosFormandoRoute =
+  AuthenticatedContratosFormandoRouteImport.update({
+    id: '/contratos/formando',
+    path: '/contratos/formando',
     getParentRoute: () => AuthenticatedRouteRoute,
   } as any)
 const AuthenticatedContratosHistoricoRoute =
@@ -206,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/contratos/formador': typeof AuthenticatedContratosFormadorRoute
+  '/contratos/formando': typeof AuthenticatedContratosFormandoRoute
   '/contratos/historico': typeof AuthenticatedContratosHistoricoRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
@@ -235,6 +243,7 @@ export interface FileRoutesByTo {
   '/relatorios': typeof AuthenticatedRelatoriosRoute
   '/ufcds': typeof AuthenticatedUfcdsRoute
   '/contratos/formador': typeof AuthenticatedContratosFormadorRoute
+  '/contratos/formando': typeof AuthenticatedContratosFormandoRoute
   '/contratos/historico': typeof AuthenticatedContratosHistoricoRoute
   '/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
@@ -266,6 +275,7 @@ export interface FileRoutesById {
   '/_authenticated/relatorios': typeof AuthenticatedRelatoriosRoute
   '/_authenticated/ufcds': typeof AuthenticatedUfcdsRoute
   '/_authenticated/contratos/formador': typeof AuthenticatedContratosFormadorRoute
+  '/_authenticated/contratos/formando': typeof AuthenticatedContratosFormandoRoute
   '/_authenticated/contratos/historico': typeof AuthenticatedContratosHistoricoRoute
   '/_authenticated/cursos/$id': typeof AuthenticatedCursosIdRoute
   '/_authenticated/financeiro/configuracao': typeof AuthenticatedFinanceiroConfiguracaoRoute
@@ -297,6 +307,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/ufcds'
     | '/contratos/formador'
+    | '/contratos/formando'
     | '/contratos/historico'
     | '/cursos/$id'
     | '/financeiro/configuracao'
@@ -326,6 +337,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/ufcds'
     | '/contratos/formador'
+    | '/contratos/formando'
     | '/contratos/historico'
     | '/cursos/$id'
     | '/financeiro/configuracao'
@@ -356,6 +368,7 @@ export interface FileRouteTypes {
     | '/_authenticated/relatorios'
     | '/_authenticated/ufcds'
     | '/_authenticated/contratos/formador'
+    | '/_authenticated/contratos/formando'
     | '/_authenticated/contratos/historico'
     | '/_authenticated/cursos/$id'
     | '/_authenticated/financeiro/configuracao'
@@ -458,6 +471,13 @@ declare module '@tanstack/react-router' {
       path: '/contratos/formador'
       fullPath: '/contratos/formador'
       preLoaderRoute: typeof AuthenticatedContratosFormadorRouteImport
+      parentRoute: typeof AuthenticatedRouteRoute
+    }
+    '/_authenticated/contratos/formando': {
+      id: '/_authenticated/contratos/formando'
+      path: '/contratos/formando'
+      fullPath: '/contratos/formando'
+      preLoaderRoute: typeof AuthenticatedContratosFormandoRouteImport
       parentRoute: typeof AuthenticatedRouteRoute
     }
     '/_authenticated/contratos/historico': {
@@ -591,6 +611,7 @@ interface AuthenticatedRouteRouteChildren {
   AuthenticatedRelatoriosRoute: typeof AuthenticatedRelatoriosRoute
   AuthenticatedUfcdsRoute: typeof AuthenticatedUfcdsRoute
   AuthenticatedContratosFormadorRoute: typeof AuthenticatedContratosFormadorRoute
+  AuthenticatedContratosFormandoRoute: typeof AuthenticatedContratosFormandoRoute
   AuthenticatedContratosHistoricoRoute: typeof AuthenticatedContratosHistoricoRoute
   AuthenticatedCursosIdRoute: typeof AuthenticatedCursosIdRoute
   AuthenticatedFinanceiroConfiguracaoRoute: typeof AuthenticatedFinanceiroConfiguracaoRoute
@@ -619,6 +640,7 @@ const AuthenticatedRouteRouteChildren: AuthenticatedRouteRouteChildren = {
   AuthenticatedRelatoriosRoute: AuthenticatedRelatoriosRoute,
   AuthenticatedUfcdsRoute: AuthenticatedUfcdsRoute,
   AuthenticatedContratosFormadorRoute: AuthenticatedContratosFormadorRoute,
+  AuthenticatedContratosFormandoRoute: AuthenticatedContratosFormandoRoute,
   AuthenticatedContratosHistoricoRoute: AuthenticatedContratosHistoricoRoute,
   AuthenticatedCursosIdRoute: AuthenticatedCursosIdRoute,
   AuthenticatedFinanceiroConfiguracaoRoute:

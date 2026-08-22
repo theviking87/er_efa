@@ -105,8 +105,8 @@ function HistoricoContratosPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead className="w-[170px]">Data</TableHead>
-                  <TableHead className="w-[220px]">Formador</TableHead>
-                  <TableHead>UFCD</TableHead>
+                  <TableHead className="w-[220px]">Nome</TableHead>
+                  <TableHead>UFCD / Curso</TableHead>
                   <TableHead className="w-[90px] text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>

@@ -21,7 +21,7 @@ const NAV = [
   { to: "/ufcds", label: "UFCD", icon: ListChecks, section: "Geral" },
   { to: "/relatorios", label: "Relatórios & SIGO", icon: FileBarChart2, section: "Geral" },
   { to: "/contratos/formador", label: "Contrato de Formador", icon: FileSignature, section: "Contratos" },
-  { to: "/contratos/historico", label: "Histórico", icon: History, section: "Contratos" },
+  { to: "/contratos/historico", label: "Histórico", icon: HistoryIcon, section: "Contratos" },
   { to: "/financeiro", label: "Painel", icon: Wallet, section: "Financeiro" },
   { to: "/financeiro/processamentos", label: "Proc. Formandos", icon: ClipboardList, section: "Financeiro" },
   { to: "/financeiro/formadores", label: "Proc. Formadores", icon: Receipt, section: "Financeiro" },

@@ -8,6 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { PageContainer, PageHeader } from "@/components/app-shell";
+import { supabase } from "@/integrations/supabase/client";
 import {
   downloadBlob,
   formatDatePt,

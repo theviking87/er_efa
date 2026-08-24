@@ -358,11 +358,10 @@ export async function exportSigoCursoPdf(cursoId: string) {
 // ============= 2. Horas por formador =============
 export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) {
   await loadBranding();
-  let rows: any[];
-  let formadorById: Map<string, any>;
-  let cursoById: Map<string, any>;
-  let cufById: Map<string, any>;
-  let ufcdById: Map<string, any>;
+  const b = getBrandingSync();
+  const eur = (n: number) =>
+    `${n.toLocaleString("pt-PT", { minimumFractionDigits: 2, maximumFractionDigits: 2 })} €`;
+
   const { data, error } = await supabase
     .from("sessoes")
     .select("data, horas, formador_id, curso_id, curso_ufcd_id")
@@ -370,84 +369,175 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
     .lte("data", fim)
     .order("data");
   if (error) throw error;
-  rows = data ?? [];
-  [formadorById, cursoById, cufById] = await Promise.all([
-    rowsById("formadores", "id, nome, nif", uniqueIds(rows.map((s: any) => s.formador_id))),
+  const rows: any[] = data ?? [];
+
+  const [formadorById, cursoById, cufById] = await Promise.all([
+    rowsById(
+      "formadores",
+      "id, nome, nif, valor_hora, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem",
+      uniqueIds(rows.map((s: any) => s.formador_id)),
+    ),
     rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
     rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(rows.map((s: any) => s.curso_ufcd_id))),
   ]);
-  ufcdById = await rowsById(
+  const ufcdById = await rowsById(
     "ufcds",
     "id, codigo",
     uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)),
   );
 
-  const agg = new Map<string, { formador: string; nif: string; horas: number; sessoes: number }>();
+  type Agg = {
+    formador: string;
+    nif: string;
+    horas: number;
+    sessoes: number;
+    valorHora: number;
+    base: number;
+    iva: number;
+    irs: number;
+    total: number;
+  };
+  const agg = new Map<string, Agg>();
   rows.forEach((s: any) => {
-    const formador = formadorById.get(s.formador_id);
-    const k = formador?.id ?? "—";
-    const cur = agg.get(k) ?? {
-      formador: formador?.nome ?? "—",
-      nif: formador?.nif ?? "",
-      horas: 0,
-      sessoes: 0,
-    };
+    const f = formadorById.get(s.formador_id);
+    const k = f?.id ?? "—";
+    const cur =
+      agg.get(k) ??
+      ({
+        formador: f?.nome ?? "—",
+        nif: f?.nif ?? "",
+        horas: 0,
+        sessoes: 0,
+        valorHora: Number(f?.valor_hora ?? 0),
+        base: 0,
+        iva: 0,
+        irs: 0,
+        total: 0,
+      } as Agg);
     cur.horas += Number(s.horas);
     cur.sessoes += 1;
     agg.set(k, cur);
   });
+  for (const [k, a] of agg) {
+    const f = formadorById.get(k);
+    a.base = a.horas * a.valorHora;
+    a.iva = f?.aplica_iva ? a.base * (Number(f?.iva_percentagem ?? 23) / 100) : 0;
+    a.irs = f?.sem_retencao === false ? a.base * (Number(f?.retencao_percentagem ?? 23) / 100) : 0;
+    a.total = a.base + a.iva - a.irs;
+  }
+
+  const lista = Array.from(agg.values()).sort((x, y) => y.total - x.total);
   const totalH = rows.reduce((a: number, s: any) => a + Number(s.horas), 0);
+  const totBase = lista.reduce((a, x) => a + x.base, 0);
+  const totIva = lista.reduce((a, x) => a + x.iva, 0);
+  const totIrs = lista.reduce((a, x) => a + x.irs, 0);
+  const totPagar = lista.reduce((a, x) => a + x.total, 0);
 
-  const doc = newDoc("portrait");
-  header(doc, "Horas por formador", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
+  const doc = newDoc("landscape");
+  header(doc, "Relatório de horas e honorários — Formadores", `Período: ${fmtDate(inicio)} a ${fmtDate(fim)}`);
 
-  let y = infoBlock(doc, CONTENT_TOP, [
+  let y = CONTENT_TOP;
+  if (b.empresa_nome) {
+    doc.setFont("helvetica", "bold");
+    doc.setFontSize(10);
+    doc.text(b.empresa_nome, 14, y);
+    doc.setFont("helvetica", "normal");
+    doc.setFontSize(8);
+    doc.setTextColor(...MUTED);
+    const linha = [b.empresa_morada, b.empresa_nif ? `NIF ${b.empresa_nif}` : null]
+      .filter(Boolean)
+      .join(" · ");
+    if (linha) doc.text(linha, 14, y + 4.5);
+    doc.setTextColor(0, 0, 0);
+    y += 10;
+  }
+
+  y = infoBlock(doc, y, [
+    ["Formadores", String(lista.length)],
     ["Sessões", String(rows.length)],
     ["Horas totais", `${totalH}h`],
-    ["Formadores", String(agg.size)],
+    ["Total a pagar", eur(totPagar)],
   ]);
 
   y += 3;
   doc.setFont("helvetica", "bold");
   doc.setFontSize(10);
-  doc.text("Resumo por formador", 14, y);
+  doc.text("Resumo por formador (valor a receber no período)", 14, y);
   autoTable(doc, {
     ...tableTheme,
     startY: y + 2,
-    head: [["Formador", "NIF", "Sessões", "Horas"]],
-    body: Array.from(agg.values())
-      .sort((a, b) => b.horas - a.horas)
-      .map((a) => [a.formador, a.nif, String(a.sessoes), `${a.horas}h`]),
-    columnStyles: { 2: { halign: "right" }, 3: { halign: "right", fontStyle: "bold" } },
-    foot: [["", "Total", String(rows.length), `${totalH}h`]],
+    head: [["Formador", "NIF", "Sessões", "Horas", "€/hora", "Base", "IVA", "IRS", "Total a receber"]],
+    body: lista.map((a) => [
+      a.formador,
+      a.nif,
+      String(a.sessoes),
+      `${a.horas}h`,
+      eur(a.valorHora),
+      eur(a.base),
+      a.iva ? eur(a.iva) : "—",
+      a.irs ? `− ${eur(a.irs)}` : "—",
+      eur(a.total),
+    ]),
+    columnStyles: {
+      2: { halign: "right" },
+      3: { halign: "right" },
+      4: { halign: "right" },
+      5: { halign: "right" },
+      6: { halign: "right" },
+      7: { halign: "right" },
+      8: { halign: "right", fontStyle: "bold" },
+    },
+    foot: [
+      [
+        "Total",
+        "",
+        String(rows.length),
+        `${totalH}h`,
+        "",
+        eur(totBase),
+        eur(totIva),
+        totIrs ? `− ${eur(totIrs)}` : "—",
+        eur(totPagar),
+      ],
+    ],
     footStyles: { fillColor: [241, 245, 249], textColor: 0, fontStyle: "bold" },
   });
 
-  doc.addPage();
-  header(doc, "Sessões — detalhe", `${fmtDate(inicio)} a ${fmtDate(fim)}`);
+  doc.addPage("a4", "landscape");
+  header(doc, "Sessões — detalhe", `Período: ${fmtDate(inicio)} a ${fmtDate(fim)}`);
   autoTable(doc, {
     ...tableTheme,
     startY: CONTENT_TOP,
-    head: [["Data", "Formador", "Curso", "UFCD", "Horas"]],
+    head: [["Data", "Formador", "Curso", "UFCD", "Horas", "€/hora", "Valor"]],
     body: rows.map((s: any) => {
-      const formador = formadorById.get(s.formador_id);
+      const f = formadorById.get(s.formador_id);
       const curso = cursoById.get(s.curso_id);
       const cuf = cufById.get(s.curso_ufcd_id);
       const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
+      const vh = Number(f?.valor_hora ?? 0);
       return [
         fmtDate(s.data),
-        formador?.nome ?? "",
+        f?.nome ?? "",
         curso?.codigo ?? "",
         ufcd?.codigo ?? "",
         `${s.horas}h`,
+        eur(vh),
+        eur(Number(s.horas) * vh),
       ];
     }),
-    columnStyles: { 4: { halign: "right" } },
+    columnStyles: {
+      4: { halign: "right" },
+      5: { halign: "right" },
+      6: { halign: "right", fontStyle: "bold" },
+    },
+    foot: [["", "", "", "Total", `${totalH}h`, "", eur(totBase)]],
+    footStyles: { fillColor: [241, 245, 249], textColor: 0, fontStyle: "bold" },
   });
 
   footer(doc);
   await savePdf(doc, `Relatorio_Formadores_${inicio}_${fim}.pdf`);
 }
+
 
 // ============= 3. Execução de cursos =============
 export async function exportRelatorioCursosPdf() {

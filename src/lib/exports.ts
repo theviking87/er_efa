@@ -232,9 +232,6 @@ export async function exportRelatorioFormadores(inicio: string, fim: string) {
       "Valor/hora (€)": Number(f?.valor_hora ?? 0),
       "Total Sessões": 0,
       "Total Horas": 0,
-      "Base (€)": 0,
-      "IVA (€)": 0,
-      "Retenção IRS (€)": 0,
       "Total a receber (€)": 0,
     };
     cur["Total Sessões"] += 1;
@@ -243,14 +240,9 @@ export async function exportRelatorioFormadores(inicio: string, fim: string) {
   });
   for (const [id, a] of agg) {
     const f = formadorById.get(id);
-    const base = a["Total Horas"] * Number(f?.valor_hora ?? 0);
-    const iva = f?.aplica_iva ? base * (Number(f?.iva_percentagem ?? 23) / 100) : 0;
-    const irs =
-      f?.sem_retencao === false ? base * (Number(f?.retencao_percentagem ?? 23) / 100) : 0;
-    a["Base (€)"] = Number(base.toFixed(2));
-    a["IVA (€)"] = Number(iva.toFixed(2));
-    a["Retenção IRS (€)"] = Number(irs.toFixed(2));
-    a["Total a receber (€)"] = Number((base + iva - irs).toFixed(2));
+    a["Total a receber (€)"] = Number(
+      (a["Total Horas"] * Number(f?.valor_hora ?? 0)).toFixed(2),
+    );
   }
   const aggRows = Array.from(agg.values()).sort(
     (a, b) => b["Total a receber (€)"] - a["Total a receber (€)"],
@@ -280,16 +272,13 @@ export async function exportRelatorioFormadores(inicio: string, fim: string) {
     "Valor/hora (€)",
     "Total Sessões",
     "Total Horas",
-    "Base (€)",
-    "IVA (€)",
-    "Retenção IRS (€)",
     "Total a receber (€)",
   ];
   const resumoAoa = [
     ...head,
     cols,
     ...aggRows.map((a) => cols.map((c) => a[c])),
-    ["TOTAL", "", "", "", detalhe.length, totalHoras, "", "", "", Number(totalPagar.toFixed(2))],
+    ["TOTAL", "", "", "", detalhe.length, totalHoras, Number(totalPagar.toFixed(2))],
   ];
   const wsResumo = XLSX.utils.aoa_to_sheet(resumoAoa);
   wsResumo["!cols"] = [
@@ -299,16 +288,13 @@ export async function exportRelatorioFormadores(inicio: string, fim: string) {
     { wch: 13 },
     { wch: 13 },
     { wch: 12 },
-    { wch: 12 },
-    { wch: 12 },
-    { wch: 16 },
     { wch: 18 },
   ];
   wsResumo["!merges"] = [
-    { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
-    { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
-    { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
-    { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } },
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 6 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 6 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 6 } },
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 6 } },
   ];
 
   const wsDetalhe = XLSX.utils.json_to_sheet(detalhe.map(({ id, ...r }) => r));

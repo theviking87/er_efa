@@ -500,7 +500,7 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
       5: { halign: "right" },
       6: { halign: "right", fontStyle: "bold" },
     },
-    foot: [["", "", "", "Total", `${totalH}h`, "", eur(totBase)]],
+    foot: [["", "", "", "Total", `${totalH}h`, "", eur(totPagar)]],
     footStyles: { fillColor: [241, 245, 249], textColor: 0, fontStyle: "bold" },
   });
 

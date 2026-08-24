@@ -175,58 +175,162 @@ export async function exportRelatorioFormadores(inicio: string, fim: string) {
     .from("sessoes")
     .select("data, horas, formador_id, curso_id, curso_ufcd_id")
     .gte("data", inicio)
-    .lte("data", fim);
+    .lte("data", fim)
+    .order("data");
   if (error) throw error;
   const sessoes = data ?? [];
-  const [formadorById, cursoById, cufById] = await Promise.all([
-    rowsById("formadores", "id, nome, nif", uniqueIds(sessoes.map((s: any) => s.formador_id))),
+  const [formadorById, cursoById, cufById, cfg] = await Promise.all([
+    rowsById(
+      "formadores",
+      "id, nome, nif, iban, valor_hora, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem",
+      uniqueIds(sessoes.map((s: any) => s.formador_id)),
+    ),
     rowsById("cursos", "id, nome, codigo", uniqueIds(sessoes.map((s: any) => s.curso_id))),
     rowsById("curso_ufcds", "id, ufcd_id", uniqueIds(sessoes.map((s: any) => s.curso_ufcd_id))),
+    supabase
+      .from("fin_config")
+      .select("empresa_nome, empresa_nif, empresa_morada")
+      .limit(1)
+      .maybeSingle(),
   ]);
   const ufcdById = await rowsById(
     "ufcds",
     "id, codigo, designacao",
     uniqueIds(Array.from(cufById.values()).map((u: any) => u.ufcd_id)),
   );
+  const empresa: any = (cfg as any)?.data ?? {};
 
-  const rows = sessoes.map((s: any) => {
+  const detalhe = sessoes.map((s: any) => {
     const formador = formadorById.get(s.formador_id);
     const curso = cursoById.get(s.curso_id);
     const cuf = cufById.get(s.curso_ufcd_id);
     const ufcd = cuf ? ufcdById.get(cuf.ufcd_id) : null;
+    const vh = Number(formador?.valor_hora ?? 0);
+    const horas = Number(s.horas);
     return {
+      id: s.formador_id as string,
       Data: s.data,
-      Horas: Number(s.horas),
       Formador: formador?.nome ?? "",
       NIF: formador?.nif ?? "",
       Curso: curso?.codigo ?? "",
       "Nome Curso": curso?.nome ?? "",
       UFCD: ufcd?.codigo ?? "",
       "Designação UFCD": ufcd?.designacao ?? "",
+      Horas: horas,
+      "Valor/hora (€)": vh,
+      "Valor (€)": Number((horas * vh).toFixed(2)),
     };
   });
 
-  // Agregado
-  const agg = new Map<string, { formador: string; nif: string; horas: number; sessoes: number }>();
-  rows.forEach((r) => {
-    const k = r.Formador;
-    const cur = agg.get(k) ?? { formador: r.Formador, nif: r.NIF, horas: 0, sessoes: 0 };
-    cur.horas += r.Horas;
-    cur.sessoes += 1;
-    agg.set(k, cur);
+  const agg = new Map<string, any>();
+  detalhe.forEach((r) => {
+    const f = formadorById.get(r.id);
+    const cur = agg.get(r.id) ?? {
+      Formador: r.Formador,
+      NIF: r.NIF,
+      IBAN: f?.iban ?? "",
+      "Valor/hora (€)": Number(f?.valor_hora ?? 0),
+      "Total Sessões": 0,
+      "Total Horas": 0,
+      "Base (€)": 0,
+      "IVA (€)": 0,
+      "Retenção IRS (€)": 0,
+      "Total a receber (€)": 0,
+    };
+    cur["Total Sessões"] += 1;
+    cur["Total Horas"] += r.Horas;
+    agg.set(r.id, cur);
   });
-  const aggRows = Array.from(agg.values()).map((a) => ({
-    Formador: a.formador,
-    NIF: a.nif,
-    "Total Sessões": a.sessoes,
-    "Total Horas": a.horas,
-  }));
+  for (const [id, a] of agg) {
+    const f = formadorById.get(id);
+    const base = a["Total Horas"] * Number(f?.valor_hora ?? 0);
+    const iva = f?.aplica_iva ? base * (Number(f?.iva_percentagem ?? 23) / 100) : 0;
+    const irs =
+      f?.sem_retencao === false ? base * (Number(f?.retencao_percentagem ?? 23) / 100) : 0;
+    a["Base (€)"] = Number(base.toFixed(2));
+    a["IVA (€)"] = Number(iva.toFixed(2));
+    a["Retenção IRS (€)"] = Number(irs.toFixed(2));
+    a["Total a receber (€)"] = Number((base + iva - irs).toFixed(2));
+  }
+  const aggRows = Array.from(agg.values()).sort(
+    (a, b) => b["Total a receber (€)"] - a["Total a receber (€)"],
+  );
+
+  const totalHoras = aggRows.reduce((s, a) => s + a["Total Horas"], 0);
+  const totalPagar = aggRows.reduce((s, a) => s + a["Total a receber (€)"], 0);
+
+  // Folha de resumo com cabeçalho institucional
+  const head: any[][] = [
+    [empresa.empresa_nome ?? "Gestão de Formação"],
+    [
+      [empresa.empresa_morada, empresa.empresa_nif ? `NIF ${empresa.empresa_nif}` : null]
+        .filter(Boolean)
+        .join(" · "),
+    ],
+    ["Relatório de horas e honorários — Formadores"],
+    [`Período: ${inicio} a ${fim}`],
+    [],
+    ["Formadores", aggRows.length, "Sessões", detalhe.length, "Horas", totalHoras, "Total a pagar (€)", Number(totalPagar.toFixed(2))],
+    [],
+  ];
+  const cols = [
+    "Formador",
+    "NIF",
+    "IBAN",
+    "Valor/hora (€)",
+    "Total Sessões",
+    "Total Horas",
+    "Base (€)",
+    "IVA (€)",
+    "Retenção IRS (€)",
+    "Total a receber (€)",
+  ];
+  const resumoAoa = [
+    ...head,
+    cols,
+    ...aggRows.map((a) => cols.map((c) => a[c])),
+    ["TOTAL", "", "", "", detalhe.length, totalHoras, "", "", "", Number(totalPagar.toFixed(2))],
+  ];
+  const wsResumo = XLSX.utils.aoa_to_sheet(resumoAoa);
+  wsResumo["!cols"] = [
+    { wch: 32 },
+    { wch: 12 },
+    { wch: 26 },
+    { wch: 13 },
+    { wch: 13 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 12 },
+    { wch: 16 },
+    { wch: 18 },
+  ];
+  wsResumo["!merges"] = [
+    { s: { r: 0, c: 0 }, e: { r: 0, c: 9 } },
+    { s: { r: 1, c: 0 }, e: { r: 1, c: 9 } },
+    { s: { r: 2, c: 0 }, e: { r: 2, c: 9 } },
+    { s: { r: 3, c: 0 }, e: { r: 3, c: 9 } },
+  ];
+
+  const wsDetalhe = XLSX.utils.json_to_sheet(detalhe.map(({ id, ...r }) => r));
+  wsDetalhe["!cols"] = [
+    { wch: 12 },
+    { wch: 30 },
+    { wch: 12 },
+    { wch: 14 },
+    { wch: 34 },
+    { wch: 12 },
+    { wch: 40 },
+    { wch: 9 },
+    { wch: 13 },
+    { wch: 12 },
+  ];
 
   const wb = XLSX.utils.book_new();
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(aggRows), "Resumo por formador");
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "Sessões");
+  XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo por formador");
+  XLSX.utils.book_append_sheet(wb, wsDetalhe, "Sessões");
   await downloadWorkbook(wb, `Relatorio_Formadores_${inicio}_${fim}.xlsx`);
 }
+
 
 /** Relatório de execução por curso. */
 export async function exportRelatorioCursos() {

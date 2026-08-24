@@ -182,7 +182,7 @@ export async function exportRelatorioFormadores(inicio: string, fim: string) {
   const [formadorById, cursoById, cufById, cfg] = await Promise.all([
     rowsById(
       "formadores",
-      "id, nome, nif, iban, valor_hora, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem",
+      "id, nome, nif, iban, valor_hora",
       uniqueIds(sessoes.map((s: any) => s.formador_id)),
     ),
     rowsById("cursos", "id, nome, codigo", uniqueIds(sessoes.map((s: any) => s.curso_id))),

@@ -374,7 +374,7 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
   const [formadorById, cursoById, cufById] = await Promise.all([
     rowsById(
       "formadores",
-      "id, nome, nif, valor_hora, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem",
+      "id, nome, nif, valor_hora",
       uniqueIds(rows.map((s: any) => s.formador_id)),
     ),
     rowsById("cursos", "id, codigo", uniqueIds(rows.map((s: any) => s.curso_id))),
@@ -392,9 +392,6 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
     horas: number;
     sessoes: number;
     valorHora: number;
-    base: number;
-    iva: number;
-    irs: number;
     total: number;
   };
   const agg = new Map<string, Agg>();
@@ -409,28 +406,18 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
         horas: 0,
         sessoes: 0,
         valorHora: Number(f?.valor_hora ?? 0),
-        base: 0,
-        iva: 0,
-        irs: 0,
         total: 0,
       } as Agg);
     cur.horas += Number(s.horas);
     cur.sessoes += 1;
     agg.set(k, cur);
   });
-  for (const [k, a] of agg) {
-    const f = formadorById.get(k);
-    a.base = a.horas * a.valorHora;
-    a.iva = f?.aplica_iva ? a.base * (Number(f?.iva_percentagem ?? 23) / 100) : 0;
-    a.irs = f?.sem_retencao === false ? a.base * (Number(f?.retencao_percentagem ?? 23) / 100) : 0;
-    a.total = a.base + a.iva - a.irs;
+  for (const [, a] of agg) {
+    a.total = a.horas * a.valorHora;
   }
 
   const lista = Array.from(agg.values()).sort((x, y) => y.total - x.total);
   const totalH = rows.reduce((a: number, s: any) => a + Number(s.horas), 0);
-  const totBase = lista.reduce((a, x) => a + x.base, 0);
-  const totIva = lista.reduce((a, x) => a + x.iva, 0);
-  const totIrs = lista.reduce((a, x) => a + x.irs, 0);
   const totPagar = lista.reduce((a, x) => a + x.total, 0);
 
   const doc = newDoc("landscape");
@@ -466,42 +453,25 @@ export async function exportRelatorioFormadoresPdf(inicio: string, fim: string) 
   autoTable(doc, {
     ...tableTheme,
     startY: y + 2,
-    head: [["Formador", "NIF", "Sessões", "Horas", "€/hora", "Base", "IVA", "IRS", "Total a receber"]],
+    head: [["Formador", "NIF", "Sessões", "Horas", "€/hora", "Total a receber"]],
     body: lista.map((a) => [
       a.formador,
       a.nif,
       String(a.sessoes),
       `${a.horas}h`,
       eur(a.valorHora),
-      eur(a.base),
-      a.iva ? eur(a.iva) : "—",
-      a.irs ? `− ${eur(a.irs)}` : "—",
       eur(a.total),
     ]),
     columnStyles: {
       2: { halign: "right" },
       3: { halign: "right" },
       4: { halign: "right" },
-      5: { halign: "right" },
-      6: { halign: "right" },
-      7: { halign: "right" },
-      8: { halign: "right", fontStyle: "bold" },
+      5: { halign: "right", fontStyle: "bold" },
     },
-    foot: [
-      [
-        "Total",
-        "",
-        String(rows.length),
-        `${totalH}h`,
-        "",
-        eur(totBase),
-        eur(totIva),
-        totIrs ? `− ${eur(totIrs)}` : "—",
-        eur(totPagar),
-      ],
-    ],
+    foot: [["Total", "", String(rows.length), `${totalH}h`, "", eur(totPagar)]],
     footStyles: { fillColor: [241, 245, 249], textColor: 0, fontStyle: "bold" },
   });
+
 
   doc.addPage("a4", "landscape");
   header(doc, "Sessões — detalhe", `Período: ${fmtDate(inicio)} a ${fmtDate(fim)}`);

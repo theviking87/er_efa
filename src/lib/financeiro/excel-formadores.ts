@@ -172,9 +172,14 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     [7, 9, 12].forEach(i => { row.getCell(i).numFmt = "0.0%"; });
     row.getCell(15).alignment = { horizontal: "center" };
     row.getCell(14).font = { bold: true };
+    // Destacar colunas de Valor IVA (H) e Valor IRS (M)
+    [8, 13].forEach(i => {
+      row.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF3CD" } };
+      row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10, bold: true, color: { argb: "FF8A6D00" } };
+    });
     for (let i = 1; i <= NCOL; i++) {
       row.getCell(i).border = { top: { style: "hair" }, bottom: { style: "hair" }, left: { style: "hair" }, right: { style: "hair" } };
-      row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10 };
+      if (![8, 13].includes(i)) row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10 };
     }
     r++;
   }

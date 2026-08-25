@@ -11,9 +11,11 @@ export type FormadorLinhaExport = {
   valorHora: number;
   base: number;
   ivaPct: number;      // 0 se não aplica
+  seloPct?: number;    // 0 se não aplica
   retencaoPct: number; // 0 se sem retenção
   recibo: boolean;
 };
+
 
 export type ProcFormadoresExport = {
   ano: number; mes: number;
@@ -60,10 +62,11 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } },
   });
 
-  // A..L (12 colunas)
-  const colWidths = [30, 14, 24, 9, 10, 14, 8, 13, 8, 13, 15, 12];
+  // A..O (15 colunas)
+  const colWidths = [30, 14, 24, 9, 10, 15, 8, 13, 8, 13, 17, 8, 16, 16, 12];
   ws.columns = colWidths.map(w => ({ width: w }));
-  const LAST = "L";
+  const LAST = "O";
+
 
   const colPx = colWidths.map(w => w * 7);
   const totalPx = colPx.reduce((a, b) => a + b, 0);
@@ -127,22 +130,27 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
   ws.getCell(`A${r}`).font = { bold: true, size: 12 };
   r++;
 
-  const head = ["Formador", "NIF", "IBAN", "Horas", "€/hora", "Base (€)", "IVA %", "IVA (€)", "IRS %", "Retenção IRS (€)", "Total a pagar (€)", "Recibo"];
+  const head = ["Formador", "NIF", "IBAN", "Horas", "€/hora", "Valor ilíquido (€)", "IVA %", "IVA (€)", "Selo %", "Imposto de Selo (€)", "Total do documento (€)", "IRS %", "Retenção na fonte IRS (€)", "Total a pagar (€)", "Recibo"];
+  const NCOL = head.length;
   const headRow = ws.getRow(r);
   head.forEach((h, i) => {
     const c = headRow.getCell(i + 1);
     c.value = h;
     c.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
     c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F3864" } };
-    c.alignment = { vertical: "middle", horizontal: i === 0 || i === 1 || i === 2 ? "left" : i === 11 ? "center" : "right", wrapText: true };
+    c.alignment = { vertical: "middle", horizontal: i <= 2 ? "left" : i === NCOL - 1 ? "center" : "right", wrapText: true };
     c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
   });
-  headRow.height = 26;
+  headRow.height = 30;
   r++;
 
   const first = r;
   for (const f of p.formadores) {
     const row = ws.getRow(r);
+    const seloPct = Number(f.seloPct ?? 0);
+    const vIva = f.base * f.ivaPct / 100;
+    const vSelo = f.base * seloPct / 100;
+    const vIrs = f.base * f.retencaoPct / 100;
     row.getCell(1).value = f.nome;
     row.getCell(2).value = f.nif ?? "—";
     row.getCell(3).value = f.iban ?? "—";
@@ -150,18 +158,21 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     row.getCell(5).value = f.valorHora;
     row.getCell(6).value = { formula: `D${r}*E${r}`, result: Number(f.base.toFixed(2)) } as any;
     row.getCell(7).value = f.ivaPct / 100;
-    row.getCell(8).value = { formula: `F${r}*G${r}`, result: Number((f.base * f.ivaPct / 100).toFixed(2)) } as any;
-    row.getCell(9).value = f.retencaoPct / 100;
-    row.getCell(10).value = { formula: `F${r}*I${r}`, result: Number((f.base * f.retencaoPct / 100).toFixed(2)) } as any;
-    row.getCell(11).value = { formula: `F${r}+H${r}-J${r}`, result: Number((f.base + f.base * f.ivaPct / 100 - f.base * f.retencaoPct / 100).toFixed(2)) } as any;
-    row.getCell(12).value = f.recibo ? "Confirmado" : "Pendente";
+    row.getCell(8).value = { formula: `F${r}*G${r}`, result: Number(vIva.toFixed(2)) } as any;
+    row.getCell(9).value = seloPct / 100;
+    row.getCell(10).value = { formula: `F${r}*I${r}`, result: Number(vSelo.toFixed(2)) } as any;
+    row.getCell(11).value = { formula: `F${r}+H${r}+J${r}`, result: Number((f.base + vIva + vSelo).toFixed(2)) } as any;
+    row.getCell(12).value = f.retencaoPct / 100;
+    row.getCell(13).value = { formula: `F${r}*L${r}`, result: Number(vIrs.toFixed(2)) } as any;
+    row.getCell(14).value = { formula: `K${r}-M${r}`, result: Number((f.base + vIva + vSelo - vIrs).toFixed(2)) } as any;
+    row.getCell(15).value = f.recibo ? "Confirmado" : "Pendente";
 
-    [5, 6, 8, 10, 11].forEach(i => { row.getCell(i).numFmt = EUR; });
+    [5, 6, 8, 10, 11, 13, 14].forEach(i => { row.getCell(i).numFmt = EUR; });
     row.getCell(4).numFmt = "0.0";
-    [7, 9].forEach(i => { row.getCell(i).numFmt = "0.0%"; });
-    row.getCell(12).alignment = { horizontal: "center" };
-    row.getCell(11).font = { bold: true };
-    for (let i = 1; i <= 12; i++) {
+    [7, 9, 12].forEach(i => { row.getCell(i).numFmt = "0.0%"; });
+    row.getCell(15).alignment = { horizontal: "center" };
+    row.getCell(14).font = { bold: true };
+    for (let i = 1; i <= NCOL; i++) {
       row.getCell(i).border = { top: { style: "hair" }, bottom: { style: "hair" }, left: { style: "hair" }, right: { style: "hair" } };
       row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10 };
     }
@@ -174,18 +185,19 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     tot.getCell(1).value = "TOTAL";
     ws.mergeCells(`A${r}:C${r}`);
     tot.getCell(4).value = { formula: `SUM(D${first}:D${last})` } as any;
-    [6, 8, 10, 11].forEach(i => {
+    [6, 8, 10, 11, 13, 14].forEach(i => {
       const col = String.fromCharCode(64 + i);
       tot.getCell(i).value = { formula: `SUM(${col}${first}:${col}${last})` } as any;
       tot.getCell(i).numFmt = EUR;
     });
     tot.getCell(4).numFmt = "0.0";
-    for (let i = 1; i <= 12; i++) {
+    for (let i = 1; i <= NCOL; i++) {
       tot.getCell(i).font = { bold: true, size: 10 };
       tot.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE7EEF8" } };
       tot.getCell(i).border = { top: { style: "thin" }, bottom: { style: "double" } };
     }
     r += 2;
+
   } else {
     ws.getCell(`A${r}`).value = "Sem formadores neste processamento.";
     r += 2;

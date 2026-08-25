@@ -414,14 +414,17 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
       if (l.formador_id && l.recibo_confirmado) recibosFormador.set(l.formador_id, true);
       if (l.formador_id && l.rubrica === "HN" && l.memoria_calculo) {
         const mc = l.memoria_calculo as any;
-        if (mc.aplica_iva !== undefined || mc.aplica_retencao !== undefined) {
+        if (mc.aplica_iva !== undefined || mc.aplica_retencao !== undefined || mc.aplica_selo !== undefined) {
           ivaOverridesFormador.set(l.formador_id, {
             aplica_iva: mc.aplica_iva === true,
             iva_pct: mc.iva_pct ?? null,
             aplica_retencao: mc.aplica_retencao === true,
             retencao_pct: mc.retencao_pct ?? null,
+            aplica_selo: mc.aplica_selo === true,
+            selo_pct: mc.selo_pct ?? null,
           });
         }
+
       }
       if (l.rubrica === "OUT") totalOutros += Number(l.valor ?? 0);
     });

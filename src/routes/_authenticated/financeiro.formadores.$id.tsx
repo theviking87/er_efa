@@ -56,10 +56,11 @@ function ProcFormadorDetalhe() {
     for (const l of (linhas.data ?? [])) {
       if (l.rubrica !== "HN" || !l.formador_id) continue;
       const f = l.formador ?? {};
+      const mc = (l.memoria_calculo ?? {}) as any;
       const g = m.get(l.formador_id) ?? {
         fid: l.formador_id, nome: f.nome ?? "—", nif: f.nif ?? null, iban: f.iban ?? null,
-        ivaPct: f.aplica_iva ? Number(f.iva_percentagem ?? 23) : 0,
-        retPct: f.sem_retencao ? 0 : Number(f.retencao_percentagem ?? 23),
+        ivaPct: mc.aplica_iva === true ? Number(mc.iva_pct ?? f.iva_percentagem ?? 23) : 0,
+        retPct: mc.aplica_retencao === true ? Number(mc.retencao_pct ?? f.retencao_percentagem ?? 23) : 0,
         horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0, ids: [] as string[], recibo: false,
       };
       g.horas += Number(l.horas_frequentadas ?? 0);

@@ -237,7 +237,9 @@ function ProcFormadoresPage() {
                 {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 <div className="flex-1 min-w-0"><span className="font-medium">{g.label}</span></div>
                 <span className="text-xs text-muted-foreground">{g.procs.length}</span>
+                <span className="hidden md:block text-xs text-muted-foreground">Doc. {g.totalDoc.toFixed(2)} € • Retenção {g.totalRet.toFixed(2)} €</span>
                 <span className="w-28 text-right text-sm font-semibold tabular-nums">{g.total.toFixed(2)} €</span>
+
               </button>
               {isOpen && (
                 <ul className="divide-y divide-border border-t">

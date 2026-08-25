@@ -5,7 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronDown, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { toast } from "sonner";
 import { useProjetoAtivo } from "@/lib/projeto-context";
 import { NotasPainel } from "@/components/notas-painel";
 

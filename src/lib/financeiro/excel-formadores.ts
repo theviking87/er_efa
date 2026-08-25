@@ -11,9 +11,11 @@ export type FormadorLinhaExport = {
   valorHora: number;
   base: number;
   ivaPct: number;      // 0 se não aplica
+  seloPct?: number;    // 0 se não aplica
   retencaoPct: number; // 0 se sem retenção
   recibo: boolean;
 };
+
 
 export type ProcFormadoresExport = {
   ano: number; mes: number;

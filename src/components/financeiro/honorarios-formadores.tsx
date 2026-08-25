@@ -25,15 +25,14 @@ export function HonorariosFormadores({
 }) {
   const qc = useQueryClient();
   const [gerandoId, setGerandoId] = useState<string | null>(null);
-  const [overrides, setOverrides] = useState<Record<string, { semRet: boolean; retPct: number; aplicaIva: boolean; ivaPct: number }>>({});
 
   // Um formador pode ter várias linhas (várias UFCDs); agrupamos por formador.
   const grupos = useMemo(() => {
-    const m = new Map<string, { formador: any; horas: number; valorHora: number; valor: number; lineIds: string[]; recibo: boolean }>();
+    const m = new Map<string, { formador: any; horas: number; valorHora: number; valor: number; lineIds: string[]; recibo: boolean; mc: any }>();
     for (const l of linhas) {
       if (l.rubrica !== "HN" || !l.formador_id) continue;
       const fid = l.formador_id as string;
-      const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0, lineIds: [] as string[], recibo: false };
+      const g = m.get(fid) ?? { formador: l.formador, horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0, lineIds: [] as string[], recibo: false, mc: l.memoria_calculo ?? {} };
       g.horas += Number(l.horas_frequentadas ?? 0);
       g.valor += Number(l.valor ?? 0);
       g.lineIds.push(l.id);
@@ -55,23 +54,40 @@ export function HonorariosFormadores({
     onError: (e: any) => toast.error(e.message ?? "Erro a guardar recibo."),
   });
 
+  const taxMut = useMutation({
+    mutationFn: async ({ ids, mc }: { ids: string[]; mc: Record<string, unknown> }) => {
+      const { error } = await supabase.from("fin_processamento_linha")
+        .update({ memoria_calculo: mc } as never).in("id", ids);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: invalidateKey }),
+    onError: (e: any) => toast.error(e.message ?? "Erro a guardar IVA/IRS."),
+  });
+
   function currentTax(g: any) {
     const f = g?.formador ?? {};
-    const base = {
-      semRet: true,
-      retPct: Number(f.retencao_percentagem ?? 23),
-      aplicaIva: false,
-      ivaPct: Number(f.iva_percentagem ?? 23),
+    const mc = g?.mc ?? {};
+    return {
+      semRet: !(mc.aplica_retencao === true),
+      retPct: Number(mc.retencao_pct ?? f.retencao_percentagem ?? 23),
+      aplicaIva: mc.aplica_iva === true,
+      ivaPct: Number(mc.iva_pct ?? f.iva_percentagem ?? 23),
     };
-    return overrides[g?.fid] ?? base;
   }
 
   function updateTax(fid: string, patch: Partial<{ semRet: boolean; retPct: number; aplicaIva: boolean; ivaPct: number }>) {
-    setOverrides(prev => {
-      const g = grupos.find(x => x.fid === fid);
-      const cur = prev[fid] ?? currentTax(g);
-      return { ...prev, [fid]: { ...cur, ...patch } };
-    });
+    const g = grupos.find(x => x.fid === fid);
+    if (!g) return;
+    const cur = currentTax(g);
+    const next = { ...cur, ...patch };
+    const mc = {
+      ...(g.mc ?? {}),
+      aplica_iva: next.aplicaIva,
+      iva_pct: next.aplicaIva ? next.ivaPct : null,
+      aplica_retencao: !next.semRet,
+      retencao_pct: !next.semRet ? next.retPct : null,
+    };
+    taxMut.mutate({ ids: g.lineIds, mc });
   }
 
   async function emitir(g: any) {

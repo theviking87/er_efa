@@ -151,10 +151,10 @@ export function HonorariosFormadores({
         <TableHead className="text-right w-16">Horas</TableHead>
         <TableHead className="text-right w-20">€/h</TableHead>
         <TableHead className="text-right w-28">Valor ilíquido</TableHead>
-        <TableHead className="text-center w-28">IVA</TableHead>
+        <TableHead className="text-center w-28 bg-blue-200/70 dark:bg-blue-900/50 text-blue-900 dark:text-blue-200">IVA</TableHead>
         <TableHead className="text-center w-28">Imp. Selo</TableHead>
         <TableHead className="text-right w-28">Total documento</TableHead>
-        <TableHead className="text-center w-28">Retenção IRS</TableHead>
+        <TableHead className="text-center w-28 bg-amber-200/70 dark:bg-amber-900/50 text-amber-900 dark:text-amber-200">Retenção IRS</TableHead>
         <TableHead className="text-right w-28">Total a pagar</TableHead>
         <TableHead className="text-center w-24">Recibo</TableHead>
         <TableHead className="w-28"></TableHead>
@@ -178,7 +178,7 @@ export function HonorariosFormadores({
               <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
               <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
               <TableCell className="text-right tabular-nums font-semibold">{base.toFixed(2)}</TableCell>
-              <TableCell className="bg-blue-500/5">{taxCtrl({
+              <TableCell className="bg-blue-100/80 dark:bg-blue-950/40">{taxCtrl({
                 checked: t.aplicaIva, onToggle: v => updateTax(g.fid, { aplicaIva: v }),
                 pct: t.ivaPct, onPct: v => updateTax(g.fid, { ivaPct: v }),
                 val: valIva, sign: "+", active: t.aplicaIva,
@@ -189,7 +189,7 @@ export function HonorariosFormadores({
                 val: valSelo, sign: "+", active: t.aplicaSelo,
               })}</TableCell>
               <TableCell className="text-right tabular-nums font-medium">{totalDoc.toFixed(2)}</TableCell>
-              <TableCell className="bg-red-500/5">{taxCtrl({
+              <TableCell className="bg-amber-100/80 dark:bg-amber-950/40">{taxCtrl({
                 checked: !t.semRet, onToggle: v => updateTax(g.fid, { semRet: !v }),
                 pct: t.retPct, onPct: v => updateTax(g.fid, { retPct: v }),
                 val: valIrs, sign: "−", active: !t.semRet,

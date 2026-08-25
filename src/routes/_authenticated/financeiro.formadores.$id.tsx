@@ -112,6 +112,36 @@ function ProcFormadorDetalhe() {
 
   const [desc, setDesc] = useState("");
   const [valor, setValor] = useState("");
+  const [exportando, setExportando] = useState(false);
+
+  async function exportarExcel() {
+    const pd: any = proc.data;
+    if (!pd) return;
+    if (!honorarios.length && !extras.length) { toast.error("Nada para exportar."); return; }
+    setExportando(true);
+    try {
+      const c: any = cfg.data ?? {};
+      const { exportProcFormadoresExcel } = await import("@/lib/financeiro/excel-formadores");
+      await exportProcFormadoresExcel({
+        ano: pd.ano, mes: pd.mes, curso: pd.curso,
+        formadores: honorarios.map(g => ({
+          nome: g.nome, nif: g.nif, iban: g.iban,
+          horas: g.horas, valorHora: g.valorHora, base: g.valor,
+          ivaPct: g.ivaPct, retencaoPct: g.retPct, recibo: g.recibo,
+        })),
+        despesas: extras.map((l: any) => ({ descricao: (l.memoria_calculo as any)?.descricao ?? "—", valor: Number(l.valor ?? 0) })),
+        empresa: cfg.data ? { nome: c.empresa_nome, nif: c.empresa_nif, morada: c.empresa_morada } : null,
+        logoEmpresaUrl: c.logo_empresa_url ?? null,
+        logoDgertUrl: c.logo_dgert_url ?? null,
+        logoPessoas2030Url: c.logo_pessoas2030_url ?? null,
+      });
+      toast.success("Excel gerado.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro a exportar.");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const addExtra = useMutation({
     mutationFn: async () => {

@@ -186,8 +186,12 @@ function ProcFormadorDetalhe() {
   const p = proc.data;
   const fechado = p.estado === "fechado";
   const totalHn = honorarios.reduce((s, g) => s + g.valor, 0);
+  const totalDoc = honorarios.reduce((s, g) => s + g.valor * (1 + g.ivaPct / 100 + g.seloPct / 100), 0);
+  const totalRet = honorarios.reduce((s, g) => s + g.valor * g.retPct / 100, 0);
+  const totalPagar = totalDoc - totalRet;
   const totalOut = extras.reduce((s, l) => s + Number(l.valor ?? 0), 0);
   const total = totalHn + totalOut;
+
 
   return (
     <PageContainer>
@@ -221,7 +225,7 @@ function ProcFormadorDetalhe() {
 
 
 
-      <div className="grid gap-3 sm:grid-cols-4 mb-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
         <Stat label="Honorários (HN)" v={totalHn} />
         <Stat label="Outras despesas" v={totalOut} />
         <Stat label="Total" v={total} strong />
@@ -231,7 +235,21 @@ function ProcFormadorDetalhe() {
             <div className="mt-1 tabular-nums text-lg font-semibold">{(total * 0.4).toFixed(2)} €</div>
           </CardContent>
         </Card>
+        <Card className="border-blue-300 bg-blue-50 dark:bg-blue-950/20">
+          <CardContent className="p-3">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total dos documentos (c/ IVA e selo)</div>
+            <div className="mt-1 tabular-nums text-lg font-semibold">{totalDoc.toFixed(2)} €</div>
+          </CardContent>
+        </Card>
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-3">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total retenção na fonte (IRS)</div>
+            <div className="mt-1 tabular-nums text-lg font-semibold">{totalRet.toFixed(2)} €</div>
+          </CardContent>
+        </Card>
+        <Stat label="Total a pagar (docs − IRS)" v={totalPagar} strong />
       </div>
+
 
       <NotasPainel chave={`processamento-formadores:${p.id}`} titulo="Notas deste mês" placeholder="Notas sobre honorários e despesas deste mês…" />
 

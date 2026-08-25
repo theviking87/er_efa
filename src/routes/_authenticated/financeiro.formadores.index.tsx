@@ -34,31 +34,43 @@ function ProcFormadoresPage() {
       const procs = (data ?? []) as any[];
       if (!procs.length) return [];
       const { data: linhas } = await supabase.from("fin_processamento_linha")
-        .select("processamento_id, rubrica, valor, formador_id")
+        .select("processamento_id, rubrica, valor, formador_id, memoria_calculo, formador:formador_id(retencao_percentagem, iva_percentagem)")
         .in("processamento_id", procs.map(p => p.id));
-      const totais = new Map<string, { hn: number; out: number }>();
+      const totais = new Map<string, { hn: number; out: number; doc: number; ret: number }>();
       ((linhas ?? []) as any[]).forEach(l => {
-        const t = totais.get(l.processamento_id) ?? { hn: 0, out: 0 };
-        if (l.rubrica === "HN") t.hn += Number(l.valor ?? 0);
-        else if (l.rubrica === "OUT") t.out += Number(l.valor ?? 0);
+        const t = totais.get(l.processamento_id) ?? { hn: 0, out: 0, doc: 0, ret: 0 };
+        if (l.rubrica === "HN") {
+          const base = Number(l.valor ?? 0);
+          const f: any = l.formador ?? {};
+          const mc: any = l.memoria_calculo ?? {};
+          const ivaPct = mc.aplica_iva === true ? Number(mc.iva_pct ?? f.iva_percentagem ?? 23) : 0;
+          const seloPct = mc.aplica_selo === true ? Number(mc.selo_pct ?? 4) : 0;
+          const retPct = mc.aplica_retencao === true ? Number(mc.retencao_pct ?? f.retencao_percentagem ?? 23) : 0;
+          t.hn += base;
+          t.doc += base + base * ivaPct / 100 + base * seloPct / 100;
+          t.ret += base * retPct / 100;
+        } else if (l.rubrica === "OUT") t.out += Number(l.valor ?? 0);
         totais.set(l.processamento_id, t);
       });
       return procs.map(p => {
-        const t = totais.get(p.id) ?? { hn: 0, out: 0 };
-        return { ...p, total_hn: t.hn, total_out: t.out, total: t.hn + t.out };
+        const t = totais.get(p.id) ?? { hn: 0, out: 0, doc: 0, ret: 0 };
+        return { ...p, total_hn: t.hn, total_out: t.out, total_doc: t.doc, total_ret: t.ret, total: t.hn + t.out };
       });
+
     },
   });
 
   const grupos = useMemo(() => {
-    type Grupo = { key: string; label: string; cursoId: string | null; procs: any[]; total: number };
+    type Grupo = { key: string; label: string; cursoId: string | null; procs: any[]; total: number; totalDoc: number; totalRet: number };
     const map = new Map<string, Grupo>();
     for (const p of (q.data ?? []) as any[]) {
       const key: string = p.curso?.id ?? "__sem_curso__";
       const label = p.curso ? `${p.curso.codigo} · ${p.curso.nome}` : "Sem curso associado";
-      const g: Grupo = map.get(key) ?? { key, label, cursoId: p.curso?.id ?? null, procs: [], total: 0 };
+      const g: Grupo = map.get(key) ?? { key, label, cursoId: p.curso?.id ?? null, procs: [], total: 0, totalDoc: 0, totalRet: 0 };
       g.procs.push(p);
       g.total += p.total;
+      g.totalDoc += p.total_doc ?? 0;
+      g.totalRet += p.total_ret ?? 0;
       map.set(key, g);
     }
     return [...map.values()].sort((a, b) => a.label.localeCompare(b.label, "pt"));
@@ -68,7 +80,16 @@ function ProcFormadoresPage() {
     () => (q.data ?? []).reduce((s: number, p: any) => s + p.total, 0),
     [q.data],
   );
+  const totalDocGeral = useMemo(
+    () => (q.data ?? []).reduce((s: number, p: any) => s + (p.total_doc ?? 0), 0),
+    [q.data],
+  );
+  const totalRetGeral = useMemo(
+    () => (q.data ?? []).reduce((s: number, p: any) => s + (p.total_ret ?? 0), 0),
+    [q.data],
+  );
   const lucro = totalGeral * 0.4;
+
 
   // Meses disponíveis (a partir dos processamentos existentes)
   const mesesDisponiveis = useMemo(() => {
@@ -164,11 +185,23 @@ function ProcFormadoresPage() {
       />
 
 
-      <div className="grid gap-3 sm:grid-cols-2 mb-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total processado (formadores + despesas)</div>
             <div className="mt-1 text-2xl font-semibold tabular-nums">{totalGeral.toFixed(2)} €</div>
+          </CardContent>
+        </Card>
+        <Card className="border-blue-300 bg-blue-50 dark:bg-blue-950/20">
+          <CardContent className="p-4">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total dos documentos (c/ IVA e selo)</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">{totalDocGeral.toFixed(2)} €</div>
+          </CardContent>
+        </Card>
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total retenção na fonte (IRS)</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">{totalRetGeral.toFixed(2)} €</div>
           </CardContent>
         </Card>
         <Card className="border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20">
@@ -178,6 +211,7 @@ function ProcFormadoresPage() {
           </CardContent>
         </Card>
       </div>
+
 
       <NotasPainel
         chave="processamentos-formadores"
@@ -203,7 +237,9 @@ function ProcFormadoresPage() {
                 {isOpen ? <ChevronDown className="size-4" /> : <ChevronRight className="size-4" />}
                 <div className="flex-1 min-w-0"><span className="font-medium">{g.label}</span></div>
                 <span className="text-xs text-muted-foreground">{g.procs.length}</span>
+                <span className="hidden md:block text-xs text-muted-foreground">Doc. {g.totalDoc.toFixed(2)} € • Retenção {g.totalRet.toFixed(2)} €</span>
                 <span className="w-28 text-right text-sm font-semibold tabular-nums">{g.total.toFixed(2)} €</span>
+
               </button>
               {isOpen && (
                 <ul className="divide-y divide-border border-t">
@@ -212,8 +248,9 @@ function ProcFormadoresPage() {
                       <Link to="/financeiro/formadores/$id" params={{ id: p.id }} className="px-4 py-3 flex items-center gap-4 text-sm hover:bg-muted/40 transition">
                         <div className="w-20 text-xs font-mono">{MESES[p.mes-1]}/{p.ano}</div>
                         <div className="flex-1 min-w-0 text-xs text-muted-foreground">
-                          HN {p.total_hn.toFixed(2)} € • Outras despesas {p.total_out.toFixed(2)} €
+                          HN {p.total_hn.toFixed(2)} € • Outras despesas {p.total_out.toFixed(2)} € • Doc. {Number(p.total_doc ?? 0).toFixed(2)} € • Retenção {Number(p.total_ret ?? 0).toFixed(2)} €
                         </div>
+
                         <Badge variant={p.estado === "fechado" ? "default" : "secondary"}>{p.estado}</Badge>
                         <div className="w-28 text-right font-semibold tabular-nums">{p.total.toFixed(2)} €</div>
                       </Link>

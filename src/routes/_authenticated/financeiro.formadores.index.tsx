@@ -5,7 +5,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { PageContainer, PageHeader } from "@/components/app-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ChevronDown, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { ChevronDown, ChevronRight, FileSpreadsheet } from "lucide-react";
+import { toast } from "sonner";
 import { useProjetoAtivo } from "@/lib/projeto-context";
 import { NotasPainel } from "@/components/notas-painel";
 
@@ -67,12 +70,99 @@ function ProcFormadoresPage() {
   );
   const lucro = totalGeral * 0.4;
 
+  // Meses disponíveis (a partir dos processamentos existentes)
+  const mesesDisponiveis = useMemo(() => {
+    const set = new Map<string, { ano: number; mes: number }>();
+    for (const p of (q.data ?? []) as any[]) set.set(`${p.ano}-${p.mes}`, { ano: p.ano, mes: p.mes });
+    return [...set.values()].sort((a, b) => b.ano - a.ano || b.mes - a.mes);
+  }, [q.data]);
+
+  const [periodo, setPeriodo] = useState<string>("");
+  const [exportando, setExportando] = useState(false);
+  const periodoSel = periodo || (mesesDisponiveis[0] ? `${mesesDisponiveis[0].ano}-${mesesDisponiveis[0].mes}` : "");
+
+  async function exportarMes() {
+    if (!periodoSel) { toast.error("Sem meses disponíveis."); return; }
+    const [anoS, mesS] = periodoSel.split("-");
+    const ano = Number(anoS), mes = Number(mesS);
+    setExportando(true);
+    try {
+      let pq = supabase.from("fin_processamento")
+        .select("id, curso:curso_id(codigo, nome)").eq("ano", ano).eq("mes", mes);
+      if (projetoId && projetoId !== "all") pq = pq.eq("projeto_id", projetoId);
+      const { data: procs, error: e1 } = await pq;
+      if (e1) throw e1;
+      const lista = (procs ?? []) as any[];
+      if (!lista.length) throw new Error("Sem processamentos nesse mês.");
+
+      const { data: linhas, error: e2 } = await supabase.from("fin_processamento_linha")
+        .select("processamento_id, rubrica, formador_id, horas_frequentadas, valor_hora, valor, recibo_confirmado, memoria_calculo, formador:formador_id(nome, nif, iban, retencao_percentagem, iva_percentagem)")
+        .in("processamento_id", lista.map(p => p.id));
+      if (e2) throw e2;
+
+      const cursoDe = new Map(lista.map(p => [p.id, p.curso ? `${p.curso.codigo} · ${p.curso.nome}` : "Sem curso"]));
+      const map = new Map<string, any>();
+      for (const l of ((linhas ?? []) as any[])) {
+        if (l.rubrica !== "HN" || !l.formador_id) continue;
+        const key = `${l.formador_id}|${l.processamento_id}`;
+        const f = l.formador ?? {};
+        const mc = (l.memoria_calculo ?? {}) as any;
+        const g = map.get(key) ?? {
+          nome: f.nome ?? "—", curso: cursoDe.get(l.processamento_id) ?? "—",
+          nif: f.nif ?? null, iban: f.iban ?? null,
+          ivaPct: mc.aplica_iva === true ? Number(mc.iva_pct ?? f.iva_percentagem ?? 23) : 0,
+          seloPct: mc.aplica_selo === true ? Number(mc.selo_pct ?? 4) : 0,
+          retencaoPct: mc.aplica_retencao === true ? Number(mc.retencao_pct ?? f.retencao_percentagem ?? 23) : 0,
+          horas: 0, valorHora: Number(l.valor_hora ?? 0), base: 0, recibo: false,
+        };
+        g.horas += Number(l.horas_frequentadas ?? 0);
+        g.base += Number(l.valor ?? 0);
+        if (!g.valorHora) g.valorHora = Number(l.valor_hora ?? 0);
+        if (l.recibo_confirmado) g.recibo = true;
+        map.set(key, g);
+      }
+      const dados = [...map.values()];
+      if (!dados.length) throw new Error("Sem honorários de formadores nesse mês.");
+
+      const { data: cfg } = await supabase.from("fin_config").select("*").limit(1).maybeSingle();
+      const c: any = cfg ?? {};
+      const { exportFormadoresMesExcel } = await import("@/lib/financeiro/excel-formadores-mes");
+      await exportFormadoresMesExcel({
+        ano, mes, linhas: dados,
+        empresa: cfg ? { nome: c.empresa_nome, nif: c.empresa_nif, morada: c.empresa_morada } : null,
+      });
+      toast.success("Excel gerado.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro a exportar.");
+    } finally {
+      setExportando(false);
+    }
+  }
+
   return (
     <PageContainer>
       <PageHeader
         title="Processamentos Formadores"
         description="Honorários e outras despesas, por mês e por curso."
+        actions={
+          <div className="flex items-center gap-2">
+            <Select value={periodoSel} onValueChange={setPeriodo}>
+              <SelectTrigger className="w-[150px]"><SelectValue placeholder="Mês" /></SelectTrigger>
+              <SelectContent>
+                {mesesDisponiveis.map(m => (
+                  <SelectItem key={`${m.ano}-${m.mes}`} value={`${m.ano}-${m.mes}`}>
+                    {MESES[m.mes - 1]}/{m.ano}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" onClick={exportarMes} disabled={exportando || !periodoSel}>
+              <FileSpreadsheet className="size-4" />{exportando ? "A exportar…" : "Exportar mês"}
+            </Button>
+          </div>
+        }
       />
+
 
       <div className="grid gap-3 sm:grid-cols-2 mb-4">
         <Card>

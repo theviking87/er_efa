@@ -186,8 +186,12 @@ function ProcFormadorDetalhe() {
   const p = proc.data;
   const fechado = p.estado === "fechado";
   const totalHn = honorarios.reduce((s, g) => s + g.valor, 0);
+  const totalDoc = honorarios.reduce((s, g) => s + g.valor * (1 + g.ivaPct / 100 + g.seloPct / 100), 0);
+  const totalRet = honorarios.reduce((s, g) => s + g.valor * g.retPct / 100, 0);
+  const totalPagar = totalDoc - totalRet;
   const totalOut = extras.reduce((s, l) => s + Number(l.valor ?? 0), 0);
   const total = totalHn + totalOut;
+
 
   return (
     <PageContainer>

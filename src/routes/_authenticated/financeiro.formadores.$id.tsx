@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2, RefreshCw, Lock, LockOpen } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Lock, LockOpen, FileSpreadsheet } from "lucide-react";
 import { NotasPainel } from "@/components/notas-painel";
 import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
 import { HonorariosFormadores } from "@/components/financeiro/honorarios-formadores";
@@ -39,7 +39,7 @@ function ProcFormadorDetalhe() {
     queryKey: ["fin-proc-linhas-formadores", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("fin_processamento_linha")
-        .select("*, formador:formador_id(id, nome, nif, morada, codigo_postal, localidade, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem)")
+        .select("*, formador:formador_id(id, nome, nif, iban, morada, codigo_postal, localidade, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem)")
         .eq("processamento_id", id);
       if (error) throw error;
       return (data ?? []) as any[];
@@ -52,11 +52,14 @@ function ProcFormadorDetalhe() {
   });
 
   const honorarios = useMemo(() => {
-    const m = new Map<string, { fid: string; nome: string; nif: string | null; horas: number; valorHora: number; valor: number; ids: string[]; recibo: boolean }>();
+    const m = new Map<string, { fid: string; nome: string; nif: string | null; iban: string | null; ivaPct: number; retPct: number; horas: number; valorHora: number; valor: number; ids: string[]; recibo: boolean }>();
     for (const l of (linhas.data ?? [])) {
       if (l.rubrica !== "HN" || !l.formador_id) continue;
+      const f = l.formador ?? {};
       const g = m.get(l.formador_id) ?? {
-        fid: l.formador_id, nome: l.formador?.nome ?? "—", nif: l.formador?.nif ?? null,
+        fid: l.formador_id, nome: f.nome ?? "—", nif: f.nif ?? null, iban: f.iban ?? null,
+        ivaPct: f.aplica_iva ? Number(f.iva_percentagem ?? 23) : 0,
+        retPct: f.sem_retencao ? 0 : Number(f.retencao_percentagem ?? 23),
         horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0, ids: [] as string[], recibo: false,
       };
       g.horas += Number(l.horas_frequentadas ?? 0);
@@ -109,6 +112,36 @@ function ProcFormadorDetalhe() {
 
   const [desc, setDesc] = useState("");
   const [valor, setValor] = useState("");
+  const [exportando, setExportando] = useState(false);
+
+  async function exportarExcel() {
+    const pd: any = proc.data;
+    if (!pd) return;
+    if (!honorarios.length && !extras.length) { toast.error("Nada para exportar."); return; }
+    setExportando(true);
+    try {
+      const c: any = cfg.data ?? {};
+      const { exportProcFormadoresExcel } = await import("@/lib/financeiro/excel-formadores");
+      await exportProcFormadoresExcel({
+        ano: pd.ano, mes: pd.mes, curso: pd.curso,
+        formadores: honorarios.map(g => ({
+          nome: g.nome, nif: g.nif, iban: g.iban,
+          horas: g.horas, valorHora: g.valorHora, base: g.valor,
+          ivaPct: g.ivaPct, retencaoPct: g.retPct, recibo: g.recibo,
+        })),
+        despesas: extras.map((l: any) => ({ descricao: (l.memoria_calculo as any)?.descricao ?? "—", valor: Number(l.valor ?? 0) })),
+        empresa: cfg.data ? { nome: c.empresa_nome, nif: c.empresa_nif, morada: c.empresa_morada } : null,
+        logoEmpresaUrl: c.logo_empresa_url ?? null,
+        logoDgertUrl: c.logo_dgert_url ?? null,
+        logoPessoas2030Url: c.logo_pessoas2030_url ?? null,
+      });
+      toast.success("Excel gerado.");
+    } catch (e: any) {
+      toast.error(e.message ?? "Erro a exportar.");
+    } finally {
+      setExportando(false);
+    }
+  }
 
   const addExtra = useMutation({
     mutationFn: async () => {
@@ -160,6 +193,9 @@ function ProcFormadorDetalhe() {
         actions={
           <div className="flex gap-2 items-center">
             <Badge variant={fechado ? "default" : "secondary"}>{p.estado}</Badge>
+            <Button variant="outline" onClick={exportarExcel} disabled={exportando}>
+              <FileSpreadsheet className="size-4" />{exportando ? "A exportar…" : "Excel"}
+            </Button>
             {!fechado && (
               <Button variant="outline" onClick={() => recalcular.mutate()} disabled={recalcular.isPending}>
                 <RefreshCw className="size-4" />{recalcular.isPending ? "A recalcular…" : "Recalcular"}

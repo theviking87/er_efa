@@ -62,10 +62,11 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     pageSetup: { orientation: "landscape", fitToPage: true, margins: { left: 0.4, right: 0.4, top: 0.5, bottom: 0.5, header: 0.3, footer: 0.3 } },
   });
 
-  // A..L (12 colunas)
-  const colWidths = [30, 14, 24, 9, 10, 14, 8, 13, 8, 13, 15, 12];
+  // A..O (15 colunas)
+  const colWidths = [30, 14, 24, 9, 10, 15, 8, 13, 8, 13, 17, 8, 16, 16, 12];
   ws.columns = colWidths.map(w => ({ width: w }));
-  const LAST = "L";
+  const LAST = "O";
+
 
   const colPx = colWidths.map(w => w * 7);
   const totalPx = colPx.reduce((a, b) => a + b, 0);

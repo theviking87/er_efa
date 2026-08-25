@@ -401,16 +401,28 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
   // Preservar valores manuais de ATL já introduzidos no processamento anterior.
   const manuaisFormando = new Map<string, number>();   // `${formando_id}|${rubrica}` -> valor_manual
   const recibosFormador = new Map<string, boolean>();  // formador_id -> recibo_confirmado
+  const ivaOverridesFormador = new Map<string, Record<string, unknown>>(); // formador_id -> overrides IVA/IRS
   let totalOutros = 0;                                 // linhas manuais (rubrica OUT) — nunca recalculadas
   if (processamentoId) {
     const { data: antigas } = await supabase.from("fin_processamento_linha")
-      .select("formando_id, formador_id, rubrica, valor, valor_manual, recibo_confirmado")
+      .select("formando_id, formador_id, rubrica, valor, valor_manual, recibo_confirmado, memoria_calculo")
       .eq("processamento_id", processamentoId);
     const mapAtl = new Map<string, number>();
     (antigas ?? []).forEach((l: any) => {
       if (l.formando_id && l.rubrica === "ATL") mapAtl.set(l.formando_id, Number(l.valor ?? 0));
       if (l.formando_id && l.valor_manual != null) manuaisFormando.set(`${l.formando_id}|${l.rubrica}`, Number(l.valor_manual));
       if (l.formador_id && l.recibo_confirmado) recibosFormador.set(l.formador_id, true);
+      if (l.formador_id && l.rubrica === "HN" && l.memoria_calculo) {
+        const mc = l.memoria_calculo as any;
+        if (mc.aplica_iva !== undefined || mc.aplica_retencao !== undefined) {
+          ivaOverridesFormador.set(l.formador_id, {
+            aplica_iva: mc.aplica_iva === true,
+            iva_pct: mc.iva_pct ?? null,
+            aplica_retencao: mc.aplica_retencao === true,
+            retencao_pct: mc.retencao_pct ?? null,
+          });
+        }
+      }
       if (l.rubrica === "OUT") totalOutros += Number(l.valor ?? 0);
     });
     preview.formandos.forEach(l => {

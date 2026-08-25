@@ -248,8 +248,9 @@ function ProcFormadoresPage() {
                       <Link to="/financeiro/formadores/$id" params={{ id: p.id }} className="px-4 py-3 flex items-center gap-4 text-sm hover:bg-muted/40 transition">
                         <div className="w-20 text-xs font-mono">{MESES[p.mes-1]}/{p.ano}</div>
                         <div className="flex-1 min-w-0 text-xs text-muted-foreground">
-                          HN {p.total_hn.toFixed(2)} € • Outras despesas {p.total_out.toFixed(2)} €
+                          HN {p.total_hn.toFixed(2)} € • Outras despesas {p.total_out.toFixed(2)} € • Doc. {Number(p.total_doc ?? 0).toFixed(2)} € • Retenção {Number(p.total_ret ?? 0).toFixed(2)} €
                         </div>
+
                         <Badge variant={p.estado === "fechado" ? "default" : "secondary"}>{p.estado}</Badge>
                         <div className="w-28 text-right font-semibold tabular-nums">{p.total.toFixed(2)} €</div>
                       </Link>

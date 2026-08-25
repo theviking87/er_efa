@@ -52,7 +52,7 @@ function ProcFormadorDetalhe() {
   });
 
   const honorarios = useMemo(() => {
-    const m = new Map<string, { fid: string; nome: string; nif: string | null; iban: string | null; ivaPct: number; retPct: number; horas: number; valorHora: number; valor: number; ids: string[]; recibo: boolean }>();
+    const m = new Map<string, { fid: string; nome: string; nif: string | null; iban: string | null; ivaPct: number; seloPct: number; retPct: number; horas: number; valorHora: number; valor: number; ids: string[]; recibo: boolean }>();
     for (const l of (linhas.data ?? [])) {
       if (l.rubrica !== "HN" || !l.formador_id) continue;
       const f = l.formador ?? {};
@@ -60,6 +60,7 @@ function ProcFormadorDetalhe() {
       const g = m.get(l.formador_id) ?? {
         fid: l.formador_id, nome: f.nome ?? "—", nif: f.nif ?? null, iban: f.iban ?? null,
         ivaPct: mc.aplica_iva === true ? Number(mc.iva_pct ?? f.iva_percentagem ?? 23) : 0,
+        seloPct: mc.aplica_selo === true ? Number(mc.selo_pct ?? 4) : 0,
         retPct: mc.aplica_retencao === true ? Number(mc.retencao_pct ?? f.retencao_percentagem ?? 23) : 0,
         horas: 0, valorHora: Number(l.valor_hora ?? 0), valor: 0, ids: [] as string[], recibo: false,
       };
@@ -72,6 +73,7 @@ function ProcFormadorDetalhe() {
     }
     return [...m.values()].sort((a, b) => a.nome.localeCompare(b.nome, "pt"));
   }, [linhas.data]);
+
 
   const extras = useMemo(
     () => (linhas.data ?? []).filter(l => l.rubrica === "OUT")

@@ -24,7 +24,7 @@ function ProcessamentosPage() {
     queryKey: ["fin-procs-list", projetoId],
     queryFn: async () => {
       let query = supabase.from("fin_processamento")
-        .select("id, ano, mes, estado, curso_id, total_bf, total_bfm, total_sa, total_tr, total_hn, total_geral, curso:curso_id(id, codigo, nome)")
+        .select("id, ano, mes, estado, curso_id, total_bf, total_bfm, total_sa, total_tr, total_atl, total_hn, total_geral, curso:curso_id(id, codigo, nome)")
         .order("ano", { ascending: false }).order("mes", { ascending: false });
       if (projetoId && projetoId !== "all") query = query.eq("projeto_id", projetoId);
       const { data } = await query; return data ?? [];

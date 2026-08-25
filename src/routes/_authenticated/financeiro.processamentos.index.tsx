@@ -24,12 +24,17 @@ function ProcessamentosPage() {
     queryKey: ["fin-procs-list", projetoId],
     queryFn: async () => {
       let query = supabase.from("fin_processamento")
-        .select("id, ano, mes, estado, curso_id, total_bf, total_bfm, total_sa, total_tr, total_hn, total_geral, curso:curso_id(id, codigo, nome)")
+        .select("id, ano, mes, estado, curso_id, total_bf, total_bfm, total_sa, total_tr, total_atl, total_hn, total_geral, curso:curso_id(id, codigo, nome)")
         .order("ano", { ascending: false }).order("mes", { ascending: false });
       if (projetoId && projetoId !== "all") query = query.eq("projeto_id", projetoId);
       const { data } = await query; return data ?? [];
     },
   });
+
+  // Total apenas dos formandos (exclui honorários de formadores e despesas).
+  const totalFormandos = (p: any) =>
+    Number(p.total_bf ?? 0) + Number(p.total_bfm ?? 0) + Number(p.total_sa ?? 0) +
+    Number(p.total_tr ?? 0) + Number(p.total_atl ?? 0);
 
   // Agrupar por curso, à semelhança da listagem de formandos.
   const grupos = useMemo(() => {
@@ -41,7 +46,7 @@ function ProcessamentosPage() {
       const label = p.curso ? `${p.curso.codigo} · ${p.curso.nome}` : "Sem curso associado";
       const g: Grupo = map.get(key) ?? { key, label, cursoId: p.curso?.id ?? null, procs: [] as any[], total: 0 };
       g.procs.push(p);
-      g.total += Number(p.total_geral ?? 0);
+      g.total += totalFormandos(p);
       map.set(key, g);
     }
 
@@ -98,7 +103,7 @@ function ProcessamentosPage() {
                           </div>
                         </div>
                         <Badge variant={p.estado === "fechado" ? "default" : "secondary"}>{p.estado}</Badge>
-                        <div className="w-28 text-right font-semibold tabular-nums">{Number(p.total_geral).toFixed(2)} €</div>
+                        <div className="w-28 text-right font-semibold tabular-nums">{totalFormandos(p).toFixed(2)} €</div>
                       </Link>
                     </li>
                   ))}

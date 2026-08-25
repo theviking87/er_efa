@@ -46,7 +46,7 @@ function ProcessamentosPage() {
       const label = p.curso ? `${p.curso.codigo} · ${p.curso.nome}` : "Sem curso associado";
       const g: Grupo = map.get(key) ?? { key, label, cursoId: p.curso?.id ?? null, procs: [] as any[], total: 0 };
       g.procs.push(p);
-      g.total += Number(p.total_geral ?? 0);
+      g.total += totalFormandos(p);
       map.set(key, g);
     }
 
@@ -103,7 +103,7 @@ function ProcessamentosPage() {
                           </div>
                         </div>
                         <Badge variant={p.estado === "fechado" ? "default" : "secondary"}>{p.estado}</Badge>
-                        <div className="w-28 text-right font-semibold tabular-nums">{Number(p.total_geral).toFixed(2)} €</div>
+                        <div className="w-28 text-right font-semibold tabular-nums">{totalFormandos(p).toFixed(2)} €</div>
                       </Link>
                     </li>
                   ))}

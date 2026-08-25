@@ -34,19 +34,29 @@ function ProcFormadoresPage() {
       const procs = (data ?? []) as any[];
       if (!procs.length) return [];
       const { data: linhas } = await supabase.from("fin_processamento_linha")
-        .select("processamento_id, rubrica, valor, formador_id")
+        .select("processamento_id, rubrica, valor, formador_id, memoria_calculo, formador:formador_id(retencao_percentagem, iva_percentagem)")
         .in("processamento_id", procs.map(p => p.id));
-      const totais = new Map<string, { hn: number; out: number }>();
+      const totais = new Map<string, { hn: number; out: number; doc: number; ret: number }>();
       ((linhas ?? []) as any[]).forEach(l => {
-        const t = totais.get(l.processamento_id) ?? { hn: 0, out: 0 };
-        if (l.rubrica === "HN") t.hn += Number(l.valor ?? 0);
-        else if (l.rubrica === "OUT") t.out += Number(l.valor ?? 0);
+        const t = totais.get(l.processamento_id) ?? { hn: 0, out: 0, doc: 0, ret: 0 };
+        if (l.rubrica === "HN") {
+          const base = Number(l.valor ?? 0);
+          const f: any = l.formador ?? {};
+          const mc: any = l.memoria_calculo ?? {};
+          const ivaPct = mc.aplica_iva === true ? Number(mc.iva_pct ?? f.iva_percentagem ?? 23) : 0;
+          const seloPct = mc.aplica_selo === true ? Number(mc.selo_pct ?? 4) : 0;
+          const retPct = mc.aplica_retencao === true ? Number(mc.retencao_pct ?? f.retencao_percentagem ?? 23) : 0;
+          t.hn += base;
+          t.doc += base + base * ivaPct / 100 + base * seloPct / 100;
+          t.ret += base * retPct / 100;
+        } else if (l.rubrica === "OUT") t.out += Number(l.valor ?? 0);
         totais.set(l.processamento_id, t);
       });
       return procs.map(p => {
-        const t = totais.get(p.id) ?? { hn: 0, out: 0 };
-        return { ...p, total_hn: t.hn, total_out: t.out, total: t.hn + t.out };
+        const t = totais.get(p.id) ?? { hn: 0, out: 0, doc: 0, ret: 0 };
+        return { ...p, total_hn: t.hn, total_out: t.out, total_doc: t.doc, total_ret: t.ret, total: t.hn + t.out };
       });
+
     },
   });
 

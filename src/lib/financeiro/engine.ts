@@ -498,7 +498,9 @@ export async function guardarProcessamento(preview: Preview, projetoId: string |
       ...linhaBase,
       formador_id: l.formador_id, rubrica: l.rubrica,
       horas_frequentadas: l.horas_frequentadas ?? 0, valor_hora: l.valor_hora ?? 0, valor: l.valor ?? 0,
-      memoria_calculo: l.memoria_calculo ?? {},
+      memoria_calculo: l.rubrica === "HN"
+        ? { ...(l.memoria_calculo ?? {}), ...(ivaOverridesFormador.get(l.formador_id) ?? {}) }
+        : (l.memoria_calculo ?? {}),
       recibo_confirmado: recibosFormador.get(l.formador_id) ?? false,
     })),
   ];

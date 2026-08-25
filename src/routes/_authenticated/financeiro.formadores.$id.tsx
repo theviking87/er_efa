@@ -130,8 +130,9 @@ function ProcFormadorDetalhe() {
         formadores: honorarios.map(g => ({
           nome: g.nome, nif: g.nif, iban: g.iban,
           horas: g.horas, valorHora: g.valorHora, base: g.valor,
-          ivaPct: g.ivaPct, retencaoPct: g.retPct, recibo: g.recibo,
+          ivaPct: g.ivaPct, seloPct: g.seloPct, retencaoPct: g.retPct, recibo: g.recibo,
         })),
+
         despesas: extras.map((l: any) => ({ descricao: (l.memoria_calculo as any)?.descricao ?? "—", valor: Number(l.valor ?? 0) })),
         empresa: cfg.data ? { nome: c.empresa_nome, nif: c.empresa_nif, morada: c.empresa_morada } : null,
         logoEmpresaUrl: c.logo_empresa_url ?? null,

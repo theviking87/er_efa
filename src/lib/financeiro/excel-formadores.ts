@@ -136,8 +136,9 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
   head.forEach((h, i) => {
     const c = headRow.getCell(i + 1);
     c.value = h;
-    c.font = { bold: true, size: 10, color: { argb: "FFFFFFFF" } };
-    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1F3864" } };
+    const isHi = i === 7 || i === 12; // Valor IVA (H) e Valor IRS (M)
+    c.font = { bold: true, size: 10, color: { argb: isHi ? "FF6B4D00" : "FFFFFFFF" } };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isHi ? "FFFFE082" : "FF1F3864" } };
     c.alignment = { vertical: "middle", horizontal: i <= 2 ? "left" : i === NCOL - 1 ? "center" : "right", wrapText: true };
     c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
   });
@@ -172,9 +173,14 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     [7, 9, 12].forEach(i => { row.getCell(i).numFmt = "0.0%"; });
     row.getCell(15).alignment = { horizontal: "center" };
     row.getCell(14).font = { bold: true };
+    // Destacar colunas de Valor IVA (H) e Valor IRS (M)
+    [8, 13].forEach(i => {
+      row.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF3CD" } };
+      row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10, bold: true, color: { argb: "FF8A6D00" } };
+    });
     for (let i = 1; i <= NCOL; i++) {
       row.getCell(i).border = { top: { style: "hair" }, bottom: { style: "hair" }, left: { style: "hair" }, right: { style: "hair" } };
-      row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10 };
+      if (![8, 13].includes(i)) row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10 };
     }
     r++;
   }
@@ -192,8 +198,9 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     });
     tot.getCell(4).numFmt = "0.0";
     for (let i = 1; i <= NCOL; i++) {
-      tot.getCell(i).font = { bold: true, size: 10 };
-      tot.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFE7EEF8" } };
+      const isHi = i === 8 || i === 13;
+      tot.getCell(i).font = { bold: true, size: 10, color: isHi ? { argb: "FF8A6D00" } : undefined };
+      tot.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: isHi ? "FFFFF3CD" : "FFE7EEF8" } };
       tot.getCell(i).border = { top: { style: "thin" }, bottom: { style: "double" } };
     }
     r += 2;

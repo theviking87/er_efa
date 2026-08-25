@@ -123,20 +123,41 @@ export function HonorariosFormadores({
 
   if (!grupos.length) return <div className="p-6 text-center text-sm text-muted-foreground">Sem formadores neste processamento.</div>;
 
+  const taxCtrl = (cfg: {
+    checked: boolean; onToggle: (v: boolean) => void; pct: number; onPct: (v: number) => void;
+    val: number; sign: "+" | "−"; active: boolean;
+  }) => (
+    <div className="flex flex-col items-center gap-1">
+      <div className="flex items-center gap-1">
+        <input type="checkbox" title="Aplicar" className="size-3.5 shrink-0" checked={cfg.checked}
+          onChange={e => cfg.onToggle(e.target.checked)} />
+        <Input type="number" step="0.01" min="0" max="100" className="h-7 w-14 text-right text-xs px-1"
+          disabled={!cfg.checked} value={cfg.checked ? cfg.pct : 0}
+          onChange={e => cfg.onPct(Number(e.target.value))} />
+        <span className="text-xs text-muted-foreground shrink-0">%</span>
+      </div>
+      {cfg.active && (
+        <span className={`text-[10px] tabular-nums whitespace-nowrap ${cfg.sign === "+" ? "text-emerald-600" : "text-destructive"}`}>
+          {cfg.sign} {cfg.val.toFixed(2)} €
+        </span>
+      )}
+    </div>
+  );
+
   return (
     <Table>
       <TableHeader><TableRow>
-        <TableHead>Formador</TableHead>
-        <TableHead className="text-right">Horas</TableHead>
-        <TableHead className="text-right">€/h</TableHead>
-        <TableHead className="text-right">Valor ilíquido (€)</TableHead>
-        <TableHead className="text-center w-40">IVA</TableHead>
-        <TableHead className="text-center w-40">Imposto de Selo</TableHead>
-        <TableHead className="text-right w-32">Total do documento (€)</TableHead>
-        <TableHead className="text-center w-44">Retenção na fonte de IRS</TableHead>
-        <TableHead className="text-right w-28">Total a pagar (€)</TableHead>
-        <TableHead className="text-center w-28">Recibo</TableHead>
-        <TableHead className="text-right w-32"></TableHead>
+        <TableHead className="min-w-[220px]">Formador</TableHead>
+        <TableHead className="text-right w-16">Horas</TableHead>
+        <TableHead className="text-right w-20">€/h</TableHead>
+        <TableHead className="text-right w-28">Valor ilíquido</TableHead>
+        <TableHead className="text-center w-28">IVA</TableHead>
+        <TableHead className="text-center w-28">Imp. Selo</TableHead>
+        <TableHead className="text-right w-28">Total documento</TableHead>
+        <TableHead className="text-center w-28">Retenção IRS</TableHead>
+        <TableHead className="text-right w-28">Total a pagar</TableHead>
+        <TableHead className="text-center w-24">Recibo</TableHead>
+        <TableHead className="w-28"></TableHead>
       </TableRow></TableHeader>
       <TableBody>
         {grupos.map(g => {
@@ -150,59 +171,29 @@ export function HonorariosFormadores({
           const totalPagar = totalDoc - valIrs;
           return (
             <TableRow key={g.fid} className={g.recibo ? "bg-emerald-500/5" : undefined}>
-              <TableCell className="font-medium">{f.nome ?? "—"}{f.nif ? <span className="text-xs text-muted-foreground ml-2">NIF {f.nif}</span> : null}</TableCell>
+              <TableCell className="font-medium whitespace-nowrap">
+                <div className="truncate max-w-[260px]">{f.nome ?? "—"}</div>
+                {f.nif ? <div className="text-xs text-muted-foreground">NIF {f.nif}</div> : null}
+              </TableCell>
               <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
               <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
               <TableCell className="text-right tabular-nums font-semibold">{base.toFixed(2)}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1.5 justify-center">
-                  <label className="flex items-center gap-1 text-xs">
-                    <input type="checkbox" className="size-3.5" checked={t.aplicaIva}
-                      onChange={e => updateTax(g.fid, { aplicaIva: e.target.checked })} />
-                    Aplica
-                  </label>
-                  <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
-                    disabled={!t.aplicaIva} value={t.aplicaIva ? t.ivaPct : 0}
-                    onChange={e => updateTax(g.fid, { ivaPct: Number(e.target.value) })} />
-                  <span className="text-xs text-muted-foreground">%</span>
-                </div>
-                {t.aplicaIva && (
-                  <div className="text-[11px] text-right text-muted-foreground tabular-nums mt-1">+ {valIva.toFixed(2)} €</div>
-                )}
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1.5 justify-center">
-                  <label className="flex items-center gap-1 text-xs">
-                    <input type="checkbox" className="size-3.5" checked={t.aplicaSelo}
-                      onChange={e => updateTax(g.fid, { aplicaSelo: e.target.checked })} />
-                    Aplica
-                  </label>
-                  <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
-                    disabled={!t.aplicaSelo} value={t.aplicaSelo ? t.seloPct : 0}
-                    onChange={e => updateTax(g.fid, { seloPct: Number(e.target.value) })} />
-                  <span className="text-xs text-muted-foreground">%</span>
-                </div>
-                {t.aplicaSelo && (
-                  <div className="text-[11px] text-right text-muted-foreground tabular-nums mt-1">+ {valSelo.toFixed(2)} €</div>
-                )}
-              </TableCell>
+              <TableCell className="bg-blue-500/5">{taxCtrl({
+                checked: t.aplicaIva, onToggle: v => updateTax(g.fid, { aplicaIva: v }),
+                pct: t.ivaPct, onPct: v => updateTax(g.fid, { ivaPct: v }),
+                val: valIva, sign: "+", active: t.aplicaIva,
+              })}</TableCell>
+              <TableCell>{taxCtrl({
+                checked: t.aplicaSelo, onToggle: v => updateTax(g.fid, { aplicaSelo: v }),
+                pct: t.seloPct, onPct: v => updateTax(g.fid, { seloPct: v }),
+                val: valSelo, sign: "+", active: t.aplicaSelo,
+              })}</TableCell>
               <TableCell className="text-right tabular-nums font-medium">{totalDoc.toFixed(2)}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1.5 justify-center">
-                  <label className="flex items-center gap-1 text-xs">
-                    <input type="checkbox" className="size-3.5" checked={!t.semRet}
-                      onChange={e => updateTax(g.fid, { semRet: !e.target.checked })} />
-                    Faz
-                  </label>
-                  <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
-                    disabled={t.semRet} value={t.semRet ? 0 : t.retPct}
-                    onChange={e => updateTax(g.fid, { retPct: Number(e.target.value) })} />
-                  <span className="text-xs text-muted-foreground">%</span>
-                </div>
-                {!t.semRet && (
-                  <div className="text-[11px] text-right text-destructive tabular-nums mt-1">− {valIrs.toFixed(2)} €</div>
-                )}
-              </TableCell>
+              <TableCell className="bg-red-500/5">{taxCtrl({
+                checked: !t.semRet, onToggle: v => updateTax(g.fid, { semRet: !v }),
+                pct: t.retPct, onPct: v => updateTax(g.fid, { retPct: v }),
+                val: valIrs, sign: "−", active: !t.semRet,
+              })}</TableCell>
               <TableCell className="text-right tabular-nums font-semibold">{totalPagar.toFixed(2)}</TableCell>
               <TableCell className="text-center">
                 <label className="flex items-center gap-1.5 justify-center text-xs">

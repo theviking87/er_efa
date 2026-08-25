@@ -136,9 +136,10 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
   head.forEach((h, i) => {
     const c = headRow.getCell(i + 1);
     c.value = h;
-    const isHi = i === 7 || i === 12; // Valor IVA (H) e Valor IRS (M)
-    c.font = { bold: true, size: 10, color: { argb: isHi ? "FF6B4D00" : "FFFFFFFF" } };
-    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: isHi ? "FFFFE082" : "FF1F3864" } };
+    const hiIva = i === 7;   // Valor IVA (col H)
+    const hiIrs = i === 12;  // Retenção IRS (col M)
+    c.font = { bold: true, size: 10, color: { argb: (hiIva || hiIrs) ? "FF1F3864" : "FFFFFFFF" } };
+    c.fill = { type: "pattern", pattern: "solid", fgColor: { argb: hiIva ? "FF93C5FD" : hiIrs ? "FFFCD34D" : "FF1F3864" } };
     c.alignment = { vertical: "middle", horizontal: i <= 2 ? "left" : i === NCOL - 1 ? "center" : "right", wrapText: true };
     c.border = { top: { style: "thin" }, bottom: { style: "thin" }, left: { style: "thin" }, right: { style: "thin" } };
   });

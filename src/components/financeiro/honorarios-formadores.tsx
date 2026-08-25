@@ -72,10 +72,12 @@ export function HonorariosFormadores({
       retPct: Number(mc.retencao_pct ?? f.retencao_percentagem ?? 23),
       aplicaIva: mc.aplica_iva === true,
       ivaPct: Number(mc.iva_pct ?? f.iva_percentagem ?? 23),
+      aplicaSelo: mc.aplica_selo === true,
+      seloPct: Number(mc.selo_pct ?? 4),
     };
   }
 
-  function updateTax(fid: string, patch: Partial<{ semRet: boolean; retPct: number; aplicaIva: boolean; ivaPct: number }>) {
+  function updateTax(fid: string, patch: Partial<{ semRet: boolean; retPct: number; aplicaIva: boolean; ivaPct: number; aplicaSelo: boolean; seloPct: number }>) {
     const g = grupos.find(x => x.fid === fid);
     if (!g) return;
     const cur = currentTax(g);
@@ -86,9 +88,12 @@ export function HonorariosFormadores({
       iva_pct: next.aplicaIva ? next.ivaPct : null,
       aplica_retencao: !next.semRet,
       retencao_pct: !next.semRet ? next.retPct : null,
+      aplica_selo: next.aplicaSelo,
+      selo_pct: next.aplicaSelo ? next.seloPct : null,
     };
     taxMut.mutate({ ids: g.lineIds, mc });
   }
+
 
   async function emitir(g: any) {
     if (!g.formador) { toast.error("Sem dados do formador."); return; }

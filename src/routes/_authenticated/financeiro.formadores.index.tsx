@@ -185,11 +185,23 @@ function ProcFormadoresPage() {
       />
 
 
-      <div className="grid gap-3 sm:grid-cols-2 mb-4">
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 mb-4">
         <Card>
           <CardContent className="p-4">
             <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total processado (formadores + despesas)</div>
             <div className="mt-1 text-2xl font-semibold tabular-nums">{totalGeral.toFixed(2)} €</div>
+          </CardContent>
+        </Card>
+        <Card className="border-blue-300 bg-blue-50 dark:bg-blue-950/20">
+          <CardContent className="p-4">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total dos documentos (c/ IVA e selo)</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">{totalDocGeral.toFixed(2)} €</div>
+          </CardContent>
+        </Card>
+        <Card className="border-amber-300 bg-amber-50 dark:bg-amber-950/20">
+          <CardContent className="p-4">
+            <div className="text-[10px] uppercase tracking-wide text-muted-foreground">Total retenção na fonte (IRS)</div>
+            <div className="mt-1 text-2xl font-semibold tabular-nums">{totalRetGeral.toFixed(2)} €</div>
           </CardContent>
         </Card>
         <Card className="border-emerald-300 bg-emerald-50 dark:bg-emerald-950/20">
@@ -199,6 +211,7 @@ function ProcFormadoresPage() {
           </CardContent>
         </Card>
       </div>
+
 
       <NotasPainel
         chave="processamentos-formadores"

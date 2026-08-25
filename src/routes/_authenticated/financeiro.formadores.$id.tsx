@@ -39,7 +39,7 @@ function ProcFormadorDetalhe() {
     queryKey: ["fin-proc-linhas-formadores", id],
     queryFn: async () => {
       const { data, error } = await supabase.from("fin_processamento_linha")
-        .select("*, formador:formador_id(id, nome, nif, morada, codigo_postal, localidade, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem)")
+        .select("*, formador:formador_id(id, nome, nif, iban, morada, codigo_postal, localidade, sem_retencao, retencao_percentagem, aplica_iva, iva_percentagem)")
         .eq("processamento_id", id);
       if (error) throw error;
       return (data ?? []) as any[];

@@ -174,11 +174,11 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     [7, 9, 12].forEach(i => { row.getCell(i).numFmt = "0.0%"; });
     row.getCell(15).alignment = { horizontal: "center" };
     row.getCell(14).font = { bold: true };
-    // Destacar colunas de Valor IVA (H) e Valor IRS (M)
-    [8, 13].forEach(i => {
-      row.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFFF3CD" } };
-      row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10, bold: true, color: { argb: "FF8A6D00" } };
-    });
+    // Destacar colunas de Valor IVA (H, azul) e Valor IRS (M, âmbar)
+    row.getCell(8).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDBEAFE" } };
+    row.getCell(8).font = { ...(row.getCell(8).font ?? {}), size: 10, bold: true, color: { argb: "FF1E40AF" } };
+    row.getCell(13).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+    row.getCell(13).font = { ...(row.getCell(13).font ?? {}), size: 10, bold: true, color: { argb: "FFB45309" } };
     for (let i = 1; i <= NCOL; i++) {
       row.getCell(i).border = { top: { style: "hair" }, bottom: { style: "hair" }, left: { style: "hair" }, right: { style: "hair" } };
       if (![8, 13].includes(i)) row.getCell(i).font = { ...(row.getCell(i).font ?? {}), size: 10 };

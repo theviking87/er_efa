@@ -31,6 +31,11 @@ function ProcessamentosPage() {
     },
   });
 
+  // Total apenas dos formandos (exclui honorários de formadores e despesas).
+  const totalFormandos = (p: any) =>
+    Number(p.total_bf ?? 0) + Number(p.total_bfm ?? 0) + Number(p.total_sa ?? 0) +
+    Number(p.total_tr ?? 0) + Number(p.total_atl ?? 0);
+
   // Agrupar por curso, à semelhança da listagem de formandos.
   const grupos = useMemo(() => {
     type Grupo = { key: string; label: string; cursoId: string | null; procs: any[]; total: number };

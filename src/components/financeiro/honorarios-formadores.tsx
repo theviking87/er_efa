@@ -129,10 +129,12 @@ export function HonorariosFormadores({
         <TableHead>Formador</TableHead>
         <TableHead className="text-right">Horas</TableHead>
         <TableHead className="text-right">€/h</TableHead>
-        <TableHead className="text-right">Valor (€)</TableHead>
-        <TableHead className="text-center w-44">Retenção IRS</TableHead>
+        <TableHead className="text-right">Valor ilíquido (€)</TableHead>
         <TableHead className="text-center w-40">IVA</TableHead>
-        <TableHead className="text-right w-28">Total (€)</TableHead>
+        <TableHead className="text-center w-40">Imposto de Selo</TableHead>
+        <TableHead className="text-right w-32">Total do documento (€)</TableHead>
+        <TableHead className="text-center w-44">Retenção na fonte de IRS</TableHead>
+        <TableHead className="text-right w-28">Total a pagar (€)</TableHead>
         <TableHead className="text-center w-28">Recibo</TableHead>
         <TableHead className="text-right w-32"></TableHead>
       </TableRow></TableHeader>
@@ -142,30 +144,16 @@ export function HonorariosFormadores({
           const f = g.formador ?? {};
           const base = g.valor;
           const valIva = t.aplicaIva ? base * (t.ivaPct / 100) : 0;
+          const valSelo = t.aplicaSelo ? base * (t.seloPct / 100) : 0;
+          const totalDoc = base + valIva + valSelo;
           const valIrs = t.semRet ? 0 : base * (t.retPct / 100);
-          const totalPagar = base + valIva - valIrs;
+          const totalPagar = totalDoc - valIrs;
           return (
             <TableRow key={g.fid} className={g.recibo ? "bg-emerald-500/5" : undefined}>
               <TableCell className="font-medium">{f.nome ?? "—"}{f.nif ? <span className="text-xs text-muted-foreground ml-2">NIF {f.nif}</span> : null}</TableCell>
               <TableCell className="text-right tabular-nums">{g.horas.toFixed(1)}</TableCell>
               <TableCell className="text-right tabular-nums">{g.valorHora.toFixed(2)}</TableCell>
               <TableCell className="text-right tabular-nums font-semibold">{base.toFixed(2)}</TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1.5 justify-center">
-                  <label className="flex items-center gap-1 text-xs">
-                    <input type="checkbox" className="size-3.5" checked={!t.semRet}
-                      onChange={e => updateTax(g.fid, { semRet: !e.target.checked })} />
-                    Faz
-                  </label>
-                  <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
-                    disabled={t.semRet} value={t.semRet ? 0 : t.retPct}
-                    onChange={e => updateTax(g.fid, { retPct: Number(e.target.value) })} />
-                  <span className="text-xs text-muted-foreground">%</span>
-                </div>
-                {!t.semRet && (
-                  <div className="text-[11px] text-right text-destructive tabular-nums mt-1">− {valIrs.toFixed(2)} €</div>
-                )}
-              </TableCell>
               <TableCell>
                 <div className="flex items-center gap-1.5 justify-center">
                   <label className="flex items-center gap-1 text-xs">
@@ -180,6 +168,39 @@ export function HonorariosFormadores({
                 </div>
                 {t.aplicaIva && (
                   <div className="text-[11px] text-right text-muted-foreground tabular-nums mt-1">+ {valIva.toFixed(2)} €</div>
+                )}
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1.5 justify-center">
+                  <label className="flex items-center gap-1 text-xs">
+                    <input type="checkbox" className="size-3.5" checked={t.aplicaSelo}
+                      onChange={e => updateTax(g.fid, { aplicaSelo: e.target.checked })} />
+                    Aplica
+                  </label>
+                  <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
+                    disabled={!t.aplicaSelo} value={t.aplicaSelo ? t.seloPct : 0}
+                    onChange={e => updateTax(g.fid, { seloPct: Number(e.target.value) })} />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
+                {t.aplicaSelo && (
+                  <div className="text-[11px] text-right text-muted-foreground tabular-nums mt-1">+ {valSelo.toFixed(2)} €</div>
+                )}
+              </TableCell>
+              <TableCell className="text-right tabular-nums font-medium">{totalDoc.toFixed(2)}</TableCell>
+              <TableCell>
+                <div className="flex items-center gap-1.5 justify-center">
+                  <label className="flex items-center gap-1 text-xs">
+                    <input type="checkbox" className="size-3.5" checked={!t.semRet}
+                      onChange={e => updateTax(g.fid, { semRet: !e.target.checked })} />
+                    Faz
+                  </label>
+                  <Input type="number" step="0.01" min="0" max="100" className="h-7 w-16 text-right"
+                    disabled={t.semRet} value={t.semRet ? 0 : t.retPct}
+                    onChange={e => updateTax(g.fid, { retPct: Number(e.target.value) })} />
+                  <span className="text-xs text-muted-foreground">%</span>
+                </div>
+                {!t.semRet && (
+                  <div className="text-[11px] text-right text-destructive tabular-nums mt-1">− {valIrs.toFixed(2)} €</div>
                 )}
               </TableCell>
               <TableCell className="text-right tabular-nums font-semibold">{totalPagar.toFixed(2)}</TableCell>
@@ -204,3 +225,4 @@ export function HonorariosFormadores({
     </Table>
   );
 }
+

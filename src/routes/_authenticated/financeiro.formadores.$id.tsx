@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { toast } from "sonner";
-import { Plus, Trash2, RefreshCw, Lock, LockOpen } from "lucide-react";
+import { Plus, Trash2, RefreshCw, Lock, LockOpen, FileSpreadsheet } from "lucide-react";
 import { NotasPainel } from "@/components/notas-painel";
 import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/engine";
 import { HonorariosFormadores } from "@/components/financeiro/honorarios-formadores";

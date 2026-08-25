@@ -199,9 +199,10 @@ export async function exportProcFormadoresExcel(p: ProcFormadoresExport, opts?: 
     });
     tot.getCell(4).numFmt = "0.0";
     for (let i = 1; i <= NCOL; i++) {
-      const isHi = i === 8 || i === 13;
-      tot.getCell(i).font = { bold: true, size: 10, color: isHi ? { argb: "FF8A6D00" } : undefined };
-      tot.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: isHi ? "FFFFF3CD" : "FFE7EEF8" } };
+      const hiIva = i === 8;
+      const hiIrs = i === 13;
+      tot.getCell(i).font = { bold: true, size: 10, color: hiIva ? { argb: "FF1E40AF" } : hiIrs ? { argb: "FFB45309" } : undefined };
+      tot.getCell(i).fill = { type: "pattern", pattern: "solid", fgColor: { argb: hiIva ? "FFDBEAFE" : hiIrs ? "FFFEF3C7" : "FFE7EEF8" } };
       tot.getCell(i).border = { top: { style: "thin" }, bottom: { style: "double" } };
     }
     r += 2;

@@ -193,6 +193,9 @@ function ProcFormadorDetalhe() {
         actions={
           <div className="flex gap-2 items-center">
             <Badge variant={fechado ? "default" : "secondary"}>{p.estado}</Badge>
+            <Button variant="outline" onClick={exportarExcel} disabled={exportando}>
+              <FileSpreadsheet className="size-4" />{exportando ? "A exportar…" : "Excel"}
+            </Button>
             {!fechado && (
               <Button variant="outline" onClick={() => recalcular.mutate()} disabled={recalcular.isPending}>
                 <RefreshCw className="size-4" />{recalcular.isPending ? "A recalcular…" : "Recalcular"}

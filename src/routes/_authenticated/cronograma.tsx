@@ -416,7 +416,7 @@ function CronogramaGeral() {
       const dispOut: DispSlot[] = [];
       for (const g of grupos.values()) {
         if (g.length <= 1) { dispOut.push(g[0]); continue; }
-        const codigos = Array.from(new Set(g.map((x) => x.curso_codigo).filter(Boolean) as string[]));
+        const codigos = Array.from(new Set(g.map((x) => x.curso_codigo).filter(Boolean) as string[])).sort();
         const cids = Array.from(new Set(g.map((x) => x.curso_id).filter(Boolean) as string[]));
         dispOut.push({
           ...g[0],

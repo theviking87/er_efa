@@ -1634,11 +1634,23 @@ function CreateDispDialog({
       tipo,
       notas: notas.trim() || null,
     };
-    const { error } = isEdit
-      ? await supabase.from("formador_disponibilidades" as any).update({ ...base, curso_id: cursoIds[0] ?? null } as never).eq("id", editing!.id)
-      : await supabase.from("formador_disponibilidades" as any).insert(
-          (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
+    let error: any = null;
+    if (isEdit) {
+      // Atualiza a linha editada com o 1.º curso e cria linhas novas para os restantes
+      const upd = await supabase.from("formador_disponibilidades" as any).update({ ...base, curso_id: cursoIds[0] ?? null } as never).eq("id", editing!.id);
+      error = upd.error;
+      if (!error && cursoIds.length > 1) {
+        const ins = await supabase.from("formador_disponibilidades" as any).insert(
+          cursoIds.slice(1).map((cid) => ({ ...base, curso_id: cid })) as never,
         );
+        error = ins.error;
+      }
+    } else {
+      const ins = await supabase.from("formador_disponibilidades" as any).insert(
+        (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
+      );
+      error = ins.error;
+    }
 
 
     setSaving(false);
@@ -1721,9 +1733,7 @@ function CreateDispDialog({
                             checked={sel}
                             onChange={() =>
                               setCursoIds((prev) =>
-                                isEdit
-                                  ? sel ? [] : [c.id]
-                                  : sel ? prev.filter((x) => x !== c.id) : [...prev, c.id],
+                                sel ? prev.filter((x) => x !== c.id) : [...prev, c.id],
                               )
                             }
                           />

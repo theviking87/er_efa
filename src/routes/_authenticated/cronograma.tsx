@@ -1430,10 +1430,10 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
           <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> {avulso ? "Lançar sessão" : "Criar sessão a partir de disponibilidade"}</DialogTitle>
         </DialogHeader>
         {slot && (
-          <div className="space-y-3">
+          <div className="min-w-0 space-y-3">
             <div className="text-sm bg-muted/40 rounded-md px-3 py-2">
               {escolherFormador ? (
-                <div className="space-y-1.5">
+                <div className="min-w-0 space-y-1.5">
                   <Label>Formador *</Label>
                   <Select value={formadorSel} onValueChange={(v) => { setFormadorSel(v); setCursoId(""); setCursoUfcdId(""); }}>
                     <SelectTrigger className="h-8"><SelectValue placeholder="Escolher formador…" /></SelectTrigger>
@@ -1459,7 +1459,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
               {slot.notas && <div className="text-xs text-muted-foreground mt-1">"{slot.notas}"</div>}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label>Curso *</Label>
               <Select value={cursoId} onValueChange={(v) => { setCursoId(v); setCursoUfcdId(""); }} disabled={cursoLocked}>
                 <SelectTrigger><SelectValue placeholder={cursosDisponiveis.length === 0 ? "Sem cursos com UFCDs por concluir" : "Escolher…"} /></SelectTrigger>
@@ -1472,7 +1472,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
               {cursoLocked && !avulso && <div className="text-xs text-muted-foreground">Curso definido na disponibilidade.</div>}
             </div>
 
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label>UFCD *</Label>
               <Select value={cursoUfcdId} onValueChange={setCursoUfcdId} disabled={!cursoId}>
                 <SelectTrigger><SelectValue placeholder={!cursoId ? "Escolhe primeiro o curso" : (opcoesFiltradas.length === 0 ? "Sem UFCDs por concluir neste curso" : "Escolher…")} /></SelectTrigger>
@@ -1487,8 +1487,8 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} /></div>
-              <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} /></div>
+              <div className="min-w-0 space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} /></div>
+              <div className="min-w-0 space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} /></div>
             </div>
 
             <div className="space-y-1.5"><Label>Observações</Label><Input value={observacoes} onChange={e => setObservacoes(e.target.value)} /></div>
@@ -1650,7 +1650,7 @@ function CreateDispDialog({
           <DialogTitle className="flex items-center gap-2"><CalendarPlus className="size-4" /> {isEdit ? "Editar disponibilidade" : "Lançar disponibilidade"}</DialogTitle>
         </DialogHeader>
         {data && (
-          <div className="space-y-3">
+          <div className="min-w-0 space-y-3">
             <div className="space-y-1.5">
               <Label>Data *</Label>
               <Input type="date" value={dataEdit} onChange={e => setDataEdit(e.target.value)} />
@@ -1658,7 +1658,7 @@ function CreateDispDialog({
 
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label>Formador *</Label>
                 <Select value={formadorId} onValueChange={setFormadorId}>
                   <SelectTrigger><SelectValue placeholder="Escolher…" /></SelectTrigger>
@@ -1669,7 +1669,7 @@ function CreateDispDialog({
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label>Tipo *</Label>
                 <Select value={tipo} onValueChange={(v) => setTipo(v as any)}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
@@ -1691,14 +1691,14 @@ function CreateDispDialog({
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => { setHoraInicio(e.target.value); setPeriodo("custom"); }} /></div>
-              <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => { setHoraFim(e.target.value); setPeriodo("custom"); }} /></div>
+              <div className="min-w-0 space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => { setHoraInicio(e.target.value); setPeriodo("custom"); }} /></div>
+              <div className="min-w-0 space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => { setHoraFim(e.target.value); setPeriodo("custom"); }} /></div>
             </div>
 
 
 
             {formadorId && (
-              <div className="space-y-1.5">
+              <div className="min-w-0 space-y-1.5">
                 <Label>Curso (opcional)</Label>
                 <Select value={cursoId || "_none"} onValueChange={(v) => setCursoId(v === "_none" ? "" : v)}>
                   <SelectTrigger>

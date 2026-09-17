@@ -576,6 +576,45 @@ function CronogramaGeral() {
     return rows;
   }, [cursosComCor, sessoes.data, grid, feriasByDay]);
 
+  // Por dia: pequenas etiquetas (Manhã / Tarde / Dia) dos cursos sem sessão atribuída.
+  const sessaoLabelsByDay = useMemo(() => {
+    const m = new Map<string, { id: string; codigo: string; cor: string; periodo: string }[]>();
+    const toMin = (h: string) => {
+      const [hh, mm] = (h ?? "").split(":").map(Number);
+      return (hh || 0) * 60 + (mm || 0);
+    };
+    const cov = new Map<string, { manha: boolean; tarde: boolean }>();
+    (sessoes.data ?? []).forEach((s: any) => {
+      const cid = s.curso?.id ?? s.curso_id;
+      if (!cid) return;
+      const ini = toMin(s.hora_inicio); const fim = toMin(s.hora_fim);
+      const k = `${s.data}|${cid}`;
+      const v = cov.get(k) ?? { manha: false, tarde: false };
+      if (ini < 780 && fim > 540) v.manha = true;
+      if (ini < 1020 && fim > 840) v.tarde = true;
+      cov.set(k, v);
+    });
+    for (const cell of grid) {
+      if (!cell) continue;
+      const dow = weekdayFromIso(cell.iso);
+      if (dow === 0 || dow === 6) continue;
+      const feriasSet = feriasByDay.get(cell.iso);
+      const chips: { id: string; codigo: string; cor: string; periodo: string }[] = [];
+      for (const c of cursosComCor) {
+        if (feriasSet?.has(c.id)) continue;
+        const v = cov.get(`${cell.iso}|${c.id}`) ?? { manha: false, tarde: false };
+        if (v.manha && v.tarde) continue;
+        chips.push({
+          id: c.id, codigo: c.codigo, cor: c.cor,
+          periodo: !v.manha && !v.tarde ? "Dia" : !v.manha ? "Manhã" : "Tarde",
+        });
+      }
+      if (chips.length) m.set(cell.iso, chips);
+    }
+    return m;
+  }, [cursosComCor, sessoes.data, grid, feriasByDay]);
+
+
   function imprimirSessoesEmFalta() {
     const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
     doc.setFontSize(13);
@@ -1116,6 +1155,20 @@ function CronogramaGeral() {
                         )}
 
                       </div>
+                      {!cursoFiltro && (sessaoLabelsByDay.get(cell.iso) ?? []).length > 0 && (
+                        <div className="flex flex-wrap gap-0.5 print:hidden">
+                          {(sessaoLabelsByDay.get(cell.iso) ?? []).map((ch) => (
+                            <span
+                              key={ch.id}
+                              className="text-[8px] leading-none font-medium px-1 py-0.5 rounded-sm border"
+                              style={{ background: `${ch.cor}66`, borderColor: ch.cor }}
+                              title={`${ch.codigo}: sem sessão atribuída — ${ch.periodo.toLowerCase()}`}
+                            >
+                              {ch.codigo} · {ch.periodo}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {fullSlots.length > 0 && <div className="space-y-1">{fullSlots.map(renderSlot)}</div>}
                       {manhaSlots.length > 0 && <div className="space-y-1">{manhaSlots.map(renderSlot)}</div>}
                       {tardeSlots.length > 0 && <div className="space-y-1 mt-auto">{tardeSlots.map(renderSlot)}</div>}

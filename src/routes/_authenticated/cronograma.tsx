@@ -1634,11 +1634,23 @@ function CreateDispDialog({
       tipo,
       notas: notas.trim() || null,
     };
-    const { error } = isEdit
-      ? await supabase.from("formador_disponibilidades" as any).update({ ...base, curso_id: cursoIds[0] ?? null } as never).eq("id", editing!.id)
-      : await supabase.from("formador_disponibilidades" as any).insert(
-          (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
+    let error: any = null;
+    if (isEdit) {
+      // Atualiza a linha editada com o 1.º curso e cria linhas novas para os restantes
+      const upd = await supabase.from("formador_disponibilidades" as any).update({ ...base, curso_id: cursoIds[0] ?? null } as never).eq("id", editing!.id);
+      error = upd.error;
+      if (!error && cursoIds.length > 1) {
+        const ins = await supabase.from("formador_disponibilidades" as any).insert(
+          cursoIds.slice(1).map((cid) => ({ ...base, curso_id: cid })) as never,
         );
+        error = ins.error;
+      }
+    } else {
+      const ins = await supabase.from("formador_disponibilidades" as any).insert(
+        (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
+      );
+      error = ins.error;
+    }
 
 
     setSaving(false);
@@ -1706,7 +1718,7 @@ function CreateDispDialog({
 
             {formadorId && (
               <div className="min-w-0 space-y-1.5">
-                <Label>{isEdit ? "Curso (opcional)" : "Cursos (opcional — pode escolher vários)"}</Label>
+                <Label>Cursos (opcional — pode escolher vários)</Label>
                 {(cursosDoFormador.data ?? []).length === 0 ? (
                   <div className="text-xs text-muted-foreground italic border rounded-md px-3 py-2">Sem cursos com UFCDs por concluir.</div>
                 ) : (
@@ -1721,9 +1733,7 @@ function CreateDispDialog({
                             checked={sel}
                             onChange={() =>
                               setCursoIds((prev) =>
-                                isEdit
-                                  ? sel ? [] : [c.id]
-                                  : sel ? prev.filter((x) => x !== c.id) : [...prev, c.id],
+                                sel ? prev.filter((x) => x !== c.id) : [...prev, c.id],
                               )
                             }
                           />
@@ -1739,9 +1749,7 @@ function CreateDispDialog({
                 <div className="text-xs text-muted-foreground">
                   {cursoIds.length === 0
                     ? "Sem curso: disponibilidade geral, válida para todos os cursos do formador."
-                    : isEdit
-                      ? "A UFCD é escolhida depois, ao converter a disponibilidade em sessão."
-                      : `Será criada uma disponibilidade por cada curso selecionado (${cursoIds.length}).`}
+                    : `Será criada uma disponibilidade por cada curso selecionado (${cursoIds.length}). A UFCD é escolhida depois, ao converter em sessão.`}
                 </div>
               </div>
             )}

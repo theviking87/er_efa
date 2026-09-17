@@ -1742,9 +1742,50 @@ function CreateDispDialog({
         {data && (
           <div className="min-w-0 space-y-3">
             <div className="space-y-1.5">
-              <Label>Data *</Label>
+              <Label>{repetir && !isEdit ? "De *" : "Data *"}</Label>
               <Input type="date" value={dataEdit} onChange={e => setDataEdit(e.target.value)} />
             </div>
+
+            {!isEdit && (
+              <div className="space-y-2 rounded-md border px-3 py-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" className="size-4" checked={repetir} onChange={e => setRepetir(e.target.checked)} />
+                  <span className="font-medium">Lançar várias datas de uma vez</span>
+                </label>
+                {repetir && (
+                  <div className="space-y-2">
+                    <div className="space-y-1.5">
+                      <Label>Até *</Label>
+                      <Input type="date" value={dataAte} min={dataEdit} onChange={e => setDataAte(e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Dias da semana</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[["Seg",1],["Ter",2],["Qua",3],["Qui",4],["Sex",5],["Sáb",6],["Dom",0]].map(([lbl, n]) => {
+                          const num = n as number;
+                          const sel = diasSemana.includes(num);
+                          return (
+                            <Button
+                              key={num}
+                              type="button"
+                              size="sm"
+                              variant={sel ? "default" : "outline"}
+                              onClick={() => setDiasSemana(prev => sel ? prev.filter(x => x !== num) : [...prev, num])}
+                            >{lbl as string}</Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {dataAte && dataAte >= dataEdit
+                        ? `${datasGeradas.length} data(s) serão lançadas.`
+                        : "Escolhe a data final."}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
 
 
             <div className="grid grid-cols-2 gap-3">

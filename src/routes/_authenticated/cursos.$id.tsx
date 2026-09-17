@@ -54,6 +54,7 @@ import {
   dateOnlyIso,
   weekdayFromIso,
   INSCRICAO_ESTADO_LABEL,
+  ESTADO_FORMANDO_LABEL,
   FALTA_TIPO_LABEL,
   formadorLabel,
 } from "@/lib/format";

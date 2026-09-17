@@ -925,6 +925,53 @@ function SessoesUfcdDialog({
     diffHoras(String(s.hora_inicio).slice(0, 5), String(s.hora_fim).slice(0, 5));
   const total = (sessoes.data ?? []).reduce((a: number, s: any) => a + horasSessao(s), 0);
 
+  const cursoInfo = useQuery({
+    queryKey: ["curso", cursoId],
+    enabled: !!info,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("cursos")
+        .select("codigo, nome")
+        .eq("id", cursoId)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    staleTime: 60_000,
+  });
+
+  async function imprimirSessoesUfcd() {
+    if (!info) return;
+    const lista = sessoes.data ?? [];
+    const html = `<!doctype html><html><head><meta charset="utf-8"><title>Sessões ${info.codigo}</title>
+      <style>@page{size:A4 portrait;margin:14mm}body{font-family:system-ui,sans-serif;padding:0;color:#111;font-size:11px}h1{font-size:15px;margin:0 0 2px}h2{font-size:11px;font-weight:normal;color:#555;margin:0 0 14px}table{width:100%;border-collapse:collapse}th,td{border:1px solid #bbb;padding:5px 7px;text-align:left}th{background:#eee;font-size:10px;text-transform:uppercase}tfoot td{font-weight:600;background:#f5f5f5}.right{text-align:right}</style>
+      </head><body>
+      <h1>Sessões contabilizadas</h1>
+      <h2>${cursoInfo.data?.codigo ? `<strong>${cursoInfo.data.codigo}</strong> — ${cursoInfo.data.nome}<br>` : ""}<span style="font-family:monospace">${info.codigo}</span> — ${info.designacao}</h2>
+      <table><thead><tr><th style="width:80px">Data</th><th style="width:90px">Horário</th><th>Formador</th><th style="width:55px" class="right">Horas</th></tr></thead>
+      <tbody>${
+        lista.length === 0
+          ? '<tr><td colspan="4" style="text-align:center;color:#666">Sem sessões lançadas.</td></tr>'
+          : lista
+              .map(
+                (s: any) =>
+                  `<tr><td>${fmtDate(s.data)}</td><td style="font-family:monospace">${s.hora_inicio?.slice(0, 5)}–${s.hora_fim?.slice(0, 5)}</td><td>${s.formador?.nome ?? "—"}</td><td class="right">${fmtHoras(horasSessao(s))}</td></tr>`,
+              )
+              .join("")
+      }
+      </tbody>
+      ${lista.length > 0 ? `<tfoot><tr><td colspan="3" class="right">Total</td><td class="right">${fmtHoras(total)}</td></tr></tfoot>` : ""}
+      </table>
+      <script>window.onload=()=>setTimeout(()=>window.print(),100)</script>
+      </body></html>`;
+    try {
+      const ok = await printHtml({ title: `Sessões ${info.codigo}`, html, landscape: false });
+      if (!ok) toast.error("Não foi possível abrir a impressão");
+    } catch (e: any) {
+      toast.error("Erro na impressão", { description: e.message });
+    }
+  }
+
   return (
     <Dialog open={!!info} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col">

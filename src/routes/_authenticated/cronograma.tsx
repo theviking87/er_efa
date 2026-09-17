@@ -1410,7 +1410,13 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     if (error) { setSaving(false); return toast.error(error.message); }
 
     if (removerDisp && slot.id) {
-      await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
+      // Remove a disponibilidade e eventuais duplicados (lançamento multi-curso cria uma linha por curso)
+      await supabase.from("formador_disponibilidades" as any).delete()
+        .eq("formador_id", slot.formador_id)
+        .eq("data", slot.data)
+        .eq("hora_inicio", slot.hora_inicio)
+        .eq("hora_fim", slot.hora_fim)
+        .eq("tipo", slot.tipo);
     }
     setSaving(false);
     toast.success("Sessão criada a partir da disponibilidade");

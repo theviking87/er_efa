@@ -104,8 +104,8 @@ function CronogramaGeral() {
       const { data, error } = await supabase
         .from("cursos")
         .select("id, codigo, nome, data_inicio, data_fim, estado")
-        .eq("estado", "ativo")
-        .lte("data_inicio", fimMes)
+        .in("estado", ["ativo", "planeado"])
+        .or(`data_inicio.lte.${fimMes},data_inicio.is.null`)
         .or(`data_fim.gte.${inicioMes},data_fim.is.null`);
       if (error) throw error;
       const cursos = data ?? [];

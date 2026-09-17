@@ -1050,7 +1050,14 @@ function SessoesUfcdDialog({
             )}
           </table>
         </div>
-        <DialogFooter>
+        <DialogFooter className="flex justify-between sm:justify-between">
+          <Button
+            variant="outline"
+            onClick={imprimirSessoesUfcd}
+            disabled={!info || (sessoes.data ?? []).length === 0}
+          >
+            <Printer className="size-4 mr-2" />Imprimir
+          </Button>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>
             Fechar
           </Button>

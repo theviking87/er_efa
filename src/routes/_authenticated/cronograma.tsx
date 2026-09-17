@@ -1156,7 +1156,7 @@ function CronogramaGeral() {
 
                       </div>
                       {!cursoFiltro && (sessaoLabelsByDay.get(cell.iso) ?? []).length > 0 && (
-                        <div className="flex flex-wrap gap-0.5">
+                        <div className="flex flex-wrap gap-0.5 print:hidden">
                           {(sessaoLabelsByDay.get(cell.iso) ?? []).map((ch) => (
                             <span
                               key={ch.id}

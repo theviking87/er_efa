@@ -1620,6 +1620,9 @@ function CreateDispDialog({
       setNotas("");
       setPeriodo("custom");
       setDataEdit(data);
+      setRepetir(false);
+      setDataAte("");
+      setDiasSemana([1, 2, 3, 4, 5]);
     }
   }, [data, editing?.id]);
 

@@ -1637,34 +1637,53 @@ function CreateDispDialog({
     const hf = horaFim;
 
     if (!hi || !hf || hf <= hi) return toast.error("Horário inválido");
-    if (!confirmarFimDeSemana(dataEdit, tipo === "disponivel" ? "esta disponibilidade" : "esta indisponibilidade")) return;
 
-    // Conflito com sessão já agendada (qualquer curso) à mesma hora
+    const datas = isEdit ? [dataEdit] : datasGeradas;
+    if (datas.length === 0) return toast.error("Nenhuma data no intervalo escolhido");
+    if (datas.length === 1) {
+      if (!confirmarFimDeSemana(datas[0], tipo === "disponivel" ? "esta disponibilidade" : "esta indisponibilidade")) return;
+    }
+
+    setSaving(true);
+
+    // Conflito com sessões já agendadas (qualquer curso) à mesma hora
+    let ignoradas: string[] = [];
+    let alvo = datas;
     if (tipo === "disponivel") {
       const { data: sess } = await supabase
         .from("sessoes")
-        .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
+        .select("data, hora_inicio, hora_fim, curso:cursos(codigo, nome)")
         .eq("formador_id", formadorId)
-        .eq("data", dataEdit);
+        .in("data", datas);
       const hiFull = hi.length === 5 ? hi + ":00" : hi;
       const hfFull = hf.length === 5 ? hf + ":00" : hf;
-      const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
-      if (choque) {
+      const comChoque = new Set(
+        ((sess ?? []) as any[])
+          .filter((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim))
+          .map((s) => s.data as string),
+      );
+      alvo = datas.filter((d) => !comChoque.has(d));
+      ignoradas = datas.filter((d) => comChoque.has(d));
+      if (alvo.length === 0) {
+        setSaving(false);
         return toast.error("Formador já tem sessão neste horário", {
-          description: `${choque.curso?.codigo ?? ""} ${choque.curso?.nome ?? ""} (${String(choque.hora_inicio).slice(0,5)}–${String(choque.hora_fim).slice(0,5)}).`,
+          description: ignoradas.map(fmtDate).join(", "),
         });
       }
     }
 
-    setSaving(true);
-    const base = {
+    const baseDe = (d: string) => ({
       formador_id: formadorId,
-      data: dataEdit,
+      data: d,
       hora_inicio: hi,
       hora_fim: hf,
       tipo,
       notas: notas.trim() || null,
-    };
+    });
+    const linhas = alvo.flatMap((d) =>
+      cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...baseDe(d), curso_id: cid })) : [{ ...baseDe(d), curso_id: null }],
+    );
+
     let error: any = null;
     if (isEdit) {
       // Substitui todas as linhas do grupo (multi-curso) pelas novas seleções
@@ -1672,22 +1691,23 @@ function CreateDispDialog({
       const del = await supabase.from("formador_disponibilidades" as any).delete().in("id", idsGrupo);
       error = del.error;
       if (!error) {
-        const ins = await supabase.from("formador_disponibilidades" as any).insert(
-          (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
-        );
+        const ins = await supabase.from("formador_disponibilidades" as any).insert(linhas as never);
         error = ins.error;
       }
     } else {
-      const ins = await supabase.from("formador_disponibilidades" as any).insert(
-        (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
-      );
+      const ins = await supabase.from("formador_disponibilidades" as any).insert(linhas as never);
       error = ins.error;
     }
 
 
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success(isEdit ? "Disponibilidade atualizada" : cursoIds.length > 1 ? `Disponibilidade lançada para ${cursoIds.length} cursos` : "Disponibilidade lançada");
+    toast.success(
+      isEdit
+        ? "Disponibilidade atualizada"
+        : `${linhas.length} disponibilidade${linhas.length === 1 ? "" : "s"} lançada${linhas.length === 1 ? "" : "s"} (${alvo.length} data${alvo.length === 1 ? "" : "s"})`,
+      ignoradas.length > 0 ? { description: `Ignoradas ${ignoradas.length} data(s) com sessão no mesmo horário: ${ignoradas.map(fmtDate).join(", ")}` } : undefined,
+    );
     qc.invalidateQueries({ queryKey: ["disp-geral"] });
     qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
     onClose();

@@ -3781,11 +3781,33 @@ function InscreverFormandoDialog({
                     <div className="text-xs text-muted-foreground truncate">{f.email}</div>
                   )}
                 </div>
-                {f.estado && f.estado !== "ativo" && (
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground border rounded px-1.5 py-0.5 shrink-0">
-                    {f.estado}
-                  </span>
-                )}
+                {(() => {
+                  const porCurso = estadoByFormando.get(f.id) ?? [];
+                  const desist = porCurso.find((r: any) => r.estado === "desistente");
+                  const conclu = porCurso.find((r: any) => r.estado === "concluido");
+                  const label = desist
+                    ? "Desistente"
+                    : conclu
+                      ? "Concluído"
+                      : f.estado && f.estado !== "ativo"
+                        ? ESTADO_FORMANDO_LABEL[f.estado] ?? f.estado
+                        : null;
+                  const ref = desist?.curso?.codigo ?? conclu?.curso?.codigo;
+                  if (!label) return null;
+                  return (
+                    <span
+                      title={ref ? `No curso ${ref}` : undefined}
+                      className={`text-[10px] uppercase tracking-wide border rounded px-1.5 py-0.5 shrink-0 ${
+                        desist
+                          ? "bg-destructive/10 text-destructive border-destructive/30"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {label}
+                      {ref ? ` · ${ref}` : ""}
+                    </span>
+                  );
+                })()}
               </label>
             ))}
           </div>

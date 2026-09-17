@@ -1410,7 +1410,13 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     if (error) { setSaving(false); return toast.error(error.message); }
 
     if (removerDisp && slot.id) {
-      await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
+      // Remove a disponibilidade e eventuais duplicados (lançamento multi-curso cria uma linha por curso)
+      await supabase.from("formador_disponibilidades" as any).delete()
+        .eq("formador_id", slot.formador_id)
+        .eq("data", slot.data)
+        .eq("hora_inicio", slot.hora_inicio)
+        .eq("hora_fim", slot.hora_fim)
+        .eq("tipo", slot.tipo);
     }
     setSaving(false);
     toast.success("Sessão criada a partir da disponibilidade");
@@ -1531,7 +1537,7 @@ function CreateDispDialog({
   const [tipo, setTipo] = useState<"disponivel" | "indisponivel">("disponivel");
   const [horaInicio, setHoraInicio] = useState("09:00");
   const [horaFim, setHoraFim] = useState("13:00");
-  const [cursoId, setCursoId] = useState<string>("");
+  const [cursoIds, setCursoIds] = useState<string[]>([]);
   const [notas, setNotas] = useState("");
   const [periodo, setPeriodo] = useState<"manha" | "tarde" | "dia" | "custom">("custom");
   const [dataEdit, setDataEdit] = useState<string>("");
@@ -1551,7 +1557,7 @@ function CreateDispDialog({
       setTipo(editing.tipo);
       setHoraInicio(editing.hora_inicio?.slice(0, 5) ?? "09:00");
       setHoraFim(editing.hora_fim?.slice(0, 5) ?? "13:00");
-      setCursoId(editing.curso_id ?? "");
+      setCursoIds(editing.curso_id ? [editing.curso_id] : []);
       setNotas(editing.notas ?? "");
       setPeriodo("custom");
       setDataEdit(editing.data ?? data ?? "");
@@ -1560,7 +1566,7 @@ function CreateDispDialog({
       setTipo("disponivel");
       setHoraInicio("09:00");
       setHoraFim("13:00");
-      setCursoId("");
+      setCursoIds([]);
       setNotas("");
       setPeriodo("custom");
       setDataEdit(data);
@@ -1620,23 +1626,24 @@ function CreateDispDialog({
     }
 
     setSaving(true);
-    const payload = {
+    const base = {
       formador_id: formadorId,
       data: dataEdit,
       hora_inicio: hi,
       hora_fim: hf,
       tipo,
       notas: notas.trim() || null,
-      curso_id: cursoId || null,
     };
     const { error } = isEdit
-      ? await supabase.from("formador_disponibilidades" as any).update(payload as never).eq("id", editing!.id)
-      : await supabase.from("formador_disponibilidades" as any).insert(payload as never);
+      ? await supabase.from("formador_disponibilidades" as any).update({ ...base, curso_id: cursoIds[0] ?? null } as never).eq("id", editing!.id)
+      : await supabase.from("formador_disponibilidades" as any).insert(
+          (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
+        );
 
 
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success(isEdit ? "Disponibilidade atualizada" : "Disponibilidade lançada");
+    toast.success(isEdit ? "Disponibilidade atualizada" : cursoIds.length > 1 ? `Disponibilidade lançada para ${cursoIds.length} cursos` : "Disponibilidade lançada");
     qc.invalidateQueries({ queryKey: ["disp-geral"] });
     qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
     onClose();
@@ -1699,21 +1706,43 @@ function CreateDispDialog({
 
             {formadorId && (
               <div className="min-w-0 space-y-1.5">
-                <Label>Curso (opcional)</Label>
-                <Select value={cursoId || "_none"} onValueChange={(v) => setCursoId(v === "_none" ? "" : v)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder={cursosDoFormador.data?.length === 0 ? "Sem cursos com UFCDs por concluir" : "Escolher…"} />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="_none">— Nenhum —</SelectItem>
-                    {(cursosDoFormador.data ?? []).map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.codigo} — {c.nome} ({c.ufcds_abertas} UFCD{c.ufcds_abertas === 1 ? "" : "s"} por concluir)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-                <div className="text-xs text-muted-foreground">A UFCD é escolhida depois, ao converter a disponibilidade em sessão.</div>
+                <Label>{isEdit ? "Curso (opcional)" : "Cursos (opcional — pode escolher vários)"}</Label>
+                {(cursosDoFormador.data ?? []).length === 0 ? (
+                  <div className="text-xs text-muted-foreground italic border rounded-md px-3 py-2">Sem cursos com UFCDs por concluir.</div>
+                ) : (
+                  <div className="border rounded-md divide-y max-h-44 overflow-y-auto">
+                    {(cursosDoFormador.data ?? []).map((c) => {
+                      const sel = cursoIds.includes(c.id);
+                      return (
+                        <label key={c.id} className={`flex items-center gap-2 px-3 py-1.5 text-sm cursor-pointer hover:bg-muted/40 ${sel ? "bg-muted/30" : ""}`}>
+                          <input
+                            type="checkbox"
+                            className="size-4 shrink-0"
+                            checked={sel}
+                            onChange={() =>
+                              setCursoIds((prev) =>
+                                isEdit
+                                  ? sel ? [] : [c.id]
+                                  : sel ? prev.filter((x) => x !== c.id) : [...prev, c.id],
+                              )
+                            }
+                          />
+                          <span className="min-w-0 truncate">
+                            <span className="font-medium">{c.codigo}</span> — {c.nome}
+                            <span className="text-xs text-muted-foreground"> ({c.ufcds_abertas} UFCD{c.ufcds_abertas === 1 ? "" : "s"} por concluir)</span>
+                          </span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="text-xs text-muted-foreground">
+                  {cursoIds.length === 0
+                    ? "Sem curso: disponibilidade geral, válida para todos os cursos do formador."
+                    : isEdit
+                      ? "A UFCD é escolhida depois, ao converter a disponibilidade em sessão."
+                      : `Será criada uma disponibilidade por cada curso selecionado (${cursoIds.length}).`}
+                </div>
               </div>
             )}
 

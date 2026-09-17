@@ -1692,10 +1692,25 @@ function CreateDispDialog({
         .select("curso_ufcd:curso_ufcds(id, horas_totais, concluida, curso:cursos(id, codigo, nome, estado))")
         .eq("formador_id", formadorId);
       if (error) throw error;
+      // Horas já lecionadas por este formador em cada UFCD (para considerar
+      // concluída mesmo que a flag "concluida" ainda não tenha sido marcada)
+      const ufcdIds = (rows ?? []).map((r: any) => r.curso_ufcd?.id).filter(Boolean);
+      const horasPorUfcd = new Map<string, number>();
+      if (ufcdIds.length > 0) {
+        const { data: sess } = await supabase
+          .from("sessoes")
+          .select("curso_ufcd_id, horas")
+          .eq("formador_id", formadorId)
+          .in("curso_ufcd_id", ufcdIds);
+        (sess ?? []).forEach((s: any) => {
+          horasPorUfcd.set(s.curso_ufcd_id, (horasPorUfcd.get(s.curso_ufcd_id) ?? 0) + (Number(s.horas) || 0));
+        });
+      }
       const map = new Map<string, { id: string; codigo: string; nome: string; estado: string; ufcds_abertas: number }>();
       (rows ?? []).forEach((r: any) => {
         const cu = r.curso_ufcd;
         if (!cu || !cu.curso || cu.concluida) return;
+        if ((horasPorUfcd.get(cu.id) ?? 0) >= (cu.horas_totais ?? 0)) return;
         const c = cu.curso;
         const cur = map.get(c.id) ?? { id: c.id, codigo: c.codigo, nome: c.nome, estado: c.estado, ufcds_abertas: 0 };
         cur.ufcds_abertas += 1;

@@ -3525,20 +3525,28 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
       .update(patch as never)
       .eq("id", id);
     if (error) return toast.error(error.message);
-    // Propagar estado para a ficha do formando
+    // Propagar estado para a ficha do formando (tendo em conta as outras inscrições)
     const formandoId = atual.formando?.id;
     if (formandoId) {
-      const mapa: Record<string, string> = {
-        inscrito: "ativo",
-        em_formacao: "ativo",
-        desistente: "desistente",
-        concluido: "concluido",
-      };
-      const estadoFormando = mapa[estado];
-      if (estadoFormando) {
+      if (estado === "inscrito" || estado === "em_formacao") {
+        // Voltou a estar em formação nalgum curso → ficha fica ativa
         await supabase
           .from("formandos")
-          .update({ estado: estadoFormando } as never)
+          .update({ estado: "ativo" } as never)
+          .eq("id", formandoId);
+      } else {
+        // Só marcar desistente/concluído na ficha se não houver outra inscrição ativa
+        const { data: outras } = await supabase
+          .from("curso_formandos")
+          .select("id, estado")
+          .eq("formando_id", formandoId)
+          .neq("id", id);
+        const temAtiva = (outras ?? []).some(
+          (o: any) => o.estado === "inscrito" || o.estado === "em_formacao",
+        );
+        await supabase
+          .from("formandos")
+          .update({ estado: temAtiva ? "ativo" : estado } as never)
           .eq("id", formandoId);
       }
     }
@@ -3670,13 +3678,7 @@ function InscreverFormandoDialog({
   const formandos = useQuery({
     queryKey: ["formandos-disponiveis"],
     queryFn: async () =>
-      (
-        await supabase
-          .from("formandos")
-          .select("id, nome, email, estado")
-          .eq("estado", "ativo")
-          .order("nome")
-      ).data ?? [],
+      (await supabase.from("formandos").select("id, nome, email, estado").order("nome")).data ?? [],
     enabled: open,
   });
 
@@ -3690,6 +3692,11 @@ function InscreverFormandoDialog({
     const rows = selected.map((fid) => ({ curso_id: cursoId, formando_id: fid }));
     const { error } = await supabase.from("curso_formandos").insert(rows as never);
     if (error) return toast.error(error.message);
+    // Nova inscrição → a ficha do formando volta a ficar ativa
+    await supabase
+      .from("formandos")
+      .update({ estado: "ativo" } as never)
+      .in("id", selected);
     toast.success(`${selected.length} formando(s) inscrito(s)`);
     setSelected([]);
     setFiltro("");
@@ -3741,6 +3748,11 @@ function InscreverFormandoDialog({
                     <div className="text-xs text-muted-foreground truncate">{f.email}</div>
                   )}
                 </div>
+                {f.estado && f.estado !== "ativo" && (
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground border rounded px-1.5 py-0.5 shrink-0">
+                    {f.estado}
+                  </span>
+                )}
               </label>
             ))}
           </div>

@@ -3748,6 +3748,11 @@ function InscreverFormandoDialog({
                     <div className="text-xs text-muted-foreground truncate">{f.email}</div>
                   )}
                 </div>
+                {f.estado && f.estado !== "ativo" && (
+                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground border rounded px-1.5 py-0.5 shrink-0">
+                    {f.estado}
+                  </span>
+                )}
               </label>
             ))}
           </div>

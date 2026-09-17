@@ -1699,7 +1699,7 @@ function CreateDispDialog({
       tipo,
       notas: notas.trim() || null,
     });
-    const linhas = alvo.flatMap((d) =>
+    const linhas: any[] = alvo.flatMap((d: string) =>
       cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...baseDe(d), curso_id: cid })) : [{ ...baseDe(d), curso_id: null }],
     );
 

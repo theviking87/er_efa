@@ -1572,6 +1572,25 @@ function CreateDispDialog({
   const [notas, setNotas] = useState("");
   const [periodo, setPeriodo] = useState<"manha" | "tarde" | "dia" | "custom">("custom");
   const [dataEdit, setDataEdit] = useState<string>("");
+  const [repetir, setRepetir] = useState(false);
+  const [dataAte, setDataAte] = useState<string>("");
+  const [diasSemana, setDiasSemana] = useState<number[]>([1, 2, 3, 4, 5]);
+
+  const datasGeradas = useMemo<string[]>(() => {
+    if (!dataEdit) return [];
+    if (!repetir || !dataAte || dataAte < dataEdit) return [dataEdit];
+    const out: string[] = [];
+    const fim = new Date(dataAte + "T00:00:00");
+    for (let d = new Date(dataEdit + "T00:00:00"); d <= fim; d.setDate(d.getDate() + 1)) {
+      if (diasSemana.includes(d.getDay())) {
+        out.push(
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        );
+      }
+      if (out.length > 400) break;
+    }
+    return out;
+  }, [dataEdit, dataAte, repetir, diasSemana]);
 
   const [saving, setSaving] = useState(false);
 

@@ -3699,6 +3699,27 @@ function InscreverFormandoDialog({
       !jaInscritos.has(f.id) && (!filtro || f.nome.toLowerCase().includes(filtro.toLowerCase())),
   );
 
+  // Estados por curso de todos os formandos, para mostrar a etiqueta correta
+  // mesmo quando a ficha global está "ativo" (desistência é por curso).
+  const inscricoes = useQuery({
+    queryKey: ["formandos-estados-curso"],
+    queryFn: async () =>
+      (
+        await supabase
+          .from("curso_formandos")
+          .select("formando_id, estado, curso:cursos(codigo)")
+          .in("estado", ["desistente", "concluido"])
+      ).data ?? [],
+    enabled: open,
+  });
+
+  const estadoByFormando = new Map<string, any[]>();
+  ((inscricoes.data ?? []) as any[]).forEach((r) => {
+    const arr = estadoByFormando.get(r.formando_id) ?? [];
+    arr.push(r);
+    estadoByFormando.set(r.formando_id, arr);
+  });
+
   async function save() {
     if (selected.length === 0) return toast.error("Escolha pelo menos um formando");
     const rows = selected.map((fid) => ({ curso_id: cursoId, formando_id: fid }));

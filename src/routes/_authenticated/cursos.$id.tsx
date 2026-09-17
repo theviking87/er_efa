@@ -3678,13 +3678,7 @@ function InscreverFormandoDialog({
   const formandos = useQuery({
     queryKey: ["formandos-disponiveis"],
     queryFn: async () =>
-      (
-        await supabase
-          .from("formandos")
-          .select("id, nome, email, estado")
-          .eq("estado", "ativo")
-          .order("nome")
-      ).data ?? [],
+      (await supabase.from("formandos").select("id, nome, email, estado").order("nome")).data ?? [],
     enabled: open,
   });
 
@@ -3698,6 +3692,11 @@ function InscreverFormandoDialog({
     const rows = selected.map((fid) => ({ curso_id: cursoId, formando_id: fid }));
     const { error } = await supabase.from("curso_formandos").insert(rows as never);
     if (error) return toast.error(error.message);
+    // Nova inscrição → a ficha do formando volta a ficar ativa
+    await supabase
+      .from("formandos")
+      .update({ estado: "ativo" } as never)
+      .in("id", selected);
     toast.success(`${selected.length} formando(s) inscrito(s)`);
     setSelected([]);
     setFiltro("");

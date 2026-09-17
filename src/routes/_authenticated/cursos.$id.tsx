@@ -3554,6 +3554,7 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
     qc.invalidateQueries({ queryKey: ["curso-formandos", cursoId] });
     qc.invalidateQueries({ queryKey: ["formando", formandoId] });
     qc.invalidateQueries({ queryKey: ["formandos"] });
+    qc.invalidateQueries({ queryKey: ["formandos-inscricoes"] });
   }
 
   async function setData(

@@ -54,6 +54,7 @@ import {
   dateOnlyIso,
   weekdayFromIso,
   INSCRICAO_ESTADO_LABEL,
+  ESTADO_FORMANDO_LABEL,
   FALTA_TIPO_LABEL,
   formadorLabel,
 } from "@/lib/format";
@@ -3590,13 +3591,25 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
             {(data.data ?? []).map((i: any) => (
               <div key={i.id} className="px-4 py-3 flex items-center gap-3 text-sm">
                 <div className="flex-1 min-w-0">
-                  <Link
-                    to="/formandos/$id"
-                    params={{ id: i.formando.id }}
-                    className="font-medium hover:underline truncate block"
-                  >
-                    {i.formando.nome}
-                  </Link>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Link
+                      to="/formandos/$id"
+                      params={{ id: i.formando.id }}
+                      className="font-medium hover:underline truncate"
+                    >
+                      {i.formando.nome}
+                    </Link>
+                    {i.estado === "desistente" && (
+                      <span className="text-[10px] uppercase tracking-wide shrink-0 border rounded px-1.5 py-0.5 bg-destructive/10 text-destructive border-destructive/30">
+                        Desistente
+                      </span>
+                    )}
+                    {i.estado === "concluido" && (
+                      <span className="text-[10px] uppercase tracking-wide shrink-0 border rounded px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200">
+                        Concluído
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {[
                       i.formando.email,
@@ -3687,6 +3700,27 @@ function InscreverFormandoDialog({
       !jaInscritos.has(f.id) && (!filtro || f.nome.toLowerCase().includes(filtro.toLowerCase())),
   );
 
+  // Estados por curso de todos os formandos, para mostrar a etiqueta correta
+  // mesmo quando a ficha global está "ativo" (desistência é por curso).
+  const inscricoes = useQuery({
+    queryKey: ["formandos-estados-curso"],
+    queryFn: async () =>
+      (
+        await supabase
+          .from("curso_formandos")
+          .select("formando_id, estado, curso:cursos(codigo)")
+          .in("estado", ["desistente", "concluido"])
+      ).data ?? [],
+    enabled: open,
+  });
+
+  const estadoByFormando = new Map<string, any[]>();
+  ((inscricoes.data ?? []) as any[]).forEach((r) => {
+    const arr = estadoByFormando.get(r.formando_id) ?? [];
+    arr.push(r);
+    estadoByFormando.set(r.formando_id, arr);
+  });
+
   async function save() {
     if (selected.length === 0) return toast.error("Escolha pelo menos um formando");
     const rows = selected.map((fid) => ({ curso_id: cursoId, formando_id: fid }));
@@ -3748,11 +3782,33 @@ function InscreverFormandoDialog({
                     <div className="text-xs text-muted-foreground truncate">{f.email}</div>
                   )}
                 </div>
-                {f.estado && f.estado !== "ativo" && (
-                  <span className="text-[10px] uppercase tracking-wide text-muted-foreground border rounded px-1.5 py-0.5 shrink-0">
-                    {f.estado}
-                  </span>
-                )}
+                {(() => {
+                  const porCurso = estadoByFormando.get(f.id) ?? [];
+                  const desist = porCurso.find((r: any) => r.estado === "desistente");
+                  const conclu = porCurso.find((r: any) => r.estado === "concluido");
+                  const label = desist
+                    ? "Desistente"
+                    : conclu
+                      ? "Concluído"
+                      : f.estado && f.estado !== "ativo"
+                        ? ESTADO_FORMANDO_LABEL[f.estado] ?? f.estado
+                        : null;
+                  const ref = desist?.curso?.codigo ?? conclu?.curso?.codigo;
+                  if (!label) return null;
+                  return (
+                    <span
+                      title={ref ? `No curso ${ref}` : undefined}
+                      className={`text-[10px] uppercase tracking-wide border rounded px-1.5 py-0.5 shrink-0 ${
+                        desist
+                          ? "bg-destructive/10 text-destructive border-destructive/30"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {label}
+                      {ref ? ` · ${ref}` : ""}
+                    </span>
+                  );
+                })()}
               </label>
             ))}
           </div>

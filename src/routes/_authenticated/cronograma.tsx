@@ -1531,7 +1531,7 @@ function CreateDispDialog({
   const [tipo, setTipo] = useState<"disponivel" | "indisponivel">("disponivel");
   const [horaInicio, setHoraInicio] = useState("09:00");
   const [horaFim, setHoraFim] = useState("13:00");
-  const [cursoId, setCursoId] = useState<string>("");
+  const [cursoIds, setCursoIds] = useState<string[]>([]);
   const [notas, setNotas] = useState("");
   const [periodo, setPeriodo] = useState<"manha" | "tarde" | "dia" | "custom">("custom");
   const [dataEdit, setDataEdit] = useState<string>("");
@@ -1551,7 +1551,7 @@ function CreateDispDialog({
       setTipo(editing.tipo);
       setHoraInicio(editing.hora_inicio?.slice(0, 5) ?? "09:00");
       setHoraFim(editing.hora_fim?.slice(0, 5) ?? "13:00");
-      setCursoId(editing.curso_id ?? "");
+      setCursoIds(editing.curso_id ? [editing.curso_id] : []);
       setNotas(editing.notas ?? "");
       setPeriodo("custom");
       setDataEdit(editing.data ?? data ?? "");
@@ -1560,7 +1560,7 @@ function CreateDispDialog({
       setTipo("disponivel");
       setHoraInicio("09:00");
       setHoraFim("13:00");
-      setCursoId("");
+      setCursoIds([]);
       setNotas("");
       setPeriodo("custom");
       setDataEdit(data);

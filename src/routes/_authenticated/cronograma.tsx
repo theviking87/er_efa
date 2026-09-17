@@ -1155,6 +1155,20 @@ function CronogramaGeral() {
                         )}
 
                       </div>
+                      {!cursoFiltro && (sessaoLabelsByDay.get(cell.iso) ?? []).length > 0 && (
+                        <div className="flex flex-wrap gap-0.5">
+                          {(sessaoLabelsByDay.get(cell.iso) ?? []).map((ch) => (
+                            <span
+                              key={ch.id}
+                              className="text-[8px] leading-none font-medium px-1 py-0.5 rounded-sm border"
+                              style={{ background: `${ch.cor}66`, borderColor: ch.cor }}
+                              title={`${ch.codigo}: sem sessão atribuída — ${ch.periodo.toLowerCase()}`}
+                            >
+                              {ch.codigo} · {ch.periodo}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                       {fullSlots.length > 0 && <div className="space-y-1">{fullSlots.map(renderSlot)}</div>}
                       {manhaSlots.length > 0 && <div className="space-y-1">{manhaSlots.map(renderSlot)}</div>}
                       {tardeSlots.length > 0 && <div className="space-y-1 mt-auto">{tardeSlots.map(renderSlot)}</div>}

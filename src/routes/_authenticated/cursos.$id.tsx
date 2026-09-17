@@ -1050,18 +1050,21 @@ function SessoesUfcdDialog({
             )}
           </table>
         </div>
-        <DialogFooter className="flex justify-between sm:justify-between">
+        <div className="flex justify-between items-center pt-2">
           <Button
             variant="outline"
+            size="sm"
             onClick={imprimirSessoesUfcd}
             disabled={!info || (sessoes.data ?? []).length === 0}
           >
             <Printer className="size-4 mr-2" />Imprimir
           </Button>
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>
-            Fechar
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button variant="ghost" onClick={() => onOpenChange(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </div>
         <SubstituirFormadorDialog
           sessao={editSess}
           cursoId={cursoId}

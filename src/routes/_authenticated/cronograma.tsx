@@ -1718,7 +1718,7 @@ function CreateDispDialog({
 
             {formadorId && (
               <div className="min-w-0 space-y-1.5">
-                <Label>{isEdit ? "Curso (opcional)" : "Cursos (opcional — pode escolher vários)"}</Label>
+                <Label>Cursos (opcional — pode escolher vários)</Label>
                 {(cursosDoFormador.data ?? []).length === 0 ? (
                   <div className="text-xs text-muted-foreground italic border rounded-md px-3 py-2">Sem cursos com UFCDs por concluir.</div>
                 ) : (
@@ -1749,9 +1749,7 @@ function CreateDispDialog({
                 <div className="text-xs text-muted-foreground">
                   {cursoIds.length === 0
                     ? "Sem curso: disponibilidade geral, válida para todos os cursos do formador."
-                    : isEdit
-                      ? "A UFCD é escolhida depois, ao converter a disponibilidade em sessão."
-                      : `Será criada uma disponibilidade por cada curso selecionado (${cursoIds.length}).`}
+                    : `Será criada uma disponibilidade por cada curso selecionado (${cursoIds.length}). A UFCD é escolhida depois, ao converter em sessão.`}
                 </div>
               </div>
             )}

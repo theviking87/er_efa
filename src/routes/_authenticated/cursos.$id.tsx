@@ -3590,13 +3590,25 @@ function FormandosTab({ cursoId }: { cursoId: string }) {
             {(data.data ?? []).map((i: any) => (
               <div key={i.id} className="px-4 py-3 flex items-center gap-3 text-sm">
                 <div className="flex-1 min-w-0">
-                  <Link
-                    to="/formandos/$id"
-                    params={{ id: i.formando.id }}
-                    className="font-medium hover:underline truncate block"
-                  >
-                    {i.formando.nome}
-                  </Link>
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Link
+                      to="/formandos/$id"
+                      params={{ id: i.formando.id }}
+                      className="font-medium hover:underline truncate"
+                    >
+                      {i.formando.nome}
+                    </Link>
+                    {i.estado === "desistente" && (
+                      <span className="text-[10px] uppercase tracking-wide shrink-0 border rounded px-1.5 py-0.5 bg-destructive/10 text-destructive border-destructive/30">
+                        Desistente
+                      </span>
+                    )}
+                    {i.estado === "concluido" && (
+                      <span className="text-[10px] uppercase tracking-wide shrink-0 border rounded px-1.5 py-0.5 bg-blue-50 text-blue-700 border-blue-200">
+                        Concluído
+                      </span>
+                    )}
+                  </div>
                   <div className="text-xs text-muted-foreground truncate">
                     {[
                       i.formando.email,

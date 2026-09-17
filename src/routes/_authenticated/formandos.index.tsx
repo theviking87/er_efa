@@ -25,7 +25,11 @@ export function EstadoFormandoBadge({ estado }: { estado: string }) {
 }
 
 type Formando = { id: string; nome: string; nif?: string | null; email?: string | null; telemovel?: string | null; estado: string };
-type Inscricao = { formando_id: string; curso: { id: string; codigo: string; nome: string } | null };
+type Inscricao = {
+  formando_id: string;
+  estado: string;
+  curso: { id: string; codigo: string; nome: string } | null;
+};
 
 function FormandosPage() {
   const [q, setQ] = useState("");
@@ -46,7 +50,7 @@ function FormandosPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("curso_formandos")
-        .select("formando_id, curso:cursos(id, codigo, nome)");
+        .select("formando_id, estado, curso:cursos(id, codigo, nome)");
       if (error) throw error;
       return (data ?? []) as any as Inscricao[];
     },
@@ -61,6 +65,16 @@ function FormandosPage() {
       m.set(i.formando_id, arr);
     });
     return m;
+  }, [inscricoes.data]);
+
+  const estadoPorInscricao = useMemo(() => {
+    const estados = new Map<string, string>();
+    (inscricoes.data ?? []).forEach((inscricao) => {
+      if (inscricao.curso) {
+        estados.set(`${inscricao.formando_id}:${inscricao.curso.id}`, inscricao.estado);
+      }
+    });
+    return estados;
   }, [inscricoes.data]);
 
   const filtered = (list.data ?? []).filter((f) =>
@@ -143,7 +157,12 @@ function FormandosPage() {
                             {[f.email, f.telemovel, f.nif && `NIF ${f.nif}`].filter(Boolean).join(" · ") || "Sem contacto"}
                           </div>
                         </div>
-                        <EstadoFormandoBadge estado={f.estado} />
+                        <EstadoFormandoBadge
+                          estado={
+                            (g.cursoId && estadoPorInscricao.get(`${f.id}:${g.cursoId}`)) ||
+                            f.estado
+                          }
+                        />
                       </Link>
                     </li>
                   ))}

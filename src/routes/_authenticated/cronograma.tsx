@@ -1572,6 +1572,25 @@ function CreateDispDialog({
   const [notas, setNotas] = useState("");
   const [periodo, setPeriodo] = useState<"manha" | "tarde" | "dia" | "custom">("custom");
   const [dataEdit, setDataEdit] = useState<string>("");
+  const [repetir, setRepetir] = useState(false);
+  const [dataAte, setDataAte] = useState<string>("");
+  const [diasSemana, setDiasSemana] = useState<number[]>([1, 2, 3, 4, 5]);
+
+  const datasGeradas = useMemo<string[]>(() => {
+    if (!dataEdit) return [];
+    if (!repetir || !dataAte || dataAte < dataEdit) return [dataEdit];
+    const out: string[] = [];
+    const fim = new Date(dataAte + "T00:00:00");
+    for (let d = new Date(dataEdit + "T00:00:00"); d <= fim; d.setDate(d.getDate() + 1)) {
+      if (diasSemana.includes(d.getDay())) {
+        out.push(
+          `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+        );
+      }
+      if (out.length > 400) break;
+    }
+    return out;
+  }, [dataEdit, dataAte, repetir, diasSemana]);
 
   const [saving, setSaving] = useState(false);
 
@@ -1601,6 +1620,9 @@ function CreateDispDialog({
       setNotas("");
       setPeriodo("custom");
       setDataEdit(data);
+      setRepetir(false);
+      setDataAte("");
+      setDiasSemana([1, 2, 3, 4, 5]);
     }
   }, [data, editing?.id]);
 
@@ -1637,34 +1659,53 @@ function CreateDispDialog({
     const hf = horaFim;
 
     if (!hi || !hf || hf <= hi) return toast.error("Horário inválido");
-    if (!confirmarFimDeSemana(dataEdit, tipo === "disponivel" ? "esta disponibilidade" : "esta indisponibilidade")) return;
 
-    // Conflito com sessão já agendada (qualquer curso) à mesma hora
+    const datas = isEdit ? [dataEdit] : datasGeradas;
+    if (datas.length === 0) return toast.error("Nenhuma data no intervalo escolhido");
+    if (datas.length === 1) {
+      if (!confirmarFimDeSemana(datas[0], tipo === "disponivel" ? "esta disponibilidade" : "esta indisponibilidade")) return;
+    }
+
+    setSaving(true);
+
+    // Conflito com sessões já agendadas (qualquer curso) à mesma hora
+    let ignoradas: string[] = [];
+    let alvo = datas;
     if (tipo === "disponivel") {
       const { data: sess } = await supabase
         .from("sessoes")
-        .select("hora_inicio, hora_fim, curso:cursos(codigo, nome)")
+        .select("data, hora_inicio, hora_fim, curso:cursos(codigo, nome)")
         .eq("formador_id", formadorId)
-        .eq("data", dataEdit);
+        .in("data", datas);
       const hiFull = hi.length === 5 ? hi + ":00" : hi;
       const hfFull = hf.length === 5 ? hf + ":00" : hf;
-      const choque = ((sess ?? []) as any[]).find((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim));
-      if (choque) {
+      const comChoque = new Set(
+        ((sess ?? []) as any[])
+          .filter((s) => !(hfFull <= s.hora_inicio || hiFull >= s.hora_fim))
+          .map((s) => s.data as string),
+      );
+      alvo = datas.filter((d) => !comChoque.has(d));
+      ignoradas = datas.filter((d) => comChoque.has(d));
+      if (alvo.length === 0) {
+        setSaving(false);
         return toast.error("Formador já tem sessão neste horário", {
-          description: `${choque.curso?.codigo ?? ""} ${choque.curso?.nome ?? ""} (${String(choque.hora_inicio).slice(0,5)}–${String(choque.hora_fim).slice(0,5)}).`,
+          description: ignoradas.map(fmtDate).join(", "),
         });
       }
     }
 
-    setSaving(true);
-    const base = {
+    const baseDe = (d: string) => ({
       formador_id: formadorId,
-      data: dataEdit,
+      data: d,
       hora_inicio: hi,
       hora_fim: hf,
       tipo,
       notas: notas.trim() || null,
-    };
+    });
+    const linhas: any[] = alvo.flatMap((d: string) =>
+      (cursoIds.length > 0 ? cursoIds : [null]).map((cid) => ({ ...baseDe(d), curso_id: cid })),
+    );
+
     let error: any = null;
     if (isEdit) {
       // Substitui todas as linhas do grupo (multi-curso) pelas novas seleções
@@ -1672,22 +1713,23 @@ function CreateDispDialog({
       const del = await supabase.from("formador_disponibilidades" as any).delete().in("id", idsGrupo);
       error = del.error;
       if (!error) {
-        const ins = await supabase.from("formador_disponibilidades" as any).insert(
-          (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
-        );
+        const ins = await supabase.from("formador_disponibilidades" as any).insert(linhas as never);
         error = ins.error;
       }
     } else {
-      const ins = await supabase.from("formador_disponibilidades" as any).insert(
-        (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
-      );
+      const ins = await supabase.from("formador_disponibilidades" as any).insert(linhas as never);
       error = ins.error;
     }
 
 
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success(isEdit ? "Disponibilidade atualizada" : cursoIds.length > 1 ? `Disponibilidade lançada para ${cursoIds.length} cursos` : "Disponibilidade lançada");
+    toast.success(
+      isEdit
+        ? "Disponibilidade atualizada"
+        : `${linhas.length} disponibilidade${linhas.length === 1 ? "" : "s"} lançada${linhas.length === 1 ? "" : "s"} (${alvo.length} data${alvo.length === 1 ? "" : "s"})`,
+      ignoradas.length > 0 ? { description: `Ignoradas ${ignoradas.length} data(s) com sessão no mesmo horário: ${ignoradas.map(fmtDate).join(", ")}` } : undefined,
+    );
     qc.invalidateQueries({ queryKey: ["disp-geral"] });
     qc.invalidateQueries({ queryKey: ["disponibilidades", formadorId] });
     onClose();
@@ -1703,9 +1745,50 @@ function CreateDispDialog({
         {data && (
           <div className="min-w-0 space-y-3">
             <div className="space-y-1.5">
-              <Label>Data *</Label>
+              <Label>{repetir && !isEdit ? "De *" : "Data *"}</Label>
               <Input type="date" value={dataEdit} onChange={e => setDataEdit(e.target.value)} />
             </div>
+
+            {!isEdit && (
+              <div className="space-y-2 rounded-md border px-3 py-2">
+                <label className="flex items-center gap-2 text-sm cursor-pointer">
+                  <input type="checkbox" className="size-4" checked={repetir} onChange={e => setRepetir(e.target.checked)} />
+                  <span className="font-medium">Lançar várias datas de uma vez</span>
+                </label>
+                {repetir && (
+                  <div className="space-y-2">
+                    <div className="space-y-1.5">
+                      <Label>Até *</Label>
+                      <Input type="date" value={dataAte} min={dataEdit} onChange={e => setDataAte(e.target.value)} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label>Dias da semana</Label>
+                      <div className="flex flex-wrap gap-1.5">
+                        {[["Seg",1],["Ter",2],["Qua",3],["Qui",4],["Sex",5],["Sáb",6],["Dom",0]].map(([lbl, n]) => {
+                          const num = n as number;
+                          const sel = diasSemana.includes(num);
+                          return (
+                            <Button
+                              key={num}
+                              type="button"
+                              size="sm"
+                              variant={sel ? "default" : "outline"}
+                              onClick={() => setDiasSemana(prev => sel ? prev.filter(x => x !== num) : [...prev, num])}
+                            >{lbl as string}</Button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                    <div className="text-xs text-muted-foreground">
+                      {dataAte && dataAte >= dataEdit
+                        ? `${datasGeradas.length} data(s) serão lançadas.`
+                        : "Escolhe a data final."}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
 
 
             <div className="grid grid-cols-2 gap-3">

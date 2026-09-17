@@ -40,6 +40,8 @@ type DispSlot = {
   notas: string | null;
   curso_id: string | null;
   curso_codigo: string | null;
+  ids?: string[];
+  curso_ids?: string[];
 };
 type SessaoSlot = {
   kind: "sessao";
@@ -399,8 +401,36 @@ function CronogramaGeral() {
 
       });
     }
-    // sort each day by hora_inicio
-    for (const arr of m.values()) arr.sort((a, b) => (a.hora_inicio ?? "").localeCompare(b.hora_inicio ?? ""));
+    // Agrupa linhas de disponibilidade com o mesmo formador/horário/tipo
+    // (o lançamento multi-curso cria uma linha por curso) num único cartão,
+    // com os códigos dos cursos apenas como nota.
+    for (const [day, arr] of m.entries()) {
+      const sessoesOut: SessaoSlot[] = [];
+      const grupos = new Map<string, DispSlot[]>();
+      for (const s of arr) {
+        if (s.kind === "sessao") { sessoesOut.push(s); continue; }
+        const k = `${s.formador_id}|${s.hora_inicio}|${s.hora_fim}|${s.tipo}`;
+        const g = grupos.get(k) ?? [];
+        g.push(s); grupos.set(k, g);
+      }
+      const dispOut: DispSlot[] = [];
+      for (const g of grupos.values()) {
+        if (g.length <= 1) { dispOut.push(g[0]); continue; }
+        const codigos = Array.from(new Set(g.map((x) => x.curso_codigo).filter(Boolean) as string[])).sort();
+        const cids = Array.from(new Set(g.map((x) => x.curso_id).filter(Boolean) as string[]));
+        dispOut.push({
+          ...g[0],
+          ids: g.map((x) => x.id),
+          curso_id: cids.length === 1 ? cids[0] : null,
+          curso_ids: cids,
+          curso_codigo: codigos.length ? codigos.join(", ") : null,
+          notas: g.find((x) => x.notas)?.notas ?? null,
+        });
+      }
+      const merged = [...sessoesOut, ...dispOut];
+      merged.sort((a, b) => (a.hora_inicio ?? "").localeCompare(b.hora_inicio ?? ""));
+      m.set(day, merged);
+    }
     return m;
   }, [sessoes.data, disp.data, mostrar, cursoFiltro, cursosAtivos.data]);
 
@@ -982,7 +1012,7 @@ function CronogramaGeral() {
                       );
                     }
                     const isDisp = slot.tipo === "disponivel";
-                    const isOverlap = isDisp && overlapDispIds.has(slot.id);
+                    const isOverlap = isDisp && (slot.ids ?? [slot.id]).some((id: string) => overlapDispIds.has(id));
                     return (
                       <div
                         key={"d" + slot.id}
@@ -1016,8 +1046,9 @@ function CronogramaGeral() {
                             type="button"
                             onClick={async (e) => {
                               e.stopPropagation();
-                              if (!confirm("Apagar esta disponibilidade?")) return;
-                              const { error } = await supabase.from("formador_disponibilidades" as any).delete().eq("id", slot.id);
+                              const nCursos = (slot.ids ?? [slot.id]).length;
+                              if (!confirm(nCursos > 1 ? `Apagar esta disponibilidade (${nCursos} cursos)?` : "Apagar esta disponibilidade?")) return;
+                              const { error } = await supabase.from("formador_disponibilidades" as any).delete().in("id", slot.ids ?? [slot.id]);
                               if (error) return toast.error(error.message);
                               toast.success("Disponibilidade apagada");
                               qc.invalidateQueries({ queryKey: ["disp-geral"] });
@@ -1127,7 +1158,7 @@ function CronogramaGeral() {
                         return (
                           <div key={slot.kind + slot.id} className="leading-tight" style={{ borderLeft: `2px solid ${cor}`, paddingLeft: "3px" }}>
                             <span className="tabular-nums font-semibold">{slot.hora_inicio?.slice(0,5)}-{slot.hora_fim?.slice(0,5)}</span>
-                            {" "}{slot.formador_nome} ({tag})
+                            {" "}{slot.formador_nome} ({tag}){!isSessao && slot.curso_codigo ? ` · ${slot.curso_codigo}` : ""}
                           </div>
                         );
                       })}
@@ -1557,7 +1588,7 @@ function CreateDispDialog({
       setTipo(editing.tipo);
       setHoraInicio(editing.hora_inicio?.slice(0, 5) ?? "09:00");
       setHoraFim(editing.hora_fim?.slice(0, 5) ?? "13:00");
-      setCursoIds(editing.curso_id ? [editing.curso_id] : []);
+      setCursoIds(editing.curso_ids?.length ? editing.curso_ids : editing.curso_id ? [editing.curso_id] : []);
       setNotas(editing.notas ?? "");
       setPeriodo("custom");
       setDataEdit(editing.data ?? data ?? "");
@@ -1636,12 +1667,13 @@ function CreateDispDialog({
     };
     let error: any = null;
     if (isEdit) {
-      // Atualiza a linha editada com o 1.º curso e cria linhas novas para os restantes
-      const upd = await supabase.from("formador_disponibilidades" as any).update({ ...base, curso_id: cursoIds[0] ?? null } as never).eq("id", editing!.id);
-      error = upd.error;
-      if (!error && cursoIds.length > 1) {
+      // Substitui todas as linhas do grupo (multi-curso) pelas novas seleções
+      const idsGrupo = editing!.ids?.length ? editing!.ids : [editing!.id];
+      const del = await supabase.from("formador_disponibilidades" as any).delete().in("id", idsGrupo);
+      error = del.error;
+      if (!error) {
         const ins = await supabase.from("formador_disponibilidades" as any).insert(
-          cursoIds.slice(1).map((cid) => ({ ...base, curso_id: cid })) as never,
+          (cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...base, curso_id: cid })) : [{ ...base, curso_id: null }]) as never,
         );
         error = ins.error;
       }

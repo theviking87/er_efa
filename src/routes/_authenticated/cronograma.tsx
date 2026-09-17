@@ -1700,7 +1700,7 @@ function CreateDispDialog({
       notas: notas.trim() || null,
     });
     const linhas: any[] = alvo.flatMap((d: string) =>
-      cursoIds.length > 0 ? cursoIds.map((cid) => ({ ...baseDe(d), curso_id: cid })) : [{ ...baseDe(d), curso_id: null }],
+      (cursoIds.length > 0 ? cursoIds : [null]).map((cid) => ({ ...baseDe(d), curso_id: cid })),
     );
 
     let error: any = null;

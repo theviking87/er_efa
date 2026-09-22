@@ -95,7 +95,7 @@ function RelatoriosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button
                 disabled={!cursoId || !!busy}
                 onClick={() =>
@@ -131,7 +131,7 @@ function RelatoriosPage() {
             <p className="text-sm text-muted-foreground">
               Resumo agregado e detalhe de sessões por formador num intervalo.
             </p>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Início</Label>
                 <Input type="date" value={inicio} onChange={(e) => setInicio(e.target.value)} />
@@ -141,7 +141,7 @@ function RelatoriosPage() {
                 <Input type="date" value={fim} onChange={(e) => setFim(e.target.value)} />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Button
                 disabled={!inicio || !fim || !!busy}
                 onClick={() =>

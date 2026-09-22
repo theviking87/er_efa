@@ -231,10 +231,10 @@ function InatividadesTab({ formadorId, items, onChange }: { formadorId: string; 
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Período de inatividade</AlertDialogTitle></AlertDialogHeader>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5"><Label>Início *</Label><Input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Fim *</Label><Input type="date" value={form.data_fim} onChange={e => setForm({ ...form, data_fim: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1.5"><Label>Motivo</Label><Input value={form.motivo} onChange={e => setForm({ ...form, motivo: e.target.value })} /></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label>Motivo</Label><Input value={form.motivo} onChange={e => setForm({ ...form, motivo: e.target.value })} /></div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
@@ -487,18 +487,18 @@ function DisponibilidadesTab({ formadorId }: { formadorId: string }) {
       <AlertDialog open={open} onOpenChange={setOpen}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Nova disponibilidade</AlertDialogTitle></AlertDialogHeader>
-          <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1.5"><Label>Data *</Label><Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} /></div>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2"><Label>Data *</Label><Input type="date" value={form.data} onChange={e => setForm({ ...form, data: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Início *</Label><Input type="time" value={form.hora_inicio} onChange={e => setForm({ ...form, hora_inicio: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Fim *</Label><Input type="time" value={form.hora_fim} onChange={e => setForm({ ...form, hora_fim: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Tipo</Label>
               <select className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.tipo} onChange={e => setForm({ ...form, tipo: e.target.value as any })}>
                 <option value="disponivel">Disponível</option>
                 <option value="indisponivel">Indisponível</option>
               </select>
             </div>
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Curso (opcional)</Label>
               <select className="h-9 w-full rounded-md border border-input bg-background px-3 text-sm" value={form.curso_id} onChange={e => setForm({ ...form, curso_id: e.target.value })}>
                 <option value="">— Nenhum —</option>

@@ -810,10 +810,10 @@ function CronogramaGeral() {
       />
 
 
-      <Card><CardContent className="p-6 space-y-4">
+      <Card><CardContent className="space-y-4 p-3 sm:p-6">
         <div className="flex items-start justify-between gap-3 flex-wrap">
           <div className="flex flex-col gap-2">
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="inline-flex items-center rounded-md border border-input bg-background overflow-hidden">
                 <Button variant="ghost" size="icon" className="rounded-none h-9 w-9" onClick={prev}><ChevronLeft className="size-4" /></Button>
                 <div className="font-semibold text-base min-w-[150px] text-center px-1">{MONTH_NAMES[mes.mes]} {mes.ano}</div>
@@ -890,11 +890,11 @@ function CronogramaGeral() {
               </Button>
             </div>
           </div>
-          <div className="flex items-center gap-3 flex-wrap">
+          <div className="flex w-full items-center gap-3 flex-wrap lg:w-auto">
             <select
               value={mostrar}
               onChange={e => setMostrar(e.target.value as any)}
-              className="text-sm border border-input rounded-md px-2.5 py-1.5 bg-background"
+              className="min-w-0 flex-1 text-sm border border-input rounded-md px-2.5 py-1.5 bg-background sm:flex-none"
             >
               <option value="ambos">Sessões + disponibilidades</option>
               <option value="sessoes">Apenas sessões</option>
@@ -903,7 +903,7 @@ function CronogramaGeral() {
             <select
               value={formadorFiltro}
               onChange={e => setFormadorFiltro(e.target.value)}
-              className="text-sm border border-input rounded-md px-2.5 py-1.5 bg-background"
+              className="min-w-0 flex-1 text-sm border border-input rounded-md px-2.5 py-1.5 bg-background sm:flex-none"
             >
               <option value="">Todos os formadores</option>
               {(formadores.data ?? []).map((f: any) => (
@@ -913,7 +913,7 @@ function CronogramaGeral() {
             <select
               value={cursoFiltro}
               onChange={e => setCursoFiltro(e.target.value)}
-              className="text-sm border border-input rounded-md px-2.5 py-1.5 bg-background"
+              className="min-w-0 flex-1 text-sm border border-input rounded-md px-2.5 py-1.5 bg-background sm:flex-none"
             >
               <option value="">Todos os cursos</option>
               {(cursosTodos.data ?? []).map((c: any) => (
@@ -958,11 +958,11 @@ function CronogramaGeral() {
           onSaved={() => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] })}
         />
 
-        <div className="border rounded-md overflow-hidden bg-card">
-          <div className="grid grid-cols-7 bg-muted/40 text-xs uppercase text-muted-foreground">
+        <div className="overflow-x-auto rounded-md border bg-card">
+          <div className="grid min-w-[760px] grid-cols-7 bg-muted/40 text-xs uppercase text-muted-foreground">
             {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}
           </div>
-          <div className="grid grid-cols-7 auto-rows-[minmax(110px,auto)]">
+          <div className="grid min-w-[760px] grid-cols-7 auto-rows-[minmax(110px,auto)]">
             {grid.map((cell, i) => {
               const miss = cell ? dayMissing.get(cell.iso) : undefined;
               let bgStyle: React.CSSProperties | undefined;
@@ -1576,7 +1576,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0 space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} /></div>
               <div className="min-w-0 space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} /></div>
             </div>
@@ -1859,7 +1859,7 @@ function CreateDispDialog({
 
 
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0 space-y-1.5">
                 <Label>Formador *</Label>
                 <Select value={formadorId} onValueChange={setFormadorId}>
@@ -1892,7 +1892,7 @@ function CreateDispDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0 space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => { setHoraInicio(e.target.value); setPeriodo("custom"); }} /></div>
               <div className="min-w-0 space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => { setHoraFim(e.target.value); setPeriodo("custom"); }} /></div>
             </div>
@@ -2048,7 +2048,7 @@ function FeriasDialog({ open, onClose, cursos, defaultCursoId }: {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5"><Label>Início *</Label><Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} /></div>
             <div className="space-y-1.5"><Label>Fim *</Label><Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} /></div>
           </div>

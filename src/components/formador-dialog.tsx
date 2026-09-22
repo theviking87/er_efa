@@ -97,9 +97,9 @@ export function FormadorDialog({
         <form
           id="formador-form"
           onSubmit={(e) => { e.preventDefault(); if (!f.nome.trim()) { toast.error("Nome obrigatório"); return; } save.mutate(f); }}
-          className="grid grid-cols-2 gap-3"
+          className="grid grid-cols-1 gap-3 sm:grid-cols-2"
         >
-          <div className="col-span-2 space-y-1.5">
+          <div className="space-y-1.5 sm:col-span-2">
             <Label>Nome completo *</Label>
             <Input required {...field("nome")} onBlur={() => {
               if (!f.abreviatura && f.nome) {
@@ -123,8 +123,8 @@ export function FormadorDialog({
           <div className="space-y-1.5"><Label>IBAN</Label><Input {...field("iban")} /></div>
           <div className="space-y-1.5"><Label>Valor/hora (€)</Label><Input type="number" step="0.01" value={f.valor_hora ?? 0} onChange={e => setF({ ...f, valor_hora: Number(e.target.value) })} /></div>
 
-          <div className="col-span-2 grid grid-cols-2 gap-3 rounded-md border p-3 bg-muted/20">
-            <div className="col-span-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Fiscalidade (nota de honorários)</div>
+          <div className="grid grid-cols-1 gap-3 rounded-md border p-3 bg-muted/20 sm:col-span-2 sm:grid-cols-2">
+            <div className="text-xs font-semibold uppercase tracking-wide text-muted-foreground sm:col-span-2">Fiscalidade (nota de honorários)</div>
             <div className="space-y-1.5">
               <div className="flex items-center gap-2 h-6">
                 <input id="faz-ret" type="checkbox" className="size-4" checked={!f.sem_retencao}
@@ -148,12 +148,12 @@ export function FormadorDialog({
                 onChange={e => setF({ ...f, iva_percentagem: Number(e.target.value) })} />
             </div>
           </div>
-          <div className="col-span-2 space-y-1.5"><Label>Morada</Label><Input {...field("morada")} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Morada</Label><Input {...field("morada")} /></div>
           <div className="space-y-1.5"><Label>Código Postal</Label><Input {...field("codigo_postal")} /></div>
           <div className="space-y-1.5"><Label>Localidade</Label><Input {...field("localidade")} /></div>
           <div className="space-y-1.5"><Label>CCP</Label><Input {...field("ccp")} /></div>
           <div className="space-y-1.5"><Label>Validade CCP</Label><Input type="date" {...field("validade_ccp")} /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Habilitações</Label><Input {...field("habilitacoes")} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Habilitações</Label><Input {...field("habilitacoes")} /></div>
           <div className="space-y-1.5">
             <Label>Estado</Label>
             <Select value={f.estado} onValueChange={v => setF({ ...f, estado: v })}>

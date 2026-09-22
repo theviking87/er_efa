@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite dev",
     "build": "vite build && node scripts/make-dist.mjs",
-    "build:dev": "vite build --mode development",
+    "build:dev": "vite build --mode development && node scripts/make-dist.mjs",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write ."

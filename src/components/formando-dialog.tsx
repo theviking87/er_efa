@@ -64,8 +64,8 @@ export function FormandoDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader><DialogTitle>{form.id ? "Editar formando" : "Novo formando"}</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
-          <div className="col-span-2 space-y-1.5"><Label>Nome *</Label><Input value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="space-y-1.5 sm:col-span-2"><Label>Nome *</Label><Input value={form.nome} onChange={e => set("nome", e.target.value)} /></div>
           <div className="space-y-1.5"><Label>NIF</Label><Input value={form.nif ?? ""} onChange={e => set("nif", e.target.value)} /></div>
           <div className="space-y-1.5"><Label>NISS</Label><Input value={form.niss ?? ""} onChange={e => set("niss", e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Cartão de Cidadão</Label><Input value={form.cc ?? ""} onChange={e => set("cc", e.target.value)} /></div>
@@ -82,14 +82,14 @@ export function FormandoDialog({
           </div>
           <div className="space-y-1.5"><Label>Telemóvel</Label><Input value={form.telemovel ?? ""} onChange={e => set("telemovel", e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Email</Label><Input type="email" value={form.email ?? ""} onChange={e => set("email", e.target.value)} /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Morada</Label><Input value={form.morada ?? ""} onChange={e => set("morada", e.target.value)} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Morada</Label><Input value={form.morada ?? ""} onChange={e => set("morada", e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Código Postal</Label><Input value={form.codigo_postal ?? ""} onChange={e => set("codigo_postal", e.target.value)} /></div>
           <div className="space-y-1.5"><Label>Localidade</Label><Input value={form.localidade ?? ""} onChange={e => set("localidade", e.target.value)} /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Habilitações</Label><Input value={form.habilitacoes ?? ""} onChange={e => set("habilitacoes", e.target.value)} /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Situação face ao emprego</Label><Input value={form.situacao_emprego ?? ""} onChange={e => set("situacao_emprego", e.target.value)} placeholder="Empregado, Desempregado, Estudante…" /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Habilitações</Label><Input value={form.habilitacoes ?? ""} onChange={e => set("habilitacoes", e.target.value)} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Situação face ao emprego</Label><Input value={form.situacao_emprego ?? ""} onChange={e => set("situacao_emprego", e.target.value)} placeholder="Empregado, Desempregado, Estudante…" /></div>
           <div className="space-y-1.5"><Label>IBAN</Label><Input value={form.iban ?? ""} onChange={e => set("iban", e.target.value)} placeholder="PT50 0000 0000 0000 0000 0000 0" /></div>
           <div className="space-y-1.5"><Label>BIC/SWIFT</Label><Input value={form.bic ?? ""} onChange={e => set("bic", e.target.value)} placeholder="BCOMPTPL" /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Observações</Label><Textarea rows={3} value={form.observacoes ?? ""} onChange={e => set("observacoes", e.target.value)} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Observações</Label><Textarea rows={3} value={form.observacoes ?? ""} onChange={e => set("observacoes", e.target.value)} /></div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={() => onOpenChange(false)}>Cancelar</Button>

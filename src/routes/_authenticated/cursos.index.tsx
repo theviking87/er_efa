@@ -125,7 +125,7 @@ function CursosPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent>
           <DialogHeader><DialogTitle>Novo curso</DialogTitle></DialogHeader>
-          <form id="curso-form" onSubmit={e => { e.preventDefault(); save.mutate(); }} className="grid grid-cols-2 gap-3">
+          <form id="curso-form" onSubmit={e => { e.preventDefault(); save.mutate(); }} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5"><Label>Código *</Label><Input required value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value })} /></div>
             <div className="space-y-1.5">
               <Label>Tipologia</Label>
@@ -136,8 +136,8 @@ function CursosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2 space-y-1.5"><Label>Nome *</Label><Input required value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2"><Label>Nome *</Label><Input required value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Projeto *</Label>
               <Select value={form.projeto_id || (projetoId !== "all" ? projetoId : "")} onValueChange={v => setForm({ ...form, projeto_id: v })}>
                 <SelectTrigger><SelectValue placeholder="Escolher projeto…" /></SelectTrigger>
@@ -148,7 +148,7 @@ function CursosPage() {
             </div>
             <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={form.data_fim} onChange={e => setForm({ ...form, data_fim: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1.5">
+            <div className="space-y-1.5 sm:col-span-2">
               <Label>Estado</Label>
               <Select value={form.estado} onValueChange={v => setForm({ ...form, estado: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>

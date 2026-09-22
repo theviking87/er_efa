@@ -77,11 +77,11 @@ function ProjetosPage() {
 
       <Card className="mb-4">
         <CardContent className="pt-6 flex flex-wrap gap-3 items-end">
-          <div className="relative min-w-[240px] flex-1">
+          <div className="relative min-w-0 flex-1 basis-full sm:min-w-[240px] sm:basis-auto">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" />
             <Input value={q} onChange={e => setQ(e.target.value)} placeholder="Pesquisar por nome ou código…" className="pl-8" />
           </div>
-          <div className="min-w-[160px]">
+          <div className="w-full sm:w-auto sm:min-w-[160px]">
             <Label>Estado</Label>
             <Select value={fEstado} onValueChange={setFEstado}>
               <SelectTrigger><SelectValue /></SelectTrigger>
@@ -120,7 +120,7 @@ function ProjetosPage() {
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-2xl">
           <DialogHeader><DialogTitle>Novo projeto</DialogTitle></DialogHeader>
-          <form id="proj-form" onSubmit={e => { e.preventDefault(); create.mutate(); }} className="grid grid-cols-2 gap-3">
+          <form id="proj-form" onSubmit={e => { e.preventDefault(); create.mutate(); }} className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5"><Label>Código *</Label><Input required value={form.codigo} onChange={e => setForm({ ...form, codigo: e.target.value })} /></div>
             <div className="space-y-1.5">
               <Label>Estado</Label>
@@ -131,13 +131,13 @@ function ProjetosPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2 space-y-1.5"><Label>Nome *</Label><Input required value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label>Nome *</Label><Input required value={form.nome} onChange={e => setForm({ ...form, nome: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Entidade promotora</Label><Input value={form.entidade_promotora} onChange={e => setForm({ ...form, entidade_promotora: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Programa de financiamento</Label><Input value={form.programa_financiamento} onChange={e => setForm({ ...form, programa_financiamento: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={form.data_inicio} onChange={e => setForm({ ...form, data_inicio: e.target.value })} /></div>
             <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={form.data_fim} onChange={e => setForm({ ...form, data_fim: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1.5"><Label>Descrição</Label><Textarea rows={2} value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></div>
-            <div className="col-span-2 space-y-1.5"><Label>Observações</Label><Textarea rows={2} value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} /></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label>Descrição</Label><Textarea rows={2} value={form.descricao} onChange={e => setForm({ ...form, descricao: e.target.value })} /></div>
+            <div className="space-y-1.5 sm:col-span-2"><Label>Observações</Label><Textarea rows={2} value={form.observacoes} onChange={e => setForm({ ...form, observacoes: e.target.value })} /></div>
           </form>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setOpen(false)}>Cancelar</Button>

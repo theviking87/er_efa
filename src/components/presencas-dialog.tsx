@@ -160,8 +160,8 @@ export function PresencasDialog({
         )}
 
         {(inscritos.data?.length ?? 0) > 0 && (
-          <div className="max-h-[55vh] overflow-y-auto -mx-6 px-6">
-            <table className="w-full text-sm">
+          <div className="-mx-4 max-h-[55vh] overflow-auto px-4 sm:-mx-6 sm:px-6">
+            <table className="min-w-[720px] text-sm">
               <thead className="text-xs text-muted-foreground sticky top-0 bg-background">
                 <tr className="border-b">
                   <th className="text-left py-2 font-medium">Formando</th>

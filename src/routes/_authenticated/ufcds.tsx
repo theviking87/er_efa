@@ -219,8 +219,8 @@ function UfcdsPage() {
       />
       <Input placeholder="Pesquisar…" value={q} onChange={e => setQ(e.target.value)} className="max-w-xs mb-4" />
 
-      <div className="border rounded-md bg-card overflow-hidden">
-        <table className="w-full text-sm">
+      <div className="border rounded-md bg-card overflow-x-auto">
+        <table className="min-w-[720px] w-full text-sm">
           <thead className="bg-muted/40 text-xs uppercase text-muted-foreground">
             <tr><th className="text-left font-medium px-4 py-2.5">Código</th><th className="text-left font-medium px-4 py-2.5">Designação</th><th className="text-left font-medium px-4 py-2.5">Cursos atribuídos</th><th className="text-right font-medium px-4 py-2.5">Horas ref.</th><th className="px-4 py-2.5"></th></tr>
           </thead>

@@ -833,16 +833,16 @@ function CronogramaGeral() {
                 <Button
                   variant="default"
                   size="sm"
-                  className="min-w-0 rounded-none px-2 md:px-3"
+                  className="min-w-0 rounded-none px-1.5 text-xs md:px-3 md:text-sm"
                   onClick={() => setCreateDate(localDateIso())}
                   title="Lançar disponibilidade"
                 >
-                  <CalendarPlus className="size-4 mr-1" />Disponibilidade
+                  <CalendarPlus className="mr-1 size-4 shrink-0" />Disponibilidade
                 </Button>
                 <Button
                   variant="default"
                   size="sm"
-                  className="min-w-0 rounded-none border-l border-primary-foreground/20 px-2 md:px-3"
+                  className="min-w-0 rounded-none border-l border-primary-foreground/20 px-1.5 text-xs md:px-3 md:text-sm"
                   onClick={() => setConvertSlot({
                     kind: "disp",
                     id: "",
@@ -859,16 +859,16 @@ function CronogramaGeral() {
                   } as any)}
                   title="Criar sessão ad-hoc sem disponibilidade prévia"
                 >
-                  <CalendarPlus className="size-4 mr-1" />Sessão
+                  <CalendarPlus className="mr-1 size-4 shrink-0" />Sessão
                 </Button>
                 <Button
                   variant="default"
                   size="sm"
-                  className="min-w-0 rounded-none border-l border-primary-foreground/20 px-2 md:px-3"
+                  className="min-w-0 rounded-none border-l border-primary-foreground/20 px-1.5 text-xs md:px-3 md:text-sm"
                   onClick={() => setFeriasOpen(true)}
                   title="Lançar período de férias / inatividade do formador"
                 >
-                  <Palmtree className="size-4 mr-1" />Férias
+                  <Palmtree className="mr-1 size-4 shrink-0" />Férias
                 </Button>
               </div>
 
@@ -933,11 +933,11 @@ function CronogramaGeral() {
           </div>
         </div>
 
-        <div className="flex items-center gap-x-4 gap-y-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground md:flex-wrap md:border-0 md:bg-transparent md:p-0">
+        <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground md:flex md:flex-wrap md:items-center md:gap-x-4 md:border-0 md:bg-transparent md:p-0">
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground" /> Sessão</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
-          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm ring-2 ring-amber-500" /> Disponibilidade sobreposta (mesmo curso, &gt;1 formador)</span>
+          <span className="col-span-3 inline-flex items-center gap-1.5 md:col-span-1"><span className="size-2 shrink-0 rounded-sm ring-2 ring-amber-500" /> Disponibilidade sobreposta (mesmo curso, &gt;1 formador)</span>
           {cursoFiltro && (
             <span className="inline-flex items-center gap-1.5"><span className="text-[9px] font-semibold uppercase px-1 rounded bg-amber-100 text-amber-800 border border-amber-300">sem sessão</span> Dia útil sem sessão atribuída ao curso</span>
           )}

@@ -102,7 +102,7 @@ function ConfiguracaoPage() {
             <F label="Nome"><Input value={form.empresa_nome ?? ""} onChange={e => setForm({ ...form, empresa_nome: e.target.value })} /></F>
             <F label="NIF"><Input value={form.empresa_nif ?? ""} onChange={e => setForm({ ...form, empresa_nif: e.target.value })} /></F>
             <F label="Morada"><Input value={form.empresa_morada ?? ""} onChange={e => setForm({ ...form, empresa_morada: e.target.value })} /></F>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <F label="Email"><Input value={form.empresa_email ?? ""} onChange={e => setForm({ ...form, empresa_email: e.target.value })} /></F>
               <F label="Telefone"><Input value={form.empresa_telefone ?? ""} onChange={e => setForm({ ...form, empresa_telefone: e.target.value })} /></F>
             </div>
@@ -111,7 +111,7 @@ function ConfiguracaoPage() {
 
         <Card>
           <CardHeader><CardTitle className="text-base">Parâmetros de cálculo</CardTitle></CardHeader>
-          <CardContent className="grid grid-cols-2 gap-3">
+          <CardContent className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <F label="Horas/mês referência (Bolsa)"><Input type="number" value={form.horas_mes_referencia} onChange={e => setForm({ ...form, horas_mes_referencia: Number(e.target.value) })} /></F>
             <F label="SA por dia (€)"><Input type="number" step="0.01" value={form.valor_sa} onChange={e => setForm({ ...form, valor_sa: Number(e.target.value) })} /></F>
             <F label="Valor por km (€)"><Input type="number" step="0.001" value={form.valor_km} onChange={e => setForm({ ...form, valor_km: Number(e.target.value) })} /></F>

@@ -1576,7 +1576,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
               </Select>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0 space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => setHoraInicio(e.target.value)} /></div>
               <div className="min-w-0 space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => setHoraFim(e.target.value)} /></div>
             </div>
@@ -1859,7 +1859,7 @@ function CreateDispDialog({
 
 
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0 space-y-1.5">
                 <Label>Formador *</Label>
                 <Select value={formadorId} onValueChange={setFormadorId}>
@@ -1892,7 +1892,7 @@ function CreateDispDialog({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div className="min-w-0 space-y-1.5"><Label>Início *</Label><Input type="time" value={horaInicio} onChange={e => { setHoraInicio(e.target.value); setPeriodo("custom"); }} /></div>
               <div className="min-w-0 space-y-1.5"><Label>Fim *</Label><Input type="time" value={horaFim} onChange={e => { setHoraFim(e.target.value); setPeriodo("custom"); }} /></div>
             </div>
@@ -2048,7 +2048,7 @@ function FeriasDialog({ open, onClose, cursos, defaultCursoId }: {
               </SelectContent>
             </Select>
           </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div className="space-y-1.5"><Label>Início *</Label><Input type="date" value={dataInicio} onChange={e => setDataInicio(e.target.value)} /></div>
             <div className="space-y-1.5"><Label>Fim *</Label><Input type="date" value={dataFim} onChange={e => setDataFim(e.target.value)} /></div>
           </div>

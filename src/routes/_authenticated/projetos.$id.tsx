@@ -109,7 +109,7 @@ function ProjetoDetalhe() {
         }
       />
 
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-3 mb-6">
         <MiniStat icon={BookOpen} label="Cursos" value={cursos.data?.length ?? 0} />
         <MiniStat icon={ListChecks} label="UFCD" value={ufcdsCount.data ?? 0} />
         <MiniStat icon={Users} label="Formadores" value={formadoresCount.data ?? 0} />
@@ -119,7 +119,7 @@ function ProjetoDetalhe() {
       </div>
 
       <Tabs defaultValue="dados">
-        <TabsList>
+        <TabsList className="w-full">
           <TabsTrigger value="dados">Dados gerais</TabsTrigger>
           <TabsTrigger value="cursos">Cursos</TabsTrigger>
           <TabsTrigger value="ufcd">UFCD</TabsTrigger>
@@ -226,7 +226,7 @@ function EditDialog({ id, initial, open, onClose, onSaved }: { id: string; initi
     <Dialog open={open} onOpenChange={o => !o && onClose()}>
       <DialogContent className="max-w-2xl">
         <DialogHeader><DialogTitle>Editar projeto</DialogTitle></DialogHeader>
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="space-y-1.5"><Label>Código *</Label><Input value={f.codigo} onChange={e => setF({ ...f, codigo: e.target.value })} /></div>
           <div className="space-y-1.5">
             <Label>Estado</Label>
@@ -235,13 +235,13 @@ function EditDialog({ id, initial, open, onClose, onSaved }: { id: string; initi
               <SelectContent>{Object.entries(ESTADO_PROJETO).map(([k, v]) => <SelectItem key={k} value={k}>{v}</SelectItem>)}</SelectContent>
             </Select>
           </div>
-          <div className="col-span-2 space-y-1.5"><Label>Nome *</Label><Input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Nome *</Label><Input value={f.nome} onChange={e => setF({ ...f, nome: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Entidade promotora</Label><Input value={f.entidade_promotora} onChange={e => setF({ ...f, entidade_promotora: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Programa de financiamento</Label><Input value={f.programa_financiamento} onChange={e => setF({ ...f, programa_financiamento: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Início</Label><Input type="date" value={f.data_inicio ?? ""} onChange={e => setF({ ...f, data_inicio: e.target.value })} /></div>
           <div className="space-y-1.5"><Label>Fim</Label><Input type="date" value={f.data_fim ?? ""} onChange={e => setF({ ...f, data_fim: e.target.value })} /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Descrição</Label><Textarea rows={2} value={f.descricao} onChange={e => setF({ ...f, descricao: e.target.value })} /></div>
-          <div className="col-span-2 space-y-1.5"><Label>Observações</Label><Textarea rows={2} value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Descrição</Label><Textarea rows={2} value={f.descricao} onChange={e => setF({ ...f, descricao: e.target.value })} /></div>
+          <div className="space-y-1.5 sm:col-span-2"><Label>Observações</Label><Textarea rows={2} value={f.observacoes} onChange={e => setF({ ...f, observacoes: e.target.value })} /></div>
         </div>
         <DialogFooter>
           <Button variant="ghost" onClick={onClose}>Cancelar</Button>

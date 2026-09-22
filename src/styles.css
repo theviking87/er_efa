@@ -166,6 +166,13 @@
   }
 }
 
+@media (max-width: 767px) {
+  html, body { max-width: 100%; overflow-x: hidden; }
+  main :where(.overflow-hidden):has(> table) { overflow-x: auto; }
+  main :where(table) { min-width: max-content; }
+  input, select, textarea { max-width: 100%; }
+}
+
 @media print {
   @page { size: A4 landscape; margin: 6mm; }
   html, body { background: white !important; margin: 0 !important; padding: 0 !important; }

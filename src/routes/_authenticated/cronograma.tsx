@@ -706,6 +706,12 @@ function CronogramaGeral() {
   function next() { setMes(m => m.mes === 11 ? { ano: m.ano + 1, mes: 0 } : { ano: m.ano, mes: m.mes + 1 }); }
   function hoje() { const d = new Date(); setMes({ ano: d.getFullYear(), mes: d.getMonth() }); }
 
+  const formatMobileDay = (iso: string) => new Intl.DateTimeFormat("pt-PT", {
+    weekday: "long",
+    day: "numeric",
+    month: "long",
+  }).format(new Date(`${iso}T12:00:00`));
+
   async function imprimirDiasSemDisp() {
     if (!cursoFiltro) return toast.error("Seleciona um curso primeiro");
     const curso = (cursosTodos.data ?? []).find((c: any) => c.id === cursoFiltro) as any;
@@ -811,32 +817,32 @@ function CronogramaGeral() {
 
 
       <Card><CardContent className="space-y-4 p-3 sm:p-6">
-        <div className="flex items-start justify-between gap-3 flex-wrap">
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap items-center gap-2">
-              <div className="inline-flex items-center rounded-md border border-input bg-background overflow-hidden">
+        <div className="flex flex-col gap-3 md:flex-row md:flex-wrap md:items-start md:justify-between">
+          <div className="flex min-w-0 flex-col gap-2">
+            <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 md:flex md:flex-wrap">
+              <div className="grid min-w-0 grid-cols-[auto_minmax(0,1fr)_auto] items-center overflow-hidden rounded-md border border-input bg-background md:inline-flex">
                 <Button variant="ghost" size="icon" className="rounded-none h-9 w-9" onClick={prev}><ChevronLeft className="size-4" /></Button>
-                <div className="font-semibold text-base min-w-[150px] text-center px-1">{MONTH_NAMES[mes.mes]} {mes.ano}</div>
+                <div className="min-w-0 px-1 text-center text-base font-semibold md:min-w-[150px]">{MONTH_NAMES[mes.mes]} {mes.ano}</div>
                 <Button variant="ghost" size="icon" className="rounded-none h-9 w-9" onClick={next}><ChevronRight className="size-4" /></Button>
               </div>
               <Button variant="ghost" size="sm" onClick={hoje}>Hoje</Button>
             </div>
 
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className="inline-flex items-center rounded-md overflow-hidden border border-primary/20">
+            <div className="grid grid-cols-2 gap-2 md:flex md:flex-wrap md:items-center">
+              <div className="col-span-2 grid grid-cols-3 overflow-hidden rounded-md border border-primary/20 md:inline-flex">
                 <Button
                   variant="default"
                   size="sm"
-                  className="rounded-none"
+                  className="min-w-0 rounded-none px-1.5 text-xs md:px-3 md:text-sm"
                   onClick={() => setCreateDate(localDateIso())}
                   title="Lançar disponibilidade"
                 >
-                  <CalendarPlus className="size-4 mr-1" />Disponibilidade
+                  <CalendarPlus className="mr-1 size-4 shrink-0" />Disponibilidade
                 </Button>
                 <Button
                   variant="default"
                   size="sm"
-                  className="rounded-none border-l border-primary-foreground/20"
+                  className="min-w-0 rounded-none border-l border-primary-foreground/20 px-1.5 text-xs md:px-3 md:text-sm"
                   onClick={() => setConvertSlot({
                     kind: "disp",
                     id: "",
@@ -853,20 +859,20 @@ function CronogramaGeral() {
                   } as any)}
                   title="Criar sessão ad-hoc sem disponibilidade prévia"
                 >
-                  <CalendarPlus className="size-4 mr-1" />Sessão
+                  <CalendarPlus className="mr-1 size-4 shrink-0" />Sessão
                 </Button>
                 <Button
                   variant="default"
                   size="sm"
-                  className="rounded-none border-l border-primary-foreground/20"
+                  className="min-w-0 rounded-none border-l border-primary-foreground/20 px-1.5 text-xs md:px-3 md:text-sm"
                   onClick={() => setFeriasOpen(true)}
                   title="Lançar período de férias / inatividade do formador"
                 >
-                  <Palmtree className="size-4 mr-1" />Férias
+                  <Palmtree className="mr-1 size-4 shrink-0" />Férias
                 </Button>
               </div>
 
-              <span className="h-6 w-px bg-border mx-0.5" aria-hidden />
+              <span className="hidden h-6 w-px bg-border mx-0.5 md:block" aria-hidden />
 
               <Button
                 variant="outline"
@@ -874,7 +880,7 @@ function CronogramaGeral() {
                 onClick={() => setSemDispOpen(true)}
                 title="Análise do mês: disponibilidades e UFCDs por lançar"
               >
-                <UserX className="size-4 mr-1" />Análise do mês
+                <UserX className="size-4 mr-1 shrink-0" />Análise do mês
               </Button>
               <Button variant="outline" size="sm" onClick={() => setPrintMenuOpen(true)}>
                 <Printer className="size-4 mr-1" />Imprimir
@@ -882,6 +888,7 @@ function CronogramaGeral() {
               <Button
                 variant="outline"
                 size="sm"
+                className="col-span-2 md:col-span-1"
                 onClick={imprimirDiasSemDisp}
                 disabled={!cursoFiltro}
                 title={cursoFiltro ? "PDF dos dias úteis sem disponibilidade para o curso selecionado" : "Seleciona um curso para ativar"}
@@ -890,11 +897,11 @@ function CronogramaGeral() {
               </Button>
             </div>
           </div>
-          <div className="flex w-full items-center gap-3 flex-wrap lg:w-auto">
+          <div className="grid w-full grid-cols-1 gap-2 md:flex md:flex-wrap md:items-center md:gap-3 lg:w-auto">
             <select
               value={mostrar}
               onChange={e => setMostrar(e.target.value as any)}
-              className="min-w-0 flex-1 text-sm border border-input rounded-md px-2.5 py-1.5 bg-background sm:flex-none"
+              className="min-w-0 w-full text-sm border border-input rounded-md px-2.5 py-2 bg-background md:w-auto md:flex-none md:py-1.5"
             >
               <option value="ambos">Sessões + disponibilidades</option>
               <option value="sessoes">Apenas sessões</option>
@@ -903,7 +910,7 @@ function CronogramaGeral() {
             <select
               value={formadorFiltro}
               onChange={e => setFormadorFiltro(e.target.value)}
-              className="min-w-0 flex-1 text-sm border border-input rounded-md px-2.5 py-1.5 bg-background sm:flex-none"
+              className="min-w-0 w-full text-sm border border-input rounded-md px-2.5 py-2 bg-background md:w-auto md:flex-none md:py-1.5"
             >
               <option value="">Todos os formadores</option>
               {(formadores.data ?? []).map((f: any) => (
@@ -913,7 +920,7 @@ function CronogramaGeral() {
             <select
               value={cursoFiltro}
               onChange={e => setCursoFiltro(e.target.value)}
-              className="min-w-0 flex-1 text-sm border border-input rounded-md px-2.5 py-1.5 bg-background sm:flex-none"
+              className="min-w-0 w-full text-sm border border-input rounded-md px-2.5 py-2 bg-background md:w-auto md:flex-none md:py-1.5"
             >
               <option value="">Todos os cursos</option>
               {(cursosTodos.data ?? []).map((c: any) => (
@@ -926,11 +933,11 @@ function CronogramaGeral() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
+        <div className="grid grid-cols-3 gap-x-3 gap-y-2 rounded-md border bg-muted/30 p-3 text-xs text-muted-foreground md:flex md:flex-wrap md:items-center md:gap-x-4 md:border-0 md:bg-transparent md:p-0">
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm bg-foreground" /> Sessão</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-emerald-500 border-dashed" /> Disponível</span>
           <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm border-2 border-rose-500 border-dashed" /> Indisponível</span>
-          <span className="inline-flex items-center gap-1.5"><span className="size-2 rounded-sm ring-2 ring-amber-500" /> Disponibilidade sobreposta (mesmo curso, &gt;1 formador)</span>
+          <span className="col-span-3 inline-flex items-center gap-1.5 md:col-span-1"><span className="size-2 shrink-0 rounded-sm ring-2 ring-amber-500" /> Disponibilidade sobreposta (mesmo curso, &gt;1 formador)</span>
           {cursoFiltro && (
             <span className="inline-flex items-center gap-1.5"><span className="text-[9px] font-semibold uppercase px-1 rounded bg-amber-100 text-amber-800 border border-amber-300">sem sessão</span> Dia útil sem sessão atribuída ao curso</span>
           )}
@@ -949,16 +956,126 @@ function CronogramaGeral() {
 
         </div>
 
-        <ObservacoesPanel
-          mes={inicioMes}
-          cursos={(cursoFiltro
-            ? (cursosTodos.data ?? []).filter((c: any) => c.id === cursoFiltro)
-            : (cursosTodos.data ?? [])) as any[]}
-          obs={observacoes.data ?? []}
-          onSaved={() => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] })}
-        />
+        <div className="hidden md:block">
+          <ObservacoesPanel
+            mes={inicioMes}
+            cursos={(cursoFiltro
+              ? (cursosTodos.data ?? []).filter((c: any) => c.id === cursoFiltro)
+              : (cursosTodos.data ?? [])) as any[]}
+            obs={observacoes.data ?? []}
+            onSaved={() => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] })}
+          />
+        </div>
 
-        <div className="overflow-x-auto rounded-md border bg-card">
+        <div className="space-y-3 md:hidden">
+          {grid.filter((cell): cell is { d: number; iso: string } => cell !== null).map((cell) => {
+            const slots = slotsByDay.get(cell.iso) ?? [];
+            const feriasSet = feriasByDay.get(cell.iso);
+            const feriasCursos = feriasSet ? (cursosTodos.data ?? []).filter((c: any) => feriasSet.has(c.id)) : [];
+            const emFerias = cursoFiltro ? feriasSet?.has(cursoFiltro) : feriasCursos.length > 0;
+            const sc = sessoesCoverByDay.get(cell.iso) ?? { manha: false, tarde: false };
+            const dow = weekdayFromIso(cell.iso);
+            const diaIncompleto = !!cursoFiltro && dow !== 0 && dow !== 6 && !emFerias && !(sc.manha && sc.tarde);
+            const semSessaoLabel = !sc.manha && !sc.tarde ? "Sem sessão" : !sc.manha ? "Sem sessão de manhã" : "Sem sessão de tarde";
+            const canCreate = mostrar === "disp";
+            return (
+              <section key={cell.iso} className="overflow-hidden rounded-md border bg-background">
+                <div className="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-2 border-b bg-muted/40 px-3 py-2">
+                  <button
+                    type="button"
+                    className="min-w-0 text-left capitalize"
+                    onClick={() => canCreate && setCreateDate(cell.iso)}
+                    title={canCreate ? "Lançar disponibilidade neste dia" : undefined}
+                  >
+                    <span className="block truncate text-sm font-semibold">{formatMobileDay(cell.iso)}</span>
+                  </button>
+                  <div className="flex shrink-0 items-center gap-1.5">
+                    {emFerias && <span className="inline-flex items-center gap-1 rounded border border-sky-300 bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800"><Palmtree className="size-3" /> Férias</span>}
+                    {diaIncompleto && <span className="rounded border border-amber-300 bg-amber-100 px-1.5 py-0.5 text-[10px] font-semibold text-amber-800">{semSessaoLabel}</span>}
+                    {canCreate && <Button variant="ghost" size="icon" className="size-8" onClick={() => setCreateDate(cell.iso)} title="Lançar disponibilidade"><CalendarPlus className="size-4" /></Button>}
+                  </div>
+                </div>
+
+                <div className="space-y-2 p-2.5">
+                  {!cursoFiltro && (sessaoLabelsByDay.get(cell.iso) ?? []).length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {(sessaoLabelsByDay.get(cell.iso) ?? []).map((ch) => (
+                        <span key={ch.id} className="rounded-sm border px-1.5 py-0.5 text-[10px] font-medium" style={{ background: `${ch.cor}66`, borderColor: ch.cor }}>
+                          {ch.codigo} · {ch.periodo}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {slots.map((slot: any) => {
+                    if (slot.kind === "sessao") {
+                      return (
+                        <Link key={`mobile-s-${slot.id}`} to="/cursos/$id" params={{ id: slot.curso_id }} className="grid grid-cols-[3.75rem_minmax(0,1fr)] gap-3 rounded-md border border-l-4 p-3" style={{ borderLeftColor: slot.formador_cor }}>
+                          <div className="border-r pr-3 text-center">
+                            <div className="text-sm font-semibold">{slot.hora_inicio?.slice(0, 5)}</div>
+                            <div className="text-[10px] text-muted-foreground">{slot.hora_fim?.slice(0, 5)}</div>
+                          </div>
+                          <div className="min-w-0">
+                            <div className="truncate text-sm font-semibold">{slot.curso_codigo} · {slot.ufcd_codigo}</div>
+                            <div className="truncate text-xs text-muted-foreground">{slot.formador_nome}</div>
+                            <div className="mt-1 text-[10px] font-medium text-muted-foreground">Sessão</div>
+                          </div>
+                        </Link>
+                      );
+                    }
+                    const isDisp = slot.tipo === "disponivel";
+                    const isOverlap = isDisp && (slot.ids ?? [slot.id]).some((id: string) => overlapDispIds.has(id));
+                    return (
+                      <div key={`mobile-d-${slot.id}`} className={`grid grid-cols-[3.75rem_minmax(0,1fr)_auto] gap-3 rounded-md border-2 border-dashed p-3 ${isOverlap ? "ring-2 ring-amber-500 ring-offset-1" : ""}`} style={{ borderColor: isDisp ? "rgb(16,185,129)" : "rgb(244,63,94)" }} onClick={() => isDisp && setConvertSlot(slot)}>
+                        <div className="border-r pr-3 text-center">
+                          <div className="text-sm font-semibold">{slot.hora_inicio?.slice(0, 5)}</div>
+                          <div className="text-[10px] text-muted-foreground">{slot.hora_fim?.slice(0, 5)}</div>
+                        </div>
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-semibold">{slot.formador_nome}</div>
+                          <div className="truncate text-xs text-muted-foreground">{isDisp ? "Disponível" : "Indisponível"}{slot.curso_codigo ? ` · ${slot.curso_codigo}` : ""}</div>
+                          {isOverlap && <div className="mt-1 text-[10px] font-medium text-amber-700">Disponibilidade sobreposta</div>}
+                        </div>
+                        <div className="flex shrink-0 flex-col gap-1">
+                          <Button variant="ghost" size="icon" className="size-7" onClick={(event) => { event.stopPropagation(); setEditDisp(slot); }} title="Editar disponibilidade">✎</Button>
+                          <Button variant="ghost" size="icon" className="size-7 text-destructive" onClick={async (event) => {
+                            event.stopPropagation();
+                            const nCursos = (slot.ids ?? [slot.id]).length;
+                            if (!confirm(nCursos > 1 ? `Apagar esta disponibilidade (${nCursos} cursos)?` : "Apagar esta disponibilidade?")) return;
+                            const { error } = await supabase.from("formador_disponibilidades" as any).delete().in("id", slot.ids ?? [slot.id]);
+                            if (error) return toast.error(error.message);
+                            toast.success("Disponibilidade apagada");
+                            qc.invalidateQueries({ queryKey: ["disp-geral"] });
+                            qc.invalidateQueries({ queryKey: ["disponibilidades", slot.formador_id] });
+                          }} title="Apagar disponibilidade">✕</Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {slots.length === 0 && (sessaoLabelsByDay.get(cell.iso) ?? []).length === 0 && (
+                    <button type="button" onClick={() => canCreate && setCreateDate(cell.iso)} className="w-full py-2 text-left text-xs text-muted-foreground">
+                      {canCreate ? "Sem registos · tocar para lançar disponibilidade" : "Sem registos"}
+                    </button>
+                  )}
+                </div>
+              </section>
+            );
+          })}
+        </div>
+
+        <div className="md:hidden">
+          <ObservacoesPanel
+            mes={inicioMes}
+            cursos={(cursoFiltro
+              ? (cursosTodos.data ?? []).filter((c: any) => c.id === cursoFiltro)
+              : (cursosTodos.data ?? [])) as any[]}
+            obs={observacoes.data ?? []}
+            onSaved={() => qc.invalidateQueries({ queryKey: ["cronograma-observacoes"] })}
+          />
+        </div>
+
+        <div className="hidden overflow-x-auto rounded-md border bg-card md:block">
           <div className="grid min-w-[760px] grid-cols-7 bg-muted/40 text-xs uppercase text-muted-foreground">
             {["Seg","Ter","Qua","Qui","Sex","Sáb","Dom"].map(d => <div key={d} className="px-2 py-1.5 text-center font-medium">{d}</div>)}
           </div>

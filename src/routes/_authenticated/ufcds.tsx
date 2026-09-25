@@ -190,7 +190,7 @@ function UfcdsPage() {
       qc.invalidateQueries({ queryKey: ["curso-ufcds-flat"] });
       qc.invalidateQueries({ queryKey: ["curso-carga"] });
       qc.invalidateQueries({ queryKey: ["sessoes"] });
-      qc.invalidateQueries({ queryKey: ["sessoes-geral"] });
+      qc.invalidateQueries({ queryKey: ["sessoes-geral"] }); qc.invalidateQueries({ queryKey: ["sessoes-geral-cobertura"] });
       qc.invalidateQueries({ queryKey: ["cursos-ativos-mes"] });
     },
     onError: (e: any) => {

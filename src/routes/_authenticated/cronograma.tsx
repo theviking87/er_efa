@@ -82,7 +82,7 @@ function CronogramaGeral() {
       .on("postgres_changes", { event: "*", schema: "public", table: "curso_ufcds" }, () => qc.invalidateQueries({ queryKey: ["cursos-ativos-mes"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "curso_ufcd_formadores" }, () => qc.invalidateQueries({ queryKey: ["cursos-ativos-mes"] }))
       .on("postgres_changes", { event: "*", schema: "public", table: "formador_disponibilidades" }, () => { qc.invalidateQueries({ queryKey: ["disp-geral"] }); })
-      .on("postgres_changes", { event: "*", schema: "public", table: "sessoes" }, () => { qc.invalidateQueries({ queryKey: ["sessoes-geral"] }); })
+      .on("postgres_changes", { event: "*", schema: "public", table: "sessoes" }, () => { qc.invalidateQueries({ queryKey: ["sessoes-geral"] }); qc.invalidateQueries({ queryKey: ["sessoes-geral-cobertura"] }); })
       .on("postgres_changes", { event: "*", schema: "public", table: "curso_ferias" }, () => { qc.invalidateQueries({ queryKey: ["curso-ferias-all"] }); })
       .subscribe();
     return () => { supabase.removeChannel(ch); };
@@ -164,6 +164,18 @@ function CronogramaGeral() {
     queryFn: async () => (await supabase.from("cursos").select("id, codigo, nome").order("codigo")).data ?? [],
   });
 
+
+  // Sessões do mês sem filtro de formador — usadas para calcular as sessões em falta
+  const sessoesCob = useQuery({
+    queryKey: ["sessoes-geral-cobertura", inicioMes, fimMes],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, curso_id")
+        .gte("data", inicioMes).lte("data", fimMes);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
 
   const sessoes = useQuery({
     queryKey: ["sessoes-geral", inicioMes, fimMes, formadorFiltro, cursoFiltro],
@@ -548,7 +560,7 @@ function CronogramaGeral() {
       return (hh || 0) * 60 + (mm || 0);
     };
     const cov = new Map<string, { manha: boolean; tarde: boolean }>();
-    (sessoes.data ?? []).forEach((s: any) => {
+    (sessoesCob.data ?? []).forEach((s: any) => {
       const cid = s.curso?.id ?? s.curso_id;
       if (!cid) return;
       const ini = toMin(s.hora_inicio); const fim = toMin(s.hora_fim);
@@ -574,7 +586,7 @@ function CronogramaGeral() {
       }
     }
     return rows;
-  }, [cursosComCor, sessoes.data, grid, feriasByDay]);
+  }, [cursosComCor, sessoesCob.data, grid, feriasByDay]);
 
   // Por dia: pequenas etiquetas (Manhã / Tarde / Dia) dos cursos sem sessão atribuída.
   const sessaoLabelsByDay = useMemo(() => {
@@ -584,7 +596,7 @@ function CronogramaGeral() {
       return (hh || 0) * 60 + (mm || 0);
     };
     const cov = new Map<string, { manha: boolean; tarde: boolean }>();
-    (sessoes.data ?? []).forEach((s: any) => {
+    (sessoesCob.data ?? []).forEach((s: any) => {
       const cid = s.curso?.id ?? s.curso_id;
       if (!cid) return;
       const ini = toMin(s.hora_inicio); const fim = toMin(s.hora_fim);
@@ -598,6 +610,7 @@ function CronogramaGeral() {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
+      if (feriadoNome(cell.iso)) continue;
       const feriasSet = feriasByDay.get(cell.iso);
       const chips: { id: string; codigo: string; cor: string; periodo: string }[] = [];
       for (const c of cursosComCor) {
@@ -612,7 +625,7 @@ function CronogramaGeral() {
       if (chips.length) m.set(cell.iso, chips);
     }
     return m;
-  }, [cursosComCor, sessoes.data, grid, feriasByDay]);
+  }, [cursosComCor, sessoesCob.data, grid, feriasByDay]);
 
 
   function imprimirSessoesEmFalta() {
@@ -676,7 +689,7 @@ function CronogramaGeral() {
   // Cobertura de sessões por dia (manhã/tarde) para o curso filtrado.
   const sessoesCoverByDay = useMemo(() => {
     const m = new Map<string, { manha: boolean; tarde: boolean }>();
-    (sessoes.data ?? []).forEach((x: any) => {
+    (sessoesCob.data ?? []).forEach((x: any) => {
       if (cursoFiltro && x.curso_id !== cursoFiltro) return;
       const hi = (x.hora_inicio ?? "").slice(0, 5);
       const hf = (x.hora_fim ?? "").slice(0, 5);
@@ -692,7 +705,7 @@ function CronogramaGeral() {
       }
     }
     return m;
-  }, [sessoes.data, cursoFiltro, feriasByDay]);
+  }, [sessoesCob.data, cursoFiltro, feriasByDay]);
 
 
 
@@ -973,9 +986,10 @@ function CronogramaGeral() {
             const feriasSet = feriasByDay.get(cell.iso);
             const feriasCursos = feriasSet ? (cursosTodos.data ?? []).filter((c: any) => feriasSet.has(c.id)) : [];
             const emFerias = cursoFiltro ? feriasSet?.has(cursoFiltro) : feriasCursos.length > 0;
+            const feriado = feriadoNome(cell.iso);
             const sc = sessoesCoverByDay.get(cell.iso) ?? { manha: false, tarde: false };
             const dow = weekdayFromIso(cell.iso);
-            const diaIncompleto = !!cursoFiltro && dow !== 0 && dow !== 6 && !emFerias && !(sc.manha && sc.tarde);
+            const diaIncompleto = !!cursoFiltro && dow !== 0 && dow !== 6 && !feriado && !emFerias && !(sc.manha && sc.tarde);
             const semSessaoLabel = !sc.manha && !sc.tarde ? "Sem sessão" : !sc.manha ? "Sem sessão de manhã" : "Sem sessão de tarde";
             const canCreate = mostrar === "disp";
             return (
@@ -988,6 +1002,7 @@ function CronogramaGeral() {
                     title={canCreate ? "Lançar disponibilidade neste dia" : undefined}
                   >
                     <span className="block truncate text-sm font-semibold">{formatMobileDay(cell.iso)}</span>
+                    {feriadoNome(cell.iso) && <span className="block truncate text-[11px] font-medium normal-case text-muted-foreground">Feriado · {feriadoNome(cell.iso)}</span>}
                   </button>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {emFerias && <span className="inline-flex items-center gap-1 rounded border border-sky-300 bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800"><Palmtree className="size-3" /> Férias</span>}
@@ -1228,13 +1243,19 @@ function CronogramaGeral() {
                     ? (cursosTodos.data ?? []).filter((c: any) => feriasSet.has(c.id))
                     : [];
                   const emFerias = cursoFiltro ? feriasSet?.has(cursoFiltro) : (feriasCursos.length > 0);
+                  const feriado = feriadoNome(cell.iso);
                   const sc = sessoesCoverByDay.get(cell.iso) ?? { manha: false, tarde: false };
-                  const diaIncompleto = !!cursoFiltro && isUtil && !emFerias && !(sc.manha && sc.tarde);
+                  const diaIncompleto = !!cursoFiltro && isUtil && !feriado && !emFerias && !(sc.manha && sc.tarde);
                   const semSessaoLabel = !sc.manha && !sc.tarde ? "sem sessão" : !sc.manha ? "sem sessão (manhã)" : "sem sessão (tarde)";
                   return (
                     <div className="flex flex-col gap-1 h-full min-h-[120px]">
                       <div className="flex items-center justify-between gap-1">
                         <span className="text-xs text-muted-foreground">{cell.d}</span>
+                        {feriado && (
+                          <span className="min-w-0 truncate text-[9px] font-semibold px-1 py-px rounded bg-muted text-muted-foreground border" title={`Feriado: ${feriado}`}>
+                            {feriado}
+                          </span>
+                        )}
                         {emFerias && (
                           <span
                             className="text-[9px] font-semibold uppercase tracking-wide px-1 py-px rounded bg-sky-100 text-sky-800 border border-sky-300 inline-flex items-center gap-0.5"
@@ -1621,7 +1642,7 @@ function ConvertDispDialog({ slot, onClose }: { slot: DispSlot | null; onClose: 
     }
     setSaving(false);
     toast.success("Sessão criada a partir da disponibilidade");
-    qc.invalidateQueries({ queryKey: ["sessoes-geral"] });
+    qc.invalidateQueries({ queryKey: ["sessoes-geral"] }); qc.invalidateQueries({ queryKey: ["sessoes-geral-cobertura"] });
     qc.invalidateQueries({ queryKey: ["disp-geral"] });
     qc.invalidateQueries({ queryKey: ["sessoes"] });
     qc.invalidateQueries({ queryKey: ["disponibilidades", fid] });

@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Wallet, ClipboardList, Settings2, Plus } from "lucide-react";
 import { useProjetoAtivo } from "@/lib/projeto-context";
+import { ExportarPagamentosCard } from "@/components/financeiro/exportar-pagamentos-card";
 
 export const Route = createFileRoute("/_authenticated/financeiro/")({
   head: () => ({ meta: [{ title: "Financeiro — Painel" }] }),
@@ -43,6 +44,8 @@ function FinanceiroPainel() {
         <Stat icon={Wallet} label="Valor total (€)" value={total.toFixed(2)} />
         <Stat icon={Settings2} label="Configuração" value="Editar" href="/financeiro/configuracao" />
       </div>
+
+      <ExportarPagamentosCard />
 
       <Card>
         <CardHeader className="pb-3">

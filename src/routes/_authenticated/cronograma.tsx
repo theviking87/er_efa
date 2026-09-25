@@ -973,9 +973,10 @@ function CronogramaGeral() {
             const feriasSet = feriasByDay.get(cell.iso);
             const feriasCursos = feriasSet ? (cursosTodos.data ?? []).filter((c: any) => feriasSet.has(c.id)) : [];
             const emFerias = cursoFiltro ? feriasSet?.has(cursoFiltro) : feriasCursos.length > 0;
+            const feriado = feriadoNome(cell.iso);
             const sc = sessoesCoverByDay.get(cell.iso) ?? { manha: false, tarde: false };
             const dow = weekdayFromIso(cell.iso);
-            const diaIncompleto = !!cursoFiltro && dow !== 0 && dow !== 6 && !emFerias && !(sc.manha && sc.tarde);
+            const diaIncompleto = !!cursoFiltro && dow !== 0 && dow !== 6 && !feriado && !emFerias && !(sc.manha && sc.tarde);
             const semSessaoLabel = !sc.manha && !sc.tarde ? "Sem sessão" : !sc.manha ? "Sem sessão de manhã" : "Sem sessão de tarde";
             const canCreate = mostrar === "disp";
             return (
@@ -988,6 +989,7 @@ function CronogramaGeral() {
                     title={canCreate ? "Lançar disponibilidade neste dia" : undefined}
                   >
                     <span className="block truncate text-sm font-semibold">{formatMobileDay(cell.iso)}</span>
+                    {feriadoNome(cell.iso) && <span className="block truncate text-[11px] font-medium normal-case text-muted-foreground">Feriado · {feriadoNome(cell.iso)}</span>}
                   </button>
                   <div className="flex shrink-0 items-center gap-1.5">
                     {emFerias && <span className="inline-flex items-center gap-1 rounded border border-sky-300 bg-sky-100 px-1.5 py-0.5 text-[10px] font-semibold text-sky-800"><Palmtree className="size-3" /> Férias</span>}

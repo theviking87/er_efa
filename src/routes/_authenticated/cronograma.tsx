@@ -165,6 +165,18 @@ function CronogramaGeral() {
   });
 
 
+  // Sessões do mês sem filtro de formador — usadas para calcular as sessões em falta
+  const sessoesCob = useQuery({
+    queryKey: ["sessoes-geral-cobertura", inicioMes, fimMes],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sessoes")
+        .select("id, data, hora_inicio, hora_fim, curso_id")
+        .gte("data", inicioMes).lte("data", fimMes);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const sessoes = useQuery({
     queryKey: ["sessoes-geral", inicioMes, fimMes, formadorFiltro, cursoFiltro],
     queryFn: async () => {
@@ -548,7 +560,7 @@ function CronogramaGeral() {
       return (hh || 0) * 60 + (mm || 0);
     };
     const cov = new Map<string, { manha: boolean; tarde: boolean }>();
-    (sessoes.data ?? []).forEach((s: any) => {
+    (sessoesCob.data ?? []).forEach((s: any) => {
       const cid = s.curso?.id ?? s.curso_id;
       if (!cid) return;
       const ini = toMin(s.hora_inicio); const fim = toMin(s.hora_fim);
@@ -574,7 +586,7 @@ function CronogramaGeral() {
       }
     }
     return rows;
-  }, [cursosComCor, sessoes.data, grid, feriasByDay]);
+  }, [cursosComCor, sessoesCob.data, grid, feriasByDay]);
 
   // Por dia: pequenas etiquetas (Manhã / Tarde / Dia) dos cursos sem sessão atribuída.
   const sessaoLabelsByDay = useMemo(() => {
@@ -584,7 +596,7 @@ function CronogramaGeral() {
       return (hh || 0) * 60 + (mm || 0);
     };
     const cov = new Map<string, { manha: boolean; tarde: boolean }>();
-    (sessoes.data ?? []).forEach((s: any) => {
+    (sessoesCob.data ?? []).forEach((s: any) => {
       const cid = s.curso?.id ?? s.curso_id;
       if (!cid) return;
       const ini = toMin(s.hora_inicio); const fim = toMin(s.hora_fim);
@@ -598,6 +610,7 @@ function CronogramaGeral() {
       if (!cell) continue;
       const dow = weekdayFromIso(cell.iso);
       if (dow === 0 || dow === 6) continue;
+      if (feriadoNome(cell.iso)) continue;
       const feriasSet = feriasByDay.get(cell.iso);
       const chips: { id: string; codigo: string; cor: string; periodo: string }[] = [];
       for (const c of cursosComCor) {
@@ -612,7 +625,7 @@ function CronogramaGeral() {
       if (chips.length) m.set(cell.iso, chips);
     }
     return m;
-  }, [cursosComCor, sessoes.data, grid, feriasByDay]);
+  }, [cursosComCor, sessoesCob.data, grid, feriasByDay]);
 
 
   function imprimirSessoesEmFalta() {
@@ -676,7 +689,7 @@ function CronogramaGeral() {
   // Cobertura de sessões por dia (manhã/tarde) para o curso filtrado.
   const sessoesCoverByDay = useMemo(() => {
     const m = new Map<string, { manha: boolean; tarde: boolean }>();
-    (sessoes.data ?? []).forEach((x: any) => {
+    (sessoesCob.data ?? []).forEach((x: any) => {
       if (cursoFiltro && x.curso_id !== cursoFiltro) return;
       const hi = (x.hora_inicio ?? "").slice(0, 5);
       const hf = (x.hora_fim ?? "").slice(0, 5);
@@ -692,7 +705,7 @@ function CronogramaGeral() {
       }
     }
     return m;
-  }, [sessoes.data, cursoFiltro, feriasByDay]);
+  }, [sessoesCob.data, cursoFiltro, feriasByDay]);
 
 
 

@@ -16,17 +16,24 @@ function disableTanStackAutomaticCsrf(): Plugin {
 
       const automaticCsrf =
         'var defaultCsrfMiddleware = createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === "serverFn" });';
-      const automaticFallback =
-        "requestMiddleware: hasStartInstance ? startOptions.requestMiddleware : [defaultCsrfMiddleware]";
+      const fallbacks: [string, string][] = [
+        [
+          "requestMiddleware: hasStartInstance ? startOptions.requestMiddleware : [defaultCsrfMiddleware]",
+          "requestMiddleware: hasStartInstance ? startOptions.requestMiddleware : []",
+        ],
+        [
+          "isServerFnRequest ? [defaultCsrfMiddleware] : void 0",
+          "void 0",
+        ],
+      ];
+      const fb = fallbacks.find(([from]) => code.includes(from));
 
-      if (!code.includes(automaticCsrf) || !code.includes(automaticFallback)) {
+      if (!code.includes(automaticCsrf) || !fb) {
         throw new Error("A estrutura interna do middleware CSRF do TanStack mudou.");
       }
 
       return {
-        code: code
-          .replace(automaticCsrf, "")
-          .replace(automaticFallback, "requestMiddleware: hasStartInstance ? startOptions.requestMiddleware : []"),
+        code: code.replace(automaticCsrf, "").replace(fb[0], fb[1]),
         map: null,
       };
     },

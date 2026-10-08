@@ -36,7 +36,7 @@ function disableTanStackAutomaticCsrf(): Plugin {
 // A configuração do Supabase vem exclusivamente das variáveis de ambiente
 // (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PROJECT_ID).
 // No Vercel são definidas no painel do projeto; localmente em .env.local.
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     disableTanStackAutomaticCsrf(),
     tailwindcss(),
@@ -45,7 +45,8 @@ export default defineConfig({
       server: { entry: "server" },
       serverFns: { disableCsrfMiddlewareWarning: true },
     }),
-    nitro({ preset: "vercel" }),
+    // Nitro (preset Vercel) só no build — no modo de desenvolvimento falha a carregar.
+    ...(command === "build" ? [nitro({ preset: "vercel" })] : []),
     viteReact(),
   ],
   resolve: {
@@ -58,4 +59,4 @@ export default defineConfig({
       "@tanstack/start-server-core",
     ],
   },
-});
+}));

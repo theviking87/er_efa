@@ -16,17 +16,24 @@ function disableTanStackAutomaticCsrf(): Plugin {
 
       const automaticCsrf =
         'var defaultCsrfMiddleware = createCsrfMiddleware({ filter: (ctx) => ctx.handlerType === "serverFn" });';
-      const automaticFallback =
-        "requestMiddleware: hasStartInstance ? startOptions.requestMiddleware : [defaultCsrfMiddleware]";
+      const fallbacks: [string, string][] = [
+        [
+          "requestMiddleware: hasStartInstance ? startOptions.requestMiddleware : [defaultCsrfMiddleware]",
+          "requestMiddleware: hasStartInstance ? startOptions.requestMiddleware : []",
+        ],
+        [
+          "isServerFnRequest ? [defaultCsrfMiddleware] : void 0",
+          "void 0",
+        ],
+      ];
+      const fb = fallbacks.find(([from]) => code.includes(from));
 
-      if (!code.includes(automaticCsrf) || !code.includes(automaticFallback)) {
+      if (!code.includes(automaticCsrf) || !fb) {
         throw new Error("A estrutura interna do middleware CSRF do TanStack mudou.");
       }
 
       return {
-        code: code
-          .replace(automaticCsrf, "")
-          .replace(automaticFallback, "requestMiddleware: hasStartInstance ? startOptions.requestMiddleware : []"),
+        code: code.replace(automaticCsrf, "").replace(fb[0], fb[1]),
         map: null,
       };
     },
@@ -36,7 +43,7 @@ function disableTanStackAutomaticCsrf(): Plugin {
 // A configuração do Supabase vem exclusivamente das variáveis de ambiente
 // (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY / VITE_SUPABASE_PROJECT_ID).
 // No Vercel são definidas no painel do projeto; localmente em .env.local.
-export default defineConfig({
+export default defineConfig(({ command }) => ({
   plugins: [
     disableTanStackAutomaticCsrf(),
     tailwindcss(),
@@ -45,7 +52,8 @@ export default defineConfig({
       server: { entry: "server" },
       serverFns: { disableCsrfMiddlewareWarning: true },
     }),
-    nitro({ preset: "vercel" }),
+    // Nitro (preset Vercel) só no build — no modo de desenvolvimento falha a carregar.
+    ...(command === "build" ? [nitro({ preset: "vercel" })] : []),
     viteReact(),
   ],
   resolve: {
@@ -58,4 +66,4 @@ export default defineConfig({
       "@tanstack/start-server-core",
     ],
   },
-});
+}));

@@ -536,6 +536,8 @@ export type Database = {
           empresa_telefone: string | null
           horas_mes_referencia: number
           id: string
+          limiar_sa_horas: number
+          limite_faltas_just_pct: number
           limite_km_dia: number
           logo_dgert_url: string | null
           logo_empresa_url: string | null
@@ -558,6 +560,8 @@ export type Database = {
           empresa_telefone?: string | null
           horas_mes_referencia?: number
           id?: string
+          limiar_sa_horas?: number
+          limite_faltas_just_pct?: number
           limite_km_dia?: number
           logo_dgert_url?: string | null
           logo_empresa_url?: string | null
@@ -580,6 +584,8 @@ export type Database = {
           empresa_telefone?: string | null
           horas_mes_referencia?: number
           id?: string
+          limiar_sa_horas?: number
+          limite_faltas_just_pct?: number
           limite_km_dia?: number
           logo_dgert_url?: string | null
           logo_empresa_url?: string | null
@@ -1359,12 +1365,73 @@ export type Database = {
         }
         Relationships: []
       }
+      recuperacao_pedagogica: {
+        Row: {
+          created_at: string
+          curso_formando_id: string
+          curso_ufcd_id: string | null
+          decisao: string | null
+          estado: string
+          horas_recuperadas: number
+          id: string
+          motivo: string
+          plano: string | null
+          prazo: string | null
+          responsavel: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          curso_formando_id: string
+          curso_ufcd_id?: string | null
+          decisao?: string | null
+          estado?: string
+          horas_recuperadas?: number
+          id?: string
+          motivo?: string
+          plano?: string | null
+          prazo?: string | null
+          responsavel?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          curso_formando_id?: string
+          curso_ufcd_id?: string | null
+          decisao?: string | null
+          estado?: string
+          horas_recuperadas?: number
+          id?: string
+          motivo?: string
+          plano?: string | null
+          prazo?: string | null
+          responsavel?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recuperacao_pedagogica_curso_formando_id_fkey"
+            columns: ["curso_formando_id"]
+            isOneToOne: false
+            referencedRelation: "curso_formandos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recuperacao_pedagogica_curso_ufcd_id_fkey"
+            columns: ["curso_ufcd_id"]
+            isOneToOne: false
+            referencedRelation: "curso_ufcds"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sessoes: {
         Row: {
           created_at: string
           curso_id: string
           curso_ufcd_id: string
           data: string
+          estado: string
           formador_id: string
           hora_fim: string
           hora_inicio: string
@@ -1378,6 +1445,7 @@ export type Database = {
           curso_id: string
           curso_ufcd_id: string
           data: string
+          estado?: string
           formador_id: string
           hora_fim: string
           hora_inicio: string
@@ -1391,6 +1459,7 @@ export type Database = {
           curso_id?: string
           curso_ufcd_id?: string
           data?: string
+          estado?: string
           formador_id?: string
           hora_fim?: string
           hora_inicio?: string

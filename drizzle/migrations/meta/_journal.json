@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1791994387658,
+      "tag": "0000_assiduidade_efa_sessoes_estado",
+      "breakpoints": true
+    }
+  ]
+}

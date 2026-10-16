@@ -1,3 +1,4 @@
+// @ts-ignore -- runner nativo do bun
 import { describe, expect, test } from "bun:test";
 import { limiteFaltasJustificadas, diasSubsidios, calcularAssiduidade, sessaoElegivel } from "./regras";
 

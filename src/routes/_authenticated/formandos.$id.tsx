@@ -19,6 +19,7 @@ import { toast } from "sonner";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { FormandoFinanceiroPanel } from "@/components/formando-financeiro-panel";
+import { AssiduidadePanel } from "@/components/assiduidade-panel";
 
 export const Route = createFileRoute("/_authenticated/formandos/$id")({
   head: () => ({ meta: [{ title: "Formando — Gestão Pedagógica" }] }),
@@ -101,6 +102,7 @@ function FormandoDetail() {
 
           <TabsTrigger value="horas">Horas</TabsTrigger>
           <TabsTrigger value="faltas">Faltas</TabsTrigger>
+          <TabsTrigger value="assiduidade">Assiduidade EFA</TabsTrigger>
           <TabsTrigger value="financeiro">Financeiro</TabsTrigger>
         </TabsList>
 
@@ -176,6 +178,10 @@ function FormandoDetail() {
               ))
             )}
           </CardContent></Card>
+        </TabsContent>
+
+        <TabsContent value="assiduidade">
+          <AssiduidadePanel formandoId={id} />
         </TabsContent>
 
         <TabsContent value="faltas">

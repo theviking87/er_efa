@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { fmtDate } from "@/lib/format";
+import { ESTADOS_SESSAO } from "@/lib/financeiro/regras";
 
 type Estado = "presente" | "online" | "justificada" | "injustificada";
 
@@ -70,6 +71,17 @@ export function PresencasDialog({
     },
   });
 
+  const estadoSessao = useQuery({
+    queryKey: ["sessao-estado", sessao?.id],
+    enabled: !!sessao && open,
+    queryFn: async () => {
+      const { data } = await supabase.from("sessoes").select("estado").eq("id", sessao!.id).maybeSingle();
+      return (data as any)?.estado ?? "realizada";
+    },
+  });
+  const [estadoSess, setEstadoSess] = useState("realizada");
+  useEffect(() => { if (estadoSessao.data) setEstadoSess(estadoSessao.data); }, [estadoSessao.data]);
+
   const [estados, setEstados] = useState<Record<string, Estado>>({});
   const [obs, setObs] = useState<Record<string, string>>({});
   const [horasFalta, setHorasFalta] = useState<Record<string, string>>({});
@@ -119,6 +131,11 @@ export function PresencasDialog({
         });
       }
 
+      if (estadoSessao.data && estadoSess !== estadoSessao.data) {
+        const up = await supabase.from("sessoes").update({ estado: estadoSess } as never).eq("id", sessao.id);
+        if (up.error) throw up.error;
+        qc.invalidateQueries({ queryKey: ["sessao-estado", sessao.id] });
+      }
       const del = await supabase.from("formando_faltas").delete().eq("sessao_id", sessao.id);
       if (del.error) throw del.error;
       if (aInserir.length) {
@@ -148,6 +165,13 @@ export function PresencasDialog({
               {sessao.hora_fim?.slice(0, 5)} · {sessao.horas}h
             </div>
           )}
+          <div className="flex flex-wrap items-center gap-2 pt-2 text-xs">
+            <span className="text-muted-foreground">Estado da sessão:</span>
+            <select className="h-8 rounded-md border border-input bg-background px-2 text-xs" value={estadoSess} onChange={(e) => setEstadoSess(e.target.value)}>
+              {ESTADOS_SESSAO.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+            {estadoSess !== "realizada" && <span className="text-muted-foreground">Não conta para honorários, bolsas, subsídios nem assiduidade (fica no histórico).</span>}
+          </div>
         </DialogHeader>
 
         {(inscritos.isLoading || faltas.isLoading) && (

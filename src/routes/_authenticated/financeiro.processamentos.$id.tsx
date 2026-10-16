@@ -127,7 +127,7 @@ function DetailPage() {
     const [sessRes, cfRes] = await Promise.all([
       supabase.from("sessoes")
         .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao)), formador:formadores(nome, abreviatura)")
-        .eq("curso_id", p.curso_id).gte("data", first).lte("data", last),
+        .eq("curso_id", p.curso_id).eq("estado", "realizada").gte("data", first).lte("data", last),
       supabase.from("curso_formandos")
         .select("id, formando_id, formando:formandos(nome), curso_formando_ufcds(curso_ufcd_id, frequenta)")
         .eq("curso_id", p.curso_id).in("formando_id", alvoIds),

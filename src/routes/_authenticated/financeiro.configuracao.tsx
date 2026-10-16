@@ -28,6 +28,8 @@ type FinConfig = {
   limite_km_dia: number;
   tr_teto_mensal: number;
   atl_teto_mensal: number;
+  limiar_sa_horas: number;
+  limite_faltas_just_pct: number;
   percentagem_irs: number;
   percentagem_iva: number;
   percentagem_ss: number;
@@ -48,6 +50,8 @@ const DEFAULT: FinConfig = {
   limite_km_dia: 50,
   tr_teto_mensal: 0,
   atl_teto_mensal: 0,
+  limiar_sa_horas: 3,
+  limite_faltas_just_pct: 10,
   percentagem_irs: 23,
   percentagem_iva: 23,
   percentagem_ss: 11,
@@ -118,6 +122,8 @@ function ConfiguracaoPage() {
             <F label="Limite km/dia"><Input type="number" value={form.limite_km_dia} onChange={e => setForm({ ...form, limite_km_dia: Number(e.target.value) })} /></F>
             <F label="Tecto mensal Transporte (€)"><Input type="number" step="0.01" value={form.tr_teto_mensal} onChange={e => setForm({ ...form, tr_teto_mensal: Number(e.target.value) })} /></F>
             <F label="Tecto mensal ATL por formando (€)"><Input type="number" step="0.01" value={form.atl_teto_mensal} onChange={e => setForm({ ...form, atl_teto_mensal: Number(e.target.value) })} /></F>
+            <F label="Limiar diário SA (horas)"><Input type="number" step="0.5" value={form.limiar_sa_horas} onChange={e => setForm({ ...form, limiar_sa_horas: Number(e.target.value) })} /></F>
+            <F label="Limite faltas justificadas pagáveis (% do percurso)"><Input type="number" step="0.5" value={form.limite_faltas_just_pct} onChange={e => setForm({ ...form, limite_faltas_just_pct: Number(e.target.value) })} /></F>
             <F label="IRS % (retenção padrão)"><Input type="number" step="0.01" value={form.percentagem_irs} onChange={e => setForm({ ...form, percentagem_irs: Number(e.target.value) })} /></F>
             <F label="IVA % (padrão)"><Input type="number" step="0.01" value={form.percentagem_iva} onChange={e => setForm({ ...form, percentagem_iva: Number(e.target.value) })} /></F>
             <F label="SS % (padrão)"><Input type="number" step="0.01" value={form.percentagem_ss} onChange={e => setForm({ ...form, percentagem_ss: Number(e.target.value) })} /></F>

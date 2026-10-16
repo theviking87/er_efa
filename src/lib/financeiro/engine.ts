@@ -1,4 +1,5 @@
 import { supabase } from "@/integrations/supabase/client";
+import { sessaoElegivel, limiteFaltasJustificadas, diasSubsidios } from "./regras";
 
 /**
  * Motor de cálculo financeiro — mensal, por curso.
@@ -68,7 +69,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const [cfgRes, sessRes, inscRes, formadoresRes] = await Promise.all([
     supabase.from("fin_config").select("*").limit(1).maybeSingle(),
     supabase.from("sessoes")
-      .select("id, data, horas, curso_ufcd_id, formador_id")
+      .select("id, data, horas, curso_ufcd_id, formador_id, estado")
       .eq("curso_id", cursoId).gte("data", first).lte("data", last),
     supabase.from("curso_formandos")
       .select("id, formando_id, data_desistencia, data_conclusao, formando:formandos(id, nome)")
@@ -92,7 +93,15 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   const trTetoMensal = Number((cfg as any)?.tr_teto_mensal ?? 0);
   const atlTetoMensal = Number((cfg as any)?.atl_teto_mensal ?? 0);
 
-  const sessoes = sessRes.data ?? [];
+  const limiarSa = Number((cfg as any)?.limiar_sa_horas ?? 3) || 3;
+  const limiteJustPct = Number((cfg as any)?.limite_faltas_just_pct ?? 10);
+  // Só sessões realizadas contam (canceladas / não realizadas / reagendadas ficam no histórico mas fora do cálculo).
+  const sessoesTodas = (sessRes.data ?? []) as any[];
+  const sessoes = sessoesTodas.filter(sessaoElegivel);
+  const sessExcluidas = new Set(sessoesTodas.filter((s) => !sessaoElegivel(s)).map((s) => s.id));
+  if (sessExcluidas.size) avisos.push(`${sessExcluidas.size} sessão(ões) cancelada(s)/não realizada(s) excluída(s) do cálculo.`);
+  const { data: cucs } = await supabase.from("curso_ufcds").select("id, horas_totais").eq("curso_id", cursoId);
+  const horasUc = new Map<string, number>((cucs ?? []).map((u: any) => [u.id, Number(u.horas_totais || 0)]));
   const inscritos = inscRes.data ?? [];
   const formadores = formadoresRes.data ?? [];
 
@@ -144,18 +153,30 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
   if (!bolsas.length) avisos.push("Nenhum formando tem bolsa configurada (Financeiro › Formandos).");
 
   // Faltas do mês para estas inscrições
-  const { data: faltas } = inscIds.length
+  const { data: faltasRaw } = inscIds.length
     ? await supabase.from("formando_faltas")
         .select("curso_formando_id, sessao_id, data, horas, tipo")
         .in("curso_formando_id", inscIds).gte("data", first).lte("data", last)
     : { data: [] as any[] };
+  const faltas = (faltasRaw ?? []).filter((f: any) => !f.sessao_id || !sessExcluidas.has(f.sessao_id));
+  // Faltas justificadas de meses anteriores (para o limite acumulado do percurso).
+  const { data: justAntRaw } = inscIds.length
+    ? await supabase.from("formando_faltas")
+        .select("curso_formando_id, horas, sessao:sessoes(estado)")
+        .in("curso_formando_id", inscIds).eq("tipo", "justificada").lt("data", first).range(0, 49999)
+    : { data: [] as any[] };
+  const justAnteriores = new Map<string, number>();
+  (justAntRaw ?? []).forEach((f: any) => {
+    if (f.sessao && !sessaoElegivel(f.sessao)) return;
+    justAnteriores.set(f.curso_formando_id, (justAnteriores.get(f.curso_formando_id) ?? 0) + Number(f.horas || 0));
+  });
 
   // Presença por defeito:
   //  · frequenta=false → ausência explícita nessa UC (fica fora).
   //  · frequenta=true  → inscrito nessa UC.
   //  · sem qualquer linha → assume-se inscrito em TODAS as UCs do curso
   //    (evita ignorar formandos recém-adicionados sem seleção manual).
-  const ucsCurso = new Set<string>(sessoes.map((s: any) => s.curso_ufcd_id).filter(Boolean));
+  const ucsCurso = new Set<string>([...horasUc.keys(), ...sessoes.map((s: any) => s.curso_ufcd_id).filter(Boolean)]);
   const inscHasRows = new Set<string>();
   const ucsByInsc = new Map<string, Set<string>>();
   const ausentesByInsc = new Map<string, Set<string>>();
@@ -210,7 +231,12 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
     const horasFaltaInjust = minhasFaltas
       .filter((f: any) => f.tipo !== "justificada" && f.tipo !== "online")
       .reduce((a: number, f: any) => a + Number(f.horas || 0), 0);
-    const horasFreq = Math.max(0, horasPrevistas - horasFaltaInjust);
+    // Limite acumulado de faltas justificadas pagáveis (% das horas do percurso).
+    // A falta continua registada; só o excedente deixa de ser pago na bolsa.
+    const horasPercurso = [...ucsInscritas].reduce((a, u) => a + (horasUc.get(u) ?? 0), 0);
+    const horasJustMes = minhasFaltas.filter((f: any) => f.tipo === "justificada").reduce((a: number, f: any) => a + Number(f.horas || 0), 0);
+    const limJust = limiteFaltasJustificadas({ horasPercurso, percentagem: limiteJustPct, justificadasAnteriores: justAnteriores.get(insc.id) ?? 0, justificadasMes: horasJustMes });
+    const horasFreq = Math.max(0, horasPrevistas - horasFaltaInjust - limJust.excedenteMes);
 
     // Dias = todos os dias do cronograma com formação atribuída nas UCs em que o formando está inscrito.
     const diasSet = new Set<string>();
@@ -236,19 +262,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
       if (f.tipo === "online") return; // online não é falta
       faltasPorDia.set(f.data, (faltasPorDia.get(f.data) ?? 0) + Number(f.horas || 0));
     });
-    let diasSa = 0;
-    let diasTr = 0;
-    let diasTrExcluidosOnline = 0;
-    horasPorDia.forEach((h, dia) => {
-      const efect = Math.max(0, h - (faltasPorDia.get(dia) ?? 0));
-      // SA e TR partilham o critério de ≥ 3h efectivas. Além disso, TR é
-      // retirado nos dias em que o formando teve sessão online.
-      if (efect >= 3) {
-        diasSa += 1;
-        if (diasOnline.has(dia)) diasTrExcluidosOnline += 1;
-        else diasTr += 1;
-      }
-    });
+    const { diasSa, diasTr, diasTrExcluidosOnline } = diasSubsidios({ horasPorDia, faltasPorDia, diasOnline, limiarHoras: limiarSa });
 
     const bolsaCfg = bolsaByFormando.get(insc.formando_id);
     const tipoBolsa = bolsaCfg?.tipo as "BF" | "BFM" | "nenhuma" | undefined;
@@ -279,6 +293,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
           horas_freq: horasFreq, valor_bruto: bruto, tecto_mensal: valorMensal,
           limitado_pelo_tecto: valorMensal > 0 && bruto > valorMensal,
           formula: "min((valor_mensal / horas_mes_ref) × horas_freq, valor_mensal)",
+          faltas_justificadas: { horas_percurso: horasPercurso, percentagem_limite: limiteJustPct, limite_horas: limJust.limite, consumido_meses_anteriores: limJust.consumidoAntes, justificadas_mes: horasJustMes, pagaveis_mes: limJust.pagaveisMes, excedente_nao_pago: limJust.excedenteMes, saldo_restante: limJust.restante },
         },
       });
     }
@@ -292,7 +307,7 @@ export async function calcularProcessamento(cursoId: string, ano: number, mes: n
         rubrica: "SA", horas_previstas: horasPrevistas, horas_frequentadas: horasFreq,
         horas_elegiveis: horasFreq, dias_elegiveis: diasSa,
         valor_dia: valorSa, valor,
-        memoria_calculo: { valor_dia: valorSa, dias: diasSa, regra: "dias com ≥ 3h frequentadas", formula: "dias(≥3h) × valor_sa" },
+        memoria_calculo: { valor_dia: valorSa, dias: diasSa, regra: `dias com ≥ ${limiarSa}h frequentadas (sessões realizadas; um dia conta uma vez)`, limiar_horas: limiarSa, formula: `dias(≥${limiarSa}h) × valor_sa` },
       });
     }
 

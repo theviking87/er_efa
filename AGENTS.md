@@ -8,3 +8,4 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+- Financial/attendance rules live as pure functions in src/lib/financeiro/regras.ts (tested with bun test); only sessions with estado 'realizada' count for payments and attendance — keeps screens, engine and exports consistent.

@@ -75,7 +75,7 @@ export async function exportPagamentosGlobal(f: FiltroPagamentos) {
   const cursoIds = Array.from(new Set(procs.map((p: any) => p.curso_id)));
   const { data: sess, error: e2 } = await supabase.from("sessoes")
     .select("curso_id, formador_id, data, horas, curso_ufcd:curso_ufcd_id(ufcd:ufcd_id(codigo, designacao))")
-    .in("curso_id", cursoIds).gte("data", dIni).lte("data", dFimIso);
+    .in("curso_id", cursoIds).eq("estado", "realizada").gte("data", dIni).lte("data", dFimIso);
   if (e2) throw e2;
   const horasUfcd = new Map<string, Map<string, number>>(); // curso|formador|YYYY-MM -> ufcd -> horas
   for (const s of sess ?? []) {

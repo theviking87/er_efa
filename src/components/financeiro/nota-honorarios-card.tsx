@@ -84,7 +84,8 @@ export function NotaHonorariosCard({ soloExterno = false }: { soloExterno?: bool
       let q = supabase
         .from("sessoes")
         .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
-        .eq("formador_id", formadorId);
+        .eq("formador_id", formadorId)
+        .eq("estado", "realizada");
       if (modo === "mes") {
         const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
         const fimDate = new Date(ano, mes, 0);

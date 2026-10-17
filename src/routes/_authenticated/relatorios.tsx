@@ -20,7 +20,13 @@ import { localDateIso } from "@/lib/format";
 import { yieldToBrowser } from "@/lib/dom-helpers";
 
 export const Route = createFileRoute("/_authenticated/relatorios")({
-  head: () => ({ meta: [{ title: "Relatórios e SIGO — Gestão Pedagógica" }] }),
+  head: () => ({ meta: [
+    { title: "Relatórios e SIGO — Gestão de Formação" },
+    { name: "description", content: "Relatórios de horas dos formandos, UFCD PRA, formadores, faltas e execução dos cursos." },
+    { property: "og:title", content: "Relatórios e SIGO — Gestão de Formação" },
+    { property: "og:description", content: "Exportações de formação, frequência presencial e online e horas das UFCD PRA." },
+    { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" },
+  ] }),
   component: RelatoriosPage,
 });
 
@@ -67,6 +73,20 @@ function RelatoriosPage() {
       />
 
       <div className="grid gap-4 lg:grid-cols-2">
+        <Card className="lg:col-span-2">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <FileSpreadsheet className="size-4" /> Horas de formação dos formandos
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Button disabled={!!busy} onClick={() => run("horas-formandos", async () => {
+              await (await import("@/lib/relatorio-horas-formandos")).exportRelatorioHorasFormandos();
+            })}>
+              <FileSpreadsheet className="size-4" /> {busy === "horas-formandos" ? "A exportar…" : "Excel — todos os formandos"}
+            </Button>
+          </CardContent>
+        </Card>
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base font-semibold flex items-center gap-2">

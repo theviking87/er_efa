@@ -19,6 +19,31 @@ export function sessaoElegivel(s: { estado?: string | null }): boolean {
 
 const r2 = (n: number) => Math.round(n * 100) / 100;
 
+/** Horas efetivamente frequentadas; online é um marcador, mesmo com 0h registadas. */
+export function horasFrequenciaSessao(horas: number, registos: { tipo: string; horas: number }[]) {
+  const total = Math.max(0, Number(horas) || 0);
+  const faltas = registos.filter(f => ["justificada", "injustificada", "ausencia"].includes(f.tipo))
+    .reduce((s, f) => s + Math.max(0, Number(f.horas) || 0), 0);
+  const frequentadas = Math.max(0, total - faltas);
+  const online = registos.some(f => f.tipo === "online") ? frequentadas : 0;
+  return { frequentadas: r2(frequentadas), presenciais: r2(frequentadas - online), online: r2(online) };
+}
+
+/** Percurso individual: sem seleção explícita, frequenta todas as disciplinas. */
+export function disciplinasFrequentadas(ids: string[], selecao: { curso_ufcd_id: string; frequenta: boolean }[]) {
+  if (!selecao.length) return new Set(ids);
+  return new Set(selecao.filter(s => s.frequenta && ids.includes(s.curso_ufcd_id)).map(s => s.curso_ufcd_id));
+}
+
+/** A frequência histórica termina na desistência/conclusão desta inscrição, não de outros cursos. */
+export function sessaoNoPercurso(s: { estado: string; data: string }, i: {
+  data_inscricao: string; data_desistencia: string | null; data_conclusao: string | null;
+}, ate: string) {
+  return s.estado === "realizada" && s.data <= ate && s.data >= i.data_inscricao
+    && (!i.data_desistencia || s.data < i.data_desistencia)
+    && (!i.data_conclusao || s.data <= i.data_conclusao);
+}
+
 // ---------------------------------------------------------------------------
 // Limite acumulado de faltas justificadas pagáveis (bolsa)
 // ---------------------------------------------------------------------------

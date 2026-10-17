@@ -9,3 +9,4 @@
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
 - Financial/attendance rules live as pure functions in src/lib/financeiro/regras.ts (tested with bun test); only sessions with estado 'realizada' count for payments and attendance — keeps screens, engine and exports consistent.
+- The all-trainee hours workbook uses a dedicated browser export module with paginated reads and shared pure attendance rules, to avoid truncated histories and keep actual attendance separate from payable hours.

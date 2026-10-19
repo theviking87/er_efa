@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { localDateIso } from "@/lib/format";
-import { disciplinasFrequentadas, horasFrequenciaSessao, sessaoNoPercurso } from "@/lib/financeiro/regras";
+import { disciplinasFrequentadas, horasRelatorioUfcd } from "@/lib/financeiro/regras";
 import { yieldToBrowser } from "@/lib/dom-helpers";
 import { consultaSessoes } from "@/lib/sessoes-estado-compat";
 
@@ -40,7 +40,7 @@ export async function exportRelatorioHorasFormandos() {
   const praCols = praDisciplinas.flatMap(d => {
     const u = ufcdById.get(d.ufcd_id);
     const label = `${cursoById.get(d.curso_id)?.codigo ?? d.curso_id} · ${u?.codigo} · ${u?.designacao} [${d.ordem}]`;
-    return [{ id: d.id, key: `${label} — previstas (h)`, campo: "previstas" as const }, { id: d.id, key: `${label} — ministradas (h)`, campo: "ministradas" as const }];
+    return [{ id: d.id, key: `${label} — previstas (h)`, campo: "previstas" as const }, { id: d.id, key: `${label} — assistidas (h)`, campo: "assistidas" as const }];
   });
   const round = (n: number) => Math.round(n * 100) / 100;
   type Row = Record<string, string | number>;
@@ -56,16 +56,15 @@ export async function exportRelatorioHorasFormandos() {
       praCols.forEach(c => { linha[c.key] = 0; });
       for (const d of ds.filter(d => ids.has(d.id))) {
         const u = ufcdById.get(d.ufcd_id);
-        let ministradas = 0, frequentadas = 0, presenciais = 0, online = 0;
-        for (const s of sessoes.filter(s => s.curso_ufcd_id === d.id && sessaoNoPercurso(s, insc, ate))) {
-          const h = horasFrequenciaSessao(s.horas, faltas.filter(f => f.curso_formando_id === insc.id && f.sessao_id === s.id));
-          ministradas += Number(s.horas); frequentadas += h.frequentadas; presenciais += h.presenciais; online += h.online;
-        }
+        const { ministradas, assistidas: frequentadas, presenciais, online } = horasRelatorioUfcd(
+          sessoes.filter(s => s.curso_ufcd_id === d.id),
+          faltas.filter(f => f.curso_formando_id === insc.id), insc, ate,
+        );
         const valores = { "Horas previstas": Number(d.horas_totais), "Horas ministradas": round(ministradas), "Horas frequentadas": round(frequentadas), "Horas presenciais": round(presenciais), "Horas online": round(online) };
         detalhe.push({ Formando: formando.nome, NIF: formando.nif ?? "", Curso: curso?.codigo ?? "", UFCD: u?.codigo ?? "", Designação: u?.designacao ?? "", ...valores });
         for (const [key, valor] of Object.entries(valores)) { linha[key] = round(Number(linha[key]) + valor); total[key] = round(Number(total[key]) + valor); }
         for (const col of praCols.filter(c => c.id === d.id)) {
-          const valor = col.campo === "previstas" ? Number(d.horas_totais) : round(ministradas);
+          const valor = col.campo === "previstas" ? Number(d.horas_totais) : round(frequentadas);
           linha[col.key] = valor; total[col.key] = round(Number(total[col.key]) + valor);
         }
       }
@@ -88,11 +87,11 @@ export async function exportRelatorioHorasFormandos() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([
     ["Relatório de horas dos formandos", `Até ${ate}`],
     ["Previstas", "Total das horas das UFCD que cada formando frequenta; sem seleção explícita, todas as UFCD do curso."],
-    ["Ministradas", "Sessões realizadas até à data da extração, dentro das datas da inscrição."],
+    ["Ministradas", "Sessões realizadas até à extração e dentro do percurso. Presenças online explicitamente registadas também contam antes da data administrativa de inscrição; respeitam desistência e conclusão."],
     ["Frequentadas", "Ministradas menos faltas justificadas, injustificadas e ausências. Não são horas pagáveis nem incluem recuperação pedagógica."],
     ["Online", "Horas das sessões marcadas online para o formando, mesmo quando o marcador tem 0 horas."],
     ["Presenciais", "Horas frequentadas não marcadas online. Sem registo de falta, considera-se presença."],
-    ["PRA", "Cada UFCD Portefólio Reflexivo de Aprendizagem tem duas colunas próprias, identificadas pelo curso e UFCD. Estes valores já estão incluídos nos totais."],
+    ["PRA", "Cada UFCD Portefólio Reflexivo de Aprendizagem tem colunas de horas previstas e assistidas pelo formando, descontando faltas e incluindo presença online. Estes valores já estão incluídos nos totais."],
   ]), "Critérios");
   await yieldToBrowser();
   XLSX.writeFile(wb, `Horas_Formandos_${ate}.xlsx`);

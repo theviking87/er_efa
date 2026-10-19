@@ -1,5 +1,6 @@
 # Roadmap
 
+- [ ] Corrigir PRA para horas assistidas e incluir presenças online históricas no relatório
 - [x] Corrigir e validar exportações em bases antigas sem sessoes.estado
 - [x] Acrescentar e validar relatório de horas de todos os formandos, com detalhe individual das UFCD PRA
 - [ ] Adaptar navegação principal para telemóvel sem alterar desktop

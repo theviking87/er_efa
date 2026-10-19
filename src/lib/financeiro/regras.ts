@@ -38,10 +38,30 @@ export function disciplinasFrequentadas(ids: string[], selecao: { curso_ufcd_id:
 /** A frequência histórica termina na desistência/conclusão desta inscrição, não de outros cursos. */
 export function sessaoNoPercurso(s: { estado?: string | null; data: string }, i: {
   data_inscricao: string; data_desistencia: string | null; data_conclusao: string | null;
-}, ate: string) {
-  return sessaoElegivel(s) && s.data <= ate && s.data >= i.data_inscricao
+}, ate: string, presencaOnlineRegistada = false) {
+  return sessaoElegivel(s) && s.data <= ate && (s.data >= i.data_inscricao || presencaOnlineRegistada)
     && (!i.data_desistencia || s.data < i.data_desistencia)
     && (!i.data_conclusao || s.data <= i.data_conclusao);
+}
+
+/** Relatório histórico: presença online explícita comprova frequência mesmo antes da data administrativa de inscrição. */
+export function horasRelatorioUfcd(
+  sessoes: { id: string; data: string; horas: number; estado?: string | null }[],
+  registos: { sessao_id: string | null; tipo: string; horas: number }[],
+  inscricao: { data_inscricao: string; data_desistencia: string | null; data_conclusao: string | null },
+  ate: string,
+) {
+  let ministradas = 0, assistidas = 0, presenciais = 0, online = 0;
+  for (const s of sessoes) {
+    const rs = registos.filter(r => r.sessao_id === s.id);
+    if (!sessaoNoPercurso(s, inscricao, ate, rs.some(r => r.tipo === "online"))) continue;
+    const h = horasFrequenciaSessao(s.horas, rs);
+    ministradas += Number(s.horas);
+    assistidas += h.frequentadas;
+    presenciais += h.presenciais;
+    online += h.online;
+  }
+  return { ministradas: r2(ministradas), assistidas: r2(assistidas), presenciais: r2(presenciais), online: r2(online) };
 }
 
 // ---------------------------------------------------------------------------

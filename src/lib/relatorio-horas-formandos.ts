@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { localDateIso } from "@/lib/format";
 import { disciplinasFrequentadas, horasFrequenciaSessao, sessaoNoPercurso } from "@/lib/financeiro/regras";
 import { yieldToBrowser } from "@/lib/dom-helpers";
+import { consultaSessoes } from "@/lib/sessoes-estado-compat";
 
 // Paginação evita truncar silenciosamente os formandos e o histórico de sessões.
 async function todas<T>(consulta: (inicio: number, fim: number) => PromiseLike<{ data: T[] | null; error: { message: string } | null }>) {
@@ -24,7 +25,10 @@ export async function exportRelatorioHorasFormandos() {
     todas((a, b) => supabase.from("curso_ufcds").select("id, curso_id, ufcd_id, horas_totais, ordem").order("id").range(a, b)),
     todas((a, b) => supabase.from("ufcds").select("id, codigo, designacao").order("id").range(a, b)),
     todas((a, b) => supabase.from("curso_formando_ufcds").select("id, curso_formando_id, curso_ufcd_id, frequenta").order("id").range(a, b)),
-    todas((a, b) => supabase.from("sessoes").select("id, curso_ufcd_id, data, horas, estado").eq("estado", "realizada").lte("data", ate).order("id").range(a, b)),
+    todas<{ id: string; curso_ufcd_id: string; data: string; horas: number; estado?: string | null }>((a, b) => consultaSessoes(comEstado => {
+      const q = supabase.from("sessoes").select(comEstado ? "id, curso_ufcd_id, data, horas, estado" : "id, curso_ufcd_id, data, horas").lte("data", ate).order("id").range(a, b);
+      return (comEstado ? q.eq("estado", "realizada") : q) as any;
+    })),
     todas((a, b) => supabase.from("formando_faltas").select("id, curso_formando_id, sessao_id, tipo, horas").order("id").range(a, b)),
   ]);
   const cursoById = new Map(cursos.map(c => [c.id, c]));

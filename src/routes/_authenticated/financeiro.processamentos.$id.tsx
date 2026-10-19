@@ -20,6 +20,7 @@ import { calcularProcessamento, guardarProcessamento } from "@/lib/financeiro/en
 import { exportNotaHonorariosPdf } from "@/lib/pdf-exports";
 import { saveFile } from "@/lib/dom-helpers";
 import { NotasPainel } from "@/components/notas-painel";
+import { consultaSessoes } from "@/lib/sessoes-estado-compat";
 
 
 export const Route = createFileRoute("/_authenticated/financeiro/processamentos/$id")({
@@ -125,9 +126,12 @@ function DetailPage() {
     const last = `${ano}-${String(mes).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
     if (!alvoIds.length) return [] as import("@/lib/financeiro/excel").PresencaFormando[];
     const [sessRes, cfRes] = await Promise.all([
-      supabase.from("sessoes")
-        .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao)), formador:formadores(nome, abreviatura)")
-        .eq("curso_id", p.curso_id).eq("estado", "realizada").gte("data", first).lte("data", last),
+      consultaSessoes(comEstado => {
+        const q = supabase.from("sessoes")
+          .select("id, data, hora_inicio, hora_fim, horas, curso_ufcd_id, curso_ufcd:curso_ufcds(ufcd:ufcds(codigo, designacao)), formador:formadores(nome, abreviatura)")
+          .eq("curso_id", p.curso_id).gte("data", first).lte("data", last);
+        return comEstado ? q.eq("estado", "realizada") : q;
+      }),
       supabase.from("curso_formandos")
         .select("id, formando_id, formando:formandos(nome), curso_formando_ufcds(curso_ufcd_id, frequenta)")
         .eq("curso_id", p.curso_id).in("formando_id", alvoIds),

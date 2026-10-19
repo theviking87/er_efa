@@ -36,10 +36,10 @@ export function disciplinasFrequentadas(ids: string[], selecao: { curso_ufcd_id:
 }
 
 /** A frequência histórica termina na desistência/conclusão desta inscrição, não de outros cursos. */
-export function sessaoNoPercurso(s: { estado: string; data: string }, i: {
+export function sessaoNoPercurso(s: { estado?: string | null; data: string }, i: {
   data_inscricao: string; data_desistencia: string | null; data_conclusao: string | null;
 }, ate: string) {
-  return s.estado === "realizada" && s.data <= ate && s.data >= i.data_inscricao
+  return sessaoElegivel(s) && s.data <= ate && s.data >= i.data_inscricao
     && (!i.data_desistencia || s.data < i.data_desistencia)
     && (!i.data_conclusao || s.data <= i.data_conclusao);
 }

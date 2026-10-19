@@ -16,6 +16,7 @@ import { FileText } from "lucide-react";
 import { toast } from "sonner";
 import { fmtDate } from "@/lib/format";
 import { yieldToBrowser } from "@/lib/dom-helpers";
+import { consultaSessoes } from "@/lib/sessoes-estado-compat";
 
 export function NotaHonorariosCard({ soloExterno = false }: { soloExterno?: boolean } = {}) {
   const [tipoFormador, setTipoFormador] = useState<"registado" | "externo">(
@@ -84,15 +85,18 @@ export function NotaHonorariosCard({ soloExterno = false }: { soloExterno?: bool
       let q = supabase
         .from("sessoes")
         .select("data, hora_inicio, hora_fim, horas, curso_id, curso_ufcd_id")
-        .eq("formador_id", formadorId)
-        .eq("estado", "realizada");
+        .eq("formador_id", formadorId);
       if (modo === "mes") {
         const inicio = `${ano}-${String(mes).padStart(2, "0")}-01`;
         const fimDate = new Date(ano, mes, 0);
         const fim = `${ano}-${String(mes).padStart(2, "0")}-${String(fimDate.getDate()).padStart(2, "0")}`;
         q = q.gte("data", inicio).lte("data", fim);
       }
-      const { data: sess } = await q.order("data").order("hora_inicio");
+      const { data: sess, error } = await consultaSessoes(comEstado => {
+        const consulta = q.order("data").order("hora_inicio");
+        return comEstado ? consulta.eq("estado", "realizada") : consulta;
+      });
+      if (error) throw new Error(error.message);
       let sessoes = sess ?? [];
       const cufIds = Array.from(new Set(sessoes.map((s: any) => s.curso_ufcd_id).filter(Boolean)));
       const { data: cufs } = cufIds.length

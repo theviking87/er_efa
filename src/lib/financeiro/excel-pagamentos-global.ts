@@ -1,6 +1,7 @@
 import ExcelJS from "exceljs";
 import { supabase } from "@/integrations/supabase/client";
 import { saveFile } from "@/lib/dom-helpers";
+import { consultaSessoes } from "@/lib/sessoes-estado-compat";
 
 const EUR = '#,##0.00 "€";-#,##0.00 "€";"-"';
 const RUBRICAS_FORMANDO = ["BF", "BFM", "SA", "TR", "ATL", "OUT"] as const;
@@ -73,7 +74,7 @@ export async function exportPagamentosGlobal(f: FiltroPagamentos) {
   const dIni = `${f.de}-01`;
   const dFim = new Date(aAte, mAte, 0); const dFimIso = `${f.ate}-${String(dFim.getDate()).padStart(2, "0")}`;
   const cursoIds = Array.from(new Set(procs.map((p: any) => p.curso_id)));
-  const { data: sess, error: e2 } = await consultaSessoes(comEstado => {
+  const { data: sess, error: e2 } = await consultaSessoes<any[] | null>(comEstado => {
     const q = supabase.from("sessoes")
       .select("curso_id, formador_id, data, horas, curso_ufcd:curso_ufcd_id(ufcd:ufcd_id(codigo, designacao))")
       .in("curso_id", cursoIds).gte("data", dIni).lte("data", dFimIso);

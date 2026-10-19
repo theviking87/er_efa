@@ -40,7 +40,7 @@ export async function exportRelatorioHorasFormandos() {
   const praCols = praDisciplinas.flatMap(d => {
     const u = ufcdById.get(d.ufcd_id);
     const label = `${cursoById.get(d.curso_id)?.codigo ?? d.curso_id} · ${u?.codigo} · ${u?.designacao} [${d.ordem}]`;
-    return [{ id: d.id, key: `${label} — previstas (h)`, campo: "previstas" as const }, { id: d.id, key: `${label} — ministradas (h)`, campo: "ministradas" as const }];
+    return [{ id: d.id, key: `${label} — previstas (h)`, campo: "previstas" as const }, { id: d.id, key: `${label} — assistidas (h)`, campo: "assistidas" as const }];
   });
   const round = (n: number) => Math.round(n * 100) / 100;
   type Row = Record<string, string | number>;
@@ -65,7 +65,7 @@ export async function exportRelatorioHorasFormandos() {
         detalhe.push({ Formando: formando.nome, NIF: formando.nif ?? "", Curso: curso?.codigo ?? "", UFCD: u?.codigo ?? "", Designação: u?.designacao ?? "", ...valores });
         for (const [key, valor] of Object.entries(valores)) { linha[key] = round(Number(linha[key]) + valor); total[key] = round(Number(total[key]) + valor); }
         for (const col of praCols.filter(c => c.id === d.id)) {
-          const valor = col.campo === "previstas" ? Number(d.horas_totais) : round(ministradas);
+          const valor = col.campo === "previstas" ? Number(d.horas_totais) : round(frequentadas);
           linha[col.key] = valor; total[col.key] = round(Number(total[col.key]) + valor);
         }
       }
@@ -92,7 +92,7 @@ export async function exportRelatorioHorasFormandos() {
     ["Frequentadas", "Ministradas menos faltas justificadas, injustificadas e ausências. Não são horas pagáveis nem incluem recuperação pedagógica."],
     ["Online", "Horas das sessões marcadas online para o formando, mesmo quando o marcador tem 0 horas."],
     ["Presenciais", "Horas frequentadas não marcadas online. Sem registo de falta, considera-se presença."],
-    ["PRA", "Cada UFCD Portefólio Reflexivo de Aprendizagem tem duas colunas próprias, identificadas pelo curso e UFCD. Estes valores já estão incluídos nos totais."],
+    ["PRA", "Cada UFCD Portefólio Reflexivo de Aprendizagem tem colunas de horas previstas e assistidas pelo formando, descontando faltas e incluindo presença online. Estes valores já estão incluídos nos totais."],
   ]), "Critérios");
   await yieldToBrowser();
   XLSX.writeFile(wb, `Horas_Formandos_${ate}.xlsx`);

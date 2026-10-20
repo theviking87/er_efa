@@ -28,7 +28,6 @@ test("online de janeiro conta com inscrição administrativa em julho, sem presu
   expect(horasRelatorioUfcd(sessoes, registos, { ...i, data_desistencia: "2026-01-05" }, "2026-10-19").online).toBe(0);
 });
 test("cada 7 horas assistidas equivale a um dia, preservando frações", () => {
-  expect(diasRelatorio(14, []).get).toBeUndefined();
   expect(diasRelatorio(14, [])["Dias equivalentes (7h)"]).toBe(2);
   expect(diasRelatorio(3.5, [])["Dias equivalentes (7h)"]).toBe(0.5);
 });

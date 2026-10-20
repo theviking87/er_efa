@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { localDateIso } from "@/lib/format";
-import { disciplinasFrequentadas, horasRelatorioUfcd } from "@/lib/financeiro/regras";
+import { disciplinasFrequentadas, horasRelatorioUfcd, diasRelatorio } from "@/lib/financeiro/regras";
 import { yieldToBrowser } from "@/lib/dom-helpers";
 import { consultaSessoes } from "@/lib/sessoes-estado-compat";
 
@@ -46,9 +46,11 @@ export async function exportRelatorioHorasFormandos() {
   type Row = Record<string, string | number>;
   const resumo: Row[] = [], porCurso: Row[] = [], detalhe: Row[] = [];
   for (const formando of formandos.sort((a, b) => a.nome.localeCompare(b.nome, "pt"))) {
+    const datasFormando = new Set<string>();
     const total: Row = { Formando: formando.nome, NIF: formando.nif ?? "", "Horas previstas": 0, "Horas ministradas": 0, "Horas frequentadas": 0, "Horas presenciais": 0, "Horas online": 0 };
     praCols.forEach(c => { total[c.key] = 0; });
     for (const insc of inscricoes.filter(i => i.formando_id === formando.id)) {
+      const datasCurso = new Set<string>();
       const curso = cursoById.get(insc.curso_id);
       const ds = disciplinas.filter(d => d.curso_id === insc.curso_id);
       const ids = disciplinasFrequentadas(ds.map(d => d.id), selecoes.filter(s => s.curso_formando_id === insc.id));
@@ -56,21 +58,22 @@ export async function exportRelatorioHorasFormandos() {
       praCols.forEach(c => { linha[c.key] = 0; });
       for (const d of ds.filter(d => ids.has(d.id))) {
         const u = ufcdById.get(d.ufcd_id);
-        const { ministradas, assistidas: frequentadas, presenciais, online } = horasRelatorioUfcd(
+        const { ministradas, assistidas: frequentadas, presenciais, online, datasAssistidas } = horasRelatorioUfcd(
           sessoes.filter(s => s.curso_ufcd_id === d.id),
           faltas.filter(f => f.curso_formando_id === insc.id), insc, ate,
         );
         const valores = { "Horas previstas": Number(d.horas_totais), "Horas ministradas": round(ministradas), "Horas frequentadas": round(frequentadas), "Horas presenciais": round(presenciais), "Horas online": round(online) };
-        detalhe.push({ Formando: formando.nome, NIF: formando.nif ?? "", Curso: curso?.codigo ?? "", UFCD: u?.codigo ?? "", Designação: u?.designacao ?? "", ...valores });
+        for (const data of datasAssistidas) { datasCurso.add(data); datasFormando.add(data); }
+        detalhe.push({ Formando: formando.nome, NIF: formando.nif ?? "", Curso: curso?.codigo ?? "", UFCD: u?.codigo ?? "", Designação: u?.designacao ?? "", ...valores, ...diasRelatorio(frequentadas, datasAssistidas) });
         for (const [key, valor] of Object.entries(valores)) { linha[key] = round(Number(linha[key]) + valor); total[key] = round(Number(total[key]) + valor); }
         for (const col of praCols.filter(c => c.id === d.id)) {
           const valor = col.campo === "previstas" ? Number(d.horas_totais) : round(frequentadas);
           linha[col.key] = valor; total[col.key] = round(Number(total[col.key]) + valor);
         }
       }
-      porCurso.push(linha);
+      porCurso.push({ ...linha, ...diasRelatorio(Number(linha["Horas frequentadas"]), datasCurso) });
     }
-    resumo.push(total);
+    resumo.push({ ...total, ...diasRelatorio(Number(total["Horas frequentadas"]), datasFormando) });
     if (resumo.length % 20 === 0) await yieldToBrowser();
   }
   const wb = XLSX.utils.book_new();
@@ -79,6 +82,7 @@ export async function exportRelatorioHorasFormandos() {
     ["Por curso", porCurso, ["Formando", "NIF", "Curso", "Nome curso", "Estado", "Horas previstas", "Horas ministradas", "Horas frequentadas", "Horas presenciais", "Horas online", ...praCols.map(c => c.key)]],
     ["Por UFCD", detalhe, ["Formando", "NIF", "Curso", "UFCD", "Designação", "Horas previstas", "Horas ministradas", "Horas frequentadas", "Horas presenciais", "Horas online"]],
   ] as [string, Row[], string[]][]) {
+    base.push("Dias equivalentes (7h)", "Dias de calendário");
     const ws = XLSX.utils.json_to_sheet(rows, { header: base });
     ws["!cols"] = base.map(k => ({ wch: k === "Formando" || k === "Designação" || k === "Nome curso" ? 35 : k.includes("·") ? 32 : 20 }));
     if (ws["!ref"]) ws["!autofilter"] = { ref: ws["!ref"] };
@@ -91,6 +95,8 @@ export async function exportRelatorioHorasFormandos() {
     ["Frequentadas", "Ministradas menos faltas justificadas, injustificadas e ausências. Não são horas pagáveis nem incluem recuperação pedagógica."],
     ["Online", "Horas das sessões marcadas online para o formando, mesmo quando o marcador tem 0 horas."],
     ["Presenciais", "Horas frequentadas não marcadas online. Sem registo de falta, considera-se presença."],
+    ["Dias equivalentes (7h)", "Total de horas frequentadas (presenciais + online) dividido por 7, com duas casas decimais; não é uma contagem de sessões."],
+    ["Dias de calendário", "Datas distintas com horas assistidas, incluindo online. Várias sessões, UFCD ou cursos no mesmo dia contam uma vez no resumo por formando. Dias sem frequência não contam."],
     ["PRA", "Cada UFCD Portefólio Reflexivo de Aprendizagem tem colunas de horas previstas e assistidas pelo formando, descontando faltas e incluindo presença online. Estes valores já estão incluídos nos totais."],
   ]), "Critérios");
   await yieldToBrowser();

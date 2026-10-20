@@ -52,6 +52,7 @@ export function horasRelatorioUfcd(
   ate: string,
 ) {
   let ministradas = 0, assistidas = 0, presenciais = 0, online = 0;
+  const datasAssistidas = new Set<string>();
   for (const s of sessoes) {
     const rs = registos.filter(r => r.sessao_id === s.id);
     if (!sessaoNoPercurso(s, inscricao, ate, rs.some(r => r.tipo === "online"))) continue;
@@ -60,8 +61,14 @@ export function horasRelatorioUfcd(
     assistidas += h.frequentadas;
     presenciais += h.presenciais;
     online += h.online;
+    if (h.frequentadas > 0) datasAssistidas.add(s.data);
   }
-  return { ministradas: r2(ministradas), assistidas: r2(assistidas), presenciais: r2(presenciais), online: r2(online) };
+  return { ministradas: r2(ministradas), assistidas: r2(assistidas), presenciais: r2(presenciais), online: r2(online), datasAssistidas };
+}
+
+/** Dias equivalentes conservam frações; calendário conta cada data assistida uma vez. */
+export function diasRelatorio(horasAssistidas: number, datas: Iterable<string>) {
+  return { "Dias equivalentes (7h)": r2(Math.max(0, horasAssistidas) / 7), "Dias de calendário": new Set(datas).size };
 }
 
 // ---------------------------------------------------------------------------

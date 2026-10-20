@@ -1,6 +1,6 @@
 // @ts-ignore -- runner nativo do bun
 import { expect, test } from "bun:test";
-import { disciplinasFrequentadas, horasFrequenciaSessao, sessaoNoPercurso, horasRelatorioUfcd } from "./regras";
+import { disciplinasFrequentadas, horasFrequenciaSessao, sessaoNoPercurso, horasRelatorioUfcd, diasRelatorio } from "./regras";
 
 test("previstas consideram apenas as disciplinas selecionadas", () => {
   const disciplinas = [{ id: "a", horas: 50 }, { id: "b", horas: 25 }];
@@ -14,7 +14,7 @@ test("PRA assistido desconta faltas e inclui presença online", () => {
     { id: "pra1", data: "2026-01-05", horas: 3, estado: "realizada" },
     { id: "pra2", data: "2026-01-06", horas: 4, estado: "realizada" },
   ], [{ sessao_id: "pra1", tipo: "justificada", horas: 1 }, { sessao_id: "pra2", tipo: "online", horas: 0 }], i, "2026-10-19"))
-    .toEqual({ ministradas: 7, assistidas: 6, presenciais: 2, online: 4 });
+    .toMatchObject({ ministradas: 7, assistidas: 6, presenciais: 2, online: 4 });
 });
 test("online de janeiro conta com inscrição administrativa em julho, sem presumir presença nas restantes sessões", () => {
   const i = { data_inscricao: "2026-07-01", data_desistencia: null, data_conclusao: null };
@@ -24,8 +24,25 @@ test("online de janeiro conta com inscrição administrativa em julho, sem presu
     { id: "cancelada", data: "2026-01-07", horas: 4, estado: "cancelada" },
   ];
   const registos = [{ sessao_id: "on", tipo: "online", horas: 0 }, { sessao_id: "cancelada", tipo: "online", horas: 0 }];
-  expect(horasRelatorioUfcd(sessoes, registos, i, "2026-10-19")).toEqual({ ministradas: 3, assistidas: 3, presenciais: 0, online: 3 });
+  expect(horasRelatorioUfcd(sessoes, registos, i, "2026-10-19")).toMatchObject({ ministradas: 3, assistidas: 3, presenciais: 0, online: 3 });
   expect(horasRelatorioUfcd(sessoes, registos, { ...i, data_desistencia: "2026-01-05" }, "2026-10-19").online).toBe(0);
+});
+test("cada 7 horas assistidas equivale a um dia, preservando frações", () => {
+  expect(diasRelatorio(14, []).get).toBeUndefined();
+  expect(diasRelatorio(14, [])["Dias equivalentes (7h)"]).toBe(2);
+  expect(diasRelatorio(3.5, [])["Dias equivalentes (7h)"]).toBe(0.5);
+});
+test("conta horas online e presenciais, mas cada data apenas uma vez", () => {
+  const i = { data_inscricao: "2026-01-01", data_desistencia: null, data_conclusao: null };
+  const h = horasRelatorioUfcd([
+    { id: "a", data: "2026-01-05", horas: 3 },
+    { id: "b", data: "2026-01-05", horas: 4 },
+    { id: "c", data: "2026-01-06", horas: 7 },
+  ], [{ sessao_id: "b", tipo: "online", horas: 0 }, { sessao_id: "c", tipo: "ausencia", horas: 7 }], i, "2026-10-20");
+  expect(h.assistidas).toBe(7);
+  expect(h.online).toBe(4);
+  expect(diasRelatorio(h.assistidas, h.datasAssistidas)).toEqual({ "Dias equivalentes (7h)": 1, "Dias de calendário": 1 });
+  expect(diasRelatorio(14, [...h.datasAssistidas, ...h.datasAssistidas])["Dias de calendário"]).toBe(1);
 });
 test("marcador online com zero horas conta toda a sessão como frequência online", () => {
   expect(horasFrequenciaSessao(3, [{ tipo: "online", horas: 0 }])).toEqual({ frequentadas: 3, presenciais: 0, online: 3 });

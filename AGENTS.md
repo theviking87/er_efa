@@ -13,3 +13,4 @@
 - Historical workbook UFCD totals use horasRelatorioUfcd; explicit online attendance may precede administrative enrollment, without changing payment eligibility or withdrawal/completion cutoffs.
 - Workbook day totals use shared pure rules and union attended dates at each aggregation level, never sum session counts or per-UFCD calendar-day counts.
 - Session exports use the shared schema-compatibility reader: retry without the status column only when it is missing in a legacy database; preserve status filtering in updated databases and propagate other errors.
+- Enrollment-date edits belong to the trainee's per-course enrollment and invalidate cached reads; never automatically backdate enrollments to course start, because actual attendance starts can differ.

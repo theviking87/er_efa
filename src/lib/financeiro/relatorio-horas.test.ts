@@ -58,3 +58,17 @@ test("só sessões realizadas dentro da inscrição contam", () => {
   expect(sessaoNoPercurso({ ...valid, data: "2026-03-01" }, i, "2026-10-17")).toBe(false);
   expect(sessaoNoPercurso({ ...valid, data: "2025-12-31" }, i, "2026-10-17")).toBe(false);
 });
+test("corrigir inscrição posterior à desistência recupera o histórico, não as horas após desistir", () => {
+  const sessoes = [
+    { id: "novembro", data: "2025-11-03", horas: 7, estado: "realizada" },
+    { id: "maio", data: "2026-05-04", horas: 7, estado: "realizada" },
+    { id: "junho", data: "2026-06-29", horas: 7, estado: "realizada" },
+    { id: "desistencia", data: "2026-06-30", horas: 7, estado: "realizada" },
+    { id: "julho", data: "2026-07-01", horas: 7, estado: "realizada" },
+  ];
+  const insc = { data_inscricao: "2026-07-01", data_desistencia: "2026-06-30", data_conclusao: null };
+  expect(horasRelatorioUfcd(sessoes, [], insc, "2026-10-20").assistidas).toBe(0);
+  const corrigido = horasRelatorioUfcd(sessoes, [], { ...insc, data_inscricao: "2025-11-03" }, "2026-10-20");
+  expect(corrigido.assistidas).toBe(21);
+  expect([...corrigido.datasAssistidas]).toEqual(["2025-11-03", "2026-05-04", "2026-06-29"]);
+});

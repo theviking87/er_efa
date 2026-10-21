@@ -22,7 +22,14 @@ import { FormandoFinanceiroPanel } from "@/components/formando-financeiro-panel"
 import { AssiduidadePanel } from "@/components/assiduidade-panel";
 
 export const Route = createFileRoute("/_authenticated/formandos/$id")({
-  head: () => ({ meta: [{ title: "Formando — Gestão Pedagógica" }] }),
+  head: () => ({ meta: [
+    { title: "Ficha do formando — Gestão de Formação" },
+    { name: "description", content: "Inscrições, datas de frequência, horas e assiduidade do formando." },
+    { property: "og:title", content: "Ficha do formando — Gestão de Formação" },
+    { property: "og:description", content: "Inscrições, datas de frequência, horas e assiduidade do formando." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: FormandoDetail,
 });
 
@@ -31,6 +38,8 @@ function FormandoDetail() {
   const navigate = useNavigate();
   const qc = useQueryClient();
   const [editing, setEditing] = useState(false);
+  const [inscricaoEditar, setInscricaoEditar] = useState<{ id: string; data: string; curso: string } | null>(null);
+  const [guardarData, setGuardarData] = useState(false);
 
   const q = useQuery({
     queryKey: ["formando", id],
@@ -45,6 +54,23 @@ function FormandoDetail() {
       return { f: f.data, inscricoes: ins.data ?? [] };
     },
   });
+
+  async function guardarInscricao() {
+    if (!inscricaoEditar?.data || guardarData) return;
+    setGuardarData(true);
+    try {
+      const { error } = await supabase.from("curso_formandos")
+        .update({ data_inscricao: inscricaoEditar.data }).eq("id", inscricaoEditar.id);
+      if (error) throw error;
+      await qc.invalidateQueries();
+      setInscricaoEditar(null);
+      toast.success("Data de inscrição atualizada");
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : "Não foi possível atualizar a data de inscrição");
+    } finally {
+      setGuardarData(false);
+    }
+  }
 
   async function remove() {
     const { error } = await supabase.from("formandos").delete().eq("id", id);
@@ -144,6 +170,10 @@ function FormandoDetail() {
                       </div>
                     </div>
                     <span className="text-xs px-2 py-0.5 rounded-full bg-muted">{INSCRICAO_ESTADO_LABEL[i.estado] ?? i.estado}</span>
+                    <Button variant="ghost" size="icon" aria-label={`Editar data de inscrição em ${i.curso.codigo}`} title="Editar data de inscrição"
+                      onClick={() => setInscricaoEditar({ id: i.id, data: i.data_inscricao, curso: i.curso.codigo })}>
+                      <Pencil className="size-4" />
+                    </Button>
                   </li>
                 ))}
               </ul>
@@ -196,6 +226,21 @@ function FormandoDetail() {
       </Tabs>
 
       <FormandoDialog open={editing} onOpenChange={setEditing} initial={f as any} />
+      <Dialog open={!!inscricaoEditar} onOpenChange={open => { if (!open && !guardarData) setInscricaoEditar(null); }}>
+        <DialogContent>
+          <DialogHeader><DialogTitle>Data de inscrição — {inscricaoEditar?.curso}</DialogTitle></DialogHeader>
+          <form onSubmit={e => { e.preventDefault(); void guardarInscricao(); }} className="space-y-4">
+            <label className="grid gap-2 text-sm" htmlFor="data-inscricao-formando">Data de inscrição
+              <Input id="data-inscricao-formando" type="date" required disabled={guardarData} value={inscricaoEditar?.data ?? ""}
+                onChange={e => { const data = e.target.value; setInscricaoEditar(atual => atual ? { ...atual, data } : null); }} />
+            </label>
+            <DialogFooter>
+              <Button type="button" variant="outline" disabled={guardarData} onClick={() => setInscricaoEditar(null)}>Cancelar</Button>
+              <Button type="submit" disabled={guardarData || !inscricaoEditar?.data}>{guardarData ? "A guardar…" : "Guardar"}</Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </PageContainer>
   );
 }

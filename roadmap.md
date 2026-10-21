@@ -1,6 +1,6 @@
 # Roadmap
 
-- [ ] Verificar as horas da Aline, permitir corrigir datas de inscrição e validar histórico anterior à desistência
+- [x] Verificar as horas da Aline, permitir corrigir datas de inscrição e validar histórico anterior à desistência
 - [x] Corrigir PRA para horas assistidas e incluir presenças online históricas no relatório
 - [x] Contabilizar horas (incluindo online) e acrescentar dias equivalentes de 7h e dias de calendário sem duplicação
 - [x] Corrigir e validar exportações em bases antigas sem sessoes.estado

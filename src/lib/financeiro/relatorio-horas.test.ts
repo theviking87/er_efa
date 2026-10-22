@@ -71,4 +71,16 @@ test("corrigir inscrição posterior à desistência recupera o histórico, não
   const corrigido = horasRelatorioUfcd(sessoes, [], { ...insc, data_inscricao: "2025-11-03" }, "2026-10-20");
   expect(corrigido.assistidas).toBe(21);
   expect([...corrigido.datasAssistidas]).toEqual(["2025-11-03", "2026-05-04", "2026-06-29"]);
+});test("listagem conta desde o início do curso e exclui o dia da desistência; dias por formato", () => {
+  const i = { data_inscricao: "2026-07-01", data_desistencia: "2026-01-07", data_conclusao: null };
+  const h = horasRelatorioUfcd([
+    { id: "m", data: "2026-01-05", horas: 3 },
+    { id: "t", data: "2026-01-05", horas: 4 },
+    { id: "o", data: "2026-01-06", horas: 3 },
+    { id: "d", data: "2026-01-07", horas: 7 },
+  ], [{ sessao_id: "t", tipo: "online", horas: 0 }, { sessao_id: "o", tipo: "online", horas: 0 }], i, "2026-10-22", true);
+  expect(h).toMatchObject({ assistidas: 10, presenciais: 3, online: 7 });
+  expect([...h.datasAssistidas]).toEqual(["2026-01-05", "2026-01-06"]);
+  expect([...h.datasPresenciais]).toEqual(["2026-01-05"]);
+  expect([...h.datasOnline]).toEqual(["2026-01-05", "2026-01-06"]);
 });

@@ -50,20 +50,23 @@ export function horasRelatorioUfcd(
   registos: { sessao_id: string | null; tipo: string; horas: number }[],
   inscricao: { data_inscricao: string; data_desistencia: string | null; data_conclusao: string | null },
   ate: string,
+  desdeInicioCurso = false,
 ) {
   let ministradas = 0, assistidas = 0, presenciais = 0, online = 0;
-  const datasAssistidas = new Set<string>();
+  const datasAssistidas = new Set<string>(), datasPresenciais = new Set<string>(), datasOnline = new Set<string>();
   for (const s of sessoes) {
     const rs = registos.filter(r => r.sessao_id === s.id);
-    if (!sessaoNoPercurso(s, inscricao, ate, rs.some(r => r.tipo === "online"))) continue;
+    if (!sessaoNoPercurso(s, inscricao, ate, desdeInicioCurso || rs.some(r => r.tipo === "online"))) continue;
     const h = horasFrequenciaSessao(s.horas, rs);
     ministradas += Number(s.horas);
     assistidas += h.frequentadas;
     presenciais += h.presenciais;
     online += h.online;
     if (h.frequentadas > 0) datasAssistidas.add(s.data);
+    if (h.presenciais > 0) datasPresenciais.add(s.data);
+    if (h.online > 0) datasOnline.add(s.data);
   }
-  return { ministradas: r2(ministradas), assistidas: r2(assistidas), presenciais: r2(presenciais), online: r2(online), datasAssistidas };
+  return { ministradas: r2(ministradas), assistidas: r2(assistidas), presenciais: r2(presenciais), online: r2(online), datasAssistidas, datasPresenciais, datasOnline };
 }
 
 /** Dias equivalentes conservam frações; calendário conta cada data assistida uma vez. */

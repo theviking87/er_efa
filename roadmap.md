@@ -1,5 +1,6 @@
 # Roadmap
 
+- [ ] Confirmar no Excel que um dia misto conta 1 presencial, 1 online e apenas 1 no total
 - [x] Verificar as horas da Aline, permitir corrigir datas de inscrição e validar histórico anterior à desistência
 - [x] Corrigir PRA para horas assistidas e incluir presenças online históricas no relatório
 - [x] Contabilizar horas (incluindo online) e acrescentar dias equivalentes de 7h e dias de calendário sem duplicação

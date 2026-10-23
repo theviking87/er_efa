@@ -46,6 +46,18 @@ test("conta horas online e presenciais, mas cada data apenas uma vez", () => {
 test("marcador online com zero horas conta toda a sessão como frequência online", () => {
   expect(horasFrequenciaSessao(3, [{ tipo: "online", horas: 0 }])).toEqual({ frequentadas: 3, presenciais: 0, online: 3 });
 });
+test("um dia misto conta um dia presencial, um online e apenas um no total", () => {
+  const h = horasRelatorioUfcd([
+    { id: "manha", data: "2026-10-22", horas: 3, estado: "realizada" },
+    { id: "tarde", data: "2026-10-22", horas: 4, estado: "realizada" },
+  ], [{ sessao_id: "tarde", tipo: "online", horas: 0 }], {
+    data_inscricao: "2026-01-01", data_desistencia: null, data_conclusao: null,
+  }, "2026-10-23", true);
+  expect(h.datasPresenciais.size).toBe(1);
+  expect(h.datasOnline.size).toBe(1);
+  expect(h.datasAssistidas.size).toBe(1);
+  expect(h.assistidas).toBe(7);
+});
 test("frequência presencial desconta faltas justificadas e injustificadas", () => {
   expect(horasFrequenciaSessao(6, [{ tipo: "justificada", horas: 1 }, { tipo: "injustificada", horas: 2 }])).toEqual({ frequentadas: 3, presenciais: 3, online: 0 });
   expect(horasFrequenciaSessao(3, [{ tipo: "ausencia", horas: 5 }]).frequentadas).toBe(0);

@@ -1,7 +1,7 @@
 import * as XLSX from "xlsx";
 import { supabase } from "@/integrations/supabase/client";
 import { localDateIso } from "@/lib/format";
-import { disciplinasFrequentadas, horasRelatorioUfcd, diasRelatorio } from "@/lib/financeiro/regras";
+import { disciplinasFrequentadas, horasRelatorioUfcd } from "@/lib/financeiro/regras";
 import { yieldToBrowser } from "@/lib/dom-helpers";
 import { consultaSessoes } from "@/lib/sessoes-estado-compat";
 
@@ -76,7 +76,7 @@ export async function exportRelatorioHorasFormandos() {
     ["Horas totais", "Horas assistidas = presenciais + online (descontadas faltas justificadas, injustificadas e ausências)."],
     ["Horas online", "Horas das sessões registadas como online para o formando."],
     ["Horas PRA", "Horas assistidas na UC Portefólio Reflexivo de Aprendizagem."],
-    ["Dias", "Dias de calendário com presença; manhã ou tarde conta um dia. Um dia com sessão presencial e online conta em ambos."],
+    ["Dias", "Dias de calendário com presença; manhã ou tarde conta um dia. Um dia com presença presencial e online conta 1 em Dias presencial, 1 em Dias online e apenas 1 em Dias total. O total conta datas únicas, não soma as duas colunas."],
   ]), "Critérios");
   await yieldToBrowser();
   XLSX.writeFile(wb, `Horas_Formandos_${ate}.xlsx`);
